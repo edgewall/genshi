@@ -142,6 +142,12 @@ class Attributes(list):
                 return value
         return default
 
+    def remove(self, name):
+        for idx, (attr, _) in enumerate(self):
+            if attr == name:
+                del self[idx]
+                break
+
     def set(self, name, value):
         for idx, (attr, _) in enumerate(self):
             if attr == name:

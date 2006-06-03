@@ -30,7 +30,6 @@ Differences include:
    nodes, making match templates more powerful while keeping the syntax simple
 
 Todo items:
- * XPath support needs a real implementation
  * Improved error reporting
  * Support for using directives as elements and not just as attributes, reducing
    the need for wrapper elements with py:strip=""
@@ -210,12 +209,15 @@ class AttrsDirective(Directive):
         kind, (tag, attrib), pos  = stream.next()
         attrs = self.expr.evaluate(ctxt)
         if attrs:
-            attrib = attrib[:]
-            for name, value in attrs.items():
-                if value is not None:
-                    value = unicode(value).strip()
-                    attrib.append((name, value))
-        yield kind, (tag, Attributes(attrib)), pos
+            attrib = Attributes(attrib[:])
+            if not isinstance(attrs, list): # assume it's a dict
+                attrs = attrs.items()
+            for name, value in attrs:
+                if value is None:
+                    attrib.remove(name)
+                else:
+                    attrib.set(name, unicode(value).strip())
+        yield kind, (tag, attrib), pos
         for event in stream:
             yield event
 

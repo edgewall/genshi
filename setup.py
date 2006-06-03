@@ -21,5 +21,9 @@ setup(
     license='BSD', url='http://markup.cmlenz.net/',
     packages=find_packages(exclude=['*.tests*']),
     test_suite = 'markup.tests.suite',
-    zip_safe = True
+    zip_safe = True,
+    entry_points = """
+    [python.templating.engines]
+    markup = markup.plugin:TemplateEnginePlugin
+    """,
 )

@@ -1,0 +1,40 @@
+<html xmlns="http://www.w3.org/1999/xhtml"
+      xmlns:py="http://purl.org/kid/ns#"
+      xmlns:xi="http://www.w3.org/2001/XInclude"
+      py:strip="">
+<xi:include href="sitetemplate.html"><xi:fallback/></xi:include>
+
+<head py:match="head">
+    <meta content="text/html; charset=UTF-8" http-equiv="content-type" py:replace="''"/>
+    <title py:replace="''">Your title goes here</title>
+    ${select('*/*')}
+    <style type="text/css">
+        #pageLogin
+        {
+            font-size: 10px;
+            font-family: verdana;
+            text-align: right;
+        }
+    </style>
+</head>
+
+<body py:match="body">
+    <div py:if="tg.config('identity.on', False) and not logging_in"
+        id="pageLogin">
+        <span py:if="tg.identity.anonymous">
+            <a href="/login">Login</a>
+        </span>
+        <span py:if="not tg.identity.anonymous">
+            Welcome ${tg.identity.user.display_name}.
+            <a href="/logout">Logout</a>
+        </span>
+    </div>
+
+    <div py:if="tg_flash" class="flash" py:content="tg_flash"></div>
+
+    ${select('*')}
+
+    <p align="center"><img src="/static/images/tg_under_the_hood.png" alt="TurboGears under the hood"/></p>
+</body>
+
+</html>

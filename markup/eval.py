@@ -80,6 +80,15 @@ class Expression(object):
     False
     >>> Expression('1 != 3 == 3').evaluate(data)
     True
+    >>> Expression('1 > 0').evaluate(data)
+    True
+    >>> Expression('True and "Foo"').evaluate(data)
+    'Foo'
+    >>> data = dict(items=[1, 2, 3])
+    >>> Expression('2 in items').evaluate(data)
+    True
+    >>> Expression('not 2 in items').evaluate(data)
+    False
     
     Built-in functions such as `len()` are also available in template
     expressions:
@@ -163,15 +172,18 @@ class Expression(object):
     # Operators
 
     def _visit_and(self, node, data):
-        return reduce(operator.and_, [self._visit(n, data) for n in node.nodes])
+        return reduce(lambda x, y: x and y,
+                      [self._visit(n, data) for n in node.nodes])
 
     def _visit_or(self, node, data):
-        return reduce(operator.or_, [self._visit(n, data) for n in node.nodes])
+        return reduce(lambda x, y: x or y,
+                      [self._visit(n, data) for n in node.nodes])
 
     _OP_MAP = {'==': operator.eq, '!=': operator.ne,
                '<':  operator.lt, '<=': operator.le,
                '>':  operator.gt, '>=': operator.ge,
-               'in': operator.contains}
+               'in': lambda x, y: operator.contains(y, x),
+               'not in': lambda x, y: not operator.contains(y, x)}
     def _visit_compare(self, node, data):
         result = self._visit(node.expr, data)
         ops = node.ops[:]

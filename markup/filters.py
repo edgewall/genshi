@@ -95,15 +95,17 @@ class IncludeFilter(object):
         """
         self.loader = loader
 
-    def __call__(self, stream, ctxt=None):
+    def __call__(self, stream, ctxt=None, ns_prefixes=None):
         """Filter the stream, processing any XInclude directives it may
         contain.
         
         @param ctxt: the template context
         @param stream: the markup event stream to filter
         """
-        from markup.template import TemplateError, TemplateNotFound
+        from markup.template import Template, TemplateError, TemplateNotFound
 
+        if ns_prefixes is None:
+            ns_prefixes = []
         in_fallback = False
         include_href, fallback_stream = None, None
         indent = 0
@@ -156,6 +158,11 @@ class IncludeFilter(object):
                 fallback_stream.append((kind, data, pos))
 
             elif kind is Stream.START_NS and data[1] == self._NAMESPACE:
+                ns_prefixes.append(data[0])
+                continue
+
+            elif kind is Stream.END_NS and data in ns_prefixes:
+                ns_prefixes.pop()
                 continue
 
             else:
@@ -165,7 +172,7 @@ class IncludeFilter(object):
             # process
             return
 
-        for event in self(stream, ctxt):
+        for event in self(stream, ctxt, ns_prefixes=ns_prefixes):
             yield event
 
 

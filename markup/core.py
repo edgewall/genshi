@@ -246,7 +246,9 @@ class Markup(unicode):
                             .replace('&amp;', '&')
 
     def plaintext(self, keeplinebreaks=True):
-        """Returns the text as a `unicode`with all entities and tags removed."""
+        """Returns the text as a `unicode` string with all entities and tags
+        removed.
+        """
         text = unicode(self.striptags().stripentities())
         if not keeplinebreaks:
             text = text.replace('\n', ' ')

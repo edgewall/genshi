@@ -242,11 +242,10 @@ class ContentDirective(Directive):
         if kind is Stream.START:
             yield kind, data, pos # emit start tag
         yield Stream.EXPR, self.expr, pos
-        previous = None
-        try:
-            while True:
-                previous = stream.next()
-        except StopIteration:
+        previous = stream.next()
+        for event in stream:
+            previous = event
+        else:
             if previous is not None:
                 yield previous
 

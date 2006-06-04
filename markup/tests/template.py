@@ -31,7 +31,7 @@ class TemplateTestCase(unittest.TestCase):
     def test_interpolate_simple(self):
         parts = list(Template._interpolate('${bla}'))
         self.assertEqual(1, len(parts))
-        self.assertEqual(Stream.EXPR, parts[0][0])
+        self.assertEqual(Template.EXPR, parts[0][0])
         self.assertEqual('bla', parts[0][1].source)
 
     def test_interpolate_escaped(self):
@@ -43,17 +43,17 @@ class TemplateTestCase(unittest.TestCase):
     def test_interpolate_short(self):
         parts = list(Template._interpolate('$bla'))
         self.assertEqual(1, len(parts))
-        self.assertEqual(Stream.EXPR, parts[0][0])
+        self.assertEqual(Template.EXPR, parts[0][0])
         self.assertEqual('bla', parts[0][1].source)
 
     def test_interpolate_mixed1(self):
         parts = list(Template._interpolate('$foo bar $baz'))
         self.assertEqual(3, len(parts))
-        self.assertEqual(Stream.EXPR, parts[0][0])
+        self.assertEqual(Template.EXPR, parts[0][0])
         self.assertEqual('foo', parts[0][1].source)
         self.assertEqual(Stream.TEXT, parts[1][0])
         self.assertEqual(' bar ', parts[1][1])
-        self.assertEqual(Stream.EXPR, parts[2][0])
+        self.assertEqual(Template.EXPR, parts[2][0])
         self.assertEqual('baz', parts[2][1].source)
 
     def test_interpolate_mixed2(self):
@@ -61,7 +61,7 @@ class TemplateTestCase(unittest.TestCase):
         self.assertEqual(3, len(parts))
         self.assertEqual(Stream.TEXT, parts[0][0])
         self.assertEqual('foo ', parts[0][1])
-        self.assertEqual(Stream.EXPR, parts[1][0])
+        self.assertEqual(Template.EXPR, parts[1][0])
         self.assertEqual('bar', parts[1][1].source)
         self.assertEqual(Stream.TEXT, parts[2][0])
         self.assertEqual(' baz', parts[2][1])

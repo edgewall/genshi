@@ -55,8 +55,6 @@ class Stream(object):
     START = StreamEventKind('start') # a start tag
     END = StreamEventKind('end') # an end tag
     TEXT = StreamEventKind('text') # literal text
-    EXPR = StreamEventKind('expr') # an expression
-    SUB = StreamEventKind('sub') # a "subprogram"
     PROLOG = StreamEventKind('prolog') # XML prolog
     DOCTYPE = StreamEventKind('doctype') # doctype declaration
     START_NS = StreamEventKind('start-ns') # start namespace mapping

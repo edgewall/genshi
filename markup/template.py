@@ -47,7 +47,7 @@ import os
 import re
 from StringIO import StringIO
 
-from markup.core import Attributes, Stream
+from markup.core import Attributes, Stream, StreamEventKind
 from markup.eval import Expression
 from markup.filters import EvalFilter, IncludeFilter, MatchFilter, \
                            WhitespaceFilter
@@ -241,13 +241,12 @@ class ContentDirective(Directive):
         kind, data, pos = stream.next()
         if kind is Stream.START:
             yield kind, data, pos # emit start tag
-        yield Stream.EXPR, self.expr, pos
+        yield Template.EXPR, self.expr, pos
         previous = stream.next()
         for event in stream:
             previous = event
-        else:
-            if previous is not None:
-                yield previous
+        if previous is not None:
+            yield previous
 
 
 class DefDirective(Directive):
@@ -450,7 +449,7 @@ class ReplaceDirective(Directive):
     """
     def __call__(self, stream, ctxt):
         kind, data, pos = stream.next()
-        yield Stream.EXPR, self.expr, pos
+        yield Template.EXPR, self.expr, pos
 
 
 class StripDirective(Directive):
@@ -513,8 +512,6 @@ class StripDirective(Directive):
             strip = True
         if strip:
             stream.next() # skip start tag
-            # can ignore StopIteration since it will just break from this
-            # generator
             previous = stream.next()
             for event in stream:
                 yield previous
@@ -529,6 +526,9 @@ class Template(object):
     based on context data.
     """
     NAMESPACE = 'http://purl.org/kid/ns#'
+
+    EXPR = StreamEventKind('expr') # an expression
+    SUB = StreamEventKind('sub') # a "subprogram"
 
     directives = [('def', DefDirective),
                   ('match', MatchDirective),
@@ -620,7 +620,7 @@ class Template(object):
                 if (depth, data) in dirmap:
                     directives, start_offset = dirmap.pop((depth, data))
                     substream = stream[start_offset:]
-                    stream[start_offset:] = [(Stream.SUB,
+                    stream[start_offset:] = [(Template.SUB,
                                               (directives, substream), pos)]
 
             elif kind is Stream.TEXT:
@@ -643,7 +643,7 @@ class Template(object):
             try:
                 for kind, data, pos in stream:
 
-                    if kind is Stream.SUB:
+                    if kind is Template.SUB:
                         # This event is a list of directives and a list of
                         # nested events to which those directives should be
                         # applied
@@ -686,7 +686,7 @@ class Template(object):
         def _interpolate(text):
             for idx, group in enumerate(patterns.pop(0).split(text)):
                 if idx % 2:
-                    yield Stream.EXPR, Expression(group), (lineno, offset)
+                    yield Template.EXPR, Expression(group), (lineno, offset)
                 elif group:
                     if patterns:
                         for result in _interpolate(group):

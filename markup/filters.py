@@ -30,6 +30,8 @@ class EvalFilter(object):
     """Responsible for evaluating expressions in a template."""
 
     def __call__(self, stream, ctxt=None):
+        from markup.template import Template
+
         for kind, data, pos in stream:
 
             if kind is Stream.START:
@@ -43,7 +45,7 @@ class EvalFilter(object):
                     else:
                         values = []
                         for subkind, subdata, subpos in substream:
-                            if subkind is Stream.EXPR:
+                            if subkind is Template.EXPR:
                                 values.append(subdata.evaluate(ctxt))
                             else:
                                 values.append(subdata)
@@ -53,7 +55,7 @@ class EvalFilter(object):
                     new_attrib.append((name, ''.join(value)))
                 yield kind, (tag, Attributes(new_attrib)), pos
 
-            elif kind is Stream.EXPR:
+            elif kind is Template.EXPR:
                 result = data.evaluate(ctxt)
                 if result is None:
                     continue
@@ -68,7 +70,7 @@ class EvalFilter(object):
                     # iterable, in which case we yield the
                     # individual items
                     try:
-                        yield Stream.SUB, ([], iter(result)), pos
+                        yield Template.SUB, ([], iter(result)), pos
                     except TypeError:
                         # Neither a string nor an iterable, so just
                         # pass it through
@@ -177,6 +179,8 @@ class MatchFilter(object):
         self.handler = handler
 
     def __call__(self, stream, ctxt=None):
+        from markup.template import Template
+
         test = self.path.test()
         for kind, data, pos in stream:
             result = test(kind, data, pos)
@@ -192,7 +196,7 @@ class MatchFilter(object):
                     content.append(ev)
                     test(*ev)
 
-                yield (Stream.SUB,
+                yield (Template.SUB,
                        ([lambda stream, ctxt: self.handler(content, ctxt)], []),
                        pos)
             else:

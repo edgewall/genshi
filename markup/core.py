@@ -87,7 +87,7 @@ class Stream(object):
         """
         output = u''.join(list(self.serialize(method=method, **kwargs)))
         if encoding is not None:
-            return output.encode('utf-8')
+            return output.encode(encoding)
         return output
 
     def select(self, path):

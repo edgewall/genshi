@@ -85,10 +85,10 @@ class Stream(object):
         Any additional keyword arguments are passed to the serializer, and thus
         depend on the `method` parameter value.
         """
-        retval = u''.join(self.serialize(method=method, **kwargs))
+        output = u''.join(list(self.serialize(method=method, **kwargs)))
         if encoding is not None:
-            return retval.encode('utf-8')
-        return retval
+            return output.encode('utf-8')
+        return output
 
     def select(self, path):
         """Return a new stream that contains the events matching the given

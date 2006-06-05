@@ -770,7 +770,7 @@ class TemplateLoader(object):
                 fileobj = file(filepath, 'rt')
                 try:
                     tmpl = Template(fileobj, filename=filepath)
-                    tmpl.pre_filters.append(IncludeFilter(self))
+                    tmpl.pre_filters.append(IncludeFilter(self, tmpl))
                 finally:
                     fileobj.close()
                 self._cache[filename] = tmpl

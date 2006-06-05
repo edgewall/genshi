@@ -87,13 +87,16 @@ class IncludeFilter(object):
 
     _NAMESPACE = 'http://www.w3.org/2001/XInclude'
 
-    def __init__(self, loader):
+    def __init__(self, loader, template):
         """Initialize the filter.
         
         @param loader: the `TemplateLoader` to use for resolving references to
             external template files
         """
         self.loader = loader
+        self.template = template
+        if not hasattr(template, '_included_filters'):
+            template._included_filters = []
 
     def __call__(self, stream, ctxt=None, ns_prefixes=None):
         """Filter the stream, processing any XInclude directives it may
@@ -138,8 +141,12 @@ class IncludeFilter(object):
                         # If the included template defines any filters added at
                         # runtime (such as py:match templates), those need to be
                         # applied to the including template, too.
-                        for filter_ in template.filters:
+                        filters = template.filters + template._included_filters
+                        for filter_ in filters:
                             stream = filter_(stream, ctxt)
+
+                        # Runtime filters included need to be propagated up
+                        self.template._included_filters += filters
 
                     except TemplateNotFound:
                         if fallback_stream is None:

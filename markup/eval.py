@@ -104,13 +104,10 @@ class Expression(object):
         self.source = source
         self.ast = None
 
-    def evaluate(self, data, default=None):
+    def evaluate(self, data):
         if not self.ast:
             self.ast = compiler.parse(self.source, 'eval')
-        retval = self._visit(self.ast.node, data)
-        if retval is not None:
-            return retval
-        return default
+        return self._visit(self.ast.node, data)
 
     def __repr__(self):
         return '<Expression "%s">' % self.source
@@ -142,13 +139,12 @@ class Expression(object):
 
     def _visit_getattr(self, node, data):
         obj = self._visit(node.expr, data)
-        try:
+        if hasattr(obj, node.attrname):
             return getattr(obj, node.attrname)
-        except AttributeError, e:
-            try:
-                return obj[node.attrname]
-            except (KeyError, TypeError):
-                return None
+        elif node.attrname in obj:
+            return obj[node.attrname]
+        else:
+            return None
 
     def _visit_slice(self, node, data):
         obj = self._visit(node.expr, data)

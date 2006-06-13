@@ -22,8 +22,7 @@ import re
 from markup.core import Attributes, Markup, Stream
 from markup.path import Path
 
-__all__ = ['EvalFilter', 'IncludeFilter', 'MatchFilter', 'WhitespaceFilter',
-           'HTMLSanitizer']
+__all__ = ['EvalFilter', 'IncludeFilter', 'WhitespaceFilter', 'HTMLSanitizer']
 
 
 class EvalFilter(object):
@@ -141,7 +140,7 @@ class IncludeFilter(object):
                         # If the included template defines any filters added at
                         # runtime (such as py:match templates), those need to be
                         # applied to the including template, too.
-                        filters = template.filters + template._included_filters
+                        filters = template._included_filters + template.filters
                         for filter_ in filters:
                             stream = filter_(stream, ctxt)
 
@@ -181,40 +180,6 @@ class IncludeFilter(object):
 
         for event in self(stream, ctxt, ns_prefixes=ns_prefixes):
             yield event
-
-
-class MatchFilter(object):
-    """A filter that delegates to a given handler function when the input stream
-    matches some path expression.
-    """
-
-    def __init__(self, path, handler):
-        self.path = Path(path)
-        self.handler = handler
-
-    def __call__(self, stream, ctxt=None):
-        from markup.template import Template
-
-        test = self.path.test()
-        for kind, data, pos in stream:
-            result = test(kind, data, pos)
-            if result is True:
-                content = [(kind, data, pos)]
-                depth = 1
-                while depth > 0:
-                    ev = stream.next()
-                    if ev[0] is Stream.START:
-                        depth += 1
-                    elif ev[0] is Stream.END:
-                        depth -= 1
-                    content.append(ev)
-                    test(*ev)
-
-                yield (Template.SUB,
-                       ([lambda stream, ctxt: self.handler(content, ctxt)], []),
-                       pos)
-            else:
-                yield kind, data, pos
 
 
 class WhitespaceFilter(object):

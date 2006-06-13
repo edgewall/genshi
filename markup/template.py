@@ -49,9 +49,9 @@ from StringIO import StringIO
 
 from markup.core import Attributes, Stream, StreamEventKind
 from markup.eval import Expression
-from markup.filters import EvalFilter, IncludeFilter, MatchFilter, \
-                           WhitespaceFilter
+from markup.filters import EvalFilter, IncludeFilter, WhitespaceFilter
 from markup.input import HTML, XMLParser, XML
+from markup.path import Path
 
 __all__ = ['Context', 'BadDirectiveError', 'TemplateError',
            'TemplateSyntaxError', 'TemplateNotFound', 'Template',
@@ -347,7 +347,7 @@ class ForDirective(Directive):
         Directive.__init__(self, template, expr_source, pos)
 
     def __call__(self, stream, ctxt):
-        iterable = self.expr.evaluate(ctxt, [])
+        iterable = self.expr.evaluate(ctxt) or []
         if iterable is not None:
             stream = list(stream)
             for item in iter(iterable):
@@ -386,37 +386,108 @@ class IfDirective(Directive):
 
 class MatchDirective(Directive):
     """Implementation of the `py:match` template directive.
-    
-    >>> ctxt = Context()
+
     >>> tmpl = Template('''<div xmlns:py="http://purl.org/kid/ns#">
     ...   <span py:match="div/greeting">
     ...     Hello ${select('@name')}
     ...   </span>
     ...   <greeting name="Dude" />
     ... </div>''')
-    >>> print tmpl.generate(ctxt)
+    >>> print tmpl.generate()
     <div>
       <span>
         Hello Dude
       </span>
     </div>
+    
+    A match template can produce the same kind of element that it matched
+    without entering an infinite recursion:
+    
+    >>> tmpl = Template('''<doc xmlns:py="http://purl.org/kid/ns#">
+    ...   <elem py:match="elem">
+    ...     <div class="elem">${select('*/text()')}</div>
+    ...   </elem>
+    ...   <elem>Hey Joe</elem>
+    ... </doc>''')
+    >>> print tmpl.generate()
+    <doc>
+      <elem>
+        <div class="elem">Hey Joe</div>
+      </elem>
+    </doc>
+    
+    Match directives are applied recursively, meaning that they are also
+    applied to any content they may have produced themselves:
+    
+    >>> tmpl = Template('''<doc xmlns:py="http://purl.org/kid/ns#">
+    ...   <elem py:match="elem">
+    ...     <div class="elem">
+    ...       ${select('*/*')}
+    ...     </div>
+    ...   </elem>
+    ...   <elem>
+    ...     <subelem>
+    ...       <elem/>
+    ...     </subelem>
+    ...   </elem>
+    ... </doc>''')
+    >>> print tmpl.generate()
+    <doc>
+      <elem>
+        <div class="elem">
+          <subelem>
+          <elem>
+        <div class="elem">
+        </div>
+      </elem>
+        </subelem>
+        </div>
+      </elem>
+    </doc>
     """
     __slots__ = ['path', 'stream']
 
     def __init__(self, template, value, pos):
         Directive.__init__(self, template, None, pos)
-        template.filters.append(MatchFilter(value, self._handle_match))
-        self.path = value
+        self.path = Path(value)
         self.stream = []
+        template.filters.append(self._filter)
 
     def __call__(self, stream, ctxt):
         self.stream = list(stream)
         return []
 
     def __repr__(self):
-        return '<%s "%s">' % (self.__class__.__name__, self.path)
+        return '<%s "%s">' % (self.__class__.__name__, self.path.source)
 
-    def _handle_match(self, orig_stream, ctxt):
+    def _filter(self, stream, ctxt=None):
+        test = self.path.test()
+        for event in stream:
+            if self.stream and event in self.stream[::len(self.stream)]:
+                # This is the event this filter produced itself, so matching it
+                # again would result in an infinite loop
+                yield event
+                continue
+            result = test(*event)
+            if result is True:
+                content = [event]
+                depth = 1
+                while depth > 0:
+                    ev = stream.next()
+                    if ev[0] is Stream.START:
+                        depth += 1
+                    elif ev[0] is Stream.END:
+                        depth -= 1
+                    content.append(ev)
+                    test(*ev)
+
+                yield (Template.SUB,
+                       ([lambda stream, ctxt: self._apply(content, ctxt)], []),
+                       content[0][-1])
+            else:
+                yield event
+
+    def _apply(self, orig_stream, ctxt):
         ctxt.push(select=lambda path: Stream(orig_stream).select(path))
         for event in self.stream:
             yield event
@@ -458,11 +529,10 @@ class StripDirective(Directive):
     When the value of the `py:strip` attribute evaluates to `True`, the element
     is stripped from the output
     
-    >>> ctxt = Context()
     >>> tmpl = Template('''<div xmlns:py="http://purl.org/kid/ns#">
     ...   <div py:strip="True"><b>foo</b></div>
     ... </div>''')
-    >>> print tmpl.generate(ctxt)
+    >>> print tmpl.generate()
     <div>
       <b>foo</b>
     </div>
@@ -470,22 +540,20 @@ class StripDirective(Directive):
     On the other hand, when the attribute evaluates to `False`, the element is
     not stripped:
     
-    >>> ctxt = Context()
     >>> tmpl = Template('''<div xmlns:py="http://purl.org/kid/ns#">
     ...   <div py:strip="False"><b>foo</b></div>
     ... </div>''')
-    >>> print tmpl.generate(ctxt)
+    >>> print tmpl.generate()
     <div>
       <div><b>foo</b></div>
     </div>
     
     Leaving the attribute value empty is equivalent to a truth value:
     
-    >>> ctxt = Context()
     >>> tmpl = Template('''<div xmlns:py="http://purl.org/kid/ns#">
     ...   <div py:strip=""><b>foo</b></div>
     ... </div>''')
-    >>> print tmpl.generate(ctxt)
+    >>> print tmpl.generate()
     <div>
       <b>foo</b>
     </div>
@@ -493,14 +561,13 @@ class StripDirective(Directive):
     This directive is particulary interesting for named template functions or
     match templates that do not generate a top-level element:
     
-    >>> ctxt = Context()
     >>> tmpl = Template('''<div xmlns:py="http://purl.org/kid/ns#">
     ...   <div py:def="echo(what)" py:strip="">
     ...     <b>${what}</b>
     ...   </div>
     ...   ${echo('foo')}
     ... </div>''')
-    >>> print tmpl.generate(ctxt)
+    >>> print tmpl.generate()
     <div>
         <b>foo</b>
     </div>
@@ -549,9 +616,9 @@ class Template(object):
             self.source = source
         self.filename = filename or '<string>'
 
-        self.pre_filters = [EvalFilter()]
+        self.input_filters = [EvalFilter()]
         self.filters = []
-        self.post_filters = [WhitespaceFilter()]
+        self.output_filters = [WhitespaceFilter()]
         self.parse()
 
     def __repr__(self):
@@ -632,12 +699,15 @@ class Template(object):
 
         self.stream = stream
 
-    def generate(self, ctxt):
+    def generate(self, ctxt=None):
         """Transform the template based on the given context data."""
 
+        if ctxt is None:
+            ctxt = Context()
+
         def _transform(stream):
-            # Apply pre and runtime filters
-            for filter_ in chain(self.pre_filters, self.filters):
+            # Apply input filters
+            for filter_ in chain(self.input_filters, self.filters):
                 stream = filter_(iter(stream), ctxt)
 
             try:
@@ -656,14 +726,15 @@ class Template(object):
 
                     else:
                         yield kind, data, pos
+
             except SyntaxError, err:
                 raise TemplateSyntaxError(err, self.filename, pos[0],
                                           pos[1] + (err.offset or 0))
 
         stream = _transform(self.stream)
 
-        # Apply post-filters
-        for filter_ in self.post_filters:
+        # Apply output filters
+        for filter_ in self.output_filters:
             stream = filter_(iter(stream), ctxt)
 
         return Stream(stream)
@@ -676,7 +747,7 @@ class Template(object):
         
         This method returns a list containing both literal text and `Expression`
         objects.
-
+        
         @param text: the text to parse
         @param lineno: the line number at which the text was found (optional)
         @param offset: the column number at which the text starts in the source
@@ -770,7 +841,7 @@ class TemplateLoader(object):
                 fileobj = file(filepath, 'rt')
                 try:
                     tmpl = Template(fileobj, filename=filepath)
-                    tmpl.pre_filters.append(IncludeFilter(self, tmpl))
+                    tmpl.input_filters.append(IncludeFilter(self, tmpl))
                 finally:
                     fileobj.close()
                 self._cache[filename] = tmpl

@@ -141,9 +141,9 @@ class Expression(object):
         obj = self._visit(node.expr, data)
         if hasattr(obj, node.attrname):
             return getattr(obj, node.attrname)
-        elif node.attrname in obj:
+        try:
             return obj[node.attrname]
-        else:
+        except TypeError:
             return None
 
     def _visit_slice(self, node, data):

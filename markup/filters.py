@@ -229,7 +229,7 @@ class HTMLSanitizer(object):
         'ul', 'var'])
 
     _SAFE_ATTRS = frozenset(['abbr', 'accept', 'accept-charset', 'accesskey',
-        'action', 'align', 'alt', 'axis', 'border', 'cellpadding',
+        'action', 'align', 'alt', 'axis', 'bgcolor', 'border', 'cellpadding',
         'cellspacing', 'char', 'charoff', 'charset', 'checked', 'cite', 'class',
         'clear', 'cols', 'colspan', 'color', 'compact', 'coords', 'datetime',
         'dir', 'disabled', 'enctype', 'for', 'frame', 'headers', 'height',

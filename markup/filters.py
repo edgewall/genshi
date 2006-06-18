@@ -22,61 +22,7 @@ import re
 from markup.core import Attributes, Markup, Stream
 from markup.path import Path
 
-__all__ = ['EvalFilter', 'IncludeFilter', 'WhitespaceFilter', 'HTMLSanitizer']
-
-
-class EvalFilter(object):
-    """Responsible for evaluating expressions in a template."""
-
-    def __call__(self, stream, ctxt=None):
-        from markup.template import Template
-
-        for kind, data, pos in stream:
-
-            if kind is Stream.START:
-                # Attributes may still contain expressions in start tags at
-                # this point, so do some evaluation
-                tag, attrib = data
-                new_attrib = []
-                for name, substream in attrib:
-                    if isinstance(substream, basestring):
-                        value = substream
-                    else:
-                        values = []
-                        for subkind, subdata, subpos in substream:
-                            if subkind is Template.EXPR:
-                                values.append(subdata.evaluate(ctxt))
-                            else:
-                                values.append(subdata)
-                        value = filter(lambda x: x is not None, values)
-                        if not value:
-                            continue
-                    new_attrib.append((name, ''.join(value)))
-                yield kind, (tag, Attributes(new_attrib)), pos
-
-            elif kind is Template.EXPR:
-                result = data.evaluate(ctxt)
-                if result is None:
-                    continue
-
-                # First check for a string, otherwise the iterable
-                # test below succeeds, and the string will be
-                # chopped up into characters
-                if isinstance(result, basestring):
-                    yield Stream.TEXT, result, pos
-                else:
-                    # Test if the expression evaluated to an
-                    # iterable, in which case we yield the
-                    # individual items
-                    try:
-                        yield Template.SUB, ([], iter(result)), pos
-                    except TypeError:
-                        # Neither a string nor an iterable, so just
-                        # pass it through
-                        yield Stream.TEXT, unicode(result), pos
-
-            else:
-                yield kind, data, pos
+__all__ = ['IncludeFilter', 'WhitespaceFilter', 'HTMLSanitizer']
 
 
 class IncludeFilter(object):
@@ -86,16 +32,13 @@ class IncludeFilter(object):
 
     _NAMESPACE = 'http://www.w3.org/2001/XInclude'
 
-    def __init__(self, loader, template):
+    def __init__(self, loader):
         """Initialize the filter.
         
         @param loader: the `TemplateLoader` to use for resolving references to
             external template files
         """
         self.loader = loader
-        self.template = template
-        if not hasattr(template, '_included_filters'):
-            template._included_filters = []
 
     def __call__(self, stream, ctxt=None, ns_prefixes=None):
         """Filter the stream, processing any XInclude directives it may
@@ -131,21 +74,8 @@ class IncludeFilter(object):
                             raise TemplateError('Include misses required '
                                                 'attribute "href"')
                         template = self.loader.load(include_href)
-                        for ikind, idata, ipos in template.generate(ctxt):
-                            # Fixup indentation of included markup
-                            if ikind is Stream.TEXT:
-                                idata = idata.replace('\n', '\n' + ' ' * indent)
-                            yield ikind, idata, ipos
-
-                        # If the included template defines any filters added at
-                        # runtime (such as py:match templates), those need to be
-                        # applied to the including template, too.
-                        filters = template._included_filters + template.filters
-                        for filter_ in filters:
-                            stream = filter_(stream, ctxt)
-
-                        # Runtime filters included need to be propagated up
-                        self.template._included_filters += filters
+                        for event in template.generate(ctxt):
+                            yield event
 
                     except TemplateNotFound:
                         if fallback_stream is None:
@@ -156,7 +86,7 @@ class IncludeFilter(object):
                     include_href = None
                     fallback_stream = None
                     indent = 0
-                    break
+
                 elif data.localname == 'fallback':
                     in_fallback = False
 
@@ -165,21 +95,12 @@ class IncludeFilter(object):
 
             elif kind is Stream.START_NS and data[1] == self._NAMESPACE:
                 ns_prefixes.append(data[0])
-                continue
 
             elif kind is Stream.END_NS and data in ns_prefixes:
                 ns_prefixes.pop()
-                continue
 
             else:
                 yield kind, data, pos
-        else:
-            # The loop exited normally, so there shouldn't be further events to
-            # process
-            return
-
-        for event in self(stream, ctxt, ns_prefixes=ns_prefixes):
-            yield event
 
 
 class WhitespaceFilter(object):
@@ -199,10 +120,10 @@ class WhitespaceFilter(object):
             if kind is Stream.TEXT:
                 textbuf.append(data)
             elif prev_kind is Stream.TEXT:
-                text = ''.join(textbuf)
+                text = Markup('').join(textbuf)
                 text = self._TRAILING_SPACE.sub('', text)
                 text = self._LINE_COLLAPSE.sub('\n', text)
-                yield Stream.TEXT, text, pos
+                yield Stream.TEXT, Markup(text), pos
                 del textbuf[:]
             prev_kind = kind
             if kind is not Stream.TEXT:
@@ -210,7 +131,7 @@ class WhitespaceFilter(object):
 
         if textbuf:
             text = self._LINE_COLLAPSE.sub('\n', ''.join(textbuf))
-            yield Stream.TEXT, text, pos
+            yield Stream.TEXT, Markup(text), pos
 
 
 class HTMLSanitizer(object):

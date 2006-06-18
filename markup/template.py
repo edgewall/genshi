@@ -42,14 +42,13 @@ Random thoughts:
 """
 
 import compiler
-from itertools import chain
 import os
 import re
 from StringIO import StringIO
 
 from markup.core import Attributes, Stream, StreamEventKind
 from markup.eval import Expression
-from markup.filters import EvalFilter, IncludeFilter, WhitespaceFilter
+from markup.filters import IncludeFilter
 from markup.input import HTML, XMLParser, XML
 from markup.path import Path
 
@@ -388,7 +387,7 @@ class MatchDirective(Directive):
     """Implementation of the `py:match` template directive.
 
     >>> tmpl = Template('''<div xmlns:py="http://purl.org/kid/ns#">
-    ...   <span py:match="div/greeting">
+    ...   <span py:match="greeting">
     ...     Hello ${select('@name')}
     ...   </span>
     ...   <greeting name="Dude" />
@@ -451,47 +450,14 @@ class MatchDirective(Directive):
         Directive.__init__(self, template, None, pos)
         self.path = Path(value)
         self.stream = []
-        template.filters.append(self._filter)
 
     def __call__(self, stream, ctxt):
         self.stream = list(stream)
+        ctxt._match_templates.append((self.path.test(), self.path, self.stream))
         return []
 
     def __repr__(self):
         return '<%s "%s">' % (self.__class__.__name__, self.path.source)
-
-    def _filter(self, stream, ctxt=None):
-        test = self.path.test()
-        for event in stream:
-            if self.stream and event in self.stream[::len(self.stream)]:
-                # This is the event this filter produced itself, so matching it
-                # again would result in an infinite loop
-                yield event
-                continue
-            result = test(*event)
-            if result is True:
-                content = [event]
-                depth = 1
-                while depth > 0:
-                    ev = stream.next()
-                    if ev[0] is Stream.START:
-                        depth += 1
-                    elif ev[0] is Stream.END:
-                        depth -= 1
-                    content.append(ev)
-                    test(*ev)
-
-                yield (Template.SUB,
-                       ([lambda stream, ctxt: self._apply(content, ctxt)], []),
-                       content[0][-1])
-            else:
-                yield event
-
-    def _apply(self, orig_stream, ctxt):
-        ctxt.push(select=lambda path: Stream(orig_stream).select(path))
-        for event in self.stream:
-            yield event
-        ctxt.pop()
 
 
 class ReplaceDirective(Directive):
@@ -594,8 +560,8 @@ class Template(object):
     """
     NAMESPACE = 'http://purl.org/kid/ns#'
 
-    EXPR = StreamEventKind('expr') # an expression
-    SUB = StreamEventKind('sub') # a "subprogram"
+    EXPR = StreamEventKind('EXPR') # an expression
+    SUB = StreamEventKind('SUB') # a "subprogram"
 
     directives = [('def', DefDirective),
                   ('match', MatchDirective),
@@ -616,9 +582,7 @@ class Template(object):
             self.source = source
         self.filename = filename or '<string>'
 
-        self.input_filters = [EvalFilter()]
-        self.filters = []
-        self.output_filters = [WhitespaceFilter()]
+        self.filters = [self._eval, self._match]
         self.parse()
 
     def __repr__(self):
@@ -699,46 +663,6 @@ class Template(object):
 
         self.stream = stream
 
-    def generate(self, ctxt=None):
-        """Transform the template based on the given context data."""
-
-        if ctxt is None:
-            ctxt = Context()
-
-        def _transform(stream):
-            # Apply input filters
-            for filter_ in chain(self.input_filters, self.filters):
-                stream = filter_(iter(stream), ctxt)
-
-            try:
-                for kind, data, pos in stream:
-
-                    if kind is Template.SUB:
-                        # This event is a list of directives and a list of
-                        # nested events to which those directives should be
-                        # applied
-                        directives, substream = data
-                        directives.reverse()
-                        for directive in directives:
-                            substream = directive(iter(substream), ctxt)
-                        for event in _transform(iter(substream)):
-                            yield event
-
-                    else:
-                        yield kind, data, pos
-
-            except SyntaxError, err:
-                raise TemplateSyntaxError(err, self.filename, pos[0],
-                                          pos[1] + (err.offset or 0))
-
-        stream = _transform(self.stream)
-
-        # Apply output filters
-        for filter_ in self.output_filters:
-            stream = filter_(iter(stream), ctxt)
-
-        return Stream(stream)
-
     _FULL_EXPR_RE = re.compile(r'(?<!\$)\$\{(.+?)\}')
     _SHORT_EXPR_RE = re.compile(r'(?<!\$)\$([a-zA-Z][a-zA-Z0-9_\.]*)')
 
@@ -753,7 +677,7 @@ class Template(object):
         @param offset: the column number at which the text starts in the source
             (optional)
         """
-        patterns = [cls._FULL_EXPR_RE, cls._SHORT_EXPR_RE]
+        patterns = [Template._FULL_EXPR_RE, Template._SHORT_EXPR_RE]
         def _interpolate(text):
             for idx, group in enumerate(patterns.pop(0).split(text)):
                 if idx % 2:
@@ -767,6 +691,134 @@ class Template(object):
                               (lineno, offset)
         return _interpolate(text)
     _interpolate = classmethod(_interpolate)
+
+    def generate(self, ctxt=None):
+        """Transform the template based on the given context data."""
+        if ctxt is None:
+            ctxt = Context()
+        if not hasattr(ctxt, '_match_templates'):
+            ctxt._match_templates = []
+
+        return Stream(self._flatten(self.stream, ctxt))
+
+    def _eval(self, stream, ctxt=None):
+        for kind, data, pos in stream:
+
+            if kind is Stream.START:
+                # Attributes may still contain expressions in start tags at
+                # this point, so do some evaluation
+                tag, attrib = data
+                new_attrib = []
+                for name, substream in attrib:
+                    if isinstance(substream, basestring):
+                        value = substream
+                    else:
+                        values = []
+                        for subkind, subdata, subpos in substream:
+                            if subkind is Template.EXPR:
+                                values.append(subdata.evaluate(ctxt))
+                            else:
+                                values.append(subdata)
+                        value = filter(lambda x: x is not None, values)
+                        if not value:
+                            continue
+                    new_attrib.append((name, ''.join(value)))
+                yield kind, (tag, Attributes(new_attrib)), pos
+
+            elif kind is Template.EXPR:
+                result = data.evaluate(ctxt)
+                if result is None:
+                    continue
+
+                # First check for a string, otherwise the iterable test below
+                # succeeds, and the string will be chopped up into individual
+                # characters
+                if isinstance(result, basestring):
+                    yield Stream.TEXT, result, pos
+                else:
+                    # Test if the expression evaluated to an iterable, in which
+                    # case we yield the individual items
+                    try:
+                        yield (Template.SUB, ([], iter(result)), pos)
+                    except TypeError:
+                        # Neither a string nor an iterable, so just pass it
+                        # through
+                        yield Stream.TEXT, unicode(result), pos
+
+            else:
+                yield kind, data, pos
+
+    def _flatten(self, stream, ctxt=None, apply_filters=True):
+        if apply_filters:
+            for filter_ in self.filters:
+                stream = filter_(iter(stream), ctxt)
+        try:
+            for kind, data, pos in stream:
+                if kind is Template.SUB:
+                    # This event is a list of directives and a list of
+                    # nested events to which those directives should be
+                    # applied
+                    directives, substream = data
+                    directives.reverse()
+                    for directive in directives:
+                        substream = directive(iter(substream), ctxt)
+                    for event in self._flatten(substream, ctxt):
+                        yield event
+                        continue
+                else:
+                    yield kind, data, pos
+        except SyntaxError, err:
+            raise TemplateSyntaxError(err, self.filename, pos[0],
+                                      pos[1] + (err.offset or 0))
+
+    def _match(self, stream, ctxt=None):
+        for kind, data, pos in stream:
+
+            # We (currently) only care about start and end events for matching
+            # We might care about namespace events in the future, though
+            if kind not in (Stream.START, Stream.END):
+                yield kind, data, pos
+                continue
+
+            for idx, (test, path, template) in enumerate(ctxt._match_templates):
+                if (kind, data, pos) in template[::len(template)]:
+                    # This is the event this match template produced itself, so
+                    # matching it  again would result in an infinite loop 
+                    continue
+
+                result = test(kind, data, pos)
+
+                if result:
+                    # Consume and store all events until an end event
+                    # corresponding to this start event is encountered
+                    content = [(kind, data, pos)]
+                    depth = 1
+                    while depth > 0:
+                        event = stream.next()
+                        if event[0] is Stream.START:
+                            depth += 1
+                        elif event[0] is Stream.END:
+                            depth -= 1
+                        content.append(event)
+
+                        # enable the path to keep track of the stream state
+                        test(*event)
+
+                    content = list(self._flatten(content, ctxt, apply_filters=False))
+
+                    def _apply(stream, ctxt):
+                        stream = list(stream)
+                        ctxt.push(select=lambda path: Stream(stream).select(path))
+                        for event in template:
+                            yield event
+                        ctxt.pop()
+
+                    yield (Template.SUB,
+                           ([lambda stream, ctxt: _apply(content, ctxt)],
+                            []), content[0][-1])
+                    break
+            else:
+                yield kind, data, pos
 
 
 class TemplateLoader(object):
@@ -841,7 +893,7 @@ class TemplateLoader(object):
                 fileobj = file(filepath, 'rt')
                 try:
                     tmpl = Template(fileobj, filename=filepath)
-                    tmpl.input_filters.append(IncludeFilter(self, tmpl))
+                    tmpl.filters.append(IncludeFilter(self))
                 finally:
                     fileobj.close()
                 self._cache[filename] = tmpl

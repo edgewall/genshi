@@ -17,16 +17,16 @@ def test():
     tmpl = loader.load('test.html')
     print ' --> parse stage: ', datetime.now() - start
 
-    ctxt = Context(hello='<world>', skin='default', hey='ZYX', bozz=None,
-                   items=['Number %d' % num for num in range(1, 15)],
-                   prefix='#')
+    data = dict(hello='<world>', skin='default', hey='ZYX', bozz=None,
+                items=['Number %d' % num for num in range(1, 15)],
+                prefix='#')
 
-    print tmpl.generate(ctxt).render(method='html')
+    print tmpl.generate(Context(**data)).render(method='html')
 
     times = []
     for i in range(100):
         start = datetime.now()
-        list(tmpl.generate(ctxt))
+        list(tmpl.generate(Context(**data)))
         sys.stdout.write('.')
         sys.stdout.flush()
         times.append(datetime.now() - start)

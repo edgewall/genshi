@@ -20,16 +20,8 @@ from StringIO import StringIO
 __all__ = ['Stream', 'Markup', 'escape', 'unescape', 'Namespace', 'QName']
 
 
-class StreamEventKind(object):
+class StreamEventKind(str):
     """A kind of event on an XML stream."""
-
-    __slots__ = ['name']
-
-    def __init__(self, name):
-        self.name = name
-
-    def __repr__(self):
-        return self.name
 
 
 class Stream(object):
@@ -52,15 +44,15 @@ class Stream(object):
     """
     __slots__ = ['events']
 
-    START = StreamEventKind('start') # a start tag
-    END = StreamEventKind('end') # an end tag
-    TEXT = StreamEventKind('text') # literal text
-    PROLOG = StreamEventKind('prolog') # XML prolog
-    DOCTYPE = StreamEventKind('doctype') # doctype declaration
-    START_NS = StreamEventKind('start-ns') # start namespace mapping
-    END_NS = StreamEventKind('end-ns') # end namespace mapping
-    PI = StreamEventKind('pi') # processing instruction
-    COMMENT = StreamEventKind('comment') # comment
+    START = StreamEventKind('START') # a start tag
+    END = StreamEventKind('END') # an end tag
+    TEXT = StreamEventKind('TEXT') # literal text
+    PROLOG = StreamEventKind('PROLOG') # XML prolog
+    DOCTYPE = StreamEventKind('DOCTYPE') # doctype declaration
+    START_NS = StreamEventKind('START-NS') # start namespace mapping
+    END_NS = StreamEventKind('END-NS') # end namespace mapping
+    PI = StreamEventKind('PI') # processing instruction
+    COMMENT = StreamEventKind('COMMENT') # comment
 
     def __init__(self, events):
         """Initialize the stream with a sequence of markup events.
@@ -72,7 +64,7 @@ class Stream(object):
     def __iter__(self):
         return iter(self.events)
 
-    def render(self, method='xml', encoding='utf-8', **kwargs):
+    def render(self, method='xml', encoding='utf-8', filters=None, **kwargs):
         """Return a string representation of the stream.
         
         @param method: determines how the stream is serialized; can be either
@@ -83,7 +75,8 @@ class Stream(object):
         Any additional keyword arguments are passed to the serializer, and thus
         depend on the `method` parameter value.
         """
-        output = u''.join(list(self.serialize(method=method, **kwargs)))
+        generator = self.serialize(method=method, filters=filters, **kwargs)
+        output = u''.join(list(generator))
         if encoding is not None:
             return output.encode(encoding)
         return output
@@ -95,10 +88,9 @@ class Stream(object):
         @param path: a string containing the XPath expression
         """
         from markup.path import Path
-        path = Path(path)
-        return path.select(self)
+        return Path(path).select(self)
 
-    def serialize(self, method='xml', **kwargs):
+    def serialize(self, method='xml', filters=None, **kwargs):
         """Generate strings corresponding to a specific serialization of the
         stream.
         
@@ -109,6 +101,7 @@ class Stream(object):
         @param method: determines how the stream is serialized; can be either
                        'xml' or 'html', or a custom `Serializer` subclass
         """
+        from markup.filters import WhitespaceFilter
         from markup import output
         cls = method
         if isinstance(method, basestring):
@@ -117,7 +110,14 @@ class Stream(object):
         else:
             assert issubclass(cls, serializers.Serializer)
         serializer = cls(**kwargs)
-        return serializer.serialize(self)
+
+        stream = self
+        if filters is None:
+            filters = [WhitespaceFilter()]
+        for filter_ in filters:
+            stream = filter_(iter(stream))
+
+        return serializer.serialize(stream)
 
     def __str__(self):
         return self.render()
@@ -176,6 +176,9 @@ class Markup(unicode):
     def __mul__(self, num):
         return Markup(unicode(self) * num)
 
+    def __repr__(self):
+        return '<%s "%s">' % (self.__class__.__name__, self)
+
     def join(self, seq):
         return Markup(unicode(self).join([Markup.escape(item) for item in seq]))
 
@@ -184,7 +187,8 @@ class Markup(unicode):
         replaced by the equivalent UTF-8 characters.
         
         If the `keepxmlentities` parameter is provided and evaluates to `True`,
-        the core XML entities (&amp;, &apos;, &gt;, &lt; and &quot;).
+        the core XML entities (&amp;, &apos;, &gt;, &lt; and &quot;) are not
+        stripped.
         """
         def _replace_entity(match):
             if match.group(1): # numeric entity
@@ -255,9 +259,8 @@ class Markup(unicode):
     def sanitize(self):
         from markup.filters import HTMLSanitizer
         from markup.input import HTMLParser
-        sanitize = HTMLSanitizer()
-        text = self.stripentities(keepxmlentities=True)
-        return Stream(sanitize(HTMLParser(StringIO(text)), None))
+        text = StringIO(self.stripentities(keepxmlentities=True))
+        return Stream(HTMLSanitizer()(HTMLParser(text)))
 
 
 escape = Markup.escape

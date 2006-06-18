@@ -55,7 +55,7 @@ class Fragment(object):
                     for event in child.generate():
                         yield event
                 else:
-                    yield Stream.TEXT, child, (-1, -1)
+                    yield Stream.TEXT, unicode(child), (-1, -1)
         return Stream(_generate())
 
     def __iter__(self):

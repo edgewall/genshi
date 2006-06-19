@@ -11,7 +11,7 @@
 # individuals. For the exact contribution history, see the revision
 # history and logs, available at http://projects.edgewall.com/trac/.
 
-from markup.core import Attributes, QName, Stream
+from markup.core import Attributes, Namespace, QName, Stream
 
 __all__ = ['Fragment', 'Element', 'tag']
 
@@ -171,8 +171,16 @@ class Element(Fragment):
 
 class ElementFactory(object):
 
-    def __getattribute__(self, name):
-        return Element(name.lower())
+    def __init__(self, namespace=None):
+        if not isinstance(namespace, Namespace):
+            namespace = Namespace(namespace)
+        self.namespace = namespace
+
+    def __getitem__(self, namespace):
+        return ElementFactory(namespace)
+
+    def __getattr__(self, name):
+        return Element(self.namespace and self.namespace[name] or name)
 
 
 tag = ElementFactory()

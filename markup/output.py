@@ -103,9 +103,12 @@ class XMLSerializer(Serializer):
                 tag = data
                 tagname = tag.localname
                 if tag.namespace:
-                    prefix = ns_mapping[tag.namespace]
-                    if prefix:
-                        tagname = prefix + ':' + tag.localname
+                    try:
+                        prefix = ns_mapping[tag.namespace]
+                        if prefix:
+                            tagname = prefix + ':' + tag.localname
+                    except KeyError:
+                        pass
                 yield Markup('</%s>' % tagname)
 
             elif kind is Stream.TEXT:

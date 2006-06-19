@@ -46,7 +46,7 @@ import os
 import re
 from StringIO import StringIO
 
-from markup.core import Attributes, Stream, StreamEventKind
+from markup.core import Attributes, Namespace, Stream, StreamEventKind
 from markup.eval import Expression
 from markup.filters import IncludeFilter
 from markup.input import HTML, XMLParser, XML
@@ -558,7 +558,7 @@ class Template(object):
     """Can parse a template and transform it into the corresponding output
     based on context data.
     """
-    NAMESPACE = 'http://purl.org/kid/ns#'
+    NAMESPACE = Namespace('http://purl.org/kid/ns#')
 
     EXPR = StreamEventKind('EXPR') # an expression
     SUB = StreamEventKind('SUB') # a "subprogram"
@@ -625,7 +625,7 @@ class Template(object):
                 directives = []
                 new_attrib = []
                 for name, value in attrib:
-                    if name.namespace == self.NAMESPACE:
+                    if name in self.NAMESPACE:
                         cls = self._dir_by_name.get(name.localname)
                         if cls is None:
                             raise BadDirectiveError(name, self.filename, pos[0])

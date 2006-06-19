@@ -19,7 +19,7 @@ except NameError:
     from sets import ImmutableSet as frozenset
 import re
 
-from markup.core import Attributes, Markup, Stream
+from markup.core import Attributes, Markup, Namespace, Stream
 from markup.path import Path
 
 __all__ = ['IncludeFilter', 'WhitespaceFilter', 'HTMLSanitizer']
@@ -30,7 +30,7 @@ class IncludeFilter(object):
     (see http://www.w3.org/TR/xinclude/) in templates.
     """
 
-    _NAMESPACE = 'http://www.w3.org/2001/XInclude'
+    NAMESPACE = Namespace('http://www.w3.org/2001/XInclude')
 
     def __init__(self, loader):
         """Initialize the filter.
@@ -57,7 +57,7 @@ class IncludeFilter(object):
 
         for kind, data, pos in stream:
 
-            if kind is Stream.START and data[0].namespace == self._NAMESPACE \
+            if kind is Stream.START and data[0] in self.NAMESPACE \
                     and not in_fallback:
                 tag, attrib = data
                 if tag.localname == 'include':
@@ -67,7 +67,7 @@ class IncludeFilter(object):
                     in_fallback = True
                     fallback_stream = []
 
-            elif kind is Stream.END and data.namespace == self._NAMESPACE:
+            elif kind is Stream.END and data in self.NAMESPACE:
                 if data.localname == 'include':
                     try:
                         if not include_href:
@@ -93,7 +93,7 @@ class IncludeFilter(object):
             elif in_fallback:
                 fallback_stream.append((kind, data, pos))
 
-            elif kind is Stream.START_NS and data[1] == self._NAMESPACE:
+            elif kind is Stream.START_NS and data[1] == self.NAMESPACE:
                 ns_prefixes.append(data[0])
 
             elif kind is Stream.END_NS and data in ns_prefixes:

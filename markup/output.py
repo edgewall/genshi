@@ -20,7 +20,7 @@ try:
 except NameError:
     from sets import ImmutableSet as frozenset
 
-from markup.core import Markup, QName, Stream
+from markup.core import Markup, Namespace, QName, Stream
 from markup.filters import WhitespaceFilter
 
 __all__ = ['Serializer', 'XMLSerializer', 'HTMLSerializer']
@@ -121,7 +121,7 @@ class HTMLSerializer(Serializer):
     <div><a href="foo"></a><br><hr noshade></div>
     """
 
-    NAMESPACE = 'http://www.w3.org/1999/xhtml'
+    NAMESPACE = Namespace('http://www.w3.org/1999/xhtml')
 
     _EMPTY_ELEMS = frozenset(['area', 'base', 'basefont', 'br', 'col', 'frame',
                               'hr', 'img', 'input', 'isindex', 'link', 'meta',
@@ -146,11 +146,11 @@ class HTMLSerializer(Serializer):
 
             elif kind is Stream.START:
                 tag, attrib = data
-                if tag.namespace and tag.namespace != self.NAMESPACE:
+                if tag.namespace and tag not in self.NAMESPACE:
                     continue # not in the HTML namespace, so don't emit
                 buf = ['<', tag.localname]
                 for attr, value in attrib:
-                    if attr.namespace and attr.namespace != self.NAMESPACE:
+                    if attr.namespace and attr not in self.NAMESPACE:
                         continue # not in the HTML namespace, so don't emit
                     if attr.localname in self._BOOLEAN_ATTRS:
                         if value:
@@ -168,7 +168,7 @@ class HTMLSerializer(Serializer):
 
             elif kind is Stream.END:
                 tag = data
-                if tag.namespace and tag.namespace != self.NAMESPACE:
+                if tag.namespace and tag not in self.NAMESPACE:
                     continue # not in the HTML namespace, so don't emit
                 yield Markup('</%s>' % tag.localname)
 

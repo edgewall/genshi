@@ -15,7 +15,7 @@ import doctest
 from HTMLParser import HTMLParseError
 import unittest
 
-from markup.core import Markup, escape, unescape
+from markup.core import *
 
 
 class MarkupTestCase(unittest.TestCase):
@@ -183,6 +183,7 @@ class MarkupTestCase(unittest.TestCase):
 def suite():
     suite = unittest.TestSuite()
     suite.addTest(unittest.makeSuite(MarkupTestCase, 'test'))
+    suite.addTest(doctest.DocTestSuite(Markup.__module__))
     return suite
 
 if __name__ == '__main__':

@@ -94,12 +94,15 @@ class Stream(object):
         """Generate strings corresponding to a specific serialization of the
         stream.
         
-        Unlike the `render()` method, this method is a generator this returns
+        Unlike the `render()` method, this method is a generator that returns
         the serialized output incrementally, as opposed to returning a single
         string.
         
         @param method: determines how the stream is serialized; can be either
                        'xml' or 'html', or a custom `Serializer` subclass
+        @param filters: list of filters to apply to the stream before
+                        serialization. The default is to apply whitespace
+                        reduction using `markup.filters.WhitespaceFilter`.
         """
         from markup.filters import WhitespaceFilter
         from markup import output
@@ -127,26 +130,78 @@ class Stream(object):
 
 
 class Attributes(list):
+    """Sequence type that stores the attributes of an element.
+    
+    The order of the attributes is preserved, while accessing and manipulating
+    attributes by name is also supported.
+    
+    >>> attrs = Attributes([('href', '#'), ('title', 'Foo')])
+    >>> attrs
+    [(u'href', '#'), (u'title', 'Foo')]
+    
+    >>> 'href' in attrs
+    True
+    >>> 'tabindex' in attrs
+    False
+    
+    >>> attrs.get(u'title')
+    'Foo'
+    >>> attrs.set(u'title', 'Bar')
+    >>> attrs
+    [(u'href', '#'), (u'title', 'Bar')]
+    >>> attrs.remove(u'title')
+    >>> attrs
+    [(u'href', '#')]
+    
+    New attributes added using the `set()` method are appended to the end of
+    the list:
+    
+    >>> attrs.set(u'accesskey', 'k')
+    >>> attrs
+    [(u'href', '#'), (u'accesskey', 'k')]
+    """
+    __slots__ = []
 
     def __init__(self, attrib=None):
+        """Create the `Attributes` instance.
+        
+        If the `attrib` parameter is provided, it is expected to be a sequence
+        of `(name, value)` tuples.
+        """
         list.__init__(self, map(lambda (k, v): (QName(k), v), attrib or []))
 
     def __contains__(self, name):
+        """Return whether the list includes an attribute with the specified
+        name.
+        """
         return name in [attr for attr, value in self]
 
     def get(self, name, default=None):
+        """Return the value of the attribute with the specified name, or the
+        value of the `default` parameter if no such attribute is found.
+        """
         for attr, value in self:
             if attr == name:
                 return value
         return default
 
     def remove(self, name):
+        """Removes the attribute with the specified name.
+        
+        If no such attribute is found, this method does nothing.
+        """
         for idx, (attr, _) in enumerate(self):
             if attr == name:
                 del self[idx]
                 break
 
     def set(self, name, value):
+        """Sets the specified attribute to the given value.
+        
+        If an attribute with the specified name is already in the list, the
+        value of the existing entry is updated. Otherwise, a new attribute is
+        appended to the end of the list.
+        """
         for idx, (attr, _) in enumerate(self):
             if attr == name:
                 self[idx] = (attr, value)
@@ -159,13 +214,15 @@ class Markup(unicode):
     """Marks a string as being safe for inclusion in HTML/XML output without
     needing to be escaped.
     """
+    __slots__ = []
+
     def __new__(self, text='', *args):
         if args:
             text %= tuple([escape(arg) for arg in args])
         return unicode.__new__(self, text)
 
     def __add__(self, other):
-        return Markup(unicode(self) + Markup.escape(other))
+        return Markup(unicode(self) + escape(other))
 
     def __mod__(self, args):
         if not isinstance(args, (list, tuple)):
@@ -180,7 +237,7 @@ class Markup(unicode):
         return '<%s "%s">' % (self.__class__.__name__, self)
 
     def join(self, seq):
-        return Markup(unicode(self).join([Markup.escape(item) for item in seq]))
+        return Markup(unicode(self).join([escape(item) for item in seq]))
 
     def stripentities(self, keepxmlentities=False):
         """Return a copy of the text with any character or numeric entities
@@ -228,7 +285,7 @@ class Markup(unicode):
         if isinstance(text, cls):
             return text
         text = unicode(text)
-        if not text:
+        if not text or isinstance(text, cls):
             return cls()
         text = text.replace('&', '&amp;') \
                    .replace('<', '&lt;') \
@@ -241,7 +298,7 @@ class Markup(unicode):
     def unescape(self):
         """Reverse-escapes &, <, > and \" and returns a `unicode` object."""
         if not self:
-            return ''
+            return u''
         return unicode(self).replace('&#34;', '"') \
                             .replace('&gt;', '>') \
                             .replace('&lt;', '<') \
@@ -253,7 +310,7 @@ class Markup(unicode):
         """
         text = unicode(self.striptags().stripentities())
         if not keeplinebreaks:
-            text = text.replace('\n', ' ')
+            text = text.replace(u'\n', u' ')
         return text
 
     def sanitize(self):
@@ -273,12 +330,58 @@ def unescape(text):
 
 
 class Namespace(object):
-
+    """Utility class creating and testing elements with a namespace.
+    
+    Internally, namespace URIs are encoded in the `QName` of any element or
+    attribute, the namespace URI being enclosed in curly braces. This class
+    helps create and test these strings.
+    
+    A `Namespace` object is instantiated with the namespace URI.
+    
+    >>> html = Namespace('http://www.w3.org/1999/xhtml')
+    >>> html
+    <Namespace "http://www.w3.org/1999/xhtml">
+    >>> html.uri
+    u'http://www.w3.org/1999/xhtml'
+    
+    The `Namespace` object can than be used to generate `QName` objects with
+    that namespace:
+    
+    >>> html.body
+    u'{http://www.w3.org/1999/xhtml}body'
+    >>> html.body.localname
+    u'body'
+    >>> html.body.namespace
+    u'http://www.w3.org/1999/xhtml'
+    
+    The same works using item access notation, which is useful for element or
+    attribute names that are not valid Python identifiers:
+    
+    >>> html['body']
+    u'{http://www.w3.org/1999/xhtml}body'
+    
+    A `Namespace` object can also be used to test whether a specific `QName`
+    belongs to that namespace using the `in` operator:
+    
+    >>> qname = html.body
+    >>> qname in html
+    True
+    >>> qname in Namespace('http://www.w3.org/2002/06/xhtml2')
+    False
+    """
     def __init__(self, uri):
-        self.uri = uri
+        self.uri = unicode(uri)
+
+    def __contains__(self, qname):
+        return qname.namespace == self.uri
+
+    def __eq__(self, other):
+        if isinstance(other, Namespace):
+            return self.uri == other.uri
+        return self.uri == other
 
     def __getitem__(self, name):
-        return QName(self.uri + '}' + name)
+        return QName(self.uri + u'}' + name)
 
     __getattr__ = __getitem__
 
@@ -286,10 +389,10 @@ class Namespace(object):
         return '<Namespace "%s">' % self.uri
 
     def __str__(self):
-        return self.uri
+        return self.uri.encode('utf-8')
 
     def __unicode__(self):
-        return unicode(self.uri)
+        return self.uri
 
 
 class QName(unicode):
@@ -299,6 +402,21 @@ class QName(unicode):
     the element or attribute, in the form `{namespace}localname`. The namespace
     URI can be obtained through the additional `namespace` attribute, while the
     local name can be accessed through the `localname` attribute.
+    
+    >>> qname = QName('foo')
+    >>> qname
+    u'foo'
+    >>> qname.localname
+    u'foo'
+    >>> qname.namespace
+    
+    >>> qname = QName('http://www.w3.org/1999/xhtml}body')
+    >>> qname
+    u'{http://www.w3.org/1999/xhtml}body'
+    >>> qname.localname
+    u'body'
+    >>> qname.namespace
+    u'http://www.w3.org/1999/xhtml'
     """
     __slots__ = ['namespace', 'localname']
 
@@ -306,13 +424,13 @@ class QName(unicode):
         if isinstance(qname, QName):
             return qname
 
-        parts = qname.split('}', 1)
-        if qname.find('}') > 0:
-            self = unicode.__new__(cls, '{' + qname)
-            self.namespace = parts[0]
-            self.localname = parts[1]
+        parts = qname.split(u'}', 1)
+        if qname.find(u'}') > 0:
+            self = unicode.__new__(cls, u'{' + qname)
+            self.namespace = unicode(parts[0])
+            self.localname = unicode(parts[1])
         else:
             self = unicode.__new__(cls, qname)
             self.namespace = None
-            self.localname = qname
+            self.localname = unicode(qname)
         return self

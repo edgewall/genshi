@@ -37,7 +37,7 @@ class XMLSerializer(Serializer):
     """Produces XML text from an event stream.
     
     >>> from markup.builder import tag
-    >>> elem = tag.DIV(tag.A(href='foo'), tag.BR, tag.HR(noshade=True))
+    >>> elem = tag.div(tag.a(href='foo'), tag.br, tag.hr(noshade=True))
     >>> print ''.join(XMLSerializer().serialize(elem.generate()))
     <div><a href="foo"/><br/><hr noshade="True"/></div>
     """
@@ -119,7 +119,7 @@ class HTMLSerializer(Serializer):
     """Produces HTML text from an event stream.
     
     >>> from markup.builder import tag
-    >>> elem = tag.DIV(tag.A(href='foo'), tag.BR, tag.HR(noshade=True))
+    >>> elem = tag.div(tag.a(href='foo'), tag.br, tag.hr(noshade=True))
     >>> print ''.join(HTMLSerializer().serialize(elem.generate()))
     <div><a href="foo"></a><br><hr noshade></div>
     """

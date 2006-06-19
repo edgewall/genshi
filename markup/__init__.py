@@ -47,7 +47,7 @@ Markup streams can also be generated programmatically using the
 `markup.builder` module:
 
 >>> from markup.builder import tag
->>> doc = tag.DOC(tag.TITLE('My document'), lang='en')
+>>> doc = tag.doc(tag.title('My document'), lang='en')
 >>> doc.generate().render(method='html')
 '<doc lang="en"><title>My document</title></doc>'
 

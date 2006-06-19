@@ -172,7 +172,7 @@ class Element(Fragment):
 class ElementFactory(object):
 
     def __init__(self, namespace=None):
-        if not isinstance(namespace, Namespace):
+        if namespace and not isinstance(namespace, Namespace):
             namespace = Namespace(namespace)
         self.namespace = namespace
 

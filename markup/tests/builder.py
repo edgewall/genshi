@@ -22,7 +22,7 @@ from markup.core import Stream
 class ElementFactoryTestCase(unittest.TestCase):
 
     def test_link(self):
-        link = tag.A(href='#', title='Foo', accesskey=None)('Bar')
+        link = tag.a(href='#', title='Foo', accesskey=None)('Bar')
         bits = iter(link.generate())
         self.assertEqual((Stream.START, ('a', [('href', "#"), ('title', "Foo")]),
                           (-1, -1)), bits.next())

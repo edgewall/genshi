@@ -69,7 +69,7 @@ class TemplateTestCase(unittest.TestCase):
     def test_bad_directive_error(self):
         xml = '<p xmlns:py="http://purl.org/kid/ns#" py:do="nothing" />'
         try:
-            tmpl = Template(xml, 'test.html')
+            tmpl = Template(xml, filename='test.html')
         except BadDirectiveError, e:
             self.assertEqual('test.html', e.filename)
             if sys.version_info[:2] >= (2, 4):
@@ -77,7 +77,7 @@ class TemplateTestCase(unittest.TestCase):
 
     def test_directive_value_syntax_error(self):
         xml = '<p xmlns:py="http://purl.org/kid/ns#" py:if="bar\'" />'
-        tmpl = Template(xml, 'test.html')
+        tmpl = Template(xml, filename='test.html')
         try:
             list(tmpl.generate(Context()))
             self.fail('Expected SyntaxError')

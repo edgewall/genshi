@@ -53,7 +53,6 @@ class IncludeFilter(object):
             ns_prefixes = []
         in_fallback = False
         include_href, fallback_stream = None, None
-        indent = 0
 
         for kind, data, pos in stream:
 
@@ -62,7 +61,6 @@ class IncludeFilter(object):
                 tag, attrib = data
                 if tag.localname == 'include':
                     include_href = attrib.get('href')
-                    indent = pos[1]
                 elif tag.localname == 'fallback':
                     in_fallback = True
                     fallback_stream = []
@@ -73,7 +71,8 @@ class IncludeFilter(object):
                         if not include_href:
                             raise TemplateError('Include misses required '
                                                 'attribute "href"')
-                        template = self.loader.load(include_href)
+                        template = self.loader.load(include_href,
+                                                    relative_to=pos[0])
                         for event in template.generate(ctxt):
                             yield event
 
@@ -85,7 +84,6 @@ class IncludeFilter(object):
 
                     include_href = None
                     fallback_stream = None
-                    indent = 0
 
                 elif data.localname == 'fallback':
                     in_fallback = False

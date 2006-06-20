@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2006 Mattew Good
+# Copyright (C) 2006 Matthew Good
 # All rights reserved.
 #
 # This software is licensed as described in the file COPYING, which
@@ -34,18 +34,16 @@ class TemplateEnginePlugin(object):
         if divider >= 0:
             package = templatename[:divider]
             basename = templatename[divider + 1:] + '.html'
-            fullpath = resource_filename(package, basename)
-            dirname, templatename = os.path.split(fullpath)
-            self.loader.search_path.append(dirname) # Kludge
+            templatename = resource_filename(package, basename)
 
         return self.loader.load(templatename)
 
     def render(self, info, format='html', fragment=False, template=None):
-        """Renders the template to a string using the provided info."""
+        """Render the template to a string using the provided info."""
         return self.transform(info, template).render(method=format)
 
     def transform(self, info, template):
-        "Render the output to Elements"
+        """Render the output to an event stream."""
         if not isinstance(template, Template):
             template = self.load_template(template)
 

@@ -12,10 +12,10 @@
 # history and logs, available at http://projects.edgewall.com/trac/.
 
 import doctest
-from HTMLParser import HTMLParseError
 import unittest
 
 from markup.core import *
+from markup.input import ParseError
 
 
 class MarkupTestCase(unittest.TestCase):
@@ -123,9 +123,9 @@ class MarkupTestCase(unittest.TestCase):
         markup = Markup('<SCRIPT SRC="http://example.com/"></SCRIPT>')
         self.assertEquals('', str(markup.sanitize()))
         markup = Markup('<SCR\0IPT>alert("foo")</SCR\0IPT>')
-        self.assertRaises(HTMLParseError, markup.sanitize().render)
+        self.assertRaises(ParseError, markup.sanitize().render)
         markup = Markup('<SCRIPT&XYZ SRC="http://example.com/"></SCRIPT>')
-        self.assertRaises(HTMLParseError, markup.sanitize().render)
+        self.assertRaises(ParseError, markup.sanitize().render)
 
     def test_sanitize_remove_onclick_attr(self):
         markup = Markup('<div onclick=\'alert("foo")\' />')
@@ -156,7 +156,7 @@ class MarkupTestCase(unittest.TestCase):
         self.assertEquals('<img/>', str(markup.sanitize()))
         # Grave accents (not parsed)
         markup = Markup('<IMG SRC=`javascript:alert("RSnake says, \'foo\'")`>')
-        self.assertRaises(HTMLParseError, markup.sanitize().render)
+        self.assertRaises(ParseError, markup.sanitize().render)
         # Protocol encoded using UTF-8 numeric entities
         markup = Markup('<IMG SRC=\'&#106;&#97;&#118;&#97;&#115;&#99;&#114;&#105;'
                         '&#112;&#116;&#58;alert("foo")\'>')

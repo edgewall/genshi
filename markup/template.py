@@ -43,6 +43,7 @@ Random thoughts:
 
 import compiler
 import os
+import posixpath
 import re
 from StringIO import StringIO
 
@@ -574,20 +575,24 @@ class Template(object):
     _dir_by_name = dict(directives)
     _dir_order = [directive[1] for directive in directives]
 
-    def __init__(self, source, filename=None):
+    def __init__(self, source, basedir=None, filename=None):
         """Initialize a template from either a string or a file-like object."""
         if isinstance(source, basestring):
             self.source = StringIO(source)
         else:
             self.source = source
+        self.basedir = basedir
         self.filename = filename or '<string>'
+        if basedir and filename:
+            self.filepath = os.path.join(basedir, filename)
+        else:
+            self.filepath = '<string>'
 
         self.filters = [self._eval, self._match]
         self.parse()
 
     def __repr__(self):
-        return '<%s "%s">' % (self.__class__.__name__,
-                              os.path.basename(self.filename))
+        return '<%s "%s">' % (self.__class__.__name__, self.filename)
 
     def parse(self):
         """Parse the template.
@@ -603,7 +608,7 @@ class Template(object):
         ns_prefix = {}
         depth = 0
 
-        for kind, data, pos in XMLParser(self.source):
+        for kind, data, pos in XMLParser(self.source, filename=self.filename):
 
             if kind is Stream.START_NS:
                 # Strip out the namespace declaration for template directives
@@ -628,7 +633,7 @@ class Template(object):
                     if name in self.NAMESPACE:
                         cls = self._dir_by_name.get(name.localname)
                         if cls is None:
-                            raise BadDirectiveError(name, self.filename, pos[0])
+                            raise BadDirectiveError(name, self.filename, pos[1])
                         else:
                             directives.append(cls(self, value, pos))
                     else:
@@ -666,7 +671,7 @@ class Template(object):
     _FULL_EXPR_RE = re.compile(r'(?<!\$)\$\{(.+?)\}')
     _SHORT_EXPR_RE = re.compile(r'(?<!\$)\$([a-zA-Z][a-zA-Z0-9_\.]*)')
 
-    def _interpolate(cls, text, lineno=-1, offset=-1):
+    def _interpolate(cls, text, filename=None, lineno=-1, offset=-1):
         """Parse the given string and extract expressions.
         
         This method returns a list containing both literal text and `Expression`
@@ -768,8 +773,8 @@ class Template(object):
                 else:
                     yield kind, data, pos
         except SyntaxError, err:
-            raise TemplateSyntaxError(err, self.filename, pos[0],
-                                      pos[1] + (err.offset or 0))
+            raise TemplateSyntaxError(err, self.filename, pos[1],
+                                      pos[2] + (err.offset or 0))
 
     def _match(self, stream, ctxt=None):
         for kind, data, pos in stream:
@@ -783,7 +788,7 @@ class Template(object):
             for idx, (test, path, template) in enumerate(ctxt._match_templates):
                 if (kind, data, pos) in template[::len(template)]:
                     # This is the event this match template produced itself, so
-                    # matching it  again would result in an infinite loop 
+                    # matching it again would result in an infinite loop 
                     continue
 
                 result = test(kind, data, pos)
@@ -804,7 +809,7 @@ class Template(object):
                         # enable the path to keep track of the stream state
                         test(*event)
 
-                    content = list(self._flatten(content, ctxt, apply_filters=False))
+                    content = list(self._flatten(content, ctxt, False))
 
                     def _apply(stream, ctxt):
                         stream = list(stream)
@@ -865,7 +870,7 @@ class TemplateLoader(object):
         self._cache = {}
         self._mtime = {}
 
-    def load(self, filename):
+    def load(self, filename, relative_to=None):
         """Load the template with the given name.
         
         This method searches the search path trying to locate a template
@@ -877,13 +882,21 @@ class TemplateLoader(object):
         file more than once. Thus, subsequent calls of this method with the
         same template file name will return the same `Template` object.
         
+        If the `relative_to` parameter is provided, the `filename` is
+        interpreted as being relative to that path.
+        
         @param filename: the relative path of the template file to load
+        @param relative_to: the filename of the template from which the new
+            template is being loaded, or `None` if the template is being loaded
+            directly
         """
+        if relative_to:
+            filename = posixpath.join(posixpath.dirname(relative_to), filename)
         filename = os.path.normpath(filename)
         try:
             tmpl = self._cache[filename]
             if not self.auto_reload or \
-                    os.path.getmtime(tmpl.filename) == self._mtime[filename]:
+                    os.path.getmtime(tmpl.filepath) == self._mtime[filename]:
                 return tmpl
         except KeyError:
             pass
@@ -892,7 +905,7 @@ class TemplateLoader(object):
             try:
                 fileobj = file(filepath, 'rt')
                 try:
-                    tmpl = Template(fileobj, filename=filepath)
+                    tmpl = Template(fileobj, basedir=dirname, filename=filename)
                     tmpl.filters.append(IncludeFilter(self))
                 finally:
                     fileobj.close()

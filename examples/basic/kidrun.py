@@ -6,8 +6,7 @@ import kid
 
 def test():
     base_path = os.path.dirname(os.path.abspath(__file__))
-    kid.path = kid.TemplatePath([os.path.join(base_path, 'common'),
-                                 os.path.join(base_path, 'module')])
+    kid.path = kid.TemplatePath([base_path])
 
     ctxt = dict(hello='<world>', hey='ZYX', bozz=None,
                 items=['Number %d' % num for num in range(1, 15)],

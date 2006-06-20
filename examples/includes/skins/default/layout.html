@@ -1,0 +1,17 @@
+<html xmlns="http://www.w3.org/1999/xhtml"
+      xmlns:py="http://purl.org/kid/ns#"
+      xmlns:xi="http://www.w3.org/2001/XInclude"
+      py:strip="">
+ <xi:include href="../macros.html" />
+ <head>
+  <title>Hello ${hello}</title>
+  <style type="text/css">@import(style.css)</style>
+ </head>
+ <body py:match="body">
+   <xi:include href="header.html" />
+   <div id="content">
+     ${select('body/*')}
+   </div>
+   <xi:include href="footer.html" />
+ </body>
+</html>

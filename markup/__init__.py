@@ -54,4 +54,4 @@ Markup streams can also be generated programmatically using the
 """
 
 from markup.core import *
-from markup.input import XML, HTML
+from markup.input import ParseError, XML, HTML

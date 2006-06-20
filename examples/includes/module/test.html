@@ -4,12 +4,11 @@
 <html xmlns="http://www.w3.org/1999/xhtml"
       xmlns:py="http://purl.org/kid/ns#"
       xmlns:xi="http://www.w3.org/2001/XInclude">
- <xi:include href="${skin}_header.html" />
- <xi:include href="macros.html" />
+ <xi:include href="${skin}/layout.html" />
  <xi:include href="custom_stuff.html"><xi:fallback/></xi:include>
  <body class="$bozz">
   <ul py:attrs="{'id': 'second', 'class': None}" py:if="len(items) > 0">
-   <li py:for="item in items">Item $prefix${item.split()[-1]}</li>
+   <li py:for="item in items">Item ${item.split()[-1]}</li>
    XYZ ${hey}
   </ul>
   ${macro1()} ${macro1()} ${macro1()}

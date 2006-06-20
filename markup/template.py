@@ -587,7 +587,7 @@ class Template(object):
         else:
             self.filepath = '<string>'
 
-        self.filters = [self._eval, self._match]
+        self.filters = []
         self.parse()
 
     def __repr__(self):
@@ -692,7 +692,7 @@ class Template(object):
                             yield result
                     else:
                         yield Stream.TEXT, group.replace('$$', '$'), \
-                              (lineno, offset)
+                              (filename, lineno, offset)
         return _interpolate(text)
     _interpolate = classmethod(_interpolate)
 
@@ -703,7 +703,8 @@ class Template(object):
         if not hasattr(ctxt, '_match_templates'):
             ctxt._match_templates = []
 
-        return Stream(self._flatten(self.stream, ctxt))
+        stream = self._match(self._eval(self.stream, ctxt), ctxt)
+        return Stream(self._flatten(stream, ctxt))
 
     def _eval(self, stream, ctxt=None):
         for kind, data, pos in stream:
@@ -726,7 +727,7 @@ class Template(object):
                         value = filter(lambda x: x is not None, values)
                         if not value:
                             continue
-                    new_attrib.append((name, ''.join(value)))
+                    new_attrib.append((name, u''.join(value)))
                 yield kind, (tag, Attributes(new_attrib)), pos
 
             elif kind is Template.EXPR:
@@ -738,7 +739,7 @@ class Template(object):
                 # succeeds, and the string will be chopped up into individual
                 # characters
                 if isinstance(result, basestring):
-                    yield Stream.TEXT, result, pos
+                    yield Stream.TEXT, unicode(result), pos
                 else:
                     # Test if the expression evaluated to an iterable, in which
                     # case we yield the individual items
@@ -752,10 +753,9 @@ class Template(object):
             else:
                 yield kind, data, pos
 
-    def _flatten(self, stream, ctxt=None, apply_filters=True):
-        if apply_filters:
-            for filter_ in self.filters:
-                stream = filter_(iter(stream), ctxt)
+    def _flatten(self, stream, ctxt=None):
+        for filter_ in self.filters:
+            stream = filter_(iter(stream), ctxt)
         try:
             for kind, data, pos in stream:
                 if kind is Template.SUB:
@@ -766,6 +766,7 @@ class Template(object):
                     directives.reverse()
                     for directive in directives:
                         substream = directive(iter(substream), ctxt)
+                    substream = self._match(self._eval(substream, ctxt), ctxt)
                     for event in self._flatten(substream, ctxt):
                         yield event
                         continue
@@ -808,10 +809,9 @@ class Template(object):
                         # enable the path to keep track of the stream state
                         test(*event)
 
-                    content = list(self._flatten(content, ctxt, False))
+                    content = list(self._flatten(content, ctxt))
 
                     def _apply(stream, ctxt):
-                        stream = list(stream)
                         ctxt.push(select=lambda path: Stream(stream).select(path))
                         for event in template:
                             yield event

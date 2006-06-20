@@ -176,8 +176,6 @@ class Path(object):
         stack = [0] # stack of cursors into the location path
 
         def _test(kind, data, pos):
-            #print '\nTracker %r test [%s] %r' % (self, kind, data)
-
             if not stack:
                 return False
 
@@ -191,7 +189,6 @@ class Path(object):
             matched = False
             closure, node_test, predicates = self.steps[stack[-1]]
 
-            #print '  Testing against %r' % node_test
             matched = node_test(kind, data, pos)
             if matched and predicates:
                 for predicate in predicates:
@@ -201,10 +198,8 @@ class Path(object):
 
             if matched:
                 if stack[-1] == len(self.steps) - 1:
-                    #print '  Last step %r... returned %r' % (node_test, matched)
                     return matched
 
-                #print '  Matched intermediate step %r... proceed to next step %r' % (node_test, self.steps[stack[-1] + 1])
                 stack[-1] += 1
 
             elif kind is Stream.START and not closure:

@@ -49,7 +49,6 @@ from StringIO import StringIO
 
 from markup.core import Attributes, Namespace, Stream, StreamEventKind
 from markup.eval import Expression
-from markup.filters import IncludeFilter
 from markup.input import HTML, XMLParser, XML
 from markup.path import Path
 
@@ -873,14 +872,19 @@ class TemplateLoader(object):
     def load(self, filename, relative_to=None):
         """Load the template with the given name.
         
-        This method searches the search path trying to locate a template
-        matching the given name. If no such template is found, a
-        `TemplateNotFound` exception is raised. Otherwise, a `Template` object
-        representing the requested template is returned.
+        If the `filename` parameter is relative, this method searches the search
+        path trying to locate a template matching the given name. If the file
+        name is an absolute path, the search path is not bypassed.
         
-        Template searches are cached to avoid having to parse the same template
-        file more than once. Thus, subsequent calls of this method with the
-        same template file name will return the same `Template` object.
+        If requested template is not found, a `TemplateNotFound` exception is
+        raised. Otherwise, a `Template` object is returned that represents the
+        parsed template.
+        
+        Template instances are cached to avoid having to parse the same
+        template file more than once. Thus, subsequent calls of this method
+        with the same template file name will return the same `Template`
+        object (unless the `auto_reload` option is enabled and the file was
+        changed since the last parse.)
         
         If the `relative_to` parameter is provided, the `filename` is
         interpreted as being relative to that path.
@@ -893,6 +897,8 @@ class TemplateLoader(object):
         if relative_to:
             filename = posixpath.join(posixpath.dirname(relative_to), filename)
         filename = os.path.normpath(filename)
+
+        # First check the cache to avoid reparsing the same file
         try:
             tmpl = self._cache[filename]
             if not self.auto_reload or \
@@ -900,11 +906,18 @@ class TemplateLoader(object):
                 return tmpl
         except KeyError:
             pass
-        for dirname in self.search_path:
+
+        # Bypass the search path if the filename is absolute
+        search_path = self.search_path
+        if os.path.isabs(filename):
+            search_path = [os.path.dirname(filename)]
+
+        for dirname in search_path:
             filepath = os.path.join(dirname, filename)
             try:
                 fileobj = file(filepath, 'rt')
                 try:
+                    from markup.filters import IncludeFilter
                     tmpl = Template(fileobj, basedir=dirname, filename=filename)
                     tmpl.filters.append(IncludeFilter(self))
                 finally:

@@ -29,9 +29,9 @@ def test():
         timing.start()
         list(tmpl.generate(Context(**data)))
         timing.finish()
+        times.append(timing.milli())
         sys.stdout.write('.')
         sys.stdout.flush()
-        times.append(timing.milli())
     print
 
     print ' --> render stage: %dms (avg), %dms (min), %dms (max)' % (

@@ -55,38 +55,51 @@ class Path(object):
     '<bar/>'
     >>> Path("root/baz").select(XML('<root><foo/><bar/></root>')).render()
     ''
-    >>> Path("root/foo/*").select(XML('<root><foo><bar/></foo></root>')).render()
+    >>> Path("root/foo/*").select(
+    ...      XML('<root><foo><bar/></foo></root>')).render()
     '<bar/>'
     
     Selecting text nodes:
-    >>> Path("item/text()").select(XML('<root><item>Foo</item></root>')).render()
+    >>> Path("item/text()").select(
+    ...      XML('<root><item>Foo</item></root>')).render()
     'Foo'
-    >>> Path("item/text()").select(XML('<root><item>Foo</item><item>Bar</item></root>')).render()
+    >>> Path("item/text()").select(
+    ...      XML('<root><item>Foo</item><item>Bar</item></root>')).render()
     'FooBar'
     
     Skipping ancestors:
     
-    >>> Path("foo/bar").select(XML('<root><foo><bar/></foo></root>')).render()
+    >>> Path("foo/bar").select(
+    ...      XML('<root><foo><bar/></foo></root>')).render()
     '<bar/>'
-    >>> Path("foo/*").select(XML('<root><foo><bar/></foo></root>')).render()
+    >>> Path("foo/*").select(
+    ...      XML('<root><foo><bar/></foo></root>')).render()
     '<bar/>'
-    >>> Path("root/bar").select(XML('<root><foo><bar/></foo></root>')).render()
+    >>> Path("root/bar").select(
+    ...      XML('<root><foo><bar/></foo></root>')).render()
     ''
-    >>> Path("root/bar").select(XML('<root><foo><bar id="1"/></foo><bar id="2"/></root>')).render()
+    >>> Path("root/bar").select(
+    ...      XML('<root><foo><bar id="1"/></foo><bar id="2"/></root>')).render()
     '<bar id="2"/>'
-    >>> Path("root/*/bar").select(XML('<root><foo><bar/></foo></root>')).render()
+    >>> Path("root/*/bar").select(
+    ...      XML('<root><foo><bar/></foo></root>')).render()
     '<bar/>'
-    >>> Path("root//bar").select(XML('<root><foo><bar id="1"/></foo><bar id="2"/></root>')).render()
+    >>> Path("root//bar").select(
+    ...      XML('<root><foo><bar id="1"/></foo><bar id="2"/></root>')).render()
     '<bar id="1"/><bar id="2"/>'
-    >>> Path("root//bar").select(XML('<root><foo><bar id="1"/></foo><bar id="2"/></root>')).render()
+    >>> Path("root//bar").select(
+    ...      XML('<root><foo><bar id="1"/></foo><bar id="2"/></root>')).render()
     '<bar id="1"/><bar id="2"/>'
     
     Using simple attribute predicates:
-    >>> Path("root/item[@important]").select(XML('<root><item/><item important="very"/></root>')).render()
+    >>> Path("root/item[@important]").select(
+    ...      XML('<root><item/><item important="very"/></root>')).render()
     '<item important="very"/>'
-    >>> Path('root/item[@important="very"]').select(XML('<root><item/><item important="very"/></root>')).render()
+    >>> Path('root/item[@important="very"]').select(
+    ...      XML('<root><item/><item important="very"/></root>')).render()
     '<item important="very"/>'
-    >>> Path("root/item[@important='very']").select(XML('<root><item/><item important="notso"/></root>')).render()
+    >>> Path("root/item[@important='very']").select(
+    ...      XML('<root><item/><item important="notso"/></root>')).render()
     ''
     >>> Path("root/item[@important!='very']").select(
     ...     XML('<root><item/><item important="notso"/></root>')).render()
@@ -203,12 +216,12 @@ class Path(object):
                 stack[-1] += 1
 
             elif kind is Stream.START and not closure:
-                # FIXME: If this step is not a closure, it cannot be matched
-                #        until the current element is closed... so we need to
-                #        move the cursor back to the last closure and retest
-                #        that against the current element
+                # If this step is not a closure, it cannot be matched until the
+                # current element is closed... so we need to move the cursor
+                # back to the last closure and retest that against the current
+                # element
                 closures = [step for step in self.steps[:stack[-1]] if step[0]]
-                closures.reverse()
+                    closures.reverse()
                 for closure, node_test, predicates in closures:
                     stack[-1] -= 1
                     if closure:

@@ -50,7 +50,6 @@ Markup streams can also be generated programmatically using the
 >>> doc = tag.doc(tag.title('My document'), lang='en')
 >>> doc.generate().render(method='html')
 '<doc lang="en"><title>My document</title></doc>'
-
 """
 
 from markup.core import *

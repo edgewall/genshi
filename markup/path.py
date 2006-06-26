@@ -221,7 +221,7 @@ class Path(object):
                 # back to the last closure and retest that against the current
                 # element
                 closures = [step for step in self.steps[:stack[-1]] if step[0]]
-                    closures.reverse()
+                closures.reverse()
                 for closure, node_test, predicates in closures:
                     stack[-1] -= 1
                     if closure:

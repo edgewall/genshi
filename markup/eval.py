@@ -13,6 +13,8 @@
 
 """Support for "safe" evaluation of Python expressions."""
 
+from __future__ import division
+
 import __builtin__
 try:
     import _ast # Python 2.5
@@ -155,9 +157,18 @@ class Expression(object):
             return reduce(lambda x, y: x or y,
                           [self._visit(n, data) for n in node.nodes])
 
+        def _visit_bitand(self, node, data):
+            return reduce(operator.and_,
+                          [self._visit(n, data) for n in node.nodes])
+
+        def _visit_bitor(self, node, data):
+            return reduce(operator.or_,
+                          [self._visit(n, data) for n in node.nodes])
+
         _OP_MAP = {'==': operator.eq, '!=': operator.ne,
                    '<':  operator.lt, '<=': operator.le,
                    '>':  operator.gt, '>=': operator.ge,
+                   'is': operator.is_, 'is not': operator.is_not,
                    'in': lambda x, y: operator.contains(y, x),
                    'not in': lambda x, y: not operator.contains(y, x)}
         def _visit_compare(self, node, data):
@@ -189,14 +200,17 @@ class Expression(object):
         def _visit_sub(self, node, data):
             return self._visit(node.left, data) - self._visit(node.right, data)
 
-        def _visit_not(self, node, data):
-            return not self._visit(node.expr, data)
-
         def _visit_unaryadd(self, node, data):
             return +self._visit(node.expr, data)
 
         def _visit_unarysub(self, node, data):
             return -self._visit(node.expr, data)
+
+        def _visit_not(self, node, data):
+            return not self._visit(node.expr, data)
+
+        def _visit_invert(self, node, data):
+            return ~self._visit(node.expr, data)
 
         # Identifiers & Literals
 
@@ -286,10 +300,12 @@ class Expression(object):
         # Operators
 
         _OP_MAP = {_ast.Add: operator.add, _ast.And: lambda l, r: l and r,
-                   _ast.Div: operator.div, _ast.Eq: operator.eq,
+                   _ast.BitAnd: operator.and_, _ast.BitOr: operator.or_,
+                   _ast.Div: operator.truediv, _ast.Eq: operator.eq,
                    _ast.FloorDiv: operator.floordiv, _ast.Gt: operator.gt,
-                   _ast.GtE: operator.ge,
+                   _ast.GtE: operator.ge, _ast.Invert: operator.inv,
                    _ast.In: lambda l, r: operator.contains(r, l),
+                   _ast.Is: operator.is_, _ast.IsNot: operator.is_not,
                    _ast.Lt: operator.lt, _ast.LtE: operator.le,
                    _ast.Mod: operator.mod, _ast.Mult: operator.mul,
                    _ast.Not: operator.not_, _ast.NotEq: operator.ne,

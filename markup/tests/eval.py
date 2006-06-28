@@ -64,6 +64,10 @@ class ExpressionTestCase(unittest.TestCase):
         self.assertEqual(False, Expression("not True").evaluate({}))
         self.assertEqual(False, Expression("not x").evaluate({'x': True}))
 
+    def test_unaryop_inv(self):
+        self.assertEqual(-2, Expression("~1").evaluate({}))
+        self.assertEqual(-2, Expression("~x").evaluate({'x': 1}))
+
     def test_binop_add(self):
         self.assertEqual(3, Expression("2 + 1").evaluate({}))
         self.assertEqual(3, Expression("x + y").evaluate({'x': 2, 'y': 1}))
@@ -96,6 +100,14 @@ class ExpressionTestCase(unittest.TestCase):
         self.assertEqual(1, Expression("3 % 2").evaluate({}))
         self.assertEqual(1, Expression("x % y").evaluate({'x': 3, 'y': 2}))
 
+    def test_binop_and(self):
+        self.assertEqual(0, Expression("1 & 0").evaluate({}))
+        self.assertEqual(0, Expression("x & y").evaluate({'x': 1, 'y': 0}))
+
+    def test_binop_or(self):
+        self.assertEqual(1, Expression("1 | 0").evaluate({}))
+        self.assertEqual(1, Expression("x | y").evaluate({'x': 1, 'y': 0}))
+
     def test_binop_contains(self):
         self.assertEqual(True, Expression("1 in (1, 2, 3)").evaluate({}))
         self.assertEqual(True, Expression("x in y").evaluate({'x': 1,
@@ -105,6 +117,20 @@ class ExpressionTestCase(unittest.TestCase):
         self.assertEqual(True, Expression("4 not in (1, 2, 3)").evaluate({}))
         self.assertEqual(True, Expression("x not in y").evaluate({'x': 4,
                                                                   'y': (1, 2, 3)}))
+
+    def test_binop_is(self):
+        self.assertEqual(True, Expression("1 is 1").evaluate({}))
+        self.assertEqual(True, Expression("x is y").evaluate({'x': 1, 'y': 1}))
+        self.assertEqual(False, Expression("1 is 2").evaluate({}))
+        self.assertEqual(False, Expression("x is y").evaluate({'x': 1, 'y': 2}))
+
+    def test_binop_is_not(self):
+        self.assertEqual(True, Expression("1 is not 2").evaluate({}))
+        self.assertEqual(True, Expression("x is not y").evaluate({'x': 1,
+                                                                  'y': 2}))
+        self.assertEqual(False, Expression("1 is not 1").evaluate({}))
+        self.assertEqual(False, Expression("x is not y").evaluate({'x': 1,
+                                                                   'y': 1}))
 
     def test_boolop_and(self):
         self.assertEqual(False, Expression("True and False").evaluate({}))
@@ -123,6 +149,8 @@ class ExpressionTestCase(unittest.TestCase):
     def test_compare_ne(self):
         self.assertEqual(False, Expression("1 != 1").evaluate({}))
         self.assertEqual(False, Expression("x != y").evaluate({'x': 1, 'y': 1}))
+        self.assertEqual(False, Expression("1 <> 1").evaluate({}))
+        self.assertEqual(False, Expression("x <> y").evaluate({'x': 1, 'y': 1}))
 
     def test_compare_lt(self):
         self.assertEqual(True, Expression("1 < 2").evaluate({}))

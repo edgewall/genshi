@@ -12,6 +12,10 @@
 # individuals. For the exact contribution history, see the revision
 # history and logs, available at http://markup.cmlenz.net/log/.
 
+"""Basic support for the template engine plugin API used by TurboGears and
+CherryPy/Buffet.
+"""
+
 import os
 from pkg_resources import resource_filename
 
@@ -19,6 +23,7 @@ from markup.template import Context, Template, TemplateLoader
 
 
 class TemplateEnginePlugin(object):
+    """Implementation of the plugin API."""
 
     def __init__(self, extra_vars_func=None, options=None):
         if options is None:

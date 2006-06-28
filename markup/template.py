@@ -122,8 +122,8 @@ class Context(object):
         self.stack = [data]
 
     def __getitem__(self, key):
-        """Get a variable's value, starting at the current context and going
-        upward.
+        """Get a variable's value, starting at the current context frame and
+        going upward.
         """
         return self.get(key)
 
@@ -135,14 +135,22 @@ class Context(object):
         self.stack[0][key] = value
 
     def get(self, key):
+        """Get a variable's value, starting at the current context frame and
+        going upward.
+        """
         for frame in self.stack:
             if key in frame:
                 return frame[key]
 
     def push(self, **data):
+        """Push a new context frame on the stack."""
         self.stack.insert(0, data)
 
     def pop(self):
+        """Pop the top-most context frame from the stack.
+        
+        If the stack is empty, an `AssertionError` is raised.
+        """
         assert self.stack, 'Pop from empty context stack'
         self.stack.pop(0)
 
@@ -167,7 +175,7 @@ class Directive(object):
     """
     __slots__ = ['expr']
 
-    def __init__(self, template, value, pos):
+    def __init__(self, value):
         self.expr = value and Expression(value) or None
 
     def __call__(self, stream, ctxt):
@@ -289,8 +297,8 @@ class DefDirective(Directive):
     """
     __slots__ = ['name', 'args', 'defaults', 'stream']
 
-    def __init__(self, template, args, pos):
-        Directive.__init__(self, template, None, pos)
+    def __init__(self, args):
+        Directive.__init__(self, None)
         ast = compiler.parse(args, 'eval').node
         self.args = []
         self.defaults = {}
@@ -340,10 +348,10 @@ class ForDirective(Directive):
     """
     __slots__ = ['targets']
 
-    def __init__(self, template, value, pos):
-        targets, expr_source = value.split(' in ', 1)
+    def __init__(self, value):
+        targets, value = value.split(' in ', 1)
         self.targets = [str(name.strip()) for name in targets.split(',')]
-        Directive.__init__(self, template, expr_source, pos)
+        Directive.__init__(self, value)
 
     def __call__(self, stream, ctxt):
         iterable = self.expr.evaluate(ctxt) or []
@@ -446,8 +454,8 @@ class MatchDirective(Directive):
     """
     __slots__ = ['path', 'stream']
 
-    def __init__(self, template, value, pos):
-        Directive.__init__(self, template, None, pos)
+    def __init__(self, value):
+        Directive.__init__(self, None)
         self.path = Path(value)
         self.stream = []
 
@@ -634,7 +642,7 @@ class Template(object):
                         if cls is None:
                             raise BadDirectiveError(name, self.filename, pos[1])
                         else:
-                            directives.append(cls(self, value, pos))
+                            directives.append(cls(value))
                     else:
                         value = list(self._interpolate(value, *pos))
                         new_attrib.append((name, value))
@@ -697,7 +705,12 @@ class Template(object):
     _interpolate = classmethod(_interpolate)
 
     def generate(self, ctxt=None):
-        """Transform the template based on the given context data."""
+        """Apply the template to the given context data.
+        
+        @param ctxt: a `Context` instance containing the data for the template
+        @return: a markup event stream representing the result of applying
+            the template to the context data.
+        """
         if ctxt is None:
             ctxt = Context()
         if not hasattr(ctxt, '_match_templates'):
@@ -707,6 +720,9 @@ class Template(object):
         return Stream(self._flatten(stream, ctxt))
 
     def _eval(self, stream, ctxt=None):
+        """Internal stream filter that evaluates any expressions in `START` and
+        `TEXT` events.
+        """
         for kind, data, pos in stream:
 
             if kind is Stream.START:
@@ -754,6 +770,7 @@ class Template(object):
                 yield kind, data, pos
 
     def _flatten(self, stream, ctxt=None):
+        """Internal stream filter that expands `SUB` events in the stream."""
         for filter_ in self.filters:
             stream = filter_(iter(stream), ctxt)
         try:
@@ -777,6 +794,9 @@ class Template(object):
                                       pos[2] + (err.offset or 0))
 
     def _match(self, stream, ctxt=None):
+        """Internal stream filter that applies any defined match templates
+        to the stream.
+        """
         for kind, data, pos in stream:
 
             # We (currently) only care about start and end events for matching

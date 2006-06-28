@@ -16,8 +16,46 @@ import unittest
 
 from markup.eval import Expression
 
+
+class ExpressionTestCase(unittest.TestCase):
+
+    def test_str_literal(self):
+        self.assertEqual('foo', Expression('"foo"').evaluate({}))
+        self.assertEqual('foo', Expression('"""foo"""').evaluate({}))
+        self.assertEqual('foo', Expression("'foo'").evaluate({}))
+        self.assertEqual('foo', Expression("'''foo'''").evaluate({}))
+        self.assertEqual('foo', Expression("u'foo'").evaluate({}))
+        self.assertEqual('foo', Expression("r'foo'").evaluate({}))
+
+    def test_num_literal(self):
+        self.assertEqual(42, Expression("42").evaluate({}))
+        self.assertEqual(42L, Expression("42L").evaluate({}))
+        self.assertEqual(.42, Expression(".42").evaluate({}))
+        self.assertEqual(07, Expression("07").evaluate({}))
+        self.assertEqual(0xF2, Expression("0xF2").evaluate({}))
+        self.assertEqual(0XF2, Expression("0XF2").evaluate({}))
+
+    def test_dict_literal(self):
+        self.assertEqual({}, Expression("{}").evaluate({}))
+        self.assertEqual({'key': True},
+                         Expression("{'key': value}").evaluate({'value': True}))
+
+    def test_list_literal(self):
+        self.assertEqual([], Expression("[]").evaluate({}))
+        self.assertEqual([1, 2, 3], Expression("[1, 2, 3]").evaluate({}))
+        self.assertEqual([True],
+                         Expression("[value]").evaluate({'value': True}))
+
+    def test_tuple_literal(self):
+        self.assertEqual((), Expression("()").evaluate({}))
+        self.assertEqual((1, 2, 3), Expression("(1, 2, 3)").evaluate({}))
+        self.assertEqual((True,),
+                         Expression("(value,)").evaluate({'value': True}))
+
+
 def suite():
     suite = unittest.TestSuite()
+    suite.addTest(unittest.makeSuite(ExpressionTestCase, 'test'))
     suite.addTest(doctest.DocTestSuite(Expression.__module__))
     return suite
 

@@ -17,6 +17,9 @@ __all__ = ['Fragment', 'Element', 'tag']
 
 
 class Fragment(object):
+    """Represents a markup fragment, which is basically just a list of element
+    or text nodes.
+    """
     __slots__ = ['children']
 
     def __init__(self):
@@ -48,7 +51,7 @@ class Fragment(object):
         return self
 
     def generate(self):
-        """Generator that yield tags and text nodes as strings."""
+        """Return a markup event stream for the fragment."""
         def _generate():
             for child in self.children:
                 if isinstance(child, Fragment):
@@ -160,7 +163,7 @@ class Element(Fragment):
         return Fragment.__call__(self, *args)
 
     def generate(self):
-        """Generator that yield tags and text nodes as strings."""
+        """Return a markup event stream for the fragment."""
         def _generate():
             yield Stream.START, (self.tag, self.attrib), (-1, -1)
             for kind, data, pos in Fragment.generate(self):
@@ -170,16 +173,50 @@ class Element(Fragment):
 
 
 class ElementFactory(object):
+    """Factory for `Element` objects.
+    
+    A new element is created simply by accessing a correspondingly named
+    attribute of the factory object:
+    
+    >>> factory = ElementFactory()
+    >>> print factory.foo
+    <foo/>
+    >>> print factory.foo(id=2)
+    <foo id="2"/>
+    
+    A factory can also be bound to a specific namespace:
+    
+    >>> factory = ElementFactory('http://www.w3.org/1999/xhtml')
+    >>> print factory.html(lang="en")
+    <html lang="en" xmlns="http://www.w3.org/1999/xhtml"/>
+    
+    The namespace for a specific element can be altered on an existing factory
+    by specifying the new namespace using item access:
+    
+    >>> factory = ElementFactory()
+    >>> print factory.html(factory['http://www.w3.org/2000/svg'].g(id=3))
+    <html><g id="3" xmlns="http://www.w3.org/2000/svg"/></html>
+    
+    Usually, the `ElementFactory` class is not be used directly. Rather, the
+    `tag` instance should be used to create elements.
+    """
 
     def __init__(self, namespace=None):
+        """Create the factory, optionally bound to the given namespace.
+        
+        @param namespace: the namespace URI for any created elements, or `None`
+            for no namespace
+        """
         if namespace and not isinstance(namespace, Namespace):
             namespace = Namespace(namespace)
         self.namespace = namespace
 
     def __getitem__(self, namespace):
+        """Return a new factory that is bound to the specified namespace."""
         return ElementFactory(namespace)
 
     def __getattr__(self, name):
+        """Create an `Element` with the given name."""
         return Element(self.namespace and self.namespace[name] or name)
 
 

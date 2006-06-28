@@ -52,6 +52,99 @@ class ExpressionTestCase(unittest.TestCase):
         self.assertEqual((True,),
                          Expression("(value,)").evaluate({'value': True}))
 
+    def test_unaryop_pos(self):
+        self.assertEqual(1, Expression("+1").evaluate({}))
+        self.assertEqual(1, Expression("+x").evaluate({'x': 1}))
+
+    def test_unaryop_neg(self):
+        self.assertEqual(-1, Expression("-1").evaluate({}))
+        self.assertEqual(-1, Expression("-x").evaluate({'x': 1}))
+
+    def test_unaryop_not(self):
+        self.assertEqual(False, Expression("not True").evaluate({}))
+        self.assertEqual(False, Expression("not x").evaluate({'x': True}))
+
+    def test_binop_add(self):
+        self.assertEqual(3, Expression("2 + 1").evaluate({}))
+        self.assertEqual(3, Expression("x + y").evaluate({'x': 2, 'y': 1}))
+
+    def test_binop_sub(self):
+        self.assertEqual(1, Expression("2 - 1").evaluate({}))
+        self.assertEqual(1, Expression("x - y").evaluate({'x': 1, 'y': 1}))
+
+    def test_binop_sub(self):
+        self.assertEqual(1, Expression("2 - 1").evaluate({}))
+        self.assertEqual(1, Expression("x - y").evaluate({'x': 2, 'y': 1}))
+
+    def test_binop_mul(self):
+        self.assertEqual(4, Expression("2 * 2").evaluate({}))
+        self.assertEqual(4, Expression("x * y").evaluate({'x': 2, 'y': 2}))
+
+    def test_binop_pow(self):
+        self.assertEqual(4, Expression("2 ** 2").evaluate({}))
+        self.assertEqual(4, Expression("x ** y").evaluate({'x': 2, 'y': 2}))
+
+    def test_binop_div(self):
+        self.assertEqual(2, Expression("4 / 2").evaluate({}))
+        self.assertEqual(2, Expression("x / y").evaluate({'x': 4, 'y': 2}))
+
+    def test_binop_floordiv(self):
+        self.assertEqual(1, Expression("3 // 2").evaluate({}))
+        self.assertEqual(1, Expression("x // y").evaluate({'x': 3, 'y': 2}))
+
+    def test_binop_mod(self):
+        self.assertEqual(1, Expression("3 % 2").evaluate({}))
+        self.assertEqual(1, Expression("x % y").evaluate({'x': 3, 'y': 2}))
+
+    def test_binop_contains(self):
+        self.assertEqual(True, Expression("1 in (1, 2, 3)").evaluate({}))
+        self.assertEqual(True, Expression("x in y").evaluate({'x': 1,
+                                                              'y': (1, 2, 3)}))
+
+    def test_binop_not_contains(self):
+        self.assertEqual(True, Expression("4 not in (1, 2, 3)").evaluate({}))
+        self.assertEqual(True, Expression("x not in y").evaluate({'x': 4,
+                                                                  'y': (1, 2, 3)}))
+
+    def test_boolop_and(self):
+        self.assertEqual(False, Expression("True and False").evaluate({}))
+        self.assertEqual(False, Expression("x and y").evaluate({'x': True,
+                                                                'y': False}))
+
+    def test_boolop_or(self):
+        self.assertEqual(True, Expression("True or False").evaluate({}))
+        self.assertEqual(True, Expression("x or y").evaluate({'x': True,
+                                                              'y': False}))
+
+    def test_compare_eq(self):
+        self.assertEqual(True, Expression("1 == 1").evaluate({}))
+        self.assertEqual(True, Expression("x == y").evaluate({'x': 1, 'y': 1}))
+
+    def test_compare_ne(self):
+        self.assertEqual(False, Expression("1 != 1").evaluate({}))
+        self.assertEqual(False, Expression("x != y").evaluate({'x': 1, 'y': 1}))
+
+    def test_compare_lt(self):
+        self.assertEqual(True, Expression("1 < 2").evaluate({}))
+        self.assertEqual(True, Expression("x < y").evaluate({'x': 1, 'y': 2}))
+
+    def test_compare_le(self):
+        self.assertEqual(True, Expression("1 <= 1").evaluate({}))
+        self.assertEqual(True, Expression("x <= y").evaluate({'x': 1, 'y': 1}))
+
+    def test_compare_gt(self):
+        self.assertEqual(True, Expression("2 > 1").evaluate({}))
+        self.assertEqual(True, Expression("x > y").evaluate({'x': 2, 'y': 1}))
+
+    def test_compare_ge(self):
+        self.assertEqual(True, Expression("1 >= 1").evaluate({}))
+        self.assertEqual(True, Expression("x >= y").evaluate({'x': 1, 'y': 1}))
+
+    def test_compare_multi(self):
+        self.assertEqual(True, Expression("1 != 3 == 3").evaluate({}))
+        self.assertEqual(True, Expression("x != y == y").evaluate({'x': 3,
+                                                                   'y': 3}))
+
 
 def suite():
     suite = unittest.TestSuite()

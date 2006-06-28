@@ -58,44 +58,7 @@ class Expression(object):
     >>> Expression('mine[key]').evaluate(data)
     'Bar'
     
-    Most of the standard Python operators are also available to template
-    expressions. Bitwise operators (including inversion and shifting) are not
-    supported.
-    
-    >>> Expression('1 + 1').evaluate(data)
-    2
-    >>> Expression('3 - 1').evaluate(data)
-    2
-    >>> Expression('1 * 2').evaluate(data)
-    2
-    >>> Expression('4 / 2').evaluate(data)
-    2
-    >>> Expression('4 // 3').evaluate(data)
-    1
-    >>> Expression('4 % 3').evaluate(data)
-    1
-    >>> Expression('2 ** 3').evaluate(data)
-    8
-    >>> Expression('not True').evaluate(data)
-    False
-    >>> Expression('True and False').evaluate(data)
-    False
-    >>> Expression('True or False').evaluate(data)
-    True
-    >>> Expression('1 == 3').evaluate(data)
-    False
-    >>> Expression('1 != 3 == 3').evaluate(data)
-    True
-    >>> Expression('1 > 0').evaluate(data)
-    True
-    >>> Expression('True and "Foo"').evaluate(data)
-    'Foo'
-    >>> data = dict(items=[1, 2, 3])
-    >>> Expression('2 in items').evaluate(data)
-    True
-    >>> Expression('not 2 in items').evaluate(data)
-    False
-    
+    All of the standard Python operators are available to template expressions.
     Built-in functions such as `len()` are also available in template
     expressions:
     
@@ -325,9 +288,12 @@ class Expression(object):
         _OP_MAP = {_ast.Add: operator.add, _ast.And: lambda l, r: l and r,
                    _ast.Div: operator.div, _ast.Eq: operator.eq,
                    _ast.FloorDiv: operator.floordiv, _ast.Gt: operator.gt,
+                   _ast.GtE: operator.ge,
                    _ast.In: lambda l, r: operator.contains(r, l),
+                   _ast.Lt: operator.lt, _ast.LtE: operator.le,
                    _ast.Mod: operator.mod, _ast.Mult: operator.mul,
                    _ast.Not: operator.not_, _ast.NotEq: operator.ne,
+                   _ast.NotIn: lambda l, r: not operator.contains(r, l),
                    _ast.Or: lambda l, r: l or r, _ast.Pow: operator.pow,
                    _ast.Sub: operator.sub, _ast.UAdd: operator.pos,
                    _ast.USub: operator.neg}

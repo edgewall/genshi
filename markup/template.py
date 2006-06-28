@@ -165,9 +165,8 @@ class Directive(object):
     Directives can be "anonymous" or "registered". Registered directives can be
     applied by the template author using an XML attribute with the
     corresponding name in the template. Such directives should be subclasses of
-    this base class that can  be instantiated with two parameters: `template`
-    is the `Template` instance, and `value` is the value of the directive
-    attribute.
+    this base class that can  be instantiated with the value of the directive
+    attribute as parameter.
     
     Anonymous directives are simply functions conforming to the protocol
     described above, and can only be applied programmatically (for example by
@@ -335,7 +334,8 @@ class DefDirective(Directive):
 
 
 class ForDirective(Directive):
-    """Implementation of the `py:for` template directive.
+    """Implementation of the `py:for` template directive for repeating an
+    element based on an iterable in the context data.
     
     >>> ctxt = Context(items=[1, 2, 3])
     >>> tmpl = Template('''<ul xmlns:py="http://purl.org/kid/ns#">
@@ -374,7 +374,8 @@ class ForDirective(Directive):
 
 
 class IfDirective(Directive):
-    """Implementation of the `py:if` template directive.
+    """Implementation of the `py:if` template directive for conditionally
+    excluding elements from being output.
     
     >>> ctxt = Context(foo=True, bar='Hello')
     >>> tmpl = Template('''<div xmlns:py="http://purl.org/kid/ns#">
@@ -470,6 +471,9 @@ class MatchDirective(Directive):
 
 class ReplaceDirective(Directive):
     """Implementation of the `py:replace` template directive.
+    
+    This directive replaces the element with the result of evaluating the
+    value of the `py:replace` attribute:
     
     >>> ctxt = Context(bar='Bye')
     >>> tmpl = Template('''<div xmlns:py="http://purl.org/kid/ns#">
@@ -647,8 +651,8 @@ class Template(object):
                         value = list(self._interpolate(value, *pos))
                         new_attrib.append((name, value))
                 if directives:
-                    directives.sort(lambda a, b: cmp(self._dir_order.index(a.__class__),
-                                                     self._dir_order.index(b.__class__)))
+                    directives.sort(lambda a, b: cmp(self._dir_order.index(b.__class__),
+                                                     self._dir_order.index(a.__class__)))
                     dirmap[(depth, tag)] = (directives, len(stream))
 
                 stream.append((kind, (tag, Attributes(new_attrib)), pos))
@@ -780,7 +784,6 @@ class Template(object):
                     # nested events to which those directives should be
                     # applied
                     directives, substream = data
-                    directives.reverse()
                     for directive in directives:
                         substream = directive(iter(substream), ctxt)
                     substream = self._match(self._eval(substream, ctxt), ctxt)

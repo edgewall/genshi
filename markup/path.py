@@ -97,6 +97,15 @@ class Path(object):
         
         If there are no matches, this method returns an empty stream.
         
+        >>> from markup.input import XML
+        >>> xml = XML('<root><elem><child>Text</child></elem></root>')
+        >>> print Path('child').select(xml)
+        <child>Text</child>
+        
+        >>> xpath = Path('child')
+        >>> print Path('child/text()').select(xml)
+        Text
+        
         @param stream: the stream to select from
         @return: the substream matching the path, or an empty stream
         """
@@ -128,6 +137,15 @@ class Path(object):
         and `pos`, i.e. basically an unpacked stream event. If the path matches
         the event, the function returns the match (for example, a `START` or
         `TEXT` event.) Otherwise, it returns `None` or `False`.
+        
+        >>> from markup.input import XML
+        >>> xml = XML('<root><elem><child id="1"/></elem><child id="2"/></root>')
+        >>> test = Path('child').test()
+        >>> for kind, data, pos in xml:
+        ...     if test(kind, data, pos):
+        ...         print kind, data
+        START (u'child', [(u'id', u'1')])
+        START (u'child', [(u'id', u'2')])
         """
         stack = [0] # stack of cursors into the location path
 

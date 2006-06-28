@@ -19,98 +19,24 @@ from markup.core import QName, Stream
 
 __all__ = ['Path']
 
-_QUOTES = (("'", "'"), ('"', '"'))
 
 class Path(object):
-    """Basic XPath support on markup event streams.
+    """Implements basic XPath support on streams.
     
-    >>> from markup.input import XML
-    
-    Selecting specific tags:
-    
-    >>> Path('root').select(XML('<root/>')).render()
-    '<root/>'
-    >>> Path('//root').select(XML('<root/>')).render()
-    '<root/>'
-    
-    Using wildcards for tag names:
-    
-    >>> Path('*').select(XML('<root/>')).render()
-    '<root/>'
-    >>> Path('//*').select(XML('<root/>')).render()
-    '<root/>'
-    
-    Selecting attribute values:
-    
-    >>> Path('@foo').select(XML('<root/>')).render()
-    ''
-    >>> Path('@foo').select(XML('<root foo="bar"/>')).render()
-    'bar'
-    
-    Selecting descendants:
-    
-    >>> Path("root/*").select(XML('<root><foo/><bar/></root>')).render()
-    '<foo/><bar/>'
-    >>> Path("root/bar").select(XML('<root><foo/><bar/></root>')).render()
-    '<bar/>'
-    >>> Path("root/baz").select(XML('<root><foo/><bar/></root>')).render()
-    ''
-    >>> Path("root/foo/*").select(
-    ...      XML('<root><foo><bar/></foo></root>')).render()
-    '<bar/>'
-    
-    Selecting text nodes:
-    >>> Path("item/text()").select(
-    ...      XML('<root><item>Foo</item></root>')).render()
-    'Foo'
-    >>> Path("item/text()").select(
-    ...      XML('<root><item>Foo</item><item>Bar</item></root>')).render()
-    'FooBar'
-    
-    Skipping ancestors:
-    
-    >>> Path("foo/bar").select(
-    ...      XML('<root><foo><bar/></foo></root>')).render()
-    '<bar/>'
-    >>> Path("foo/*").select(
-    ...      XML('<root><foo><bar/></foo></root>')).render()
-    '<bar/>'
-    >>> Path("root/bar").select(
-    ...      XML('<root><foo><bar/></foo></root>')).render()
-    ''
-    >>> Path("root/bar").select(
-    ...      XML('<root><foo><bar id="1"/></foo><bar id="2"/></root>')).render()
-    '<bar id="2"/>'
-    >>> Path("root/*/bar").select(
-    ...      XML('<root><foo><bar/></foo></root>')).render()
-    '<bar/>'
-    >>> Path("root//bar").select(
-    ...      XML('<root><foo><bar id="1"/></foo><bar id="2"/></root>')).render()
-    '<bar id="1"/><bar id="2"/>'
-    >>> Path("root//bar").select(
-    ...      XML('<root><foo><bar id="1"/></foo><bar id="2"/></root>')).render()
-    '<bar id="1"/><bar id="2"/>'
-    
-    Using simple attribute predicates:
-    >>> Path("root/item[@important]").select(
-    ...      XML('<root><item/><item important="very"/></root>')).render()
-    '<item important="very"/>'
-    >>> Path('root/item[@important="very"]').select(
-    ...      XML('<root><item/><item important="very"/></root>')).render()
-    '<item important="very"/>'
-    >>> Path("root/item[@important='very']").select(
-    ...      XML('<root><item/><item important="notso"/></root>')).render()
-    ''
-    >>> Path("root/item[@important!='very']").select(
-    ...     XML('<root><item/><item important="notso"/></root>')).render()
-    '<item/><item important="notso"/>'
+    Instances of this class represent a "compiled" XPath expression, and provide
+    methods for testing the path against a stream, as well as extracting a
+    substream matching that path.
     """
-
     _TOKEN_RE = re.compile('(::|\.\.|\(\)|[/.:\[\]\(\)@=!])|'
                            '([^/:\[\]\(\)@=!\s]+)|'
                            '\s+')
+    _QUOTES = (("'", "'"), ('"', '"'))
 
     def __init__(self, text):
+        """Create the path object from a string.
+        
+        @param text: the path expression
+        """
         self.source = text
 
         steps = []
@@ -125,7 +51,7 @@ class Path(object):
                     in_predicate = False
                 elif op.startswith('('):
                     if cur_tag == 'text':
-                        steps[-1] = (False, self.fn_text(), [])
+                        steps[-1] = (False, self._FunctionText(), [])
                     else:
                         raise NotImplementedError('XPath function "%s" not '
                                                   'supported' % cur_tag)
@@ -136,23 +62,25 @@ class Path(object):
                 closure = cur_op in ('', '//')
                 if cur_op == '@':
                     if tag == '*':
-                        node_test = self.any_attribute()
+                        node_test = self._AnyAttribute()
                     else:
-                        node_test = self.attribute_by_name(tag)
+                        node_test = self._AttributeByName(tag)
                 else:
                     if tag == '*':
-                        node_test = self.any_element()
+                        node_test = self._AnyElement()
                     elif in_predicate:
-                        if len(tag) > 1 and (tag[0], tag[-1]) in _QUOTES:
-                            node_test = self.literal_string(tag[1:-1])
+                        if len(tag) > 1 and (tag[0], tag[-1]) in self._QUOTES:
+                            node_test = self._LiteralString(tag[1:-1])
                         if cur_op == '=':
-                            node_test = self.op_eq(steps[-1][2][-1], node_test)
+                            node_test = self._OperatorEq(steps[-1][2][-1],
+                                                         node_test)
                             steps[-1][2].pop()
                         elif cur_op == '!=':
-                            node_test = self.op_neq(steps[-1][2][-1], node_test)
+                            node_test = self._OperatorNeq(steps[-1][2][-1],
+                                                          node_test)
                             steps[-1][2].pop()
                     else:
-                        node_test = self.element_by_name(tag)
+                        node_test = self._ElementByName(tag)
                 if in_predicate:
                     steps[-1][2].append(node_test)
                 else:
@@ -165,8 +93,15 @@ class Path(object):
         return '<%s "%s">' % (self.__class__.__name__, self.source)
 
     def select(self, stream):
+        """Returns a substream of the given stream that matches the path.
+        
+        If there are no matches, this method returns an empty stream.
+        
+        @param stream: the stream to select from
+        @return: the substream matching the path, or an empty stream
+        """
         stream = iter(stream)
-        def _generate(tests):
+        def _generate():
             test = self.test()
             for kind, data, pos in stream:
                 result = test(kind, data, pos)
@@ -183,9 +118,17 @@ class Path(object):
                         test(*ev)
                 elif result:
                     yield result
-        return Stream(_generate(self.steps))
+        return Stream(_generate())
 
     def test(self):
+        """Returns a function that can be used to track whether the path matches
+        a specific stream event.
+        
+        The function returned expects the positional arguments `kind`, `data`,
+        and `pos`, i.e. basically an unpacked stream event. If the path matches
+        the event, the function returns the match (for example, a `START` or
+        `TEXT` event.) Otherwise, it returns `None` or `False`.
+        """
         stack = [0] # stack of cursors into the location path
 
         def _test(kind, data, pos):
@@ -234,28 +177,31 @@ class Path(object):
 
         return _test
 
-    class any_element(object):
-        def __call__(self, kind, data, pos):
+    class _AnyElement(object):
+        """Node test that matches any element."""
+        def __call__(self, kind, *_):
             if kind is Stream.START:
                 return True
             return None
         def __repr__(self):
             return '<%s>' % self.__class__.__name__
 
-    class element_by_name(object):
+    class _ElementByName(object):
+        """Node test that matches an element with a specific tag name."""
         def __init__(self, name):
             self.name = QName(name)
-        def __call__(self, kind, data, pos):
+        def __call__(self, kind, data, _):
             if kind is Stream.START:
                 return data[0].localname == self.name
             return None
         def __repr__(self):
             return '<%s "%s">' % (self.__class__.__name__, self.name)
 
-    class any_attribute(object):
+    class _AnyAttribute(object):
+        """Node test that matches any attribute."""
         def __call__(self, kind, data, pos):
             if kind is Stream.START:
-                text = ''.join([val for name, val in data[1]])
+                text = ''.join([val for _, val in data[1]])
                 if text:
                     return Stream.TEXT, text, pos
                 return None
@@ -263,7 +209,8 @@ class Path(object):
         def __repr__(self):
             return '<%s>' % (self.__class__.__name__)
 
-    class attribute_by_name(object):
+    class _AttributeByName(object):
+        """Node test that matches an attribute with a specific name."""
         def __init__(self, name):
             self.name = QName(name)
         def __call__(self, kind, data, pos):
@@ -275,7 +222,8 @@ class Path(object):
         def __repr__(self):
             return '<%s "%s">' % (self.__class__.__name__, self.name)
 
-    class fn_text(object):
+    class _FunctionText(object):
+        """Function that returns text content."""
         def __call__(self, kind, data, pos):
             if kind is Stream.TEXT:
                 return kind, data, pos
@@ -283,15 +231,17 @@ class Path(object):
         def __repr__(self):
             return '<%s>' % (self.__class__.__name__)
 
-    class literal_string(object):
+    class _LiteralString(object):
+        """Always returns a literal string."""
         def __init__(self, value):
             self.value = value
-        def __call__(self, kind, data, pos):
+        def __call__(self, *_):
             return Stream.TEXT, self.value, (-1, -1)
         def __repr__(self):
             return '<%s>' % (self.__class__.__name__)
 
-    class op_eq(object):
+    class _OperatorEq(object):
+        """Equality comparison operator."""
         def __init__(self, lval, rval):
             self.lval = lval
             self.rval = rval
@@ -303,7 +253,8 @@ class Path(object):
             return '<%s %r = %r>' % (self.__class__.__name__, self.lval,
                                      self.rval)
 
-    class op_neq(object):
+    class _OperatorNeq(object):
+        """Inequality comparison operator."""
         def __init__(self, lval, rval):
             self.lval = lval
             self.rval = rval

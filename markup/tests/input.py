@@ -11,20 +11,16 @@
 # individuals. For the exact contribution history, see the revision
 # history and logs, available at http://projects.edgewall.com/trac/.
 
+import doctest
 import unittest
 
 from markup.core import Stream
 from markup.input import XMLParser
 
 
-class XMLParserTestCase(unittest.TestCase):
-    pass
-
-
-
 def suite():
     suite = unittest.TestSuite()
-    suite.addTest(unittest.makeSuite(XMLParserTestCase, 'test'))
+    suite.addTest(doctest.DocTestSuite(XMLParser.__module__))
     return suite
 
 if __name__ == '__main__':

@@ -21,7 +21,6 @@ except NameError:
     from sets import ImmutableSet as frozenset
 
 from markup.core import Markup, Namespace, QName, Stream
-from markup.filters import WhitespaceFilter
 
 __all__ = ['Serializer', 'XMLSerializer', 'HTMLSerializer']
 
@@ -30,6 +29,12 @@ class Serializer(object):
     """Base class for serializers."""
 
     def serialize(self, stream):
+        """Must be implemented by concrete subclasses to serialize the given
+        stream.
+        
+        This method must be implemented as a generator, producing the
+        serialized output incrementally as unicode strings.
+        """
         raise NotImplementedError
 
 
@@ -46,7 +51,7 @@ class XMLSerializer(Serializer):
         ns_attrib = []
         ns_mapping = {}
 
-        stream = PushbackIterator(stream)
+        stream = _PushbackIterator(stream)
         for kind, data, pos in stream:
 
             if kind is Stream.DOCTYPE:
@@ -81,11 +86,7 @@ class XMLSerializer(Serializer):
                 for attr, value in attrib:
                     attrname = attr.localname
                     if attr.namespace:
-                        try:
-                            prefix = ns_mapping[attr.namespace]
-                        except KeyError:
-                            # FIXME: synthesize a prefix for the attribute?
-                            prefix = ''
+                        prefix = ns_mapping.get(attr.namespace)
                         if prefix:
                             attrname = prefix + ':' + attrname
                     buf.append(' %s="%s"' % (attrname, Markup.escape(value)))
@@ -103,12 +104,9 @@ class XMLSerializer(Serializer):
                 tag = data
                 tagname = tag.localname
                 if tag.namespace:
-                    try:
-                        prefix = ns_mapping[tag.namespace]
-                        if prefix:
-                            tagname = prefix + ':' + tag.localname
-                    except KeyError:
-                        pass
+                    prefix = ns_mapping.get(tag.namespace)
+                    if prefix:
+                        tagname = prefix + ':' + tag.localname
                 yield Markup('</%s>' % tagname)
 
             elif kind is Stream.TEXT:
@@ -136,7 +134,7 @@ class HTMLSerializer(Serializer):
     def serialize(self, stream):
         ns_mapping = {}
 
-        stream = PushbackIterator(stream)
+        stream = _PushbackIterator(stream)
         for kind, data, pos in stream:
 
             if kind is Stream.DOCTYPE:
@@ -179,7 +177,7 @@ class HTMLSerializer(Serializer):
                 yield Markup.escape(data, quotes=False)
 
 
-class PushbackIterator(object):
+class _PushbackIterator(object):
     """A simple wrapper for iterators that allows pushing items back on the
     queue via the `pushback()` method.
     

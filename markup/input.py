@@ -18,7 +18,6 @@ except NameError:
     from sets import ImmutableSet as frozenset
 import HTMLParser as html
 import htmlentitydefs
-import re
 from StringIO import StringIO
 
 from markup.core import Attributes, Markup, QName, Stream
@@ -37,9 +36,26 @@ class ParseError(Exception):
 
 class XMLParser(object):
     """Generator-based XML parser based on roughly equivalent code in
-    Kid/ElementTree."""
+    Kid/ElementTree.
+    
+    The parsing is initiated by iterating over the parser object:
+    
+    >>> parser = XMLParser(StringIO('<root id="2"><child>Foo</child></root>'))
+    >>> for kind, data, pos in parser:
+    ...     print kind, data
+    START (u'root', [(u'id', u'2')])
+    START (u'child', [])
+    TEXT Foo
+    END child
+    END root
+    """
 
     def __init__(self, source, filename=None):
+        """Initialize the parser for the given XML text.
+        
+        @param source: the XML text as a file-like object
+        @param filename: the name of the file, if appropriate
+        """
         self.source = source
         self.filename = filename
 
@@ -90,6 +106,11 @@ class XMLParser(object):
                 msg += ', in ' + self.filename
             raise ParseError(msg, self.filename, e.lineno, e.offset)
 
+    def _enqueue(self, kind, data, pos=None):
+        if pos is None:
+            pos = self._getpos()
+        self._queue.append((kind, data, pos))
+
     def _getpos_unknown(self):
         return (self.filename or '<string>', -1, -1)
 
@@ -98,40 +119,38 @@ class XMLParser(object):
                 self.expat.CurrentColumnNumber)
 
     def _handle_start(self, tag, attrib):
-        self._queue.append((Stream.START, (QName(tag), Attributes(attrib.items())),
-                           self._getpos()))
+        self._enqueue(Stream.START, (QName(tag), Attributes(attrib.items())))
 
     def _handle_end(self, tag):
-        self._queue.append((Stream.END, QName(tag), self._getpos()))
+        self._enqueue(Stream.END, QName(tag))
 
     def _handle_data(self, text):
-        self._queue.append((Stream.TEXT, text, self._getpos()))
+        self._enqueue(Stream.TEXT, text)
 
     def _handle_prolog(self, version, encoding, standalone):
-        self._queue.append((Stream.PROLOG, (version, encoding, standalone),
-                           self._getpos()))
+        self._enqueue(Stream.PROLOG, (version, encoding, standalone))
 
     def _handle_doctype(self, name, sysid, pubid, has_internal_subset):
-        self._queue.append((Stream.DOCTYPE, (name, pubid, sysid), self._getpos()))
+        self._enqueue(Stream.DOCTYPE, (name, pubid, sysid))
 
     def _handle_start_ns(self, prefix, uri):
-        self._queue.append((Stream.START_NS, (prefix or '', uri), self._getpos()))
+        self._enqueue(Stream.START_NS, (prefix or '', uri))
 
     def _handle_end_ns(self, prefix):
-        self._queue.append((Stream.END_NS, prefix or '', self._getpos()))
+        self._enqueue(Stream.END_NS, prefix or '')
 
     def _handle_pi(self, target, data):
-        self._queue.append((Stream.PI, (target, data), self._getpos()))
+        self._enqueue(Stream.PI, (target, data))
 
     def _handle_comment(self, text):
-        self._queue.append((Stream.COMMENT, text, self._getpos()))
+        self._enqueue(Stream.COMMENT, text)
 
     def _handle_other(self, text):
         if text.startswith('&'):
             # deal with undefined entities
             try:
                 text = unichr(htmlentitydefs.name2codepoint[text[1:-1]])
-                self._queue.append((Stream.TEXT, text, self._getpos()))
+                self._enqueue(Stream.TEXT, text)
             except KeyError:
                 lineno, offset = self._getpos()
                 raise expat.error("undefined entity %s: line %d, column %d" %
@@ -147,6 +166,17 @@ class HTMLParser(html.HTMLParser, object):
     
     This class provides the same interface for generating stream events as
     `XMLParser`, and attempts to automatically balance tags.
+    
+    The parsing is initiated by iterating over the parser object:
+    
+    >>> parser = HTMLParser(StringIO('<UL compact><LI>Foo</UL>'))
+    >>> for kind, data, pos in parser:
+    ...     print kind, data
+    START (u'ul', [(u'compact', u'compact')])
+    START (u'li', [])
+    TEXT Foo
+    END li
+    END ul
     """
 
     _EMPTY_ELEMS = frozenset(['area', 'base', 'basefont', 'br', 'col', 'frame',
@@ -187,45 +217,53 @@ class HTMLParser(html.HTMLParser, object):
                 msg += ', in %s' % self.filename
             raise ParseError(msg, self.filename, e.lineno, e.offset)
 
+    def _enqueue(self, kind, data, pos=None):
+        if pos is None:
+            pos = self._getpos()
+        self._queue.append((kind, data, pos))
+
     def _getpos(self):
         lineno, column = self.getpos()
         return (self.filename, lineno, column)
 
     def handle_starttag(self, tag, attrib):
-        pos = self._getpos()
-        self._queue.append((Stream.START, (QName(tag), Attributes(attrib)), pos))
+        fixed_attrib = []
+        for name, value in attrib: # Fixup minimized attributes
+            if value is None:
+                value = name
+            fixed_attrib.append((name, unicode(value)))
+
+        self._enqueue(Stream.START, (QName(tag), Attributes(fixed_attrib)))
         if tag in self._EMPTY_ELEMS:
-            self._queue.append((Stream.END, QName(tag), pos))
+            self._enqueue(Stream.END, QName(tag))
         else:
             self._open_tags.append(tag)
 
     def handle_endtag(self, tag):
         if tag not in self._EMPTY_ELEMS:
-            pos = self._getpos()
             while self._open_tags:
                 open_tag = self._open_tags.pop()
                 if open_tag.lower() == tag.lower():
                     break
-                self._queue.append((Stream.END, QName(open_tag), pos))
-            self._queue.append((Stream.END, QName(tag), pos))
+                self._enqueue(Stream.END, QName(open_tag))
+            self._enqueue(Stream.END, QName(tag))
 
     def handle_data(self, text):
-        self._queue.append((Stream.TEXT, text, self._getpos()))
+        self._enqueue(Stream.TEXT, text)
 
     def handle_charref(self, name):
-        self._queue.append((Stream.TEXT, Markup('&#%s;' % name), self._getpos()))
+        self._enqueue(Stream.TEXT, Markup('&#%s;' % name))
 
     def handle_entityref(self, name):
-        self._queue.append((Stream.TEXT, Markup('&%s;' % name), self._getpos()))
+        self._enqueue(Stream.TEXT, Markup('&%s;' % name))
 
     def handle_pi(self, data):
         target, data = data.split(maxsplit=1)
         data = data.rstrip('?')
-        self._queue.append((Stream.PI, (target.strip(), data.strip()),
-                           self._getpos()))
+        self._enqueue(Stream.PI, (target.strip(), data.strip()))
 
     def handle_comment(self, text):
-        self._queue.append((Stream.COMMENT, text, self._getpos()))
+        self._enqueue(Stream.COMMENT, text)
 
 
 def HTML(text):

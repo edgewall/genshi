@@ -1,15 +1,16 @@
 # -*- coding: utf-8 -*-
 #
 # Copyright (C) 2006 Matthew Good
+# Copyright (C) 2006 Christopher Lenz
 # All rights reserved.
 #
 # This software is licensed as described in the file COPYING, which
 # you should have received as part of this distribution. The terms
-# are also available at http://trac.edgewall.com/license.html.
+# are also available at http://markup.cmlenz.net/wiki/License.
 #
 # This software consists of voluntary contributions made by many
 # individuals. For the exact contribution history, see the revision
-# history and logs, available at http://projects.edgewall.com/trac/.
+# history and logs, available at http://markup.cmlenz.net/log/.
 
 import os
 from pkg_resources import resource_filename

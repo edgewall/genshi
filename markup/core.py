@@ -5,11 +5,11 @@
 #
 # This software is licensed as described in the file COPYING, which
 # you should have received as part of this distribution. The terms
-# are also available at http://trac.edgewall.com/license.html.
+# are also available at http://markup.cmlenz.net/wiki/License.
 #
 # This software consists of voluntary contributions made by many
 # individuals. For the exact contribution history, see the revision
-# history and logs, available at http://projects.edgewall.com/trac/.
+# history and logs, available at http://markup.cmlenz.net/log/.
 
 """Core classes for markup processing."""
 
@@ -57,7 +57,7 @@ class Stream(object):
     def __init__(self, events):
         """Initialize the stream with a sequence of markup events.
         
-        @oaram events: a sequence or iterable providing the events
+        @param events: a sequence or iterable providing the events
         """
         self.events = events
 
@@ -111,7 +111,7 @@ class Stream(object):
             cls = {'xml': output.XMLSerializer,
                    'html': output.HTMLSerializer}[method]
         else:
-            assert issubclass(cls, serializers.Serializer)
+            assert issubclass(cls, output.Serializer)
         serializer = cls(**kwargs)
 
         stream = self
@@ -168,13 +168,15 @@ class Attributes(list):
         If the `attrib` parameter is provided, it is expected to be a sequence
         of `(name, value)` tuples.
         """
-        list.__init__(self, map(lambda (k, v): (QName(k), v), attrib or []))
+        if attrib is None:
+            attrib = []
+        list.__init__(self, [(QName(name), value) for name, value in attrib])
 
     def __contains__(self, name):
         """Return whether the list includes an attribute with the specified
         name.
         """
-        return name in [attr for attr, value in self]
+        return name in [attr for attr, _ in self]
 
     def get(self, name, default=None):
         """Return the value of the attribute with the specified name, or the
@@ -216,10 +218,10 @@ class Markup(unicode):
     """
     __slots__ = []
 
-    def __new__(self, text='', *args):
+    def __new__(cls, text='', *args):
         if args:
             text %= tuple([escape(arg) for arg in args])
-        return unicode.__new__(self, text)
+        return unicode.__new__(cls, text)
 
     def __add__(self, other):
         return Markup(unicode(self) + escape(other))
@@ -257,7 +259,8 @@ class Markup(unicode):
                 return unichr(ref)
             else: # character entity
                 ref = match.group(2)
-                if keepxmlentities and ref in ('amp', 'apos', 'gt', 'lt', 'quot'):
+                if keepxmlentities and ref in ('amp', 'apos', 'gt', 'lt',
+                                               'quot'):
                     return '&%s;' % ref
                 try:
                     codepoint = htmlentitydefs.name2codepoint[ref]

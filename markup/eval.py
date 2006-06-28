@@ -5,11 +5,13 @@
 #
 # This software is licensed as described in the file COPYING, which
 # you should have received as part of this distribution. The terms
-# are also available at http://trac.edgewall.com/license.html.
+# are also available at http://markup.cmlenz.net/wiki/License.
 #
 # This software consists of voluntary contributions made by many
 # individuals. For the exact contribution history, see the revision
-# history and logs, available at http://projects.edgewall.com/trac/.
+# history and logs, available at http://markup.cmlenz.net/log/.
+
+"""Support for "safe" evaluation of Python expressions."""
 
 import __builtin__
 import compiler
@@ -101,10 +103,19 @@ class Expression(object):
     __visitors = {}
 
     def __init__(self, source):
+        """Create the expression.
+        
+        @param source: the expression as string
+        """
         self.source = source
         self.ast = None
 
     def evaluate(self, data):
+        """Evaluate the expression against the given data dictionary.
+        
+        @param data: a mapping containing the data to evaluate against
+        @return: the result of the evaluation
+        """
         if not self.ast:
             self.ast = compiler.parse(self.source, 'eval')
         return self._visit(self.ast.node, data)

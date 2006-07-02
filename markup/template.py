@@ -720,8 +720,11 @@ class Template(object):
         if not hasattr(ctxt, '_match_templates'):
             ctxt._match_templates = []
 
-        stream = self._match(self._eval(self.stream, ctxt), ctxt)
-        return Stream(self._flatten(stream, ctxt))
+        stream = self._flatten(self._match(self._eval(self.stream, ctxt), ctxt),
+                               ctxt)
+        for filter_ in self.filters:
+            stream = filter_(iter(stream), ctxt)
+        return Stream(stream)
 
     def _eval(self, stream, ctxt=None):
         """Internal stream filter that evaluates any expressions in `START` and
@@ -764,7 +767,9 @@ class Template(object):
                     # Test if the expression evaluated to an iterable, in which
                     # case we yield the individual items
                     try:
-                        yield (Template.SUB, ([], iter(result)), pos)
+                        for event in self._match(self._eval(iter(result), ctxt),
+                                                 ctxt):
+                            yield event
                     except TypeError:
                         # Neither a string nor an iterable, so just pass it
                         # through
@@ -775,14 +780,11 @@ class Template(object):
 
     def _flatten(self, stream, ctxt=None):
         """Internal stream filter that expands `SUB` events in the stream."""
-        for filter_ in self.filters:
-            stream = filter_(iter(stream), ctxt)
         try:
             for kind, data, pos in stream:
                 if kind is Template.SUB:
-                    # This event is a list of directives and a list of
-                    # nested events to which those directives should be
-                    # applied
+                    # This event is a list of directives and a list of nested
+                    # events to which those directives should be applied
                     directives, substream = data
                     for directive in directives:
                         substream = directive(iter(substream), ctxt)
@@ -834,15 +836,12 @@ class Template(object):
 
                     content = list(self._flatten(content, ctxt))
 
-                    def _apply(stream, ctxt):
-                        ctxt.push(select=lambda path: Stream(stream).select(path))
-                        for event in template:
-                            yield event
-                        ctxt.pop()
+                    ctxt.push(select=lambda path: Stream(content).select(path))
+                    for event in self._match(self._eval(iter(template), ctxt),
+                                             ctxt):
+                        yield event
+                    ctxt.pop()
 
-                    yield (Template.SUB,
-                           ([lambda stream, ctxt: _apply(content, ctxt)],
-                            []), content[0][-1])
                     break
             else:
                 yield kind, data, pos

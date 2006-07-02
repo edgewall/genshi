@@ -28,12 +28,12 @@ class MatchDirectiveTestCase(unittest.TestCase):
         Verify that a match template can produce the same kind of element that
         it matched without entering an infinite recursion.
         """
-        tmpl = Template('''<doc xmlns:py="http://purl.org/kid/ns#">
+        tmpl = Template("""<doc xmlns:py="http://purl.org/kid/ns#">
           <elem py:match="elem">
             <div class="elem">${select('*/text()')}</div>
           </elem>
           <elem>Hey Joe</elem>
-        </doc>''')
+        </doc>""")
         self.assertEqual("""<doc>
           <elem>
             <div class="elem">Hey Joe</div>
@@ -45,7 +45,7 @@ class MatchDirectiveTestCase(unittest.TestCase):
         Match directives are applied recursively, meaning that they are also
         applied to any content they may have produced themselves:
         """
-        tmpl = Template('''<doc xmlns:py="http://purl.org/kid/ns#">
+        tmpl = Template("""<doc xmlns:py="http://purl.org/kid/ns#">
           <elem py:match="elem">
             <div class="elem">
               ${select('*/*')}
@@ -56,7 +56,7 @@ class MatchDirectiveTestCase(unittest.TestCase):
               <elem/>
             </subelem>
           </elem>
-        </doc>''')
+        </doc>""")
         self.assertEqual("""<doc>
           <elem>
             <div class="elem">
@@ -76,7 +76,7 @@ class MatchDirectiveTestCase(unittest.TestCase):
         themselves output the element they match, avoiding recursion is even
         more complex, but should work.
         """
-        tmpl = Template('''<html xmlns:py="http://purl.org/kid/ns#">
+        tmpl = Template("""<html xmlns:py="http://purl.org/kid/ns#">
           <body py:match="body">
             <div id="header"/>
             ${select('*/*')}
@@ -88,13 +88,33 @@ class MatchDirectiveTestCase(unittest.TestCase):
           <body>
             <h1>Foo</h1>
           </body>
-        </html>''')
+        </html>""")
         self.assertEqual("""<html>
           <body>
             <div id="header"/><h1>Foo</h1>
             <div id="footer"/>
           </body>
         </html>""", str(tmpl.generate()))
+
+
+class StripDirectiveTestCase(unittest.TestCase):
+    """Tests for the `py:strip` template directive."""
+
+    def test_strip_false(self):
+        tmpl = Template("""<div xmlns:py="http://purl.org/kid/ns#">
+          <div py:strip="False"><b>foo</b></div>
+        </div>""")
+        self.assertEqual("""<div>
+          <div><b>foo</b></div>
+        </div>""", str(tmpl.generate()))
+
+    def test_strip_empty(self):
+        tmpl = Template("""<div xmlns:py="http://purl.org/kid/ns#">
+          <div py:strip=""><b>foo</b></div>
+        </div>""")
+        self.assertEqual("""<div>
+          <b>foo</b>
+        </div>""", str(tmpl.generate()))
 
 
 class TemplateTestCase(unittest.TestCase):
@@ -186,6 +206,7 @@ def suite():
     suite.addTest(doctest.DocTestSuite(Template.__module__))
     suite.addTest(unittest.makeSuite(TemplateTestCase, 'test'))
     suite.addTest(unittest.makeSuite(MatchDirectiveTestCase, 'test'))
+    suite.addTest(unittest.makeSuite(StripDirectiveTestCase, 'test'))
     return suite
 
 if __name__ == '__main__':

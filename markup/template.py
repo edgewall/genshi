@@ -470,26 +470,7 @@ class StripDirective(Directive):
       <b>foo</b>
     </div>
     
-    On the other hand, when the attribute evaluates to `False`, the element is
-    not stripped:
-    
-    >>> tmpl = Template('''<div xmlns:py="http://purl.org/kid/ns#">
-    ...   <div py:strip="False"><b>foo</b></div>
-    ... </div>''')
-    >>> print tmpl.generate()
-    <div>
-      <div><b>foo</b></div>
-    </div>
-    
-    Leaving the attribute value empty is equivalent to a truth value:
-    
-    >>> tmpl = Template('''<div xmlns:py="http://purl.org/kid/ns#">
-    ...   <div py:strip=""><b>foo</b></div>
-    ... </div>''')
-    >>> print tmpl.generate()
-    <div>
-      <b>foo</b>
-    </div>
+    Leaving the attribute value empty is equivalent to a truth value.
     
     This directive is particulary interesting for named template functions or
     match templates that do not generate a top-level element:

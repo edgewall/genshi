@@ -20,7 +20,87 @@ from markup.template import BadDirectiveError, Context, Template, \
                             TemplateSyntaxError
 
 
+class MatchDirectiveTestCase(unittest.TestCase):
+    """Tests for the `py:match` template directive."""
+
+    def test_without_strip(self):
+        """
+        Verify that a match template can produce the same kind of element that
+        it matched without entering an infinite recursion.
+        """
+        tmpl = Template('''<doc xmlns:py="http://purl.org/kid/ns#">
+          <elem py:match="elem">
+            <div class="elem">${select('*/text()')}</div>
+          </elem>
+          <elem>Hey Joe</elem>
+        </doc>''')
+        self.assertEqual("""<doc>
+          <elem>
+            <div class="elem">Hey Joe</div>
+          </elem>
+        </doc>""", str(tmpl.generate()))
+
+    def test_recursive_match_1(self):
+        """
+        Match directives are applied recursively, meaning that they are also
+        applied to any content they may have produced themselves:
+        """
+        tmpl = Template('''<doc xmlns:py="http://purl.org/kid/ns#">
+          <elem py:match="elem">
+            <div class="elem">
+              ${select('*/*')}
+            </div>
+          </elem>
+          <elem>
+            <subelem>
+              <elem/>
+            </subelem>
+          </elem>
+        </doc>''')
+        self.assertEqual("""<doc>
+          <elem>
+            <div class="elem">
+              <subelem>
+              <elem>
+            <div class="elem">
+            </div>
+          </elem>
+            </subelem>
+            </div>
+          </elem>
+        </doc>""", str(tmpl.generate()))
+
+    def test_recursive_match_2(self):
+        """
+        When two or more match templates match the same element and also
+        themselves output the element they match, avoiding recursion is even
+        more complex, but should work.
+        """
+        tmpl = Template('''<html xmlns:py="http://purl.org/kid/ns#">
+          <body py:match="body">
+            <div id="header"/>
+            ${select('*/*')}
+          </body>
+          <body py:match="body">
+            ${select('*/*')}
+            <div id="footer"/>
+          </body>
+          <body>
+            <h1>Foo</h1>
+          </body>
+        </html>''')
+        self.assertEqual("""<html>
+          <body>
+            <div id="header"/><h1>Foo</h1>
+            <div id="footer"/>
+          </body>
+        </html>""", str(tmpl.generate()))
+
+
 class TemplateTestCase(unittest.TestCase):
+    """Tests for basic template processing, expression evaluation and error
+    reporting.
+    """
 
     def test_interpolate_string(self):
         parts = list(Template._interpolate('bla'))
@@ -105,6 +185,7 @@ def suite():
     suite = unittest.TestSuite()
     suite.addTest(doctest.DocTestSuite(Template.__module__))
     suite.addTest(unittest.makeSuite(TemplateTestCase, 'test'))
+    suite.addTest(unittest.makeSuite(MatchDirectiveTestCase, 'test'))
     return suite
 
 if __name__ == '__main__':

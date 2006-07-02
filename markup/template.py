@@ -407,51 +407,6 @@ class MatchDirective(Directive):
         Hello Dude
       </span>
     </div>
-    
-    A match template can produce the same kind of element that it matched
-    without entering an infinite recursion:
-    
-    >>> tmpl = Template('''<doc xmlns:py="http://purl.org/kid/ns#">
-    ...   <elem py:match="elem">
-    ...     <div class="elem">${select('*/text()')}</div>
-    ...   </elem>
-    ...   <elem>Hey Joe</elem>
-    ... </doc>''')
-    >>> print tmpl.generate()
-    <doc>
-      <elem>
-        <div class="elem">Hey Joe</div>
-      </elem>
-    </doc>
-    
-    Match directives are applied recursively, meaning that they are also
-    applied to any content they may have produced themselves:
-    
-    >>> tmpl = Template('''<doc xmlns:py="http://purl.org/kid/ns#">
-    ...   <elem py:match="elem">
-    ...     <div class="elem">
-    ...       ${select('*/*')}
-    ...     </div>
-    ...   </elem>
-    ...   <elem>
-    ...     <subelem>
-    ...       <elem/>
-    ...     </subelem>
-    ...   </elem>
-    ... </doc>''')
-    >>> print tmpl.generate()
-    <doc>
-      <elem>
-        <div class="elem">
-          <subelem>
-          <elem>
-        <div class="elem">
-        </div>
-      </elem>
-        </subelem>
-        </div>
-      </elem>
-    </doc>
     """
     __slots__ = ['path', 'stream']
 
@@ -798,10 +753,13 @@ class Template(object):
             raise TemplateSyntaxError(err, self.filename, pos[1],
                                       pos[2] + (err.offset or 0))
 
-    def _match(self, stream, ctxt=None):
+    def _match(self, stream, ctxt=None, match_templates=None):
         """Internal stream filter that applies any defined match templates
         to the stream.
         """
+        if match_templates is None:
+            match_templates = ctxt._match_templates
+
         for kind, data, pos in stream:
 
             # We (currently) only care about start and end events for matching
@@ -810,12 +768,7 @@ class Template(object):
                 yield kind, data, pos
                 continue
 
-            for idx, (test, path, template) in enumerate(ctxt._match_templates):
-                if (kind, data, pos) in template[::len(template)]:
-                    # This is the event this match template produced itself, so
-                    # matching it again would result in an infinite loop 
-                    continue
-
+            for idx, (test, path, template) in enumerate(match_templates):
                 result = test(kind, data, pos)
 
                 if result:
@@ -835,10 +788,12 @@ class Template(object):
                         test(*event)
 
                     content = list(self._flatten(content, ctxt))
-
                     ctxt.push(select=lambda path: Stream(content).select(path))
-                    for event in self._match(self._eval(iter(template), ctxt),
-                                             ctxt):
+
+                    template = self._match(self._eval(iter(template), ctxt),
+                                           ctxt, match_templates[:idx] +
+                                           match_templates[idx + 1:])
+                    for event in template:
                         yield event
                     ctxt.pop()
 

@@ -239,7 +239,8 @@ class Markup(unicode):
         return '<%s "%s">' % (self.__class__.__name__, self)
 
     def join(self, seq):
-        return Markup(unicode(self).join([escape(item) for item in seq]))
+        return Markup(unicode(self).join([escape(item, quotes=False)
+                                          for item in seq]))
 
     def stripentities(self, keepxmlentities=False):
         """Return a copy of the text with any character or numeric entities

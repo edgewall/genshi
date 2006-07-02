@@ -131,6 +131,10 @@ class Element(Fragment):
     >>> print Element('p')('Hello ', Element('b')('world'))
     <p>Hello <b>world</b></p>
 
+    Quotes are not escaped inside text nodes:
+    >>> print Element('p')('"Hello"')
+    <p>"Hello"</p>
+
     Elements can also be combined with other elements or strings using the
     addition operator, which results in a `Fragment` object that contains the
     operands:

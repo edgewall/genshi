@@ -22,7 +22,6 @@ from StringIO import StringIO
 from trac.attachment import attachments_to_hdf, Attachment, AttachmentModule
 from trac.config import BoolOption, Option
 from trac.core import *
-from trac.env import IEnvironmentSetupParticipant
 from trac.ticket import Milestone, Ticket, TicketSystem, ITicketManipulator
 from trac.ticket.notification import TicketNotifyEmail
 from trac.Timeline import ITimelineEventProvider
@@ -59,30 +58,7 @@ class TicketModuleBase(Component):
 
 class NewticketModule(TicketModuleBase):
 
-    implements(IEnvironmentSetupParticipant, INavigationContributor,
-               IRequestHandler)
-
-    # IEnvironmentSetupParticipant methods
-
-    def environment_created(self):
-        """Create the `site_newticket.cs` template file in the environment."""
-        if self.env.path:
-            templates_dir = os.path.join(self.env.path, 'templates')
-            if not os.path.exists(templates_dir):
-                os.mkdir(templates_dir)
-            template_name = os.path.join(templates_dir, 'site_newticket.cs')
-            template_file = file(template_name, 'w')
-            template_file.write("""<?cs
-####################################################################
-# New ticket prelude - Included directly above the new ticket form
-?>
-""")
-
-    def environment_needs_upgrade(self, db):
-        return False
-
-    def upgrade_environment(self, db):
-        pass
+    implements(INavigationContributor, IRequestHandler)
 
     # INavigationContributor methods
 

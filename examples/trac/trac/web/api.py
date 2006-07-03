@@ -328,15 +328,17 @@ class Request(object):
         else:
             data = self.hdf.render(template)
 
+        self.send(data, content_type, status)
+
+    def send(self, content, content_type='text/html', status=200):
         self.send_response(status)
         self.send_header('Cache-control', 'must-revalidate')
-        self.send_header('Expires', 'Fri, 01 Jan 1999 00:00:00 GMT')
         self.send_header('Content-Type', content_type + ';charset=utf-8')
-        self.send_header('Content-Length', len(data))
+        self.send_header('Content-Length', len(content))
         self.end_headers()
 
         if self.method != 'HEAD':
-            self.write(data)
+            self.write(content)
         raise RequestDone
 
     def send_error(self, exc_info, template='error.cs',

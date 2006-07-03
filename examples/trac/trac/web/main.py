@@ -198,10 +198,18 @@ class RequestDispatcher(Component):
             try:
                 resp = chosen_handler.process_request(req)
                 if resp:
+                    chrome = Chrome(self.env)
                     for filter_ in reversed(self.filters):
                         resp = filter_.post_process_request(req, *resp)
-                    template, content_type = resp
-                    req.display(template, content_type or 'text/html')
+                    if len(resp) == 2:
+                        template, content_type = resp
+                        chrome._finalize_hdf(req)
+                        req.display(template, content_type or 'text/html')
+                    else:
+                        template, data, content_type = resp
+                        output = chrome.render_response(req, template,
+                                                        content_type, data)
+                        req.send(output, content_type or 'text/html')
                 else:
                     for filter_ in reversed(self.filters):
                         filter_.post_process_request(req, None, None)

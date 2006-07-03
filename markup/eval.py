@@ -125,7 +125,7 @@ class Expression(object):
                 return getattr(obj, node.attrname)
             try:
                 return obj[node.attrname]
-            except TypeError:
+            except (KeyError, TypeError):
                 return None
 
         def _visit_slice(self, node, data):
@@ -265,7 +265,7 @@ class Expression(object):
                 return getattr(obj, node.attr)
             try:
                 return obj[node.attr]
-            except TypeError:
+            except (KeyError, TypeError):
                 return None
 
         def _visit_call(self, node, data):

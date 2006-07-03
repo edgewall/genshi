@@ -20,7 +20,7 @@
         <a id="logo" py:if="chrome.logo.src" href="${chrome.logo.link}"><img
           src="${chrome.logo.src}" /></a>
       </div>
-      <form py:if="perm.has_permission('SEARCH_VIEW')" id="search"
+      <form py:if="'SEARCH_VIEW' in perm" id="search"
             action="${href.search()}" method="get">
        <div>
         <label for="proj-search">Search:</label>
@@ -35,10 +35,10 @@
         <ul py:if="chrome.nav.metanav">
           <li py:for="idx, item in enumerate(chrome.nav.metanav)"
               py:content="HTML(item.label)"
-            class="${' '.join(filter(None, [
-                      (idx == 0) and 'first',
-                      (idx == len(chrome.nav.metanav) - 1) and 'last'
-                     ])) or None}"/>
+              class="${' '.join(filter(None, [
+                        (idx == 0) and 'first',
+                        (idx == len(chrome.nav.metanav) - 1) and 'last'
+                       ])) or None}"/>
         </ul>
       </div>
     </div>
@@ -58,9 +58,13 @@
 
       <div id="altlinks" py:if="chrome.links.alternate">
         <h3>Download in other formats:</h3>
-        <ul><li py:for="link in chrome.links.alternate">
+        <ul><li py:for="idx, link in enumerate(chrome.links.alternate)"
+                class="${' '.join(filter(None, [
+                          (idx == 0) and 'first',
+                          (idx == len(chrome.links.alternate) - 1) and 'last'
+                         ])) or None}">
             <a href="${link.href}" class="${link['class']}"
-               py:content="${link.title}" />
+               py:content="link.title" />
         </li></ul>
       </div>
     </div>

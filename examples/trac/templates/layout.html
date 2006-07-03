@@ -1,0 +1,81 @@
+<html xmlns="http://www.w3.org/1999/xhtml"
+      xmlns:py="http://purl.org/kid/ns#"
+      xmlns:xi="http://www.w3.org/2001/XInclude"
+      py:strip="">
+  <xi:include href="site.html"><xi:fallback/></xi:include>
+
+  <head py:match="head">
+    <title>${select('title/text()')} – Trac</title>
+    <div py:for="rel, links in chrome.links.items()" py:strip="">
+      <link rel="${rel}" py:for="link in links" href="${link.href}"
+          type="${link.type}" class="${link['class']}" title="${link.title}"/>
+    </div>
+    <script py:for="script in chrome.scripts"
+            type="${script.type}" src="${script.href}"/>
+  </head>
+
+  <body py:match="body">
+    <div id="banner">
+      <div id="header">
+        <a id="logo" py:if="chrome.logo.src" href="${chrome.logo.link}"><img
+          src="${chrome.logo.src}" /></a>
+      </div>
+      <form py:if="perm.has_permission('SEARCH_VIEW')" id="search"
+            action="${href.search()}" method="get">
+       <div>
+        <label for="proj-search">Search:</label>
+        <input type="text" id="proj-search" name="q" size="10" accesskey="f" value="" />
+        <input type="submit" value="Search" />
+        <input type="hidden" name="wiki" value="on" />
+        <input type="hidden" name="changeset" value="on" />
+        <input type="hidden" name="ticket" value="on" />
+       </div>
+      </form>
+      <div id="metanav" class="nav">
+        <ul py:if="chrome.nav.metanav">
+          <li py:for="idx, item in enumerate(chrome.nav.metanav)"
+              py:content="HTML(item.label)"
+            class="${' '.join(filter(None, [
+                      (idx == 0) and 'first',
+                      (idx == len(chrome.nav.metanav) - 1) and 'last'
+                     ])) or None}"/>
+        </ul>
+      </div>
+    </div>
+    <div id="mainnav" class="nav">
+      <ul py:if="chrome.nav.mainnav">
+        <li py:for="idx, item in enumerate(chrome.nav.mainnav)"
+            py:content="HTML(item.label)"
+            class="${' '.join(filter(None, [
+                      (idx == 0) and 'first',
+                      (idx == len(chrome.nav.mainnav) - 1) and 'last'
+                     ])) or None}"/>
+      </ul>
+    </div>
+
+    <div id="main">
+      ${select('*')}
+
+      <div id="altlinks" py:if="chrome.links.alternate">
+        <h3>Download in other formats:</h3>
+        <ul><li py:for="link in chrome.links.alternate">
+            <a href="${link.href}" class="${link['class']}"
+               py:content="${link.title}" />
+        </li></ul>
+      </div>
+    </div>
+
+    <div id="footer">
+      <hr/>
+      <a id="tracpowered" href="http://trac.edgewall.com/"><img src="${href.chrome('common/trac_logo_mini.png')}" height="30" width="107" alt="Trac Powered"/></a>
+      <p class="left">
+        Powered by <a href="${href.about()}"><strong>Trac ${chrome.version}</strong></a><br />
+        By <a href="http://www.edgewall.com/">Edgewall Software</a>.
+      </p>
+      <p class="right">
+        ${HTML(config.project.get('footer'))}
+      </p>
+    </div>
+  </body>
+
+</html>

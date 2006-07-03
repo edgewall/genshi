@@ -503,6 +503,123 @@ class StripDirective(Directive):
                 yield event
 
 
+class ChooseDirective(Directive):
+    """Implementation of the `py:choose` directive for conditionally selecting
+    one of several body elements to display.
+
+    If the `py:choose` expression is empty the expressions of nested `py:when`
+    directives are tested for truth.  The first true `py:when` body is output.
+
+    >>> ctxt = Context()
+    >>> tmpl = Template('''<div xmlns:py="http://purl.org/kid/ns#"
+    ...   py:choose="">
+    ...   <span py:when="0 == 1">0</span>
+    ...   <span py:when="1 == 1">1</span>
+    ... </div>''')
+    >>> print tmpl.generate(ctxt)
+    <div>
+      <span>1</span>
+    </div>
+
+    If multiple `py:when` bodies match only the first is output.
+    >>> tmpl = Template('''<div xmlns:py="http://purl.org/kid/ns#"
+    ...   py:choose="">
+    ...   <span py:when="1 == 1">1</span>
+    ...   <span py:when="2 == 2">2</span>
+    ... </div>''')
+    >>> print tmpl.generate(ctxt)
+    <div>
+      <span>1</span>
+    </div>
+
+    If the `py:choose` directive contains an expression, the nested `py:when`
+    directives are tested for equality to the `py:choose` expression.
+    >>> tmpl = Template('''<div xmlns:py="http://purl.org/kid/ns#"
+    ...   py:choose="2">
+    ...   <span py:when="1">1</span>
+    ...   <span py:when="2">2</span>
+    ... </div>''')
+    >>> print tmpl.generate(ctxt)
+    <div>
+      <span>2</span>
+    </div>
+
+    If no `py:when` directive is matched then the fallback directive
+    `py:otherwise` will be used.
+    >>> tmpl = Template('''<div xmlns:py="http://purl.org/kid/ns#"
+    ...   py:choose="">
+    ...   <span py:when="False">hidden</span>
+    ...   <span py:otherwise="">hello</span>
+    ... </div>''')
+    >>> print tmpl.generate(ctxt)
+    <div>
+      <span>hello</span>
+    </div>
+
+    `py:choose` blocks can be nested:
+    >>> tmpl = Template('''<div xmlns:py="http://purl.org/kid/ns#"
+    ...   py:choose="1">
+    ...   <div py:when="1" py:choose="3">
+    ...     <span py:when="2">2</span>
+    ...     <span py:when="3">3</span>
+    ...   </div>
+    ... </div>''')
+    >>> print tmpl.generate(ctxt)
+    <div>
+      <div>
+        <span>3</span>
+      </div>
+    </div>
+
+    Behavior is undefined if a `py:choose` block contains content outside a
+    `py:when` or `py:otherwise` block.  Behavior is also undefined if a
+    `py:otherwise` occurs before `py:when` blocks.
+    """
+
+    def __call__(self, stream, ctxt):
+        if self.expr:
+            self.value = self.expr.evaluate(ctxt)
+        self.matched = False
+        ctxt.push(__choose=self)
+        for event in stream:
+            yield event
+        ctxt.pop()
+
+
+class WhenDirective(Directive):
+    """Implementation of the `py:when` directive for nesting in a parent with
+    the `py:choose` directive.  See the documentation of `py:choose` for
+    usage.
+    """
+    def __call__(self, stream, ctxt):
+        choose = ctxt['__choose']
+        if choose.matched:
+            return []
+        value = self.expr.evaluate(ctxt)
+        try:
+            if value == choose.value:
+                choose.matched = True
+                return stream
+        except AttributeError:
+            if value:
+                choose.matched = True
+                return stream
+        return []
+
+
+class OtherwiseDirective(Directive):
+    """Implementation of the `py:otherwise` directive for nesting in a parent
+    with the `py:choose` directive.  See the documentation of `py:choose` for
+    usage.
+    """
+    def __call__(self, stream, ctxt):
+        choose = ctxt['__choose']
+        if choose.matched:
+            return []
+        choose.matched = True
+        return stream
+
+
 class Template(object):
     """Can parse a template and transform it into the corresponding output
     based on context data.
@@ -519,7 +636,10 @@ class Template(object):
                   ('replace', ReplaceDirective),
                   ('content', ContentDirective),
                   ('attrs', AttrsDirective),
-                  ('strip', StripDirective)]
+                  ('strip', StripDirective),
+                  ('choose', ChooseDirective),
+                  ('when', WhenDirective),
+                  ('otherwise', OtherwiseDirective)]
     _dir_by_name = dict(directives)
     _dir_order = [directive[1] for directive in directives]
 

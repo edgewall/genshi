@@ -21,15 +21,15 @@ from markup.path import Path
 class PathTestCase(unittest.TestCase):
 
     def test_1step(self):
-        xml = XML('<root/>')
-        self.assertEqual('<root/>', Path('root').select(xml).render())
-        self.assertEqual('<root/>', Path('//root').select(xml).render())
-
+        xml = XML('<root><elem/></root>')
+        self.assertEqual('<elem/>', Path('elem').select(xml).render())
+        self.assertEqual('<elem/>', Path('//elem').select(xml).render())
+    
     def test_1step_wildcard(self):
-        xml = XML('<root/>')
-        self.assertEqual('<root/>', Path('*').select(xml).render())
-        self.assertEqual('<root/>', Path('//*').select(xml).render())
-
+        xml = XML('<root><elem/></root>')
+        self.assertEqual('<elem/>', Path('*').select(xml).render())
+        self.assertEqual('<elem/>', Path('//*').select(xml).render())
+    
     def test_1step_attribute(self):
         path = Path('@foo')
         self.assertEqual('', path.select(XML('<root/>')).render())

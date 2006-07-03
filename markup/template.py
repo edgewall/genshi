@@ -417,7 +417,8 @@ class MatchDirective(Directive):
 
     def __call__(self, stream, ctxt):
         self.stream = list(stream)
-        ctxt._match_templates.append((self.path.test(), self.path, self.stream))
+        ctxt._match_templates.append((self.path.test(ignore_context=True),
+                                      self.path, self.stream))
         return []
 
     def __repr__(self):

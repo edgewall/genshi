@@ -20,8 +20,58 @@ from markup.template import BadDirectiveError, Context, Template, \
                             TemplateSyntaxError
 
 
+class AttrsDirectiveTestCase(unittest.TestCase):
+    """Tests for the `py:attrs` template directive."""
+
+    def test_combined_with_loop(self):
+        """
+        Verify that the directive has access to the loop variables.
+        """
+        tmpl = Template("""<doc xmlns:py="http://purl.org/kid/ns#">
+          <elem py:for="item in items" py:attrs="item"/>
+        </doc>""")
+        items = [{'id': 1, 'class': 'foo'}, {'id': 2, 'class': 'bar'}]
+        self.assertEqual("""<doc>
+          <elem id="1" class="foo"/><elem id="2" class="bar"/>
+        </doc>""", str(tmpl.generate(Context(items=items))))
+
+
+class DefDirectiveTestCase(unittest.TestCase):
+    """Tests for the `py:def` template directive."""
+
+    def test_function_with_strip(self):
+        """
+        Verify that the a named template function with a strip directive
+        actually strips of the outer element.
+        """
+        tmpl = Template("""<doc xmlns:py="http://purl.org/kid/ns#">
+          <div py:def="echo(what)" py:strip="">
+            <b>${what}</b>
+          </div>
+          ${echo('foo')}
+        </doc>""")
+        self.assertEqual("""<doc>
+            <b>foo</b>
+        </doc>""", str(tmpl.generate()))
+
+
 class MatchDirectiveTestCase(unittest.TestCase):
     """Tests for the `py:match` template directive."""
+
+    def test_with_strip(self):
+        """
+        Verify that a match template can produce the same kind of element that
+        it matched without entering an infinite recursion.
+        """
+        tmpl = Template("""<doc xmlns:py="http://purl.org/kid/ns#">
+          <elem py:match="elem" py:strip="">
+            <div class="elem">${select('*/text()')}</div>
+          </elem>
+          <elem>Hey Joe</elem>
+        </doc>""")
+        self.assertEqual("""<doc>
+            <div class="elem">Hey Joe</div>
+        </doc>""", str(tmpl.generate()))
 
     def test_without_strip(self):
         """
@@ -210,6 +260,8 @@ def suite():
     suite = unittest.TestSuite()
     suite.addTest(doctest.DocTestSuite(Template.__module__))
     suite.addTest(unittest.makeSuite(TemplateTestCase, 'test'))
+    suite.addTest(unittest.makeSuite(AttrsDirectiveTestCase, 'test'))
+    suite.addTest(unittest.makeSuite(DefDirectiveTestCase, 'test'))
     suite.addTest(unittest.makeSuite(MatchDirectiveTestCase, 'test'))
     suite.addTest(unittest.makeSuite(StripDirectiveTestCase, 'test'))
     return suite

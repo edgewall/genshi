@@ -176,7 +176,7 @@ class Directive(object):
     def __init__(self, value):
         self.expr = value and Expression(value) or None
 
-    def __call__(self, stream, ctxt):
+    def __call__(self, stream, ctxt, directives=None):
         raise NotImplementedError
 
     def __repr__(self):
@@ -210,7 +210,9 @@ class AttrsDirective(Directive):
       <li>Bar</li>
     </ul>
     """
-    def __call__(self, stream, ctxt):
+    __slots__ = []
+
+    def __call__(self, stream, ctxt, directives=None):
         kind, (tag, attrib), pos  = stream.next()
         attrs = self.expr.evaluate(ctxt)
         if attrs:
@@ -242,16 +244,23 @@ class ContentDirective(Directive):
       <li>Bye</li>
     </ul>
     """
-    def __call__(self, stream, ctxt):
-        kind, data, pos = stream.next()
-        if kind is Stream.START:
-            yield kind, data, pos # emit start tag
-        yield Template.EXPR, self.expr, pos
-        previous = stream.next()
-        for event in stream:
-            previous = event
-        if previous is not None:
-            yield previous
+    __slots__ = []
+
+    def __call__(self, stream, ctxt, directives):
+        def generate():
+            kind, data, pos = stream.next()
+            if kind is Stream.START:
+                yield kind, data, pos # emit start tag
+            yield Template.EXPR, self.expr, pos
+            previous = stream.next()
+            for event in stream:
+                previous = event
+            if previous is not None:
+                yield previous
+        output = generate()
+        if directives:
+            output = directives[0](output, ctxt, directives[1:])
+        return output
 
 
 class DefDirective(Directive):
@@ -293,7 +302,7 @@ class DefDirective(Directive):
       </p>
     </div>
     """
-    __slots__ = ['name', 'args', 'defaults', 'stream']
+    __slots__ = ['name', 'args', 'defaults', 'stream', 'directives']
 
     def __init__(self, args):
         Directive.__init__(self, None)
@@ -310,10 +319,11 @@ class DefDirective(Directive):
                     self.args.append(arg.name)
         else:
             self.name = ast.name
-        self.stream = []
+        self.stream, self.directives = [], []
 
-    def __call__(self, stream, ctxt):
+    def __call__(self, stream, ctxt, directives):
         self.stream = list(stream)
+        self.directives = directives
         ctxt[self.name] = lambda *args, **kwargs: self._exec(ctxt, *args,
                                                              **kwargs)
         return []
@@ -327,7 +337,10 @@ class DefDirective(Directive):
             else:
                 scope[name] = kwargs.pop(name, self.defaults.get(name))
         ctxt.push(**scope)
-        for event in self.stream:
+        stream = iter(self.stream)
+        if self.directives:
+            stream = self.directives[0](stream, ctxt, self.directives[1:])
+        for event in stream:
             yield event
         ctxt.pop()
 
@@ -352,7 +365,7 @@ class ForDirective(Directive):
         self.targets = [str(name.strip()) for name in targets.split(',')]
         Directive.__init__(self, value)
 
-    def __call__(self, stream, ctxt):
+    def __call__(self, stream, ctxt, directives):
         iterable = self.expr.evaluate(ctxt) or []
         if iterable is not None:
             stream = list(stream)
@@ -363,6 +376,9 @@ class ForDirective(Directive):
                 for idx, name in enumerate(self.targets):
                     scope[name] = item[idx]
                 ctxt.push(**scope)
+                if directives:
+                    stream = list(directives[0](iter(stream), ctxt,
+                                  directives[1:]))
                 for event in stream:
                     yield event
                 ctxt.pop()
@@ -385,8 +401,12 @@ class IfDirective(Directive):
       <b>Hello</b>
     </div>
     """
-    def __call__(self, stream, ctxt):
+    __slots__ = []
+
+    def __call__(self, stream, ctxt, directives):
         if self.expr.evaluate(ctxt):
+            if directives:
+                stream = directives[0](stream, ctxt, directives[1:])
             return stream
         return []
 
@@ -414,10 +434,10 @@ class MatchDirective(Directive):
         self.path = Path(value)
         self.stream = []
 
-    def __call__(self, stream, ctxt):
+    def __call__(self, stream, ctxt, directives):
         self.stream = list(stream)
         ctxt._match_templates.append((self.path.test(ignore_context=True),
-                                      self.path, self.stream))
+                                      self.path, self.stream, directives))
         return []
 
     def __repr__(self):
@@ -451,7 +471,9 @@ class ReplaceDirective(Directive):
       Bye
     </div>
     """
-    def __call__(self, stream, ctxt):
+    __slots__ = []
+
+    def __call__(self, stream, ctxt, directives=None):
         kind, data, pos = stream.next()
         yield Template.EXPR, self.expr, pos
 
@@ -486,7 +508,9 @@ class StripDirective(Directive):
         <b>foo</b>
     </div>
     """
-    def __call__(self, stream, ctxt):
+    __slots__ = []
+
+    def __call__(self, stream, ctxt, directives=None):
         if self.expr:
             strip = self.expr.evaluate(ctxt)
         else:
@@ -574,12 +598,13 @@ class ChooseDirective(Directive):
     `py:when` or `py:otherwise` block.  Behavior is also undefined if a
     `py:otherwise` occurs before `py:when` blocks.
     """
+    __slots__ = ['matched', 'value']
 
-    def __call__(self, stream, ctxt):
+    def __call__(self, stream, ctxt, directives=None):
         if self.expr:
             self.value = self.expr.evaluate(ctxt)
         self.matched = False
-        ctxt.push(__choose=self)
+        ctxt.push(_choose=self)
         for event in stream:
             yield event
         ctxt.pop()
@@ -587,11 +612,12 @@ class ChooseDirective(Directive):
 
 class WhenDirective(Directive):
     """Implementation of the `py:when` directive for nesting in a parent with
-    the `py:choose` directive.  See the documentation of `py:choose` for
-    usage.
+    the `py:choose` directive.
+    
+    See the documentation of `py:choose` for usage.
     """
-    def __call__(self, stream, ctxt):
-        choose = ctxt['__choose']
+    def __call__(self, stream, ctxt, directives=None):
+        choose = ctxt['_choose']
         if choose.matched:
             return []
         value = self.expr.evaluate(ctxt)
@@ -608,11 +634,12 @@ class WhenDirective(Directive):
 
 class OtherwiseDirective(Directive):
     """Implementation of the `py:otherwise` directive for nesting in a parent
-    with the `py:choose` directive.  See the documentation of `py:choose` for
-    usage.
+    with the `py:choose` directive.
+    
+    See the documentation of `py:choose` for usage.
     """
-    def __call__(self, stream, ctxt):
-        choose = ctxt['__choose']
+    def __call__(self, stream, ctxt, directives=None):
+        choose = ctxt['_choose']
         if choose.matched:
             return []
         choose.matched = True
@@ -632,13 +659,13 @@ class Template(object):
                   ('match', MatchDirective),
                   ('for', ForDirective),
                   ('if', IfDirective),
+                  ('choose', ChooseDirective),
+                  ('when', WhenDirective),
+                  ('otherwise', OtherwiseDirective),
                   ('replace', ReplaceDirective),
                   ('content', ContentDirective),
                   ('attrs', AttrsDirective),
-                  ('strip', StripDirective),
-                  ('choose', ChooseDirective),
-                  ('when', WhenDirective),
-                  ('otherwise', OtherwiseDirective)]
+                  ('strip', StripDirective)]
     _dir_by_name = dict(directives)
     _dir_order = [directive[1] for directive in directives]
 
@@ -707,8 +734,8 @@ class Template(object):
                         value = list(self._interpolate(value, *pos))
                         new_attrib.append((name, value))
                 if directives:
-                    directives.sort(lambda a, b: cmp(self._dir_order.index(b.__class__),
-                                                     self._dir_order.index(a.__class__)))
+                    directives.sort(lambda a, b: cmp(self._dir_order.index(a.__class__),
+                                                     self._dir_order.index(b.__class__)))
                     dirmap[(depth, tag)] = (directives, len(stream))
 
                 stream.append((kind, (tag, Attributes(new_attrib)), pos))
@@ -842,8 +869,7 @@ class Template(object):
                     # This event is a list of directives and a list of nested
                     # events to which those directives should be applied
                     directives, substream = data
-                    for directive in directives:
-                        substream = directive(iter(substream), ctxt)
+                    substream = directives[0](iter(substream), ctxt, directives[1:])
                     substream = self._match(self._eval(substream, ctxt), ctxt)
                     for event in self._flatten(substream, ctxt):
                         yield event
@@ -869,7 +895,8 @@ class Template(object):
                 yield kind, data, pos
                 continue
 
-            for idx, (test, path, template) in enumerate(match_templates):
+            for idx, (test, path, template, directives) in \
+                    enumerate(match_templates):
                 result = test(kind, data, pos)
 
                 if result:
@@ -891,6 +918,9 @@ class Template(object):
                     content = list(self._flatten(content, ctxt))
                     ctxt.push(select=lambda path: Stream(content).select(path))
 
+                    if directives:
+                        template = directives[0](iter(template), ctxt,
+                                                 directives[1:])
                     template = self._match(self._eval(iter(template), ctxt),
                                            ctxt, match_templates[:idx] +
                                            match_templates[idx + 1:])

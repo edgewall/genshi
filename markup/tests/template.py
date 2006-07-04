@@ -55,6 +55,28 @@ class DefDirectiveTestCase(unittest.TestCase):
         </doc>""", str(tmpl.generate()))
 
 
+class ForDirectiveTestCase(unittest.TestCase):
+    """Tests for the `py:def` template directive."""
+
+    def test_loop_with_strip(self):
+        """
+        Verify that the a named template function with a strip directive
+        actually strips of the outer element.
+        """
+        tmpl = Template("""<doc xmlns:py="http://purl.org/kid/ns#">
+          <div py:for="item in items" py:strip="">
+            <b>${item}</b>
+          </div>
+        </doc>""")
+        self.assertEqual("""<doc>
+            <b>1</b>
+            <b>2</b>
+            <b>3</b>
+            <b>4</b>
+            <b>5</b>
+        </doc>""", str(tmpl.generate(Context(items=range(1, 6)))))
+
+
 class MatchDirectiveTestCase(unittest.TestCase):
     """Tests for the `py:match` template directive."""
 
@@ -262,6 +284,7 @@ def suite():
     suite.addTest(unittest.makeSuite(TemplateTestCase, 'test'))
     suite.addTest(unittest.makeSuite(AttrsDirectiveTestCase, 'test'))
     suite.addTest(unittest.makeSuite(DefDirectiveTestCase, 'test'))
+    suite.addTest(unittest.makeSuite(ForDirectiveTestCase, 'test'))
     suite.addTest(unittest.makeSuite(MatchDirectiveTestCase, 'test'))
     suite.addTest(unittest.makeSuite(StripDirectiveTestCase, 'test'))
     return suite

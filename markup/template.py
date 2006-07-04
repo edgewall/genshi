@@ -376,10 +376,10 @@ class ForDirective(Directive):
                 for idx, name in enumerate(self.targets):
                     scope[name] = item[idx]
                 ctxt.push(**scope)
+                output = stream
                 if directives:
-                    stream = list(directives[0](iter(stream), ctxt,
-                                  directives[1:]))
-                for event in stream:
+                    output = directives[0](iter(output), ctxt, directives[1:])
+                for event in output:
                     yield event
                 ctxt.pop()
 

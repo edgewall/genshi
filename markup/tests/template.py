@@ -36,13 +36,75 @@ class AttrsDirectiveTestCase(unittest.TestCase):
         </doc>""", str(tmpl.generate(Context(items=items))))
 
 
+class ChooseDirectiveTestCase(unittest.TestCase):
+    """Tests for the `py:choose` template directive and the complementary
+    directives `py:when` and `py:otherwise`."""
+
+    def test_multiple_true_whens(self):
+        """
+        Verify that, if multiple `py:when` bodies match, only the first is
+        output.
+        """
+        tmpl = Template("""<div xmlns:py="http://purl.org/kid/ns#" py:choose="">
+          <span py:when="1 == 1">1</span>
+          <span py:when="2 == 2">2</span>
+          <span py:when="3 == 3">3</span>
+        </div>""")
+        self.assertEqual("""<div>
+          <span>1</span>
+        </div>""", str(tmpl.generate()))
+
+    def test_otherwise(self):
+        tmpl = Template("""<div xmlns:py="http://purl.org/kid/ns#" py:choose="">
+          <span py:when="False">hidden</span>
+          <span py:otherwise="">hello</span>
+        </div>""")
+        self.assertEqual("""<div>
+          <span>hello</span>
+        </div>""", str(tmpl.generate()))
+
+    def test_nesting(self):
+        """
+        Verify that `py:choose` blocks can be nested:
+        """
+        tmpl = Template("""<doc xmlns:py="http://purl.org/kid/ns#">
+          <div py:choose="1">
+            <div py:when="1" py:choose="3">
+              <span py:when="2">2</span>
+              <span py:when="3">3</span>
+            </div>
+          </div>
+        </doc>""")
+        self.assertEqual("""<doc>
+          <div>
+            <div>
+              <span>3</span>
+            </div>
+          </div>
+        </doc>""", str(tmpl.generate()))
+
+    def test_when_with_strip(self):
+        """
+        Verify that a when directive with a strip directive actually strips of
+        the outer element.
+        """
+        tmpl = Template("""<doc xmlns:py="http://purl.org/kid/ns#">
+          <div py:choose="" py:strip="">
+            <span py:otherwise="">foo</span>
+          </div>
+        </doc>""")
+        self.assertEqual("""<doc>
+            <span>foo</span>
+        </doc>""", str(tmpl.generate()))
+
+
 class DefDirectiveTestCase(unittest.TestCase):
     """Tests for the `py:def` template directive."""
 
     def test_function_with_strip(self):
         """
-        Verify that the a named template function with a strip directive
-        actually strips of the outer element.
+        Verify that a named template function with a strip directive actually
+        strips of the outer element.
         """
         tmpl = Template("""<doc xmlns:py="http://purl.org/kid/ns#">
           <div py:def="echo(what)" py:strip="">
@@ -56,12 +118,12 @@ class DefDirectiveTestCase(unittest.TestCase):
 
 
 class ForDirectiveTestCase(unittest.TestCase):
-    """Tests for the `py:def` template directive."""
+    """Tests for the `py:for` template directive."""
 
     def test_loop_with_strip(self):
         """
-        Verify that the a named template function with a strip directive
-        actually strips of the outer element.
+        Verify that the combining the `py:for` directive with `py:strip` works
+        correctly.
         """
         tmpl = Template("""<doc xmlns:py="http://purl.org/kid/ns#">
           <div py:for="item in items" py:strip="">
@@ -283,6 +345,7 @@ def suite():
     suite.addTest(doctest.DocTestSuite(Template.__module__))
     suite.addTest(unittest.makeSuite(TemplateTestCase, 'test'))
     suite.addTest(unittest.makeSuite(AttrsDirectiveTestCase, 'test'))
+    suite.addTest(unittest.makeSuite(ChooseDirectiveTestCase, 'test'))
     suite.addTest(unittest.makeSuite(DefDirectiveTestCase, 'test'))
     suite.addTest(unittest.makeSuite(ForDirectiveTestCase, 'test'))
     suite.addTest(unittest.makeSuite(MatchDirectiveTestCase, 'test'))

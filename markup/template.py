@@ -176,7 +176,7 @@ class Directive(object):
     def __init__(self, value):
         self.expr = value and Expression(value) or None
 
-    def __call__(self, stream, ctxt, directives=None):
+    def __call__(self, stream, ctxt, directives):
         raise NotImplementedError
 
     def __repr__(self):
@@ -184,6 +184,11 @@ class Directive(object):
         if self.expr is not None:
             expr = ' "%s"' % self.expr.source
         return '<%s%s>' % (self.__class__.__name__, expr)
+
+    def _apply_directives(self, stream, ctxt, directives):
+        if directives:
+            stream = directives[0](iter(stream), ctxt, directives[1:])
+        return stream
 
 
 class AttrsDirective(Directive):
@@ -212,21 +217,23 @@ class AttrsDirective(Directive):
     """
     __slots__ = []
 
-    def __call__(self, stream, ctxt, directives=None):
-        kind, (tag, attrib), pos  = stream.next()
-        attrs = self.expr.evaluate(ctxt)
-        if attrs:
-            attrib = Attributes(attrib[:])
-            if not isinstance(attrs, list): # assume it's a dict
-                attrs = attrs.items()
-            for name, value in attrs:
-                if value is None:
-                    attrib.remove(name)
-                else:
-                    attrib.set(name, unicode(value).strip())
-        yield kind, (tag, attrib), pos
-        for event in stream:
-            yield event
+    def __call__(self, stream, ctxt, directives):
+        def _generate():
+            kind, (tag, attrib), pos  = stream.next()
+            attrs = self.expr.evaluate(ctxt)
+            if attrs:
+                attrib = Attributes(attrib[:])
+                if not isinstance(attrs, list): # assume it's a dict
+                    attrs = attrs.items()
+                for name, value in attrs:
+                    if value is None:
+                        attrib.remove(name)
+                    else:
+                        attrib.set(name, unicode(value).strip())
+            yield kind, (tag, attrib), pos
+            for event in stream:
+                yield event
+        return self._apply_directives(_generate(), ctxt, directives)
 
 
 class ContentDirective(Directive):
@@ -247,7 +254,7 @@ class ContentDirective(Directive):
     __slots__ = []
 
     def __call__(self, stream, ctxt, directives):
-        def generate():
+        def _generate():
             kind, data, pos = stream.next()
             if kind is Stream.START:
                 yield kind, data, pos # emit start tag
@@ -257,10 +264,7 @@ class ContentDirective(Directive):
                 previous = event
             if previous is not None:
                 yield previous
-        output = generate()
-        if directives:
-            output = directives[0](output, ctxt, directives[1:])
-        return output
+        return self._apply_directives(_generate(), ctxt, directives)
 
 
 class DefDirective(Directive):
@@ -337,9 +341,7 @@ class DefDirective(Directive):
             else:
                 scope[name] = kwargs.pop(name, self.defaults.get(name))
         ctxt.push(**scope)
-        stream = iter(self.stream)
-        if self.directives:
-            stream = self.directives[0](stream, ctxt, self.directives[1:])
+        stream = self._apply_directives(self.stream, ctxt, self.directives)
         for event in stream:
             yield event
         ctxt.pop()
@@ -366,7 +368,7 @@ class ForDirective(Directive):
         Directive.__init__(self, value)
 
     def __call__(self, stream, ctxt, directives):
-        iterable = self.expr.evaluate(ctxt) or []
+        iterable = self.expr.evaluate(ctxt)
         if iterable is not None:
             stream = list(stream)
             for item in iter(iterable):
@@ -376,10 +378,7 @@ class ForDirective(Directive):
                 for idx, name in enumerate(self.targets):
                     scope[name] = item[idx]
                 ctxt.push(**scope)
-                output = stream
-                if directives:
-                    output = directives[0](iter(output), ctxt, directives[1:])
-                for event in output:
+                for event in self._apply_directives(stream, ctxt, directives):
                     yield event
                 ctxt.pop()
 
@@ -405,9 +404,7 @@ class IfDirective(Directive):
 
     def __call__(self, stream, ctxt, directives):
         if self.expr.evaluate(ctxt):
-            if directives:
-                stream = directives[0](stream, ctxt, directives[1:])
-            return stream
+            return self._apply_directives(stream, ctxt, directives)
         return []
 
 
@@ -515,6 +512,7 @@ class StripDirective(Directive):
             strip = self.expr.evaluate(ctxt)
         else:
             strip = True
+        stream = self._apply_directives(stream, ctxt, directives)
         if strip:
             stream.next() # skip start tag
             previous = stream.next()
@@ -529,34 +527,27 @@ class StripDirective(Directive):
 class ChooseDirective(Directive):
     """Implementation of the `py:choose` directive for conditionally selecting
     one of several body elements to display.
-
+    
     If the `py:choose` expression is empty the expressions of nested `py:when`
     directives are tested for truth.  The first true `py:when` body is output.
-
+    If no `py:when` directive is matched then the fallback directive
+    `py:otherwise` will be used.
+    
     >>> ctxt = Context()
     >>> tmpl = Template('''<div xmlns:py="http://purl.org/kid/ns#"
     ...   py:choose="">
     ...   <span py:when="0 == 1">0</span>
     ...   <span py:when="1 == 1">1</span>
+    ...   <span py:otherwise="">2</span>
     ... </div>''')
     >>> print tmpl.generate(ctxt)
     <div>
       <span>1</span>
     </div>
-
-    If multiple `py:when` bodies match only the first is output.
-    >>> tmpl = Template('''<div xmlns:py="http://purl.org/kid/ns#"
-    ...   py:choose="">
-    ...   <span py:when="1 == 1">1</span>
-    ...   <span py:when="2 == 2">2</span>
-    ... </div>''')
-    >>> print tmpl.generate(ctxt)
-    <div>
-      <span>1</span>
-    </div>
-
+    
     If the `py:choose` directive contains an expression, the nested `py:when`
-    directives are tested for equality to the `py:choose` expression.
+    directives are tested for equality to the `py:choose` expression:
+    
     >>> tmpl = Template('''<div xmlns:py="http://purl.org/kid/ns#"
     ...   py:choose="2">
     ...   <span py:when="1">1</span>
@@ -566,46 +557,19 @@ class ChooseDirective(Directive):
     <div>
       <span>2</span>
     </div>
-
-    If no `py:when` directive is matched then the fallback directive
-    `py:otherwise` will be used.
-    >>> tmpl = Template('''<div xmlns:py="http://purl.org/kid/ns#"
-    ...   py:choose="">
-    ...   <span py:when="False">hidden</span>
-    ...   <span py:otherwise="">hello</span>
-    ... </div>''')
-    >>> print tmpl.generate(ctxt)
-    <div>
-      <span>hello</span>
-    </div>
-
-    `py:choose` blocks can be nested:
-    >>> tmpl = Template('''<div xmlns:py="http://purl.org/kid/ns#"
-    ...   py:choose="1">
-    ...   <div py:when="1" py:choose="3">
-    ...     <span py:when="2">2</span>
-    ...     <span py:when="3">3</span>
-    ...   </div>
-    ... </div>''')
-    >>> print tmpl.generate(ctxt)
-    <div>
-      <div>
-        <span>3</span>
-      </div>
-    </div>
-
+    
     Behavior is undefined if a `py:choose` block contains content outside a
     `py:when` or `py:otherwise` block.  Behavior is also undefined if a
     `py:otherwise` occurs before `py:when` blocks.
     """
     __slots__ = ['matched', 'value']
 
-    def __call__(self, stream, ctxt, directives=None):
+    def __call__(self, stream, ctxt, directives):
         if self.expr:
             self.value = self.expr.evaluate(ctxt)
         self.matched = False
         ctxt.push(_choose=self)
-        for event in stream:
+        for event in self._apply_directives(stream, ctxt, directives):
             yield event
         ctxt.pop()
 
@@ -624,11 +588,11 @@ class WhenDirective(Directive):
         try:
             if value == choose.value:
                 choose.matched = True
-                return stream
+                return self._apply_directives(stream, ctxt, directives)
         except AttributeError:
             if value:
                 choose.matched = True
-                return stream
+                return self._apply_directives(stream, ctxt, directives)
         return []
 
 
@@ -643,7 +607,7 @@ class OtherwiseDirective(Directive):
         if choose.matched:
             return []
         choose.matched = True
-        return stream
+        return self._apply_directives(stream, ctxt, directives)
 
 
 class Template(object):
@@ -659,9 +623,9 @@ class Template(object):
                   ('match', MatchDirective),
                   ('for', ForDirective),
                   ('if', IfDirective),
-                  ('choose', ChooseDirective),
                   ('when', WhenDirective),
                   ('otherwise', OtherwiseDirective),
+                  ('choose', ChooseDirective),
                   ('replace', ReplaceDirective),
                   ('content', ContentDirective),
                   ('attrs', AttrsDirective),

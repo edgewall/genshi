@@ -56,25 +56,22 @@ class AboutModule(Component):
 
     def process_request(self, req):
         page = req.args.get('page', 'default')
-        req.hdf['title'] = 'About Trac'
-        if req.perm.has_permission('CONFIG_VIEW'):
-            req.hdf['about.config_href'] = req.href.about('config')
-            req.hdf['about.plugins_href'] = req.href.about('plugins')
         if page == 'config':
-            self._render_config(req)
+            data = self._render_config(req)
         elif page == 'plugins':
-            self._render_plugins(req)
+            data = self._render_plugins(req)
+        else:
+            data = {}
 
         add_stylesheet(req, 'common/css/about.css')
-        return 'about.cs', None
+        return 'about.html', {'about': data}, None
 
     # Internal methods
 
     def _render_config(self, req):
         req.perm.assert_permission('CONFIG_VIEW')
-        req.hdf['about.page'] = 'config'
+        data = {'page': 'config'}
         
-        # Export the config table to hdf
         sections = []
         for section in self.config.sections():
             options = []
@@ -88,7 +85,8 @@ class AboutModule(Component):
             options.sort(lambda x,y: cmp(x['name'], y['name']))
             sections.append({'name': section, 'options': options})
         sections.sort(lambda x,y: cmp(x['name'], y['name']))
-        req.hdf['about.config'] = sections
+        data['config'] = sections
+        return data
         # TODO:
         # We should probably export more info here like:
         # permissions, components...
@@ -104,8 +102,8 @@ class AboutModule(Component):
                 return obj.__doc__
         req.perm.assert_permission('CONFIG_VIEW')
         import sys
-        req.hdf['about.page'] = 'plugins'
         from trac.core import ComponentMeta
+        data = {'page': 'plugins'}
         plugins = []
         for component in ComponentMeta._components:
             if not self.env.is_component_enabled(component):
@@ -149,4 +147,5 @@ class AboutModule(Component):
             return c
         plugins.sort(plugincmp)
 
-        req.hdf['about.plugins'] = plugins
+        data['plugins'] = plugins
+        return data

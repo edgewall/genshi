@@ -157,9 +157,10 @@ class Context(object):
 class Directive(object):
     """Abstract base class for template directives.
     
-    A directive is basically a callable that takes two parameters: `ctxt` is
-    the template data context, and `stream` is an iterable over the events that
-    the directive applies to.
+    A directive is basically a callable that takes three positional arguments:
+    `ctxt` is the template data context, `stream` is an iterable over the
+    events that the directive applies to, and `directives` is is a list of
+    other directives on the same stream that need to be applied.
     
     Directives can be "anonymous" or "registered". Registered directives can be
     applied by the template author using an XML attribute with the
@@ -470,7 +471,7 @@ class ReplaceDirective(Directive):
     """
     __slots__ = []
 
-    def __call__(self, stream, ctxt, directives=None):
+    def __call__(self, stream, ctxt, directives):
         kind, data, pos = stream.next()
         yield Template.EXPR, self.expr, pos
 
@@ -507,7 +508,7 @@ class StripDirective(Directive):
     """
     __slots__ = []
 
-    def __call__(self, stream, ctxt, directives=None):
+    def __call__(self, stream, ctxt, directives):
         if self.expr:
             strip = self.expr.evaluate(ctxt)
         else:
@@ -580,7 +581,7 @@ class WhenDirective(Directive):
     
     See the documentation of `py:choose` for usage.
     """
-    def __call__(self, stream, ctxt, directives=None):
+    def __call__(self, stream, ctxt, directives):
         choose = ctxt['_choose']
         if choose.matched:
             return []
@@ -602,7 +603,7 @@ class OtherwiseDirective(Directive):
     
     See the documentation of `py:choose` for usage.
     """
-    def __call__(self, stream, ctxt, directives=None):
+    def __call__(self, stream, ctxt, directives):
         choose = ctxt['_choose']
         if choose.matched:
             return []
@@ -809,7 +810,7 @@ class Template(object):
                 # succeeds, and the string will be chopped up into individual
                 # characters
                 if isinstance(result, basestring):
-                    yield Stream.TEXT, unicode(result), pos
+                    yield Stream.TEXT, result, pos
                 else:
                     # Test if the expression evaluated to an iterable, in which
                     # case we yield the individual items

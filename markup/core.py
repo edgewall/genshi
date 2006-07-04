@@ -238,8 +238,8 @@ class Markup(unicode):
     def __repr__(self):
         return '<%s "%s">' % (self.__class__.__name__, self)
 
-    def join(self, seq):
-        return Markup(unicode(self).join([escape(item, quotes=False)
+    def join(self, seq, escape_quotes=True):
+        return Markup(unicode(self).join([escape(item, quotes=escape_quotes)
                                           for item in seq]))
 
     def stripentities(self, keepxmlentities=False):

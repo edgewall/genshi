@@ -15,7 +15,7 @@ import doctest
 import unittest
 import sys
 
-from markup.core import Stream
+from markup.core import Markup, Stream
 from markup.template import BadDirectiveError, Context, Template, \
                             TemplateSyntaxError
 
@@ -34,6 +34,30 @@ class AttrsDirectiveTestCase(unittest.TestCase):
         self.assertEqual("""<doc>
           <elem id="1" class="foo"/><elem id="2" class="bar"/>
         </doc>""", str(tmpl.generate(Context(items=items))))
+
+    def test_update_existing_attr(self):
+        """
+        Verify that an attribute value that evaluates to `None` removes an
+        existing attribute of that name.
+        """
+        tmpl = Template("""<doc xmlns:py="http://purl.org/kid/ns#">
+          <elem class="foo" py:attrs="{'class': 'bar'}"/>
+        </doc>""")
+        self.assertEqual("""<doc>
+          <elem class="bar"/>
+        </doc>""", str(tmpl.generate()))
+
+    def test_remove_existing_attr(self):
+        """
+        Verify that an attribute value that evaluates to `None` removes an
+        existing attribute of that name.
+        """
+        tmpl = Template("""<doc xmlns:py="http://purl.org/kid/ns#">
+          <elem class="foo" py:attrs="{'class': None}"/>
+        </doc>""")
+        self.assertEqual("""<doc>
+          <elem/>
+        </doc>""", str(tmpl.generate()))
 
 
 class ChooseDirectiveTestCase(unittest.TestCase):
@@ -338,6 +362,40 @@ class TemplateTestCase(unittest.TestCase):
             if sys.version_info[:2] >= (2, 4):
                 self.assertEqual(2, e.lineno)
                 self.assertEqual(10, e.offset)
+
+    def test_markup_noescape(self):
+        """
+        Verify that outputting context data that is a `Markup` instance is not
+        escaped.
+        """
+        tmpl = Template("""<div xmlns:py="http://purl.org/kid/ns#">
+          $myvar
+        </div>""")
+        self.assertEqual("""<div>
+          <b>foo</b>
+        </div>""", str(tmpl.generate(Context(myvar=Markup('<b>foo</b>')))))
+
+    def test_text_noescape_quotes(self):
+        """
+        Verify that outputting context data in text nodes doesn't escape quotes.
+        """
+        tmpl = Template("""<div xmlns:py="http://purl.org/kid/ns#">
+          $myvar
+        </div>""")
+        self.assertEqual("""<div>
+          "foo"
+        </div>""", str(tmpl.generate(Context(myvar='"foo"'))))
+
+    def test_attr_escape_quotes(self):
+        """
+        Verify that outputting context data in attribtes escapes quotes.
+        """
+        tmpl = Template("""<div xmlns:py="http://purl.org/kid/ns#">
+          <elem class="$myvar"/>
+        </div>""")
+        self.assertEqual("""<div>
+          <elem class="&#34;foo&#34;"/>
+        </div>""", str(tmpl.generate(Context(myvar='"foo"'))))
 
 
 def suite():

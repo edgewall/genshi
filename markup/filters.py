@@ -118,7 +118,7 @@ class WhitespaceFilter(object):
             if kind is Stream.TEXT:
                 textbuf.append(data)
             elif prev_kind is Stream.TEXT:
-                text = Markup('').join(textbuf)
+                text = Markup('').join(textbuf, escape_quotes=False)
                 text = self._TRAILING_SPACE.sub('', text)
                 text = self._LINE_COLLAPSE.sub('\n', text)
                 yield Stream.TEXT, Markup(text), pos
@@ -128,7 +128,9 @@ class WhitespaceFilter(object):
                 yield kind, data, pos
 
         if textbuf:
-            text = self._LINE_COLLAPSE.sub('\n', ''.join(textbuf))
+            text = Markup('').join(textbuf, escape_quotes=False)
+            text = self._TRAILING_SPACE.sub('', text)
+            text = self._LINE_COLLAPSE.sub('\n', text)
             yield Stream.TEXT, Markup(text), pos
 
 

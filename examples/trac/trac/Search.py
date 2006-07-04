@@ -156,14 +156,15 @@ class SearchModule(Component):
             filters = [f[0] for f in available_filters
                        if len(f) < 3 or len(f) > 2 and f[2]]
                 
-        req.hdf['search.filters'] = [
-            { 'name': filter[0],
-              'label': filter[1],
-              'active': filter[0] in filters
-            } for filter in available_filters]
+        data = {
+            'filters': [
+                { 'name': filter[0],
+                  'label': filter[1],
+                  'active': filter[0] in filters
+                } for filter in available_filters
+            ]
+        }
                 
-        req.hdf['title'] = 'Search'
-
         query = req.args.get('q')
         if query:
             page = int(req.args.get('page', '1'))
@@ -172,7 +173,7 @@ class SearchModule(Component):
             if link_elt is not None:
                 quickjump_href = link_elt.attr['href']
                 if noquickjump:
-                    req.hdf['search.quickjump'] = {
+                    data['quickjump'] = {
                         'href': quickjump_href,
                         'name': html.EM(link_elt.children),
                         'description': link_elt.attr.get('title', '')
@@ -196,12 +197,11 @@ class SearchModule(Component):
             n_pages = (n-1) / page_size + 1
             results = results[(page-1) * page_size: page * page_size]
 
-            req.hdf['title'] = 'Search Results'
-            req.hdf['search.q'] = req.args.get('q')
-            req.hdf['search.page'] = page
-            req.hdf['search.n_hits'] = n
-            req.hdf['search.n_pages'] = n_pages
-            req.hdf['search.page_size'] = page_size
+            data['q'] = req.args.get('q')
+            data['page'] = page
+            data['n_hits'] = n
+            data['n_pages'] = n_pages
+            data['page_size'] = page_size
             if page < n_pages:
                 next_href = req.href.search(zip(filters, ['on'] * len(filters)),
                                             q=req.args.get('q'), page=page + 1)
@@ -210,9 +210,10 @@ class SearchModule(Component):
                 prev_href = req.href.search(zip(filters, ['on'] * len(filters)),
                                             q=req.args.get('q'), page=page - 1)
                 add_link(req, 'prev', prev_href, 'Previous Page')
-            req.hdf['search.page_href'] = req.href.search(zip(filters, ['on'] * len(filters)),
-                                                          q=req.args.get('q'))
-            req.hdf['search.result'] = [
+            data['page_href'] = req.href.search(zip(filters,
+                                                    ['on'] * len(filters)),
+                                                q=req.args.get('q'))
+            data['result'] = [
                 { 'href': result[0],
                   'title': result[1],
                   'date': format_datetime(result[2]),
@@ -221,7 +222,7 @@ class SearchModule(Component):
                 } for result in results]
 
         add_stylesheet(req, 'common/css/search.css')
-        return 'search.cs', None
+        return 'search.html', {'search': data}, None
 
     def quickjump(self, req, kwd):
         # Source quickjump

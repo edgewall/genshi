@@ -7,8 +7,7 @@
   <head py:match="head">
     <title>${select('title/text()')} – Trac</title>
     <div py:for="rel, links in chrome.links.items()" py:strip="">
-      <link rel="${rel}" py:for="link in links" href="${link.href}"
-          type="${link.type}" class="${link['class']}" title="${link.title}"/>
+      <link rel="${rel}" py:for="link in links" py:attrs="link"/>
     </div>
     <script py:for="script in chrome.scripts"
             type="${script.type}" src="${script.href}"/>

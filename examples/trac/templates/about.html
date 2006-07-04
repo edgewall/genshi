@@ -41,7 +41,7 @@
             <div py:for="section in about.config" py:strip="">
             <tr py:for="idx,option in enumerate(section.options)">
               <th py:if="idx == 0" class="section"
-                  rowspan="${str(len(section.options))}">
+                  rowspan="${len(section.options)}">
                   ${section.name}</th>
               <td class="name">${option.name}</td>
               <td class="${option.valueclass}">${option.value}</td>
@@ -72,7 +72,7 @@
             </tr>
             <tr py:for="idx,extension_point in enumerate(plugin.extension_points)">
               <th py:if="idx == 0" class="xtnpts"
-                  rowspan="${str(len(plugin.extension_points))}">
+                  rowspan="${len(plugin.extension_points)}">
                 Extension points:
               </th>
               <td class="xtnpts">        

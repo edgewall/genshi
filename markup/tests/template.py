@@ -166,6 +166,11 @@ class TemplateTestCase(unittest.TestCase):
         self.assertEqual(Stream.TEXT, parts[2][0])
         self.assertEqual(' baz', parts[2][1])
 
+    def test_interpolate_non_string_attrs(self):
+        ctxt = Context()
+        tmpl = Template('<root attr="${1}"/>')
+        self.assertEqual('<root attr="1"/>', str(tmpl.generate(ctxt)))
+
     def test_bad_directive_error(self):
         xml = '<p xmlns:py="http://purl.org/kid/ns#" py:do="nothing" />'
         try:

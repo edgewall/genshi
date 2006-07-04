@@ -33,7 +33,6 @@ Todo items:
  * Improved error reporting
  * Support for using directives as elements and not just as attributes, reducing
    the need for wrapper elements with py:strip=""
- * Support for py:choose/py:when/py:otherwise (similar to XSLT)
  * Support for list comprehensions and generator expressions in expressions
 
 Random thoughts:
@@ -804,7 +803,7 @@ class Template(object):
                                 values.append(subdata.evaluate(ctxt))
                             else:
                                 values.append(subdata)
-                        value = filter(lambda x: x is not None, values)
+                        value = [unicode(x) for x in values if x is not None]
                         if not value:
                             continue
                     new_attrib.append((name, u''.join(value)))

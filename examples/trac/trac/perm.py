@@ -268,6 +268,7 @@ class PermissionCache(object):
 
     def has_permission(self, action):
         return self.perms.has_key(action)
+    __contains__ = has_permission
 
     def assert_permission(self, action):
         if not self.perms.has_key(action):
@@ -282,6 +283,7 @@ class NoPermissionCache(object):
 
     def has_permission(self, action):
         return False
+    __contains__ = has_permission
 
     def assert_permission(self, action):
         raise PermissionError(action)

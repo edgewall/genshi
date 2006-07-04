@@ -235,20 +235,26 @@ class Chrome(Component):
         return dirs
 
     def render_response(self, req, template_name, content_type, data):
+        from markup.core import Markup
         from markup.input import HTML, XML
         from markup.template import Context, TemplateLoader
+        from trac import __version__ as VERSION
+
         loader = TemplateLoader(self.get_all_templates_dirs())
         template = loader.load(template_name)
 
         data.setdefault('chrome', {}).update({
+            'footer': Markup(self.env.project_footer),
             'logo': req.environ.get('trac.chrome.logo', {}),
             'links': req.environ.get('trac.chrome.links', []),
             'nav': req.environ.get('trac.chrome.nav', {}),
-            'scripts': req.environ.get('trac.chrome.scripts', [])
+            'scripts': req.environ.get('trac.chrome.scripts', []),
+            'version': VERSION
         })
-        data['config'] = self.config
+        data['req'] = req
         data['href'] = req.href
         data['perm'] = req.perm
+        data['Markup'] = Markup
         data['HTML'] = HTML
         data['XML'] = XML
         stream = template.generate(Context(**data))

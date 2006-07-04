@@ -10,8 +10,18 @@
       <link rel="${rel}" py:for="link in links" py:attrs="link"/>
     </div>
     <script py:for="script in chrome.scripts"
-            type="${script.type}" src="${script.href}"/>
+            type="${script.type}" src="${script.href}"></script>
   </head>
+
+  <div py:def="navigation(category)" id="${category}" class="nav">
+    <ul py:if="chrome.nav[category]">
+      <li py:for="idx, item in enumerate(chrome.nav[category])"
+          class="${' '.join(filter(None, [
+                    (idx == 0) and 'first',
+                    (idx == len(chrome.nav[category]) - 1) and 'last'
+                   ])) or None}">${HTML(item.label)}</li>
+    </ul>
+  </div>
 
   <body py:match="body">
     <div id="banner">
@@ -20,37 +30,17 @@
           src="${chrome.logo.src}" /></a>
       </div>
       <form py:if="'SEARCH_VIEW' in perm" id="search"
-            action="${href.search()}" method="get">
-       <div>
+            action="${href.search()}" method="get"><div>
         <label for="proj-search">Search:</label>
         <input type="text" id="proj-search" name="q" size="10" accesskey="f" value="" />
         <input type="submit" value="Search" />
         <input type="hidden" name="wiki" value="on" />
         <input type="hidden" name="changeset" value="on" />
         <input type="hidden" name="ticket" value="on" />
-       </div>
-      </form>
-      <div id="metanav" class="nav">
-        <ul py:if="chrome.nav.metanav">
-          <li py:for="idx, item in enumerate(chrome.nav.metanav)"
-              py:content="HTML(item.label)"
-              class="${' '.join(filter(None, [
-                        (idx == 0) and 'first',
-                        (idx == len(chrome.nav.metanav) - 1) and 'last'
-                       ])) or None}"/>
-        </ul>
-      </div>
+      </div></form>
+      ${navigation('metanav')}
     </div>
-    <div id="mainnav" class="nav">
-      <ul py:if="chrome.nav.mainnav">
-        <li py:for="idx, item in enumerate(chrome.nav.mainnav)"
-            py:content="HTML(item.label)"
-            class="${' '.join(filter(None, [
-                      (idx == 0) and 'first',
-                      (idx == len(chrome.nav.mainnav) - 1) and 'last'
-                     ])) or None}"/>
-      </ul>
-    </div>
+    ${navigation('mainnav')}
 
     <div id="main">
       ${select('*')}
@@ -76,7 +66,7 @@
         By <a href="http://www.edgewall.com/">Edgewall Software</a>.
       </p>
       <p class="right">
-        ${HTML(config.project.get('footer'))}
+        ${chrome.footer}
       </p>
     </div>
   </body>

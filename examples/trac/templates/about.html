@@ -13,7 +13,7 @@
     <div id="ctxtnav" class="nav">
       <h2>About Navigation</h2>
       <ul>
-        <li class="first last">
+        <li class="first${'CONFIG_VIEW' not in perm and ' last' or ''}">
           <a href="${href.about()}">Overview</a>
         </li>
         <li py:if="'CONFIG_VIEW' in perm">

@@ -1,0 +1,51 @@
+<!DOCTYPE html
+    PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+    "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml"
+      xmlns:py="http://purl.org/kid/ns#"
+      xmlns:xi="http://www.w3.org/2001/XInclude">
+  <xi:include href="layout.html"><xi:fallback/></xi:include>
+  <head>
+    <title>Add Attachment to ${attachment.parent_id}</title>
+  </head>
+
+  <body>
+    <div id="ctxtnav" class="nav"></div>
+
+    <div id="content" class="attachment">
+      <h1>Add Attachment to <a href="${attachment.parent_href(req)}"
+                               py:content="attachment.parent_id"/></h1>
+      <form id="attachment" method="post" enctype="multipart/form-data" action="">
+        <div class="field">
+          <label>File:<br /><input type="file" name="attachment" /></label>
+        </div>
+        <fieldset>
+          <legend>Attachment Info</legend>
+          <div class="field" py:if="req.authname == 'anonymous'">
+            <label>Your email or username:<br />
+              <input type="text" name="author" size="30"
+                     value="${author}" />
+            </label>
+          </div>
+          <div class="field">
+            <label>Description of the file (optional):<br />
+            <input type="text" name="description" size="60" /></label>
+          </div><br />
+          <div class="options">
+            <label><input type="checkbox" name="replace" />
+              Replace existing attachment of the same name
+            </label>
+          </div><br />
+        </fieldset>
+        <div class="buttons">
+          <input type="hidden" name="action" value="new" />
+          <input type="hidden" name="type" value="${attachment.parent_type}" />
+          <input type="hidden" name="id" value="${attachment.parent_id}" />
+          <input type="submit" value="Add attachment" />
+          <input type="submit" name="cancel" value="Cancel" />
+        </div>
+      </form>
+    </div>
+
+  </body>
+</html>

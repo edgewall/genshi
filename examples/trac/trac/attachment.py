@@ -330,42 +330,26 @@ class AttachmentModule(Component):
             parent_id = '/'.join(segments[:-1])
             last_segment = segments[-1]
             if len(segments) == 1:
-                self._render_list(req, parent_type, last_segment)
-                return 'attachment.cs', None
+                return self._render_list(req, parent_type, last_segment)
             if not last_segment:
                 raise HTTPBadRequest('Bad request')
             attachment = Attachment(self.env, parent_type, parent_id,
                                     last_segment)
-        parent_link, parent_text = self._parent_to_hdf(
-            req, attachment.parent_type, attachment.parent_id)
+
         if req.method == 'POST':
             if action == 'new':
                 self._do_save(req, attachment)
             elif action == 'delete':
                 self._do_delete(req, attachment)
         elif action == 'delete':
-            self._render_confirm(req, attachment)
+            return self._render_confirm(req, attachment)
         elif action == 'new':
-            self._render_form(req, attachment)
+            return self._render_form(req, attachment)
         else:
-            add_link(req, 'up', parent_link, parent_text)
-            self._render_view(req, attachment)
-
-        add_stylesheet(req, 'common/css/code.css')
-        return 'attachment.cs', None
-
-    def _parent_to_hdf(self, req, parent_type, parent_id):
-        # Populate attachment.parent:
-        parent_link = req.href(parent_type, parent_id)
-        if parent_type == 'ticket':
-            parent_text = 'Ticket #' + parent_id
-        else: # 'wiki'
-            parent_text = parent_id
-        req.hdf['attachment.parent'] = {
-            'type': parent_type, 'id': parent_id,
-            'name': parent_text, 'href': parent_link
-        }
-        return parent_link, parent_text
+            add_link(req, 'up', req.href(attachment.parent_type,
+                                         attachment.parent_id),
+                     attachment.title)
+            return self._render_view(req, attachment)
 
     # IWikiSyntaxProvider methods
     
@@ -493,16 +477,14 @@ class AttachmentModule(Component):
         perm_map = {'ticket': 'TICKET_ADMIN', 'wiki': 'WIKI_DELETE'}
         req.perm.assert_permission(perm_map[attachment.parent_type])
 
-        req.hdf['title'] = '%s (delete)' % attachment.title
-        req.hdf['attachment'] = {'filename': attachment.filename,
-                                 'mode': 'delete'}
+        return 'attachment_delete.html', {'attachment': attachment}, None
 
     def _render_form(self, req, attachment):
         perm_map = {'ticket': 'TICKET_APPEND', 'wiki': 'WIKI_MODIFY'}
         req.perm.assert_permission(perm_map[attachment.parent_type])
 
-        req.hdf['attachment'] = {'mode': 'new',
-                                 'author': get_reporter_id(req)}
+        data = {'author': get_reporter_id(req), 'attachment': attachment}
+        return 'attachment_new.html', data, None
 
     def _render_view(self, req, attachment):
         perm_map = {'ticket': 'TICKET_VIEW', 'wiki': 'WIKI_VIEW'}
@@ -511,16 +493,13 @@ class AttachmentModule(Component):
         req.check_modified(attachment.time)
 
         # Render HTML view
-        req.hdf['title'] = attachment.title
-        req.hdf['attachment'] = attachment_to_hdf(self.env, req, None,
-                                                  attachment)
-        # Override the 'oneliner'
-        req.hdf['attachment.description'] = wiki_to_html(attachment.description,
-                                                         self.env, req)
+        data = {'attachment': attachment}
+        data['description'] = wiki_to_html(attachment.description, self.env,
+                                           req)
 
         perm_map = {'ticket': 'TICKET_ADMIN', 'wiki': 'WIKI_DELETE'}
         if req.perm.has_permission(perm_map[attachment.parent_type]):
-            req.hdf['attachment.can_delete'] = 1
+            data['can_delete'] = True
 
         fd = attachment.open()
         try:
@@ -563,19 +542,23 @@ class AttachmentModule(Component):
             self.log.debug("Rendering preview of file %s with mime-type %s"
                            % (attachment.filename, mime_type))
 
-            req.hdf['attachment'] = mimeview.preview_to_hdf(
+            data.update(mimeview.preview_to_hdf(
                 req, fd, os.fstat(fd.fileno()).st_size, mime_type,
-                attachment.filename, raw_href, annotations=['lineno'])
+                attachment.filename, raw_href, annotations=['lineno']))
         finally:
             fd.close()
 
-    def _render_list(self, req, p_type, p_id):
-        self._parent_to_hdf(req, p_type, p_id)
-        req.hdf['attachment'] = {
-            'mode': 'list',
-            'list': attachments_to_hdf(self.env, req, None, p_type, p_id),
-            'attach_href': req.href.attachment(p_type, p_id)
-            }
+        add_stylesheet(req, 'common/css/code.css')
+        return 'attachment_view.html', data, None
+
+    def _render_list(self, req, parent_type, parent_id):
+        data = {
+            'parent_href': req.href(parent_type, parent_id),
+            'parent_type': parent_type,
+            'parent_id': parent_id,
+            'attachments': Attachment.select(self.env, parent_type, parent_id)
+        }
+        return 'attachment_list.html', data, None
 
     def _format_link(self, formatter, ns, target, label):
         link, params, fragment = formatter.split_link(target)

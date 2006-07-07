@@ -161,7 +161,7 @@ class Chrome(Component):
             fileobj = open(os.path.join(templates_dir, 'site.html'), 'w')
             try:
                 fileobj.write("""<html xmlns="http://www.w3.org/1999/xhtml"
-      xmlns:py="http://purl.org/kid/ns#" py:strip="">
+      xmlns:py="http://markup.edgewall.org/" py:strip="">
   <!-- Custom match templates fo here -->
 </html>""")
             finally:

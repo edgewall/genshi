@@ -27,7 +27,7 @@ class AttrsDirectiveTestCase(unittest.TestCase):
         """
         Verify that the directive has access to the loop variables.
         """
-        tmpl = Template("""<doc xmlns:py="http://purl.org/kid/ns#">
+        tmpl = Template("""<doc xmlns:py="http://markup.edgewall.org/">
           <elem py:for="item in items" py:attrs="item"/>
         </doc>""")
         items = [{'id': 1, 'class': 'foo'}, {'id': 2, 'class': 'bar'}]
@@ -40,7 +40,7 @@ class AttrsDirectiveTestCase(unittest.TestCase):
         Verify that an attribute value that evaluates to `None` removes an
         existing attribute of that name.
         """
-        tmpl = Template("""<doc xmlns:py="http://purl.org/kid/ns#">
+        tmpl = Template("""<doc xmlns:py="http://markup.edgewall.org/">
           <elem class="foo" py:attrs="{'class': 'bar'}"/>
         </doc>""")
         self.assertEqual("""<doc>
@@ -52,7 +52,7 @@ class AttrsDirectiveTestCase(unittest.TestCase):
         Verify that an attribute value that evaluates to `None` removes an
         existing attribute of that name.
         """
-        tmpl = Template("""<doc xmlns:py="http://purl.org/kid/ns#">
+        tmpl = Template("""<doc xmlns:py="http://markup.edgewall.org/">
           <elem class="foo" py:attrs="{'class': None}"/>
         </doc>""")
         self.assertEqual("""<doc>
@@ -69,7 +69,7 @@ class ChooseDirectiveTestCase(unittest.TestCase):
         Verify that, if multiple `py:when` bodies match, only the first is
         output.
         """
-        tmpl = Template("""<div xmlns:py="http://purl.org/kid/ns#" py:choose="">
+        tmpl = Template("""<div xmlns:py="http://markup.edgewall.org/" py:choose="">
           <span py:when="1 == 1">1</span>
           <span py:when="2 == 2">2</span>
           <span py:when="3 == 3">3</span>
@@ -79,7 +79,7 @@ class ChooseDirectiveTestCase(unittest.TestCase):
         </div>""", str(tmpl.generate()))
 
     def test_otherwise(self):
-        tmpl = Template("""<div xmlns:py="http://purl.org/kid/ns#" py:choose="">
+        tmpl = Template("""<div xmlns:py="http://markup.edgewall.org/" py:choose="">
           <span py:when="False">hidden</span>
           <span py:otherwise="">hello</span>
         </div>""")
@@ -91,7 +91,7 @@ class ChooseDirectiveTestCase(unittest.TestCase):
         """
         Verify that `py:choose` blocks can be nested:
         """
-        tmpl = Template("""<doc xmlns:py="http://purl.org/kid/ns#">
+        tmpl = Template("""<doc xmlns:py="http://markup.edgewall.org/">
           <div py:choose="1">
             <div py:when="1" py:choose="3">
               <span py:when="2">2</span>
@@ -112,7 +112,7 @@ class ChooseDirectiveTestCase(unittest.TestCase):
         Verify that a when directive with a strip directive actually strips of
         the outer element.
         """
-        tmpl = Template("""<doc xmlns:py="http://purl.org/kid/ns#">
+        tmpl = Template("""<doc xmlns:py="http://markup.edgewall.org/">
           <div py:choose="" py:strip="">
             <span py:otherwise="">foo</span>
           </div>
@@ -130,7 +130,7 @@ class DefDirectiveTestCase(unittest.TestCase):
         Verify that a named template function with a strip directive actually
         strips of the outer element.
         """
-        tmpl = Template("""<doc xmlns:py="http://purl.org/kid/ns#">
+        tmpl = Template("""<doc xmlns:py="http://markup.edgewall.org/">
           <div py:def="echo(what)" py:strip="">
             <b>${what}</b>
           </div>
@@ -149,7 +149,7 @@ class ForDirectiveTestCase(unittest.TestCase):
         Verify that the combining the `py:for` directive with `py:strip` works
         correctly.
         """
-        tmpl = Template("""<doc xmlns:py="http://purl.org/kid/ns#">
+        tmpl = Template("""<doc xmlns:py="http://markup.edgewall.org/">
           <div py:for="item in items" py:strip="">
             <b>${item}</b>
           </div>
@@ -171,7 +171,7 @@ class MatchDirectiveTestCase(unittest.TestCase):
         Verify that a match template can produce the same kind of element that
         it matched without entering an infinite recursion.
         """
-        tmpl = Template("""<doc xmlns:py="http://purl.org/kid/ns#">
+        tmpl = Template("""<doc xmlns:py="http://markup.edgewall.org/">
           <elem py:match="elem" py:strip="">
             <div class="elem">${select('*/text()')}</div>
           </elem>
@@ -186,7 +186,7 @@ class MatchDirectiveTestCase(unittest.TestCase):
         Verify that a match template can produce the same kind of element that
         it matched without entering an infinite recursion.
         """
-        tmpl = Template("""<doc xmlns:py="http://purl.org/kid/ns#">
+        tmpl = Template("""<doc xmlns:py="http://markup.edgewall.org/">
           <elem py:match="elem">
             <div class="elem">${select('*/text()')}</div>
           </elem>
@@ -203,7 +203,7 @@ class MatchDirectiveTestCase(unittest.TestCase):
         Match directives are applied recursively, meaning that they are also
         applied to any content they may have produced themselves:
         """
-        tmpl = Template("""<doc xmlns:py="http://purl.org/kid/ns#">
+        tmpl = Template("""<doc xmlns:py="http://markup.edgewall.org/">
           <elem py:match="elem">
             <div class="elem">
               ${select('*/*')}
@@ -234,7 +234,7 @@ class MatchDirectiveTestCase(unittest.TestCase):
         themselves output the element they match, avoiding recursion is even
         more complex, but should work.
         """
-        tmpl = Template("""<html xmlns:py="http://purl.org/kid/ns#">
+        tmpl = Template("""<html xmlns:py="http://markup.edgewall.org/">
           <body py:match="body">
             <div id="header"/>
             ${select('*/*')}
@@ -259,7 +259,7 @@ class StripDirectiveTestCase(unittest.TestCase):
     """Tests for the `py:strip` template directive."""
 
     def test_strip_false(self):
-        tmpl = Template("""<div xmlns:py="http://purl.org/kid/ns#">
+        tmpl = Template("""<div xmlns:py="http://markup.edgewall.org/">
           <div py:strip="False"><b>foo</b></div>
         </div>""")
         self.assertEqual("""<div>
@@ -267,7 +267,7 @@ class StripDirectiveTestCase(unittest.TestCase):
         </div>""", str(tmpl.generate()))
 
     def test_strip_empty(self):
-        tmpl = Template("""<div xmlns:py="http://purl.org/kid/ns#">
+        tmpl = Template("""<div xmlns:py="http://markup.edgewall.org/">
           <div py:strip=""><b>foo</b></div>
         </div>""")
         self.assertEqual("""<div>
@@ -330,7 +330,7 @@ class TemplateTestCase(unittest.TestCase):
         self.assertEqual('<root attr="1"/>', str(tmpl.generate(ctxt)))
 
     def test_bad_directive_error(self):
-        xml = '<p xmlns:py="http://purl.org/kid/ns#" py:do="nothing" />'
+        xml = '<p xmlns:py="http://markup.edgewall.org/" py:do="nothing" />'
         try:
             tmpl = Template(xml, filename='test.html')
         except BadDirectiveError, e:
@@ -339,7 +339,7 @@ class TemplateTestCase(unittest.TestCase):
                 self.assertEqual(1, e.lineno)
 
     def test_directive_value_syntax_error(self):
-        xml = '<p xmlns:py="http://purl.org/kid/ns#" py:if="bar\'" />'
+        xml = '<p xmlns:py="http://markup.edgewall.org/" py:if="bar\'" />'
         tmpl = Template(xml, filename='test.html')
         try:
             list(tmpl.generate(Context()))
@@ -368,7 +368,7 @@ class TemplateTestCase(unittest.TestCase):
         Verify that outputting context data that is a `Markup` instance is not
         escaped.
         """
-        tmpl = Template("""<div xmlns:py="http://purl.org/kid/ns#">
+        tmpl = Template("""<div xmlns:py="http://markup.edgewall.org/">
           $myvar
         </div>""")
         self.assertEqual("""<div>
@@ -379,7 +379,7 @@ class TemplateTestCase(unittest.TestCase):
         """
         Verify that outputting context data in text nodes doesn't escape quotes.
         """
-        tmpl = Template("""<div xmlns:py="http://purl.org/kid/ns#">
+        tmpl = Template("""<div xmlns:py="http://markup.edgewall.org/">
           $myvar
         </div>""")
         self.assertEqual("""<div>
@@ -390,7 +390,7 @@ class TemplateTestCase(unittest.TestCase):
         """
         Verify that outputting context data in attribtes escapes quotes.
         """
-        tmpl = Template("""<div xmlns:py="http://purl.org/kid/ns#">
+        tmpl = Template("""<div xmlns:py="http://markup.edgewall.org/">
           <elem class="$myvar"/>
         </div>""")
         self.assertEqual("""<div>

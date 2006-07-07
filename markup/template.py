@@ -199,7 +199,7 @@ class AttrsDirective(Directive):
     values of that dictionary will be added as attributes to the element:
     
     >>> ctxt = Context(foo={'class': 'collapse'})
-    >>> tmpl = Template('''<ul xmlns:py="http://purl.org/kid/ns#">
+    >>> tmpl = Template('''<ul xmlns:py="http://markup.edgewall.org/">
     ...   <li py:attrs="foo">Bar</li>
     ... </ul>''')
     >>> print tmpl.generate(ctxt)
@@ -244,7 +244,7 @@ class ContentDirective(Directive):
     evaluating the value of the `py:content` attribute:
     
     >>> ctxt = Context(bar='Bye')
-    >>> tmpl = Template('''<ul xmlns:py="http://purl.org/kid/ns#">
+    >>> tmpl = Template('''<ul xmlns:py="http://markup.edgewall.org/">
     ...   <li py:content="bar">Hello</li>
     ... </ul>''')
     >>> print tmpl.generate(ctxt)
@@ -280,7 +280,7 @@ class DefDirective(Directive):
     from template expressions:
     
     >>> ctxt = Context(bar='Bye')
-    >>> tmpl = Template('''<div xmlns:py="http://purl.org/kid/ns#">
+    >>> tmpl = Template('''<div xmlns:py="http://markup.edgewall.org/">
     ...   <p py:def="echo(greeting, name='world')" class="message">
     ...     ${greeting}, ${name}!
     ...   </p>
@@ -294,7 +294,7 @@ class DefDirective(Directive):
     </div>
     
     >>> ctxt = Context(bar='Bye')
-    >>> tmpl = Template('''<div xmlns:py="http://purl.org/kid/ns#">
+    >>> tmpl = Template('''<div xmlns:py="http://markup.edgewall.org/">
     ...   <p py:def="echo(greeting, name='world')" class="message">
     ...     ${greeting}, ${name}!
     ...   </p>
@@ -353,7 +353,7 @@ class ForDirective(Directive):
     element based on an iterable in the context data.
     
     >>> ctxt = Context(items=[1, 2, 3])
-    >>> tmpl = Template('''<ul xmlns:py="http://purl.org/kid/ns#">
+    >>> tmpl = Template('''<ul xmlns:py="http://markup.edgewall.org/">
     ...   <li py:for="item in items">${item}</li>
     ... </ul>''')
     >>> print tmpl.generate(ctxt)
@@ -393,7 +393,7 @@ class IfDirective(Directive):
     excluding elements from being output.
     
     >>> ctxt = Context(foo=True, bar='Hello')
-    >>> tmpl = Template('''<div xmlns:py="http://purl.org/kid/ns#">
+    >>> tmpl = Template('''<div xmlns:py="http://markup.edgewall.org/">
     ...   <b py:if="foo">${bar}</b>
     ... </div>''')
     >>> print tmpl.generate(ctxt)
@@ -412,7 +412,7 @@ class IfDirective(Directive):
 class MatchDirective(Directive):
     """Implementation of the `py:match` template directive.
 
-    >>> tmpl = Template('''<div xmlns:py="http://purl.org/kid/ns#">
+    >>> tmpl = Template('''<div xmlns:py="http://markup.edgewall.org/">
     ...   <span py:match="greeting">
     ...     Hello ${select('@name')}
     ...   </span>
@@ -449,7 +449,7 @@ class ReplaceDirective(Directive):
     value of the `py:replace` attribute:
     
     >>> ctxt = Context(bar='Bye')
-    >>> tmpl = Template('''<div xmlns:py="http://purl.org/kid/ns#">
+    >>> tmpl = Template('''<div xmlns:py="http://markup.edgewall.org/">
     ...   <span py:replace="bar">Hello</span>
     ... </div>''')
     >>> print tmpl.generate(ctxt)
@@ -461,7 +461,7 @@ class ReplaceDirective(Directive):
     providing a less verbose way to achieve the same effect:
     
     >>> ctxt = Context(bar='Bye')
-    >>> tmpl = Template('''<div xmlns:py="http://purl.org/kid/ns#">
+    >>> tmpl = Template('''<div xmlns:py="http://markup.edgewall.org/">
     ...   <span py:content="bar" py:strip="">Hello</span>
     ... </div>''')
     >>> print tmpl.generate(ctxt)
@@ -482,7 +482,7 @@ class StripDirective(Directive):
     When the value of the `py:strip` attribute evaluates to `True`, the element
     is stripped from the output
     
-    >>> tmpl = Template('''<div xmlns:py="http://purl.org/kid/ns#">
+    >>> tmpl = Template('''<div xmlns:py="http://markup.edgewall.org/">
     ...   <div py:strip="True"><b>foo</b></div>
     ... </div>''')
     >>> print tmpl.generate()
@@ -495,7 +495,7 @@ class StripDirective(Directive):
     This directive is particulary interesting for named template functions or
     match templates that do not generate a top-level element:
     
-    >>> tmpl = Template('''<div xmlns:py="http://purl.org/kid/ns#">
+    >>> tmpl = Template('''<div xmlns:py="http://markup.edgewall.org/">
     ...   <div py:def="echo(what)" py:strip="">
     ...     <b>${what}</b>
     ...   </div>
@@ -535,7 +535,7 @@ class ChooseDirective(Directive):
     `py:otherwise` will be used.
     
     >>> ctxt = Context()
-    >>> tmpl = Template('''<div xmlns:py="http://purl.org/kid/ns#"
+    >>> tmpl = Template('''<div xmlns:py="http://markup.edgewall.org/"
     ...   py:choose="">
     ...   <span py:when="0 == 1">0</span>
     ...   <span py:when="1 == 1">1</span>
@@ -549,7 +549,7 @@ class ChooseDirective(Directive):
     If the `py:choose` directive contains an expression, the nested `py:when`
     directives are tested for equality to the `py:choose` expression:
     
-    >>> tmpl = Template('''<div xmlns:py="http://purl.org/kid/ns#"
+    >>> tmpl = Template('''<div xmlns:py="http://markup.edgewall.org/"
     ...   py:choose="2">
     ...   <span py:when="1">1</span>
     ...   <span py:when="2">2</span>
@@ -615,7 +615,7 @@ class Template(object):
     """Can parse a template and transform it into the corresponding output
     based on context data.
     """
-    NAMESPACE = Namespace('http://purl.org/kid/ns#')
+    NAMESPACE = Namespace('http://markup.edgewall.org/')
 
     EXPR = StreamEventKind('EXPR') # an expression
     SUB = StreamEventKind('SUB') # a "subprogram"

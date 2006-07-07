@@ -104,7 +104,7 @@ class Path(object):
         
         >>> from markup.input import XML
         >>> xml = XML('<root><elem><child>Text</child></elem></root>')
-
+        
         >>> print Path('child').select(xml)
         <child>Text</child>
         

@@ -5,7 +5,7 @@ import sys
 
 def markup(dirname):
     from markup.template import Context, TemplateLoader
-    loader = TemplateLoader([dirname], False)
+    loader = TemplateLoader([dirname])
     template = loader.load('template.html')
     def render():
         ctxt = Context(title='Just a test',
@@ -60,6 +60,17 @@ def kid(dirname):
                                     title='Just a test',
                                     items=['Number %d' % num for num in range(1, 15)])
             template.serialize(output='xhtml')
+        return render
+    except ImportError:
+        return None
+
+def nevow(dirname):
+    # FIXME: can't figure out the API
+    try:
+        from nevow.loaders import xmlfile
+        template = xmlfile('template.xml', templateDir=dirname).load()
+        def render():
+            print template
         return render
     except ImportError:
         return None

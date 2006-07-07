@@ -173,11 +173,11 @@
 					<key>Color</key>
 					<dict>
 						<key>b</key>
-						<string>0.835052</string>
+						<string>0.498039</string>
 						<key>g</key>
-						<string>0.669573</string>
+						<string>0.498039</string>
 						<key>r</key>
-						<string>0.544872</string>
+						<string>0.498039</string>
 					</dict>
 				</dict>
 				<key>shadow</key>
@@ -533,11 +533,11 @@
 					<key>Color</key>
 					<dict>
 						<key>b</key>
-						<string>0.835052</string>
+						<string>0.498039</string>
 						<key>g</key>
-						<string>0.669573</string>
+						<string>0.498039</string>
 						<key>r</key>
-						<string>0.544872</string>
+						<string>0.498039</string>
 					</dict>
 				</dict>
 				<key>shadow</key>
@@ -713,11 +713,11 @@
 					<key>Color</key>
 					<dict>
 						<key>b</key>
-						<string>0.835052</string>
+						<string>0.498039</string>
 						<key>g</key>
-						<string>0.669573</string>
+						<string>0.498039</string>
 						<key>r</key>
-						<string>0.544872</string>
+						<string>0.498039</string>
 					</dict>
 				</dict>
 				<key>shadow</key>
@@ -853,11 +853,11 @@
 					<key>Color</key>
 					<dict>
 						<key>b</key>
-						<string>0.835052</string>
+						<string>0.498039</string>
 						<key>g</key>
-						<string>0.669573</string>
+						<string>0.498039</string>
 						<key>r</key>
-						<string>0.544872</string>
+						<string>0.498039</string>
 					</dict>
 				</dict>
 				<key>shadow</key>
@@ -923,11 +923,11 @@
 					<key>Color</key>
 					<dict>
 						<key>b</key>
-						<string>0.835052</string>
+						<string>0.498039</string>
 						<key>g</key>
-						<string>0.669573</string>
+						<string>0.498039</string>
 						<key>r</key>
-						<string>0.544872</string>
+						<string>0.498039</string>
 					</dict>
 				</dict>
 				<key>shadow</key>
@@ -1060,7 +1060,7 @@
 		</dict>
 	</array>
 	<key>ModificationDate</key>
-	<string>2006-07-04 15:30:16 +0200</string>
+	<string>2006-07-07 19:58:06 +0200</string>
 	<key>Modifier</key>
 	<string>Christopher Lenz</string>
 	<key>NotesVisible</key>

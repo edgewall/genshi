@@ -1,15 +1,15 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2006 Christopher Lenz
+# Copyright (C) 2006 Edgewall Software
 # All rights reserved.
 #
 # This software is licensed as described in the file COPYING, which
 # you should have received as part of this distribution. The terms
-# are also available at http://markup.cmlenz.net/wiki/License.
+# are also available at http://markup.edgewall.org/wiki/License.
 #
 # This software consists of voluntary contributions made by many
 # individuals. For the exact contribution history, see the revision
-# history and logs, available at http://markup.cmlenz.net/log/.
+# history and logs, available at http://markup.edgewall.org/log/.
 
 """Template engine that is compatible with Kid (http://kid.lesscode.org) to a
 certain extent.
@@ -704,7 +704,8 @@ class Template(object):
                     cls = self._dir_by_name.get(tag.localname)
                     if cls is None:
                         raise BadDirectiveError(tag, pos[0], pos[1])
-                    directives.append(cls(attrib.get(getattr(cls, 'ATTRIBUTE', None), '')))
+                    value = attrib.get(getattr(cls, 'ATTRIBUTE', None), '')
+                    directives.append(cls(value))
                     strip = True
 
                 new_attrib = []

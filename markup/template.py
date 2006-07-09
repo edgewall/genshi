@@ -31,8 +31,6 @@ Differences include:
 
 Todo items:
  * Improved error reporting
- * Support for using directives as elements and not just as attributes, reducing
-   the need for wrapper elements with py:strip=""
  * Support for list comprehensions and generator expressions in expressions
 
 Random thoughts:
@@ -309,6 +307,8 @@ class DefDirective(Directive):
     """
     __slots__ = ['name', 'args', 'defaults', 'stream', 'directives']
 
+    ATTRIBUTE = 'function'
+
     def __init__(self, args):
         Directive.__init__(self, None)
         ast = compiler.parse(args, 'eval').node
@@ -363,6 +363,8 @@ class ForDirective(Directive):
     """
     __slots__ = ['targets']
 
+    ATTRIBUTE = 'each'
+
     def __init__(self, value):
         targets, value = value.split(' in ', 1)
         self.targets = [str(name.strip()) for name in targets.split(',')]
@@ -403,6 +405,8 @@ class IfDirective(Directive):
     """
     __slots__ = []
 
+    ATTRIBUTE = 'test'
+
     def __call__(self, stream, ctxt, directives):
         if self.expr.evaluate(ctxt):
             return self._apply_directives(stream, ctxt, directives)
@@ -426,6 +430,8 @@ class MatchDirective(Directive):
     </div>
     """
     __slots__ = ['path', 'stream']
+
+    ATTRIBUTE = 'path'
 
     def __init__(self, value):
         Directive.__init__(self, None)
@@ -565,6 +571,8 @@ class ChooseDirective(Directive):
     """
     __slots__ = ['matched', 'value']
 
+    ATTRIBUTE = 'test'
+
     def __call__(self, stream, ctxt, directives):
         if self.expr:
             self.value = self.expr.evaluate(ctxt)
@@ -581,6 +589,9 @@ class WhenDirective(Directive):
     
     See the documentation of `py:choose` for usage.
     """
+
+    ATTRIBUTE = 'test'
+
     def __call__(self, stream, ctxt, directives):
         choose = ctxt['_choose']
         if choose.matched:
@@ -687,21 +698,30 @@ class Template(object):
                 # Record any directive attributes in start tags
                 tag, attrib = data
                 directives = []
+                strip = False
+
+                if tag in self.NAMESPACE:
+                    cls = self._dir_by_name.get(tag.localname)
+                    if cls is None:
+                        raise BadDirectiveError(tag, pos[0], pos[1])
+                    directives.append(cls(attrib.get(getattr(cls, 'ATTRIBUTE', None), '')))
+                    strip = True
+
                 new_attrib = []
                 for name, value in attrib:
                     if name in self.NAMESPACE:
                         cls = self._dir_by_name.get(name.localname)
                         if cls is None:
-                            raise BadDirectiveError(name, self.filename, pos[1])
-                        else:
-                            directives.append(cls(value))
+                            raise BadDirectiveError(name, pos[0], pos[1])
+                        directives.append(cls(value))
                     else:
                         value = list(self._interpolate(value, *pos))
                         new_attrib.append((name, value))
+
                 if directives:
                     directives.sort(lambda a, b: cmp(self._dir_order.index(a.__class__),
                                                      self._dir_order.index(b.__class__)))
-                    dirmap[(depth, tag)] = (directives, len(stream))
+                    dirmap[(depth, tag)] = (directives, len(stream), strip)
 
                 stream.append((kind, (tag, Attributes(new_attrib)), pos))
                 depth += 1
@@ -713,8 +733,10 @@ class Template(object):
                 # If there have have directive attributes with the corresponding
                 # start tag, move the events inbetween into a "subprogram"
                 if (depth, data) in dirmap:
-                    directives, start_offset = dirmap.pop((depth, data))
+                    directives, start_offset, strip = dirmap.pop((depth, data))
                     substream = stream[start_offset:]
+                    if strip:
+                        substream = substream[1:-1]
                     stream[start_offset:] = [(Template.SUB,
                                               (directives, substream), pos)]
 

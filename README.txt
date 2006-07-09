@@ -8,4 +8,4 @@ inspired by Kid.
 
 For more information visit the Markup web site:
 
-  <http://markup.cmlenz.net/>
+  <http://markup.edgewall.org/>

@@ -25,6 +25,26 @@ class Fragment(object):
     def __init__(self):
         self.children = []
 
+    def __add__(self, other):
+        return Fragment()(self, other)
+
+    def __call__(self, *args):
+        for arg in args:
+            self.append(arg)
+        return self
+
+    def __iter__(self):
+        return iter(self.generate())
+
+    def __repr__(self):
+        return '<%s>' % self.__class__.__name__
+
+    def __str__(self):
+        return str(self.generate())
+
+    def __unicode__(self):
+        return unicode(self.generate())
+
     def append(self, node):
         """Append an element or string as child node."""
         if isinstance(node, (Element, basestring, int, float, long)):
@@ -42,14 +62,6 @@ class Fragment(object):
                 for child in node:
                     self.append(children)
 
-    def __add__(self, other):
-        return Fragment()(self, other)
-
-    def __call__(self, *args):
-        for arg in args:
-            self.append(arg)
-        return self
-
     def generate(self):
         """Return a markup event stream for the fragment."""
         def _generate():
@@ -60,15 +72,6 @@ class Fragment(object):
                 else:
                     yield Stream.TEXT, unicode(child), (-1, -1)
         return Stream(_generate())
-
-    def __iter__(self):
-        return iter(self.generate())
-
-    def __str__(self):
-        return str(self.generate())
-
-    def __unicode__(self):
-        return unicode(self.generate())
 
 
 class Element(Fragment):
@@ -165,6 +168,9 @@ class Element(Fragment):
             attr = attr.rstrip('_').replace('_', '-')
             self.attrib.set(attr, value)
         return Fragment.__call__(self, *args)
+
+    def __repr__(self):
+        return '<%s "%s">' % (self.__class__.__name__, self.tag)
 
     def generate(self):
         """Return a markup event stream for the fragment."""

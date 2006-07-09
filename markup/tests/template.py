@@ -121,6 +121,21 @@ class ChooseDirectiveTestCase(unittest.TestCase):
             <span>foo</span>
         </doc>""", str(tmpl.generate()))
 
+    def test_as_element(self):
+        """
+        Verify that the directive can also be used as an element.
+        """
+        tmpl = Template("""<doc xmlns:py="http://markup.edgewall.org/">
+          <py:choose>
+            <py:when test="1 == 1">1</py:when>
+            <py:when test="2 == 2">2</py:when>
+            <py:when test="3 == 3">3</py:when>
+          </py:choose>
+        </doc>""")
+        self.assertEqual("""<doc>
+            1
+        </doc>""", str(tmpl.generate()))
+
 
 class DefDirectiveTestCase(unittest.TestCase):
     """Tests for the `py:def` template directive."""
@@ -134,6 +149,20 @@ class DefDirectiveTestCase(unittest.TestCase):
           <div py:def="echo(what)" py:strip="">
             <b>${what}</b>
           </div>
+          ${echo('foo')}
+        </doc>""")
+        self.assertEqual("""<doc>
+            <b>foo</b>
+        </doc>""", str(tmpl.generate()))
+
+    def test_as_element(self):
+        """
+        Verify that the directive can also be used as an element.
+        """
+        tmpl = Template("""<doc xmlns:py="http://markup.edgewall.org/">
+          <py:def function="echo(what)">
+            <b>${what}</b>
+          </py:def>
           ${echo('foo')}
         </doc>""")
         self.assertEqual("""<doc>
@@ -161,6 +190,50 @@ class ForDirectiveTestCase(unittest.TestCase):
             <b>4</b>
             <b>5</b>
         </doc>""", str(tmpl.generate(Context(items=range(1, 6)))))
+
+    def test_as_element(self):
+        """
+        Verify that the directive can also be used as an element.
+        """
+        tmpl = Template("""<doc xmlns:py="http://markup.edgewall.org/">
+          <py:for each="item in items">
+            <b>${item}</b>
+          </py:for>
+        </doc>""")
+        self.assertEqual("""<doc>
+            <b>1</b>
+            <b>2</b>
+            <b>3</b>
+            <b>4</b>
+            <b>5</b>
+        </doc>""", str(tmpl.generate(Context(items=range(1, 6)))))
+
+
+class IfDirectiveTestCase(unittest.TestCase):
+    """Tests for the `py:if` template directive."""
+
+    def test_loop_with_strip(self):
+        """
+        Verify that the combining the `py:if` directive with `py:strip` works
+        correctly.
+        """
+        tmpl = Template("""<doc xmlns:py="http://markup.edgewall.org/">
+          <b py:if="foo" py:strip="">${bar}</b>
+        </doc>""")
+        self.assertEqual("""<doc>
+          Hello
+        </doc>""", str(tmpl.generate(Context(foo=True, bar='Hello'))))
+
+    def test_as_element(self):
+        """
+        Verify that the directive can also be used as an element.
+        """
+        tmpl = Template("""<doc xmlns:py="http://markup.edgewall.org/">
+          <py:if test="foo">${bar}</py:if>
+        </doc>""")
+        self.assertEqual("""<doc>
+          Hello
+        </doc>""", str(tmpl.generate(Context(foo=True, bar='Hello'))))
 
 
 class MatchDirectiveTestCase(unittest.TestCase):
@@ -196,6 +269,20 @@ class MatchDirectiveTestCase(unittest.TestCase):
           <elem>
             <div class="elem">Hey Joe</div>
           </elem>
+        </doc>""", str(tmpl.generate()))
+
+    def test_as_element(self):
+        """
+        Verify that the directive can also be used as an element.
+        """
+        tmpl = Template("""<doc xmlns:py="http://markup.edgewall.org/">
+          <py:match path="elem">
+            <div class="elem">${select('*/text()')}</div>
+          </py:match>
+          <elem>Hey Joe</elem>
+        </doc>""")
+        self.assertEqual("""<doc>
+            <div class="elem">Hey Joe</div>
         </doc>""", str(tmpl.generate()))
 
     def test_recursive_match_1(self):
@@ -397,6 +484,14 @@ class TemplateTestCase(unittest.TestCase):
           <elem class="&#34;foo&#34;"/>
         </div>""", str(tmpl.generate(Context(myvar='"foo"'))))
 
+    def test_directive_element(self):
+        tmpl = Template("""<div xmlns:py="http://markup.edgewall.org/">
+          <py:if test="myvar">bar</py:if>
+        </div>""")
+        self.assertEqual("""<div>
+          bar
+        </div>""", str(tmpl.generate(Context(myvar='"foo"'))))
+
 
 def suite():
     suite = unittest.TestSuite()
@@ -406,6 +501,7 @@ def suite():
     suite.addTest(unittest.makeSuite(ChooseDirectiveTestCase, 'test'))
     suite.addTest(unittest.makeSuite(DefDirectiveTestCase, 'test'))
     suite.addTest(unittest.makeSuite(ForDirectiveTestCase, 'test'))
+    suite.addTest(unittest.makeSuite(IfDirectiveTestCase, 'test'))
     suite.addTest(unittest.makeSuite(MatchDirectiveTestCase, 'test'))
     suite.addTest(unittest.makeSuite(StripDirectiveTestCase, 'test'))
     return suite

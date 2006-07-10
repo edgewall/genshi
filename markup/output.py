@@ -20,7 +20,8 @@ try:
 except NameError:
     from sets import ImmutableSet as frozenset
 
-from markup.core import Markup, Namespace, QName, Stream
+from markup.core import Markup, Namespace, QName
+from markup.core import DOCTYPE, START, END, START_NS, END_NS, TEXT
 
 __all__ = ['Serializer', 'XMLSerializer', 'HTMLSerializer']
 
@@ -54,11 +55,11 @@ class XMLSerializer(Serializer):
         stream = _PushbackIterator(stream)
         for kind, data, pos in stream:
 
-            if kind is Stream.DOCTYPE:
+            if kind is DOCTYPE:
                 # FIXME: what if there's no system or public ID in the input?
                 yield Markup('<!DOCTYPE %s "%s" "%s">\n' % data)
 
-            elif kind is Stream.START_NS:
+            elif kind is START_NS:
                 prefix, uri = data
                 if uri not in ns_mapping:
                     ns_mapping[uri] = prefix
@@ -67,7 +68,7 @@ class XMLSerializer(Serializer):
                     else:
                         ns_attrib.append((QName('xmlns:%s' % prefix), uri))
 
-            elif kind is Stream.START:
+            elif kind is START:
                 tag, attrib = data
 
                 tagname = tag.localname
@@ -75,10 +76,10 @@ class XMLSerializer(Serializer):
                     try:
                         prefix = ns_mapping[tag.namespace]
                         if prefix:
-                            tagname = prefix + ':' + tag.localname
+                            tagname = '%s:%s' % (prefix, tag.localname)
                     except KeyError:
                         ns_attrib.append((QName('xmlns'), tag.namespace))
-                buf = ['<', tagname]
+                buf = ['<%s' % tagname]
 
                 if ns_attrib:
                     attrib.extend(ns_attrib)
@@ -88,11 +89,11 @@ class XMLSerializer(Serializer):
                     if attr.namespace:
                         prefix = ns_mapping.get(attr.namespace)
                         if prefix:
-                            attrname = prefix + ':' + attrname
+                            attrname = '%s:%s' % (prefix, attrname)
                     buf.append(' %s="%s"' % (attrname, Markup.escape(value)))
 
                 kind, data, pos = stream.next()
-                if kind is Stream.END:
+                if kind is END:
                     buf.append('/>')
                 else:
                     buf.append('>')
@@ -100,16 +101,16 @@ class XMLSerializer(Serializer):
 
                 yield Markup(''.join(buf))
 
-            elif kind is Stream.END:
+            elif kind is END:
                 tag = data
                 tagname = tag.localname
                 if tag.namespace:
                     prefix = ns_mapping.get(tag.namespace)
                     if prefix:
-                        tagname = prefix + ':' + tag.localname
+                        tagname = '%s:%s' % (prefix, tag.localname)
                 yield Markup('</%s>' % tagname)
 
-            elif kind is Stream.TEXT:
+            elif kind is TEXT:
                 yield Markup.escape(data, quotes=False)
 
 
@@ -137,15 +138,15 @@ class HTMLSerializer(Serializer):
         stream = _PushbackIterator(stream)
         for kind, data, pos in stream:
 
-            if kind is Stream.DOCTYPE:
+            if kind is DOCTYPE:
                 yield Markup('<!DOCTYPE %s "%s" "%s">\n' % data)
 
-            elif kind is Stream.START_NS:
+            elif kind is START_NS:
                 prefix, uri = data
                 if uri not in ns_mapping:
                     ns_mapping[uri] = prefix
 
-            elif kind is Stream.START:
+            elif kind is START:
                 tag, attrib = data
                 if tag.namespace and tag not in self.NAMESPACE:
                     continue # not in the HTML namespace, so don't emit
@@ -162,18 +163,18 @@ class HTMLSerializer(Serializer):
 
                 if tag.localname in self._EMPTY_ELEMS:
                     kind, data, pos = stream.next()
-                    if kind is not Stream.END:
+                    if kind is not END:
                         stream.pushback((kind, data, pos))
 
                 yield Markup(''.join(buf + ['>']))
 
-            elif kind is Stream.END:
+            elif kind is END:
                 tag = data
                 if tag.namespace and tag not in self.NAMESPACE:
                     continue # not in the HTML namespace, so don't emit
                 yield Markup('</%s>' % tag.localname)
 
-            elif kind is Stream.TEXT:
+            elif kind is TEXT:
                 yield Markup.escape(data, quotes=False)
 
 

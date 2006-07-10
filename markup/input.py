@@ -85,7 +85,7 @@ class XMLParser(object):
         try:
             bufsize = 4 * 1024 # 4K
             done = False
-            while True:
+            while 1:
                 while not done and len(self._queue) == 0:
                     data = self.source.read(bufsize)
                     if data == '': # end of data
@@ -194,7 +194,7 @@ class HTMLParser(html.HTMLParser, object):
         try:
             bufsize = 4 * 1024 # 4K
             done = False
-            while True:
+            while 1:
                 while not done and len(self._queue) == 0:
                     data = self.source.read(bufsize)
                     if data == '': # end of data

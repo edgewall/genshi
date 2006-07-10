@@ -45,8 +45,9 @@ import re
 from StringIO import StringIO
 
 from markup.core import Attributes, Namespace, Stream, StreamEventKind
+from markup.core import START, END, START_NS, END_NS, TEXT
 from markup.eval import Expression
-from markup.input import HTML, XMLParser, XML
+from markup.input import XMLParser
 from markup.path import Path
 
 __all__ = ['Context', 'BadDirectiveError', 'TemplateError',
@@ -257,7 +258,7 @@ class ContentDirective(Directive):
             kind, data, pos = stream.next()
             if kind is Stream.START:
                 yield kind, data, pos # emit start tag
-            yield Template.EXPR, self.expr, pos
+            yield EXPR, self.expr, pos
             previous = stream.next()
             for event in stream:
                 previous = event
@@ -342,8 +343,7 @@ class DefDirective(Directive):
             else:
                 scope[name] = kwargs.pop(name, self.defaults.get(name))
         ctxt.push(**scope)
-        stream = self._apply_directives(self.stream, ctxt, self.directives)
-        for event in stream:
+        for event in self._apply_directives(self.stream, ctxt, self.directives):
             yield event
         ctxt.pop()
 
@@ -479,7 +479,7 @@ class ReplaceDirective(Directive):
 
     def __call__(self, stream, ctxt, directives):
         kind, data, pos = stream.next()
-        yield Template.EXPR, self.expr, pos
+        yield EXPR, self.expr, pos
 
 
 class StripDirective(Directive):
@@ -680,7 +680,7 @@ class Template(object):
 
         for kind, data, pos in XMLParser(self.source, filename=self.filename):
 
-            if kind is Stream.START_NS:
+            if kind is START_NS:
                 # Strip out the namespace declaration for template directives
                 prefix, uri = data
                 if uri == self.NAMESPACE:
@@ -688,13 +688,13 @@ class Template(object):
                 else:
                     stream.append((kind, data, pos))
 
-            elif kind is Stream.END_NS:
+            elif kind is END_NS:
                 if data in ns_prefix:
                     del ns_prefix[data]
                 else:
                     stream.append((kind, data, pos))
 
-            elif kind is Stream.START:
+            elif kind is START:
                 # Record any directive attributes in start tags
                 tag, attrib = data
                 directives = []
@@ -727,7 +727,7 @@ class Template(object):
                 stream.append((kind, (tag, Attributes(new_attrib)), pos))
                 depth += 1
 
-            elif kind is Stream.END:
+            elif kind is END:
                 depth -= 1
                 stream.append((kind, data, pos))
 
@@ -738,10 +738,10 @@ class Template(object):
                     substream = stream[start_offset:]
                     if strip:
                         substream = substream[1:-1]
-                    stream[start_offset:] = [(Template.SUB,
-                                              (directives, substream), pos)]
+                    stream[start_offset:] = [(SUB, (directives, substream),
+                                              pos)]
 
-            elif kind is Stream.TEXT:
+            elif kind is TEXT:
                 for kind, data, pos in self._interpolate(data, *pos):
                     stream.append((kind, data, pos))
 
@@ -768,14 +768,14 @@ class Template(object):
         def _interpolate(text):
             for idx, group in enumerate(patterns.pop(0).split(text)):
                 if idx % 2:
-                    yield Template.EXPR, Expression(group), (lineno, offset)
+                    yield EXPR, Expression(group), (lineno, offset)
                 elif group:
                     if patterns:
                         for result in _interpolate(group):
                             yield result
                     else:
-                        yield Stream.TEXT, group.replace('$$', '$'), \
-                              (filename, lineno, offset)
+                        yield TEXT, group.replace('$$', '$'), (filename, lineno,
+                                                               offset)
         return _interpolate(text)
     _interpolate = classmethod(_interpolate)
 
@@ -791,9 +791,8 @@ class Template(object):
         if not hasattr(ctxt, '_match_templates'):
             ctxt._match_templates = []
 
-        stream = self._flatten(self._match(self._eval(self.stream, ctxt), ctxt),
-                               ctxt)
-        for filter_ in self.filters:
+        stream = self.stream
+        for filter_ in [self._eval, self._match, self._flatten] + self.filters:
             stream = filter_(iter(stream), ctxt)
         return Stream(stream)
 
@@ -803,7 +802,7 @@ class Template(object):
         """
         for kind, data, pos in stream:
 
-            if kind is Stream.START:
+            if kind is START:
                 # Attributes may still contain expressions in start tags at
                 # this point, so do some evaluation
                 tag, attrib = data
@@ -814,7 +813,7 @@ class Template(object):
                     else:
                         values = []
                         for subkind, subdata, subpos in substream:
-                            if subkind is Template.EXPR:
+                            if subkind is EXPR:
                                 values.append(subdata.evaluate(ctxt))
                             else:
                                 values.append(subdata)
@@ -824,7 +823,7 @@ class Template(object):
                     new_attrib.append((name, u''.join(value)))
                 yield kind, (tag, Attributes(new_attrib)), pos
 
-            elif kind is Template.EXPR:
+            elif kind is EXPR:
                 result = data.evaluate(ctxt)
                 if result is None:
                     continue
@@ -833,7 +832,7 @@ class Template(object):
                 # succeeds, and the string will be chopped up into individual
                 # characters
                 if isinstance(result, basestring):
-                    yield Stream.TEXT, result, pos
+                    yield TEXT, result, pos
                 else:
                     # Test if the expression evaluated to an iterable, in which
                     # case we yield the individual items
@@ -844,7 +843,7 @@ class Template(object):
                     except TypeError:
                         # Neither a string nor an iterable, so just pass it
                         # through
-                        yield Stream.TEXT, unicode(result), pos
+                        yield TEXT, unicode(result), pos
 
             else:
                 yield kind, data, pos
@@ -853,19 +852,22 @@ class Template(object):
         """Internal stream filter that expands `SUB` events in the stream."""
         try:
             for kind, data, pos in stream:
-                if kind is Template.SUB:
+                if kind is SUB:
                     # This event is a list of directives and a list of nested
                     # events to which those directives should be applied
                     directives, substream = data
-                    substream = directives[0](iter(substream), ctxt, directives[1:])
-                    substream = self._match(self._eval(substream, ctxt), ctxt)
-                    for event in self._flatten(substream, ctxt):
+                    if directives:
+                        substream = directives[0](iter(substream), ctxt,
+                                                  directives[1:])
+                    for filter_ in (self._eval, self._match, self._flatten):
+                        substream = filter_(substream, ctxt)
+                    for event in substream:
                         yield event
                         continue
                 else:
                     yield kind, data, pos
         except SyntaxError, err:
-            raise TemplateSyntaxError(err, self.filename, pos[1],
+            raise TemplateSyntaxError(err, pos[0], pos[1],
                                       pos[2] + (err.offset or 0))
 
     def _match(self, stream, ctxt=None, match_templates=None):
@@ -879,7 +881,7 @@ class Template(object):
 
             # We (currently) only care about start and end events for matching
             # We might care about namespace events in the future, though
-            if kind not in (Stream.START, Stream.END):
+            if kind not in (START, END):
                 yield kind, data, pos
                 continue
 
@@ -893,15 +895,10 @@ class Template(object):
                     content = [(kind, data, pos)]
                     depth = 1
                     while depth > 0:
-                        event = stream.next()
-                        if event[0] is Stream.START:
-                            depth += 1
-                        elif event[0] is Stream.END:
-                            depth -= 1
-                        content.append(event)
-
-                        # enable the path to keep track of the stream state
-                        test(*event)
+                        ev = stream.next()
+                        depth += {START: 1, END: -1}.get(ev[0], 0)
+                        content.append(ev)
+                        test(*ev)
 
                     content = list(self._flatten(content, ctxt))
                     ctxt.push(select=lambda path: Stream(content).select(path))
@@ -909,16 +906,20 @@ class Template(object):
                     if directives:
                         template = directives[0](iter(template), ctxt,
                                                  directives[1:])
-                    template = self._match(self._eval(iter(template), ctxt),
-                                           ctxt, match_templates[:idx] +
-                                           match_templates[idx + 1:])
-                    for event in template:
+                    for event in self._match(self._eval(template, ctxt),
+                                             ctxt, match_templates[:idx] +
+                                             match_templates[idx + 1:]):
                         yield event
                     ctxt.pop()
 
                     break
-            else:
+
+            else: # no matches
                 yield kind, data, pos
+
+
+EXPR = Template.EXPR
+SUB = Template.SUB
 
 
 class TemplateLoader(object):
@@ -990,6 +991,8 @@ class TemplateLoader(object):
             template is being loaded, or `None` if the template is being loaded
             directly
         """
+        from markup.filters import IncludeFilter
+
         if relative_to:
             filename = posixpath.join(posixpath.dirname(relative_to), filename)
         filename = os.path.normpath(filename)
@@ -1013,7 +1016,6 @@ class TemplateLoader(object):
             try:
                 fileobj = file(filepath, 'rt')
                 try:
-                    from markup.filters import IncludeFilter
                     tmpl = Template(fileobj, basedir=dirname, filename=filename)
                     tmpl.filters.append(IncludeFilter(self))
                 finally:

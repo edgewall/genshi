@@ -69,7 +69,7 @@ class Expression(object):
     3
     """
     __slots__ = ['source', 'ast']
-    __visitors = {}
+    _visitors = {}
 
     def __init__(self, source):
         """Create the expression.
@@ -97,10 +97,10 @@ class Expression(object):
         # AST traversal
 
         def _visit(self, node, data):
-            v = self.__visitors.get(node.__class__)
+            v = self._visitors.get(node.__class__)
             if not v:
                 v = getattr(self, '_visit_%s' % node.__class__.__name__.lower())
-                self.__visitors[node.__class__] = v
+                self._visitors[node.__class__] = v
             return v(node, data)
 
         def _visit_expression(self, node, data):
@@ -248,10 +248,10 @@ class Expression(object):
         # AST traversal
 
         def _visit(self, node, data):
-            v = self.__visitors.get(node.__class__)
+            v = self._visitors.get(node.__class__)
             if not v:
                 v = getattr(self, '_visit_%s' % node.__class__.__name__.lower())
-                self.__visitors[node.__class__] = v
+                self._visitors[node.__class__] = v
             return v(node, data)
 
         def _visit_expression(self, node, data):

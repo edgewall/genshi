@@ -7,12 +7,15 @@
   </head>
   <body>
     <?cs include:"header.cs" ?>
+    <?cs call:greeting('you') ?>
+    <?cs call:greeting('me') ?>
+    <?cs call:greeting('all the others') ?>
     
     <h2>Loop</h2>
     <?cs if:len(items) ?>
       <ul>
         <?cs each:item = items ?>
-          <li><?cs var:item ?></li>
+          <li<?cs if:name(item) == len(items) ?> class="last"<?cs /if ?>><?cs var:item ?></li>
         <?cs /each ?>
       </ul>
     <?cs /if ?>

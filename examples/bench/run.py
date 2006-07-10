@@ -1,11 +1,12 @@
 from cgi import escape
-from datetime import datetime, timedelta
 import os
 import sys
+import time
+import timeit
 
 def markup(dirname):
     from markup.template import Context, TemplateLoader
-    loader = TemplateLoader([dirname])
+    loader = TemplateLoader([dirname], auto_reload=False)
     template = loader.load('template.html')
     def render():
         ctxt = Context(title='Just a test',
@@ -75,30 +76,26 @@ def nevow(dirname):
     except ImportError:
         return None
 
-def main():
+def main(engines):
     basepath = os.path.abspath(os.path.dirname(__file__))
-    for engine in ('markup', 'clearsilver', 'kid'):
+    for engine in engines:
         dirname = os.path.join(basepath, engine)
         print '%s:' % engine.capitalize()
-        func = globals()[engine](dirname)
-        if not func:
-            print 'Skipping %s, not installed?' % engine.capitalize()
-            continue
-        times = []
-        for i in range(100):
-            start = datetime.now()
-            sys.stdout.write('.')
-            sys.stdout.flush()
-            func()
-            times.append(datetime.now() - start)
-
-        print
-        total_ms = sum([t.seconds * 1000 + t.microseconds for t in times])
-        print ' --> timing: %s (avg), %s (min), %s (max)' % (
-              timedelta(microseconds=total_ms / len(times)),
-              timedelta(microseconds=min([t.seconds * 1000 + t.microseconds for t in times])),
-              timedelta(microseconds=max([t.seconds * 1000 + t.microseconds for t in times])))
-        print
+        t = timeit.Timer(setup='from __main__ import %s; render = %s("%s")'
+                               % (engine, engine, dirname),
+                         stmt='render()')
+        print '%.2f ms' % (1000 * t.timeit(number=1000) / 1000)
 
 if __name__ == '__main__':
-    main()
+    engines = [arg for arg in sys.argv[1:] if arg[0] != '-']
+
+    if '-p' in sys.argv:
+        import hotshot, hotshot.stats
+        prof = hotshot.Profile("template.prof")
+        benchtime = prof.runcall(main, engines)
+        stats = hotshot.stats.load("template.prof")
+        stats.strip_dirs()
+        stats.sort_stats('time', 'calls')
+        stats.print_stats()
+    else:
+        main(engines)

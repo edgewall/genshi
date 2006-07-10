@@ -9,13 +9,14 @@
     <title>${title}</title>
   </head>
   <body>
-    ${header()}
+    <div>${greeting('you')}</div>
+    <div>${greeting('me')}</div>
+    <div>${greeting('all the others')}</div>
     
     <h2>Loop</h2>
     <ul py:if="items">
-      <li py:for="item in items">${item}</li>
+      <li py:for="idx, item in enumerate(items)" py:content="item"
+          class="${idx == len(items) and 'last' or None}" />
     </ul>
-    
-    ${footer()}
   </body>
 </html>

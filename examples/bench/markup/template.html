@@ -5,17 +5,20 @@
       xmlns:py="http://markup.edgewall.org/"
       xmlns:xi="http://www.w3.org/2001/XInclude"
       lang="en">
+  <xi:include href="base.html" />
   <head>
     <title>${title}</title>
   </head>
   <body>
-    <xi:include href="header.html" />
+    <div>${greeting('you')}</div>
+    <div>${greeting('me')}</div>
+    <div>${greeting('all the others')}</div>
 
     <h2>Loop</h2>
     <ul py:if="items">
-      <li py:for="item in items" py:content="item"/>
+      <li py:for="idx, item in enumerate(items)" py:content="item"
+          class="${idx == len(items) and 'last' or None}" />
     </ul>
 
-    <xi:include href="footer.html" />
   </body>
 </html>

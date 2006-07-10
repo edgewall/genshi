@@ -114,6 +114,8 @@ class Path(object):
         @param stream: the stream to select from
         @return: the substream matching the path, or an empty stream
         """
+        from markup.core import END, START
+
         stream = iter(stream)
         def _generate():
             test = self.test()
@@ -124,7 +126,7 @@ class Path(object):
                     depth = 1
                     while depth > 0:
                         ev = stream.next()
-                        depth += {Stream.START: 1, Stream.END: -1}.get(ev[0], 0)
+                        depth += {START: 1, END: -1}.get(ev[0], 0)
                         yield ev
                         test(*ev)
                 elif result:
@@ -149,17 +151,18 @@ class Path(object):
         START (u'child', [(u'id', u'1')])
         START (u'child', [(u'id', u'2')])
         """
+        from markup.core import END, START
         stack = [0] # stack of cursors into the location path
 
         def _test(kind, data, pos):
             if not stack:
                 return False
 
-            if kind is Stream.END:
+            elif kind is END:
                 stack.pop()
                 return None
 
-            if kind is Stream.START:
+            elif kind is START:
                 stack.append(stack[-1])
 
             matched = False
@@ -180,7 +183,7 @@ class Path(object):
                 else:
                     stack[-1] += 1
 
-            elif kind is Stream.START and not closure:
+            elif kind is START and not closure:
                 # If this step is not a closure, it cannot be matched until the
                 # current element is closed... so we need to move the cursor
                 # back to the last closure and retest that against the current

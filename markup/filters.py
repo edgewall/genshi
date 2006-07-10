@@ -19,7 +19,8 @@ except NameError:
     from sets import ImmutableSet as frozenset
 import re
 
-from markup.core import Attributes, Markup, Namespace, Stream
+from markup.core import Attributes, Markup, Namespace
+from markup.core import END, END_NS, START, START_NS, TEXT
 from markup.path import Path
 
 __all__ = ['IncludeFilter', 'WhitespaceFilter', 'HTMLSanitizer']
@@ -53,11 +54,11 @@ class IncludeFilter(object):
             ns_prefixes = []
         in_fallback = False
         include_href, fallback_stream = None, None
+        namespace = self.NAMESPACE
 
         for kind, data, pos in stream:
 
-            if kind is Stream.START and data[0] in self.NAMESPACE \
-                    and not in_fallback:
+            if kind is START and not in_fallback and data[0] in namespace:
                 tag, attrib = data
                 if tag.localname == 'include':
                     include_href = attrib.get('href')
@@ -65,7 +66,7 @@ class IncludeFilter(object):
                     in_fallback = True
                     fallback_stream = []
 
-            elif kind is Stream.END and data in self.NAMESPACE:
+            elif kind is END and data in namespace:
                 if data.localname == 'include':
                     try:
                         if not include_href:
@@ -91,10 +92,10 @@ class IncludeFilter(object):
             elif in_fallback:
                 fallback_stream.append((kind, data, pos))
 
-            elif kind is Stream.START_NS and data[1] == self.NAMESPACE:
+            elif kind is START_NS and data[1] == namespace:
                 ns_prefixes.append(data[0])
 
-            elif kind is Stream.END_NS and data in ns_prefixes:
+            elif kind is END_NS and data in ns_prefixes:
                 ns_prefixes.pop()
 
             else:
@@ -104,34 +105,35 @@ class IncludeFilter(object):
 class WhitespaceFilter(object):
     """A filter that removes extraneous white space from the stream.
 
-    Todo:
+    TODO:
      * Support for xml:space
     """
-
     _TRAILING_SPACE = re.compile('[ \t]+(?=\n)')
     _LINE_COLLAPSE = re.compile('\n{2,}')
 
     def __call__(self, stream, ctxt=None):
-        textbuf = []
-        prev_kind = None
-        for kind, data, pos in stream:
-            if kind is Stream.TEXT:
-                textbuf.append(data)
-            elif prev_kind is Stream.TEXT:
-                text = Markup('').join(textbuf, escape_quotes=False)
-                text = self._TRAILING_SPACE.sub('', text)
-                text = self._LINE_COLLAPSE.sub('\n', text)
-                yield Stream.TEXT, Markup(text), pos
-                del textbuf[:]
-            prev_kind = kind
-            if kind is not Stream.TEXT:
-                yield kind, data, pos
+        trim_trailing_space = self._TRAILING_SPACE.sub
+        collapse_lines = self._LINE_COLLAPSE.sub
+        mjoin = Markup('').join
 
-        if textbuf:
-            text = Markup('').join(textbuf, escape_quotes=False)
-            text = self._TRAILING_SPACE.sub('', text)
-            text = self._LINE_COLLAPSE.sub('\n', text)
-            yield Stream.TEXT, Markup(text), pos
+        textbuf = []
+        for kind, data, pos in stream:
+            if kind is TEXT:
+                textbuf.append(data)
+            else:
+                if textbuf:
+                    text = mjoin(textbuf, escape_quotes=False)
+                    text = trim_trailing_space('', text)
+                    text = collapse_lines('\n', text)
+                    yield TEXT, Markup(text), pos
+                    del textbuf[:]
+                yield kind, data, pos
+        else:
+            if textbuf:
+                text = mjoin(textbuf, escape_quotes=False)
+                text = trim_trailing_space('', text)
+                text = collapse_lines('\n', text)
+                yield TEXT, Markup(text), pos
 
 
 class HTMLSanitizer(object):
@@ -168,7 +170,7 @@ class HTMLSanitizer(object):
         waiting_for = None
 
         for kind, data, pos in stream:
-            if kind is Stream.START:
+            if kind is START:
                 if waiting_for:
                     continue
                 tag, attrib = data
@@ -204,7 +206,7 @@ class HTMLSanitizer(object):
 
                 yield kind, (tag, new_attrib), pos
 
-            elif kind is Stream.END:
+            elif kind is END:
                 tag = data
                 if waiting_for:
                     if waiting_for == tag:

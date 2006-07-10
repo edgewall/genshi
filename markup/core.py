@@ -129,6 +129,17 @@ class Stream(object):
         return self.render(encoding=None)
 
 
+START = Stream.START
+END = Stream.END
+TEXT = Stream.TEXT
+PROLOG = Stream.PROLOG
+DOCTYPE = Stream.DOCTYPE
+START_NS = Stream.START_NS
+END_NS = Stream.END_NS
+PI = Stream.PI
+COMMENT = Stream.COMMENT
+
+
 class Attributes(list):
     """Sequence type that stores the attributes of an element.
     

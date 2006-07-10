@@ -1,15 +1,17 @@
 <html xmlns="http://www.w3.org/1999/xhtml"
-      xmlns:py="http://purl.org/kid/ns#">
+      xmlns:py="http://markup.edgewall.org/"
+      py:strip="">
 
   <p py:def="greeting(name)">
     Hello, ${name}!
   </p>
 
-  <body py:match="item.tag == '{http://www.w3.org/1999/xhtml}body'" py:strip="">
+  <py:match path="body">
     <div id="header">
       <h1>${title}</h1>
     </div>
-    ${item}
+    ${select('*')}
     <div id="footer" />
-  </body>
+  </py:match>
+
 </html>

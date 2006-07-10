@@ -173,11 +173,22 @@
 					<key>Color</key>
 					<dict>
 						<key>b</key>
-						<string>0.498039</string>
+						<string>0.701961</string>
 						<key>g</key>
-						<string>0.498039</string>
+						<string>0.701961</string>
 						<key>r</key>
-						<string>0.498039</string>
+						<string>0.701961</string>
+					</dict>
+					<key>GradientAngle</key>
+					<real>114</real>
+					<key>GradientColor</key>
+					<dict>
+						<key>b</key>
+						<string>0.701961</string>
+						<key>g</key>
+						<string>0.701961</string>
+						<key>r</key>
+						<string>0.701961</string>
 					</dict>
 				</dict>
 				<key>shadow</key>
@@ -533,11 +544,22 @@
 					<key>Color</key>
 					<dict>
 						<key>b</key>
-						<string>0.498039</string>
+						<string>0.701961</string>
 						<key>g</key>
-						<string>0.498039</string>
+						<string>0.701961</string>
 						<key>r</key>
-						<string>0.498039</string>
+						<string>0.701961</string>
+					</dict>
+					<key>GradientAngle</key>
+					<real>114</real>
+					<key>GradientColor</key>
+					<dict>
+						<key>b</key>
+						<string>0.701961</string>
+						<key>g</key>
+						<string>0.701961</string>
+						<key>r</key>
+						<string>0.701961</string>
 					</dict>
 				</dict>
 				<key>shadow</key>
@@ -713,11 +735,22 @@
 					<key>Color</key>
 					<dict>
 						<key>b</key>
-						<string>0.498039</string>
+						<string>0.701961</string>
 						<key>g</key>
-						<string>0.498039</string>
+						<string>0.701961</string>
 						<key>r</key>
-						<string>0.498039</string>
+						<string>0.701961</string>
+					</dict>
+					<key>GradientAngle</key>
+					<real>114</real>
+					<key>GradientColor</key>
+					<dict>
+						<key>b</key>
+						<string>0.701961</string>
+						<key>g</key>
+						<string>0.701961</string>
+						<key>r</key>
+						<string>0.701961</string>
 					</dict>
 				</dict>
 				<key>shadow</key>
@@ -853,11 +886,22 @@
 					<key>Color</key>
 					<dict>
 						<key>b</key>
-						<string>0.498039</string>
+						<string>0.701961</string>
 						<key>g</key>
-						<string>0.498039</string>
+						<string>0.701961</string>
 						<key>r</key>
-						<string>0.498039</string>
+						<string>0.701961</string>
+					</dict>
+					<key>GradientAngle</key>
+					<real>114</real>
+					<key>GradientColor</key>
+					<dict>
+						<key>b</key>
+						<string>0.701961</string>
+						<key>g</key>
+						<string>0.701961</string>
+						<key>r</key>
+						<string>0.701961</string>
 					</dict>
 				</dict>
 				<key>shadow</key>
@@ -923,11 +967,22 @@
 					<key>Color</key>
 					<dict>
 						<key>b</key>
-						<string>0.498039</string>
+						<string>0.701961</string>
 						<key>g</key>
-						<string>0.498039</string>
+						<string>0.701961</string>
 						<key>r</key>
-						<string>0.498039</string>
+						<string>0.701961</string>
+					</dict>
+					<key>GradientAngle</key>
+					<real>114</real>
+					<key>GradientColor</key>
+					<dict>
+						<key>b</key>
+						<string>0.701961</string>
+						<key>g</key>
+						<string>0.701961</string>
+						<key>r</key>
+						<string>0.701961</string>
 					</dict>
 				</dict>
 				<key>shadow</key>
@@ -1060,7 +1115,7 @@
 		</dict>
 	</array>
 	<key>ModificationDate</key>
-	<string>2006-07-07 19:58:06 +0200</string>
+	<string>2006-07-10 11:06:23 +0200</string>
 	<key>Modifier</key>
 	<string>Christopher Lenz</string>
 	<key>NotesVisible</key>

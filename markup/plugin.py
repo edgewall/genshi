@@ -20,7 +20,24 @@ import os
 from pkg_resources import resource_filename
 
 from markup.template import Context, Template, TemplateLoader
+from markup.core import Stream, QName
 
+def ET(element):
+    tag_name = element.tag
+    if tag_name.startswith('{'):
+        tag_name = tag_name[1:]
+    tag_name = QName(tag_name)
+
+    yield (Stream.START, (tag_name, element.items()),
+           ('<string>', 0, 0))
+    if element.text:
+        yield Stream.TEXT, element.text, ('<string>', 0, 0)
+    for child in element.getchildren():
+        for item in ET(child):
+            yield item
+    yield Stream.END, tag_name, ('<string>', 0, 0)
+    if element.tail:
+        yield Stream.TEXT, element.tail, ('<string>', 0, 0)
 
 class TemplateEnginePlugin(object):
     """Implementation of the plugin API."""
@@ -53,7 +70,7 @@ class TemplateEnginePlugin(object):
         if not isinstance(template, Template):
             template = self.load_template(template)
 
-        data = {}
+        data = {'ET': ET}
         if self.get_extra_vars:
             data.update(self.get_extra_vars())
         data.update(info)

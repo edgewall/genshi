@@ -15,7 +15,7 @@
 
 import re
 
-from markup.core import QName, Stream
+from markup.core import QName, Stream, START, END, TEXT
 
 __all__ = ['Path']
 
@@ -114,8 +114,6 @@ class Path(object):
         @param stream: the stream to select from
         @return: the substream matching the path, or an empty stream
         """
-        from markup.core import END, START
-
         stream = iter(stream)
         def _generate():
             test = self.test()
@@ -212,7 +210,7 @@ class Path(object):
         """Node test that matches the context node."""
         axis = 'self'
         def __call__(self, kind, *_):
-            if kind is Stream.START:
+            if kind is START:
                 return True
             return None
 
@@ -220,7 +218,7 @@ class Path(object):
         """Node test that matches any child element."""
         axis = 'child'
         def __call__(self, kind, *_):
-            if kind is Stream.START:
+            if kind is START:
                 return True
             return None
 
@@ -230,7 +228,7 @@ class Path(object):
         def __init__(self, name):
             self.name = QName(name)
         def __call__(self, kind, data, _):
-            if kind is Stream.START:
+            if kind is START:
                 return data[0].localname == self.name
             return None
         def __repr__(self):
@@ -240,10 +238,10 @@ class Path(object):
         """Node test that matches any attribute."""
         axis = 'attribute'
         def __call__(self, kind, data, pos):
-            if kind is Stream.START:
+            if kind is START:
                 text = ''.join([val for _, val in data[1]])
                 if text:
-                    return Stream.TEXT, text, pos
+                    return TEXT, text, pos
                 return None
             return None
 
@@ -253,9 +251,9 @@ class Path(object):
         def __init__(self, name):
             self.name = QName(name)
         def __call__(self, kind, data, pos):
-            if kind is Stream.START:
+            if kind is START:
                 if self.name in data[1]:
-                    return Stream.TEXT, data[1].get(self.name), pos
+                    return TEXT, data[1].get(self.name), pos
                 return None
             return None
         def __repr__(self):
@@ -267,7 +265,7 @@ class Path(object):
     class _FunctionText(_Function):
         """Function that returns text content."""
         def __call__(self, kind, data, pos):
-            if kind is Stream.TEXT:
+            if kind is TEXT:
                 return kind, data, pos
             return None
 
@@ -276,7 +274,7 @@ class Path(object):
         def __init__(self, value):
             self.value = value
         def __call__(self, *_):
-            return Stream.TEXT, self.value, (-1, -1)
+            return TEXT, self.value, (-1, -1)
 
     class _OperatorEq(_NodeTest):
         """Equality comparison operator."""

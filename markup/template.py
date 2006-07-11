@@ -38,6 +38,12 @@ Random thoughts:
  * Could we generate byte code from expressions?
 """
 
+try:
+    from collections import deque
+except ImportError:
+    class deque(list):
+        def appendleft(self, x): self.insert(0, x)
+        def popleft(self): return self.pop(0)
 import compiler
 import os
 import posixpath
@@ -117,40 +123,35 @@ class Context(object):
     """
 
     def __init__(self, **data):
-        self.stack = [data]
-
-    def __getitem__(self, key):
-        """Get a variable's value, starting at the current context frame and
-        going upward.
-        """
-        return self.get(key)
+        self.frames = deque([data])
 
     def __repr__(self):
-        return repr(self.stack)
+        return repr(self.frames)
 
     def __setitem__(self, key, value):
         """Set a variable in the current context."""
-        self.stack[0][key] = value
+        self.frames[0][key] = value
 
     def get(self, key):
         """Get a variable's value, starting at the current context frame and
         going upward.
         """
-        for frame in self.stack:
+        for frame in self.frames:
             if key in frame:
                 return frame[key]
+    __getitem__ = get
 
     def push(self, **data):
         """Push a new context frame on the stack."""
-        self.stack.insert(0, data)
+        self.frames.appendleft(data)
 
     def pop(self):
         """Pop the top-most context frame from the stack.
         
         If the stack is empty, an `AssertionError` is raised.
         """
-        assert self.stack, 'Pop from empty context stack'
-        self.stack.pop(0)
+        #assert self.frames, 'Pop from empty context stack'
+        self.frames.popleft()
 
 
 class Directive(object):

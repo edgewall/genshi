@@ -150,7 +150,7 @@ class Context(object):
         
         If the stack is empty, an `AssertionError` is raised.
         """
-        #assert self.frames, 'Pop from empty context stack'
+        assert self.frames, 'Pop from empty context stack'
         self.frames.popleft()
 
 

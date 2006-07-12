@@ -84,7 +84,7 @@ def main(engines):
         t = timeit.Timer(setup='from __main__ import %s; render = %s("%s")'
                                % (engine, engine, dirname),
                          stmt='render()')
-        print '%.2f ms' % (1000 * t.timeit(number=1000) / 1000)
+        print '%.2f ms' % (1000 * t.timeit(number=2000) / 2000)
 
 if __name__ == '__main__':
     engines = [arg for arg in sys.argv[1:] if arg[0] != '-']

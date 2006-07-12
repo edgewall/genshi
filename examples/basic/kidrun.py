@@ -1,6 +1,9 @@
-from datetime import datetime, timedelta
+#!/usr/bin/python
+# -*- coding: utf-8 -*-
+
 import os
 import sys
+import time
 
 import kid
 
@@ -12,29 +15,25 @@ def test():
                 items=['Number %d' % num for num in range(1, 15)],
                 prefix='#')
 
-    start = datetime.now()
+    start = time.clock()
     template = kid.Template(file='test.kid', **ctxt)
-    print ' --> parse stage: ', datetime.now() - start
+    print ' --> parse stage: %.4f ms' % ((time.clock() - start) * 1000)
 
-    times = []
-    for i in range(100):
-        start = datetime.now()
-        for output in template.generate():
-            if i == 0:
-                sys.stdout.write(output)
-        if i == 0:
-            print
-        else:
-            sys.stdout.write('.')
-            sys.stdout.flush()
-        times.append(datetime.now() - start)
+    for output in template.generate():
+        sys.stdout.write(output)
     print
 
-    total_ms = sum([t.seconds * 1000 + t.microseconds for t in times])
-    print ' --> render stage: %s (avg), %s (min), %s (max):' % (
-          timedelta(microseconds=total_ms / len(times)),
-          timedelta(microseconds=min([t.seconds * 1000 + t.microseconds for t in times])),
-          timedelta(microseconds=max([t.seconds * 1000 + t.microseconds for t in times])))
+    times = []
+    for i in range(1000):
+        start = time.clock()
+        list(template.generate())
+        times.append(time.clock() - start)
+        sys.stdout.write('.')
+        sys.stdout.flush()
+    print
+
+    print ' --> render stage: %s ms (average)' % (
+          (sum(times) / len(times) * 1000))
 
 if __name__ == '__main__':
     if '-p' in sys.argv:

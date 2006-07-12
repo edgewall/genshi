@@ -896,10 +896,13 @@ class Template(object):
                     content = [(kind, data, pos)]
                     depth = 1
                     while depth > 0:
-                        ev = stream.next()
-                        depth += {START: 1, END: -1}.get(ev[0], 0)
-                        content.append(ev)
-                        test(*ev)
+                        kind, data, pos = stream.next()
+                        if kind is START:
+                            depth += 1
+                        elif kind is END:
+                            depth -= 1
+                        content.append((kind, data, pos))
+                        test(kind, data, pos)
 
                     content = list(self._flatten(content, ctxt))
                     ctxt.push(select=lambda path: Stream(content).select(path))

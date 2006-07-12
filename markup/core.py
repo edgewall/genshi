@@ -297,14 +297,13 @@ class Markup(unicode):
         as is. Escaping quotes is generally only required for strings that are
         to be used in attribute values.
         """
-        if isinstance(text, cls):
-            return text
-        text = unicode(text)
-        if not text or isinstance(text, cls):
+        if not text:
             return cls()
-        text = text.replace('&', '&amp;') \
-                   .replace('<', '&lt;') \
-                   .replace('>', '&gt;')
+        if type(text) is cls:
+            return text
+        text = unicode(text).replace('&', '&amp;') \
+                            .replace('<', '&lt;') \
+                            .replace('>', '&gt;')
         if quotes:
             text = text.replace('"', '&#34;')
         return cls(text)
@@ -397,7 +396,6 @@ class Namespace(object):
 
     def __getitem__(self, name):
         return QName(self.uri + u'}' + name)
-
     __getattr__ = __getitem__
 
     def __repr__(self):

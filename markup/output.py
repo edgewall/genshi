@@ -20,7 +20,7 @@ try:
 except NameError:
     from sets import ImmutableSet as frozenset
 
-from markup.core import Markup, Namespace, QName
+from markup.core import escape, Markup, Namespace, QName
 from markup.core import DOCTYPE, START, END, START_NS, END_NS, TEXT
 
 __all__ = ['Serializer', 'XMLSerializer', 'HTMLSerializer']
@@ -90,7 +90,7 @@ class XMLSerializer(Serializer):
                         prefix = ns_mapping.get(attr.namespace)
                         if prefix:
                             attrname = '%s:%s' % (prefix, attrname)
-                    buf.append(' %s="%s"' % (attrname, Markup.escape(value)))
+                    buf.append(' %s="%s"' % (attrname, escape(value)))
 
                 kind, data, pos = stream.next()
                 if kind is END:
@@ -111,7 +111,7 @@ class XMLSerializer(Serializer):
                 yield Markup('</%s>' % tagname)
 
             elif kind is TEXT:
-                yield Markup.escape(data, quotes=False)
+                yield escape(data, quotes=False)
 
 
 class HTMLSerializer(Serializer):
@@ -158,8 +158,7 @@ class HTMLSerializer(Serializer):
                         if value:
                             buf.append(' %s' % attr.localname)
                     else:
-                        buf.append(' %s="%s"' % (attr.localname,
-                                                 Markup.escape(value)))
+                        buf.append(' %s="%s"' % (attr.localname, escape(value)))
 
                 if tag.localname in self._EMPTY_ELEMS:
                     kind, data, pos = stream.next()
@@ -175,7 +174,7 @@ class HTMLSerializer(Serializer):
                 yield Markup('</%s>' % tag.localname)
 
             elif kind is TEXT:
-                yield Markup.escape(data, quotes=False)
+                yield escape(data, quotes=False)
 
 
 class _PushbackIterator(object):

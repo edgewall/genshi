@@ -123,10 +123,13 @@ class Path(object):
                     yield kind, data, pos
                     depth = 1
                     while depth > 0:
-                        ev = stream.next()
-                        depth += {START: 1, END: -1}.get(ev[0], 0)
-                        yield ev
-                        test(*ev)
+                        subkind, subdata, subpos = stream.next()
+                        if subkind is START:
+                            depth += 1
+                        elif subkind is END:
+                            depth -= 1
+                        yield subkind, subdata, subpos
+                        test(subkind, subdata, subpos)
                 elif result:
                     yield result
         return Stream(_generate())

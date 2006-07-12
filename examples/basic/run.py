@@ -1,9 +1,9 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
-from datetime import datetime, timedelta
 import os
 import sys
+import time
 
 from markup.template import Context, TemplateLoader
 
@@ -11,9 +11,9 @@ def test():
     base_path = os.path.dirname(os.path.abspath(__file__))
     loader = TemplateLoader([base_path], auto_reload=True)
 
-    start = datetime.now()
+    start = time.clock()
     tmpl = loader.load('test.html')
-    print ' --> parse stage: ', datetime.now() - start
+    print ' --> parse stage: %.4f ms' % ((time.clock() - start) * 1000)
 
     data = dict(hello='<world>', skin='default', hey='ZYX', bozz=None,
                 items=['Number %d' % num for num in range(1, 15)],
@@ -22,19 +22,16 @@ def test():
     print tmpl.generate(Context(**data)).render(method='html')
 
     times = []
-    for i in range(100):
-        start = datetime.now()
+    for i in range(1000):
+        start = time.clock()
         list(tmpl.generate(Context(**data)))
+        times.append(time.clock() - start)
         sys.stdout.write('.')
         sys.stdout.flush()
-        times.append(datetime.now() - start)
     print
 
-    total_ms = sum([t.seconds * 1000 + t.microseconds for t in times])
-    print ' --> render stage: %s (avg), %s (min), %s (max)' % (
-          timedelta(microseconds=total_ms / len(times)),
-          timedelta(microseconds=min([t.seconds * 1000 + t.microseconds for t in times])),
-          timedelta(microseconds=max([t.seconds * 1000 + t.microseconds for t in times])))
+    print ' --> render stage: %s ms (average)' % (
+          (sum(times) / len(times) * 1000))
 
 if __name__ == '__main__':
     if '-p' in sys.argv:

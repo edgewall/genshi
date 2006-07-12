@@ -765,19 +765,18 @@ class Template(object):
         @param offset: the column number at which the text starts in the source
             (optional)
         """
-        patterns = [Template._FULL_EXPR_RE, Template._SHORT_EXPR_RE]
-        def _interpolate(text):
+        def _interpolate(text, patterns):
             for idx, group in enumerate(patterns.pop(0).split(text)):
                 if idx % 2:
                     yield EXPR, Expression(group), (lineno, offset)
                 elif group:
                     if patterns:
-                        for result in _interpolate(group):
+                        for result in _interpolate(group, patterns[:]):
                             yield result
                     else:
                         yield TEXT, group.replace('$$', '$'), (filename, lineno,
                                                                offset)
-        return _interpolate(text)
+        return _interpolate(text, [cls._FULL_EXPR_RE, cls._SHORT_EXPR_RE])
     _interpolate = classmethod(_interpolate)
 
     def generate(self, ctxt=None):

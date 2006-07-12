@@ -411,6 +411,11 @@ class TemplateTestCase(unittest.TestCase):
         self.assertEqual(Stream.TEXT, parts[2][0])
         self.assertEqual(' baz', parts[2][1])
 
+    def test_interpolate_mixed3(self):
+        ctxt = Context(var=42)
+        tmpl = Template('<root> ${var} $var</root>')
+        self.assertEqual('<root> 42 42</root>', str(tmpl.generate(ctxt)))
+
     def test_interpolate_non_string_attrs(self):
         ctxt = Context()
         tmpl = Template('<root attr="${1}"/>')

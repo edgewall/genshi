@@ -717,7 +717,10 @@ class Template(object):
                             raise BadDirectiveError(name, pos[0], pos[1])
                         directives.append(cls(value))
                     else:
-                        value = list(self._interpolate(value, *pos))
+                        if value:
+                            value = list(self._interpolate(value, *pos))
+                        else:
+                            value = [(TEXT, u'', pos)]
                         new_attrib.append((name, value))
 
                 if directives:

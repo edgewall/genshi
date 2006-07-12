@@ -417,9 +417,12 @@ class TemplateTestCase(unittest.TestCase):
         self.assertEqual('<root> 42 42</root>', str(tmpl.generate(ctxt)))
 
     def test_interpolate_non_string_attrs(self):
-        ctxt = Context()
         tmpl = Template('<root attr="${1}"/>')
-        self.assertEqual('<root attr="1"/>', str(tmpl.generate(ctxt)))
+        self.assertEqual('<root attr="1"/>', str(tmpl.generate()))
+
+    def test_empty_attr(self):
+        tmpl = Template('<root attr=""/>')
+        self.assertEqual('<root attr=""/>', str(tmpl.generate()))
 
     def test_bad_directive_error(self):
         xml = '<p xmlns:py="http://markup.edgewall.org/" py:do="nothing" />'
@@ -434,7 +437,7 @@ class TemplateTestCase(unittest.TestCase):
         xml = '<p xmlns:py="http://markup.edgewall.org/" py:if="bar\'" />'
         tmpl = Template(xml, filename='test.html')
         try:
-            list(tmpl.generate(Context()))
+            list(tmpl.generate())
             self.fail('Expected SyntaxError')
         except TemplateSyntaxError, e:
             self.assertEqual('test.html', e.filename)

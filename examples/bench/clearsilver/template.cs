@@ -7,9 +7,9 @@
   </head>
   <body>
     <?cs include:"header.cs" ?>
-    <?cs call:greeting('you') ?>
+    <?cs call:greeting(user) ?>
     <?cs call:greeting('me') ?>
-    <?cs call:greeting('all the others') ?>
+    <?cs call:greeting('world') ?>
     
     <h2>Loop</h2>
     <?cs if:len(items) ?>

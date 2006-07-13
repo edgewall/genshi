@@ -9,9 +9,9 @@
     <title>${title}</title>
   </head>
   <body>
-    <div>${greeting('you')}</div>
+    <div>${greeting(user)}</div>
     <div>${greeting('me')}</div>
-    <div>${greeting('all the others')}</div>
+    <div>${greeting('world')}</div>
     
     <h2>Loop</h2>
     <ul py:if="items">

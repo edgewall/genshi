@@ -4,7 +4,7 @@
       py:strip="">
 <xi:include href="sitetemplate.html"><xi:fallback/></xi:include>
 
-<head py:match="head">
+<head py:match="head" py:attrs="select('@*')">
     <meta content="text/html; charset=UTF-8" http-equiv="content-type" py:replace="''"/>
     <title py:replace="''">Your title goes here</title>
     ${select('*')}
@@ -18,7 +18,7 @@
     </style>
 </head>
 
-<body py:match="body">
+<body py:match="body" py:attrs="select('@*')">
     <div py:if="tg.config('identity.on', False) and not logging_in"
         id="pageLogin">
         <span py:if="tg.identity.anonymous">

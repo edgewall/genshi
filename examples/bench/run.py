@@ -4,7 +4,7 @@ from StringIO import StringIO
 import sys
 import timeit
 
-__all__ = ['markup', 'clearsilver', 'django', 'kid']
+__all__ = ['clearsilver', 'django', 'kid', 'markup', 'simpletal']
 
 def markup(dirname):
     from markup.template import Context, TemplateLoader

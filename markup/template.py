@@ -71,6 +71,7 @@ class TemplateSyntaxError(TemplateError):
     def __init__(self, message, filename='<string>', lineno=-1, offset=-1):
         if isinstance(message, SyntaxError) and message.lineno is not None:
             message = str(message).replace(' (line %d)' % message.lineno, '')
+        message = '%s (%s, line %d)' % (message, filename, lineno)
         TemplateError.__init__(self, message)
         self.filename = filename
         self.lineno = lineno
@@ -86,8 +87,9 @@ class BadDirectiveError(TemplateSyntaxError):
     """
 
     def __init__(self, name, filename='<string>', lineno=-1):
-        TemplateSyntaxError.__init__(self, 'Bad directive "%s"' % name.localname,
-                                     filename, lineno)
+        msg = 'bad directive "%s" (%s, line %d)' % (name.localname, filename,
+                                                    lineno)
+        TemplateSyntaxError.__init__(self, msg, filename, lineno)
 
 
 class TemplateNotFound(TemplateError):

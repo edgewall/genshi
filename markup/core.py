@@ -222,6 +222,9 @@ class Attributes(list):
         else:
             self.append((QName(name), value))
 
+    def totuple(self):
+        return TEXT, u''.join([x[1] for x in self]), (None, -1, -1)
+
 
 class Markup(unicode):
     """Marks a string as being safe for inclusion in HTML/XML output without

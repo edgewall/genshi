@@ -51,12 +51,12 @@ class Path(object):
                     in_predicate = False
                 elif op.startswith('('):
                     if cur_tag == 'text':
-                        steps[-1] = (False, self._FunctionText(), [])
+                        steps[-1] = (False, self._function_text(), [])
                     else:
                         raise NotImplementedError('XPath function "%s" not '
                                                   'supported' % cur_tag)
                 elif op == '.':
-                    steps.append([False, self._CurrentElement(), []])
+                    steps.append([False, self._node_test_current_element(), []])
                 else:
                     cur_op += op
                 cur_tag = ''
@@ -64,25 +64,25 @@ class Path(object):
                 closure = cur_op in ('', '//')
                 if cur_op == '@':
                     if tag == '*':
-                        node_test = self._AnyAttribute()
+                        node_test = self._node_test_any_attribute()
                     else:
-                        node_test = self._AttributeByName(tag)
+                        node_test = self._node_test_attribute_by_name(tag)
                 else:
                     if tag == '*':
-                        node_test = self._AnyChildElement()
+                        node_test = self._node_test_any_child_element()
                     elif in_predicate:
                         if len(tag) > 1 and (tag[0], tag[-1]) in self._QUOTES:
-                            node_test = self._LiteralString(tag[1:-1])
+                            node_test = self._literal_string(tag[1:-1])
                         if cur_op == '=':
-                            node_test = self._OperatorEq(steps[-1][2][-1],
-                                                         node_test)
-                            steps[-1][2].pop()
-                        elif cur_op == '!=':
-                            node_test = self._OperatorNeq(steps[-1][2][-1],
+                            node_test = self._operator_eq(steps[-1][2][-1],
                                                           node_test)
                             steps[-1][2].pop()
+                        elif cur_op == '!=':
+                            node_test = self._operator_neq(steps[-1][2][-1],
+                                                           node_test)
+                            steps[-1][2].pop()
                     else:
-                        node_test = self._ChildElementByName(tag)
+                        node_test = self._node_test_child_element_by_name(tag)
                 if in_predicate:
                     steps[-1][2].append(node_test)
                 else:
@@ -158,16 +158,17 @@ class Path(object):
         def _test(kind, data, pos):
             if not stack:
                 return False
+            cursor = stack[-1]
 
-            elif kind is END:
+            if kind is END:
                 stack.pop()
                 return None
 
             elif kind is START:
-                stack.append(stack[-1])
+                stack.append(cursor)
 
             matched = False
-            closure, node_test, predicates = self.steps[stack[-1]]
+            closure, node_test, predicates = self.steps[cursor]
 
             matched = node_test(kind, data, pos)
             if matched and predicates:
@@ -177,7 +178,7 @@ class Path(object):
                         break
 
             if matched:
-                if stack[-1] == len(self.steps) - 1:
+                if cursor == len(self.steps) - 1:
                     if ignore_context or len(stack) > 2 \
                                       or node_test.axis != 'child':
                         return matched
@@ -189,118 +190,77 @@ class Path(object):
                 # current element is closed... so we need to move the cursor
                 # back to the last closure and retest that against the current
                 # element
-                closures = [step for step in self.steps[:stack[-1]] if step[0]]
+                closures = [step for step in self.steps[:cursor] if step[0]]
                 closures.reverse()
                 for closure, node_test, predicates in closures:
-                    stack[-1] -= 1
+                    cursor -= 1
                     if closure:
                         matched = node_test(kind, data, pos)
                         if matched:
-                            stack[-1] += 1
+                            cursor += 1
                         break
+                stack[-1] = cursor
 
             return None
 
         return _test
 
-    class _NodeTest(object):
-        """Abstract node test."""
-        axis = None
-        def __repr__(self):
-            return '<%s>' % self.__class__.__name__
+    def _node_test_current_element(self):
+        def _test(kind, *_):
+            return kind is START
+        _test.axis = 'self'
+        return _test
 
-    class _CurrentElement(_NodeTest):
-        """Node test that matches the context node."""
-        axis = 'self'
-        def __call__(self, kind, *_):
-            if kind is START:
-                return True
-            return None
+    def _node_test_any_child_element(self):
+        def _test(kind, *_):
+            return kind is START
+        _test.axis = 'child'
+        return _test
 
-    class _AnyChildElement(_NodeTest):
-        """Node test that matches any child element."""
-        axis = 'child'
-        def __call__(self, kind, *_):
-            if kind is START:
-                return True
-            return None
+    def _node_test_child_element_by_name(self, name):
+        def _test(kind, data, _):
+            return kind is START and data[0].localname == name
+        _test.axis = 'child'
+        return _test
 
-    class _ChildElementByName(_NodeTest):
-        """Node test that matches a child element with a specific tag name."""
-        axis = 'child'
-        def __init__(self, name):
-            self.name = QName(name)
-        def __call__(self, kind, data, _):
-            if kind is START:
-                return data[0].localname == self.name
-            return None
-        def __repr__(self):
-            return '<%s "%s">' % (self.__class__.__name__, self.name)
+    def _node_test_any_attribute(self):
+        def _test(kind, data, _):
+            if kind is START and data[1]:
+                return data[1]
+        _test.axis = 'attribute'
+        return _test
 
-    class _AnyAttribute(_NodeTest):
-        """Node test that matches any attribute."""
-        axis = 'attribute'
-        def __call__(self, kind, data, pos):
-            if kind is START:
-                text = ''.join([val for _, val in data[1]])
-                if text:
-                    return TEXT, text, pos
-                return None
-            return None
+    def _node_test_attribute_by_name(self, name):
+        def _test(kind, data, pos):
+            if kind is START and name in data[1]:
+                return TEXT, data[1].get(name), pos
+        _test.axis = 'attribute'
+        return _test
 
-    class _AttributeByName(_NodeTest):
-        """Node test that matches an attribute with a specific name."""
-        axis = 'attribute'
-        def __init__(self, name):
-            self.name = QName(name)
-        def __call__(self, kind, data, pos):
-            if kind is START:
-                if self.name in data[1]:
-                    return TEXT, data[1].get(self.name), pos
-                return None
-            return None
-        def __repr__(self):
-            return '<%s "%s">' % (self.__class__.__name__, self.name)
+    def _function_text(self):
+        def _test(kind, data, pos):
+            return kind is TEXT and (kind, data, pos)
+        _test.axis = None
+        return _test
 
-    class _Function(_NodeTest):
-        """Abstract node test representing a function."""
+    def _literal_string(self, text):
+        def _test(*_):
+            return TEXT, text, (None, -1, -1)
+        _test.axis = None
+        return _test
 
-    class _FunctionText(_Function):
-        """Function that returns text content."""
-        def __call__(self, kind, data, pos):
-            if kind is TEXT:
-                return kind, data, pos
-            return None
+    def _operator_eq(self, lval, rval):
+        def _test(kind, data, pos):
+            lv = lval(kind, data, pos)
+            rv = rval(kind, data, pos)
+            return (lv and lv[1]) == (rv and rv[1])
+        _test.axis = None
+        return _test
 
-    class _LiteralString(_NodeTest):
-        """Always returns a literal string."""
-        def __init__(self, value):
-            self.value = value
-        def __call__(self, *_):
-            return TEXT, self.value, (-1, -1)
-
-    class _OperatorEq(_NodeTest):
-        """Equality comparison operator."""
-        def __init__(self, lval, rval):
-            self.lval = lval
-            self.rval = rval
-        def __call__(self, kind, data, pos):
-            lval = self.lval(kind, data, pos)
-            rval = self.rval(kind, data, pos)
-            return (lval and lval[1]) == (rval and rval[1])
-        def __repr__(self):
-            return '<%s %r = %r>' % (self.__class__.__name__, self.lval,
-                                     self.rval)
-
-    class _OperatorNeq(_NodeTest):
-        """Inequality comparison operator."""
-        def __init__(self, lval, rval):
-            self.lval = lval
-            self.rval = rval
-        def __call__(self, kind, data, pos):
-            lval = self.lval(kind, data, pos)
-            rval = self.rval(kind, data, pos)
-            return (lval and lval[1]) != (rval and rval[1])
-        def __repr__(self):
-            return '<%s %r != %r>' % (self.__class__.__name__, self.lval,
-                                      self.rval)
+    def _operator_neq(self, lval, rval):
+        def _test(kind, data, pos):
+            lv = lval(kind, data, pos)
+            rv = rval(kind, data, pos)
+            return (lv and lv[1]) != (rv and rv[1])
+        _test.axis = None
+        return _test

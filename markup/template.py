@@ -224,7 +224,12 @@ class AttrsDirective(Directive):
             attrs = self.expr.evaluate(ctxt)
             if attrs:
                 attrib = Attributes(attrib[:])
-                if not isinstance(attrs, list): # assume it's a dict
+                if isinstance(attrs, Stream):
+                    try:
+                        attrs = iter(attrs).next()
+                    except StopIteration:
+                        attrs = []
+                elif not isinstance(attrs, list): # assume it's a dict
                     attrs = attrs.items()
                 for name, value in attrs:
                     if value is None:
@@ -234,6 +239,7 @@ class AttrsDirective(Directive):
             yield kind, (tag, attrib), pos
             for event in stream:
                 yield event
+
         return self._apply_directives(_generate(), ctxt, directives)
 
 
@@ -799,6 +805,15 @@ class Template(object):
             stream = filter_(iter(stream), ctxt)
         return Stream(stream)
 
+    def _ensure(self, stream, ctxt=None):
+        """Ensure that every item on the stream is actually a markup event."""
+        for event in stream:
+            try:
+                kind, data, pos = event
+            except ValueError:
+                kind, data, pos = event.totuple()
+            yield kind, data, pos
+
     def _eval(self, stream, ctxt=None):
         """Internal stream filter that evaluates any expressions in `START` and
         `TEXT` events.
@@ -840,8 +855,10 @@ class Template(object):
                     # Test if the expression evaluated to an iterable, in which
                     # case we yield the individual items
                     try:
-                        for event in self._match(self._eval(iter(result), ctxt),
-                                                 ctxt):
+                        substream = iter(result)
+                        for filter_ in [self._ensure, self._eval, self._match]:
+                            substream = filter_(substream, ctxt)
+                        for event in substream:
                             yield event
                     except TypeError:
                         # Neither a string nor an iterable, so just pass it

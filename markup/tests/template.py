@@ -341,6 +341,45 @@ class MatchDirectiveTestCase(unittest.TestCase):
           </body>
         </html>""", str(tmpl.generate()))
 
+    def test_select_all_attrs(self):
+        tmpl = Template("""<doc xmlns:py="http://markup.edgewall.org/">
+          <div py:match="elem" py:attrs="select('@*')">
+            ${select('*/text()')}
+          </div>
+          <elem id="joe">Hey Joe</elem>
+        </doc>""")
+        self.assertEqual("""<doc>
+          <div id="joe">
+            Hey Joe
+          </div>
+        </doc>""", str(tmpl.generate()))
+
+    def test_select_all_attrs_empty(self):
+        tmpl = Template("""<doc xmlns:py="http://markup.edgewall.org/">
+          <div py:match="elem" py:attrs="select('@*')">
+            ${select('*/text()')}
+          </div>
+          <elem>Hey Joe</elem>
+        </doc>""")
+        self.assertEqual("""<doc>
+          <div>
+            Hey Joe
+          </div>
+        </doc>""", str(tmpl.generate()))
+
+    def test_select_all_attrs_in_body(self):
+        tmpl = Template("""<doc xmlns:py="http://markup.edgewall.org/">
+          <div py:match="elem">
+            Hey ${select('text()')} ${select('@*')}
+          </div>
+          <elem title="Cool">Joe</elem>
+        </doc>""")
+        self.assertEqual("""<doc>
+          <div>
+            Hey Joe Cool
+          </div>
+        </doc>""", str(tmpl.generate()))
+
 
 class StripDirectiveTestCase(unittest.TestCase):
     """Tests for the `py:strip` template directive."""

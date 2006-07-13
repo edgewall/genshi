@@ -39,6 +39,7 @@ def ET(element):
     if element.tail:
         yield Stream.TEXT, element.tail, ('<string>', 0, 0)
 
+
 class TemplateEnginePlugin(object):
     """Implementation of the plugin API."""
 

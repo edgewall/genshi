@@ -1,7 +1,7 @@
 from cgi import escape
 import os
+from StringIO import StringIO
 import sys
-import time
 import timeit
 
 __all__ = ['markup', 'clearsilver', 'django', 'kid']
@@ -79,6 +79,25 @@ def nevow(dirname):
     template = xmlfile('template.xml', templateDir=dirname).load()
     def render():
         print template
+    return render
+
+def simpletal(dirname):
+    from simpletal import simpleTAL, simpleTALES
+    fileobj = open(os.path.join(dirname, 'base.html'))
+    base = simpleTAL.compileHTMLTemplate(fileobj)
+    fileobj.close()
+    fileobj = open(os.path.join(dirname, 'template.html'))
+    template = simpleTAL.compileHTMLTemplate(fileobj)
+    fileobj.close()
+    def render():
+        ctxt = simpleTALES.Context()
+        ctxt.addGlobal('base', base)
+        ctxt.addGlobal('title', 'Just a test')
+        ctxt.addGlobal('user', 'joe')
+        ctxt.addGlobal('items', ['Number %d' % num for num in range(1, 15)])
+        buf = StringIO()
+        template.expand(ctxt, buf)
+        return buf.getvalue()
     return render
 
 def run(engines):

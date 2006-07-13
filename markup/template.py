@@ -34,7 +34,6 @@ Todo items:
  * Support for list comprehensions and generator expressions in expressions
 
 Random thoughts:
- * Is there any need to support py:extends and/or py:layout?
  * Could we generate byte code from expressions?
 """
 
@@ -186,10 +185,11 @@ class Directive(object):
             expr = ' "%s"' % self.expr.source
         return '<%s%s>' % (self.__class__.__name__, expr)
 
-    def _apply_directives(self, stream, ctxt, directives):
-        if directives:
-            stream = directives[0](iter(stream), ctxt, directives[1:])
-        return stream
+
+def _apply_directives(stream, ctxt, directives):
+    if directives:
+        stream = directives[0](iter(stream), ctxt, directives[1:])
+    return stream
 
 
 class AttrsDirective(Directive):
@@ -240,7 +240,7 @@ class AttrsDirective(Directive):
             for event in stream:
                 yield event
 
-        return self._apply_directives(_generate(), ctxt, directives)
+        return _apply_directives(_generate(), ctxt, directives)
 
 
 class ContentDirective(Directive):
@@ -271,7 +271,7 @@ class ContentDirective(Directive):
                 previous = event
             if previous is not None:
                 yield previous
-        return self._apply_directives(_generate(), ctxt, directives)
+        return _apply_directives(_generate(), ctxt, directives)
 
 
 class DefDirective(Directive):
@@ -350,7 +350,7 @@ class DefDirective(Directive):
             else:
                 scope[name] = kwargs.pop(name, self.defaults.get(name))
         ctxt.push(**scope)
-        for event in self._apply_directives(self.stream, ctxt, self.directives):
+        for event in _apply_directives(self.stream, ctxt, self.directives):
             yield event
         ctxt.pop()
 
@@ -388,7 +388,7 @@ class ForDirective(Directive):
                 for idx, name in enumerate(self.targets):
                     scope[name] = item[idx]
                 ctxt.push(**scope)
-                for event in self._apply_directives(stream, ctxt, directives):
+                for event in _apply_directives(stream, ctxt, directives):
                     yield event
                 ctxt.pop()
 
@@ -416,7 +416,7 @@ class IfDirective(Directive):
 
     def __call__(self, stream, ctxt, directives):
         if self.expr.evaluate(ctxt):
-            return self._apply_directives(stream, ctxt, directives)
+            return _apply_directives(stream, ctxt, directives)
         return []
 
 
@@ -522,20 +522,22 @@ class StripDirective(Directive):
     __slots__ = []
 
     def __call__(self, stream, ctxt, directives):
-        if self.expr:
-            strip = self.expr.evaluate(ctxt)
-        else:
-            strip = True
-        stream = self._apply_directives(stream, ctxt, directives)
-        if strip:
-            stream.next() # skip start tag
-            previous = stream.next()
-            for event in stream:
-                yield previous
-                previous = event
-        else:
-            for event in stream:
-                yield event
+        def _generate():
+            if self.expr:
+                strip = self.expr.evaluate(ctxt)
+            else:
+                strip = True
+            if strip:
+                stream.next() # skip start tag
+                previous = stream.next()
+                for event in stream:
+                    yield previous
+                    previous = event
+            else:
+                for event in stream:
+                    yield event
+
+        return _apply_directives(_generate(), ctxt, directives)
 
 
 class ChooseDirective(Directive):
@@ -585,7 +587,7 @@ class ChooseDirective(Directive):
             self.value = self.expr.evaluate(ctxt)
         self.matched = False
         ctxt.push(_choose=self)
-        for event in self._apply_directives(stream, ctxt, directives):
+        for event in _apply_directives(stream, ctxt, directives):
             yield event
         ctxt.pop()
 
@@ -607,11 +609,11 @@ class WhenDirective(Directive):
         try:
             if value == choose.value:
                 choose.matched = True
-                return self._apply_directives(stream, ctxt, directives)
+                return _apply_directives(stream, ctxt, directives)
         except AttributeError:
             if value:
                 choose.matched = True
-                return self._apply_directives(stream, ctxt, directives)
+                return _apply_directives(stream, ctxt, directives)
         return []
 
 
@@ -626,7 +628,7 @@ class OtherwiseDirective(Directive):
         if choose.matched:
             return []
         choose.matched = True
-        return self._apply_directives(stream, ctxt, directives)
+        return _apply_directives(stream, ctxt, directives)
 
 
 class Template(object):
@@ -876,9 +878,7 @@ class Template(object):
                     # This event is a list of directives and a list of nested
                     # events to which those directives should be applied
                     directives, substream = data
-                    if directives:
-                        substream = directives[0](iter(substream), ctxt,
-                                                  directives[1:])
+                    substream = _apply_directives(substream, ctxt, directives)
                     for filter_ in (self._eval, self._match, self._flatten):
                         substream = filter_(substream, ctxt)
                     for event in substream:
@@ -926,9 +926,7 @@ class Template(object):
                     content = list(self._flatten(content, ctxt))
                     ctxt.push(select=lambda path: Stream(content).select(path))
 
-                    if directives:
-                        template = directives[0](iter(template), ctxt,
-                                                 directives[1:])
+                    template = _apply_directives(template, ctxt, directives)
                     for event in self._match(self._eval(template, ctxt),
                                              ctxt, match_templates[:idx] +
                                              match_templates[idx + 1:]):

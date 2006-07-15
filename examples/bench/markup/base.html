@@ -6,12 +6,12 @@
     Hello, ${name}!
   </p>
 
-  <py:match path="body">
+  <body py:match="body">
     <div id="header">
       <h1>${title}</h1>
     </div>
     ${select('*')}
     <div id="footer" />
-  </py:match>
+  </body>
 
 </html>

@@ -32,9 +32,6 @@ Differences include:
 Todo items:
  * Improved error reporting
  * Support for list comprehensions and generator expressions in expressions
-
-Random thoughts:
- * Could we generate byte code from expressions?
 """
 
 try:
@@ -175,8 +172,12 @@ class Directive(object):
     """
     __slots__ = ['expr']
 
-    def __init__(self, value):
-        self.expr = value and Expression(value) or None
+    def __init__(self, value, filename=None, lineno=-1, offset=-1):
+        try:
+            self.expr = value and Expression(value, filename, lineno) or None
+        except SyntaxError, err:
+            raise TemplateSyntaxError(err, filename, lineno,
+                                      offset + (err.offset or 0))
 
     def __call__(self, stream, ctxt, directives):
         raise NotImplementedError
@@ -319,8 +320,8 @@ class DefDirective(Directive):
 
     ATTRIBUTE = 'function'
 
-    def __init__(self, args):
-        Directive.__init__(self, None)
+    def __init__(self, args, filename=None, lineno=-1, offset=-1):
+        Directive.__init__(self, None, filename, lineno, offset)
         ast = compiler.parse(args, 'eval').node
         self.args = []
         self.defaults = {}
@@ -374,10 +375,10 @@ class ForDirective(Directive):
 
     ATTRIBUTE = 'each'
 
-    def __init__(self, value):
+    def __init__(self, value, filename=None, lineno=-1, offset=-1):
         targets, value = value.split(' in ', 1)
         self.targets = [str(name.strip()) for name in targets.split(',')]
-        Directive.__init__(self, value)
+        Directive.__init__(self, value, filename, lineno, offset)
 
     def __call__(self, stream, ctxt, directives):
         iterable = self.expr.evaluate(ctxt)
@@ -442,8 +443,8 @@ class MatchDirective(Directive):
 
     ATTRIBUTE = 'path'
 
-    def __init__(self, value):
-        Directive.__init__(self, None)
+    def __init__(self, value, filename=None, lineno=-1, offset=-1):
+        Directive.__init__(self, None, filename, lineno, offset)
         self.path = Path(value)
         self.stream = []
 
@@ -716,7 +717,7 @@ class Template(object):
                     if cls is None:
                         raise BadDirectiveError(tag, pos[0], pos[1])
                     value = attrib.get(getattr(cls, 'ATTRIBUTE', None), '')
-                    directives.append(cls(value))
+                    directives.append(cls(value, *pos))
                     strip = True
 
                 new_attrib = []
@@ -725,10 +726,12 @@ class Template(object):
                         cls = self._dir_by_name.get(name.localname)
                         if cls is None:
                             raise BadDirectiveError(name, pos[0], pos[1])
-                        directives.append(cls(value))
+                        directives.append(cls(value, *pos))
                     else:
                         if value:
                             value = list(self._interpolate(value, *pos))
+                            if len(value) == 1 and value[0][0] is TEXT:
+                                value = value[0][1]
                         else:
                             value = [(TEXT, u'', pos)]
                         new_attrib.append((name, value))
@@ -781,7 +784,12 @@ class Template(object):
         def _interpolate(text, patterns):
             for idx, group in enumerate(patterns.pop(0).split(text)):
                 if idx % 2:
-                    yield EXPR, Expression(group), (lineno, offset)
+                    try:
+                        yield EXPR, Expression(group, filename, lineno), \
+                              (lineno, offset)
+                    except SyntaxError, err:
+                        raise TemplateSyntaxError(err, filename, lineno,
+                                                  offset + (err.offset or 0))
                 elif group:
                     if patterns:
                         for result in _interpolate(group, patterns[:]):
@@ -822,9 +830,11 @@ class Template(object):
         """Internal stream filter that evaluates any expressions in `START` and
         `TEXT` events.
         """
+        filters = (self._ensure, self._eval, self._match)
+
         for kind, data, pos in stream:
 
-            if kind is START:
+            if kind is START and data[1]:
                 # Attributes may still contain expressions in start tags at
                 # this point, so do some evaluation
                 tag, attrib = data
@@ -860,7 +870,7 @@ class Template(object):
                     # case we yield the individual items
                     try:
                         substream = iter(result)
-                        for filter_ in [self._ensure, self._eval, self._match]:
+                        for filter_ in filters:
                             substream = filter_(substream, ctxt)
                         for event in substream:
                             yield event
@@ -874,23 +884,19 @@ class Template(object):
 
     def _flatten(self, stream, ctxt=None):
         """Internal stream filter that expands `SUB` events in the stream."""
-        try:
-            for kind, data, pos in stream:
-                if kind is SUB:
-                    # This event is a list of directives and a list of nested
-                    # events to which those directives should be applied
-                    directives, substream = data
-                    substream = _apply_directives(substream, ctxt, directives)
-                    for filter_ in (self._eval, self._match, self._flatten):
-                        substream = filter_(substream, ctxt)
-                    for event in substream:
-                        yield event
-                        continue
-                else:
-                    yield kind, data, pos
-        except SyntaxError, err:
-            raise TemplateSyntaxError(err, pos[0], pos[1],
-                                      pos[2] + (err.offset or 0))
+        for kind, data, pos in stream:
+            if kind is SUB:
+                # This event is a list of directives and a list of nested
+                # events to which those directives should be applied
+                directives, substream = data
+                substream = _apply_directives(substream, ctxt, directives)
+                for filter_ in (self._eval, self._match, self._flatten):
+                    substream = filter_(substream, ctxt)
+                for event in substream:
+                    yield event
+                    continue
+            else:
+                yield kind, data, pos
 
     def _match(self, stream, ctxt=None, match_templates=None):
         """Internal stream filter that applies any defined match templates

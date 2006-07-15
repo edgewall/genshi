@@ -170,8 +170,13 @@ class ExpressionTestCase(unittest.TestCase):
 
     def test_compare_multi(self):
         self.assertEqual(True, Expression("1 != 3 == 3").evaluate({}))
-        self.assertEqual(True, Expression("x != y == y").evaluate({'x': 3,
+        self.assertEqual(True, Expression("x != y == y").evaluate({'x': 1,
                                                                    'y': 3}))
+
+    # FIXME: need support for local names in comprehensions
+    #def test_list_comprehension(self):
+    #    expr = Expression("[n for n in numbers if n < 2]")
+    #    self.assertEqual([0, 1], expr.evaluate({'numbers': range(5)}))
 
 
 def suite():

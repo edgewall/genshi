@@ -473,10 +473,9 @@ class TemplateTestCase(unittest.TestCase):
                 self.assertEqual(1, e.lineno)
 
     def test_directive_value_syntax_error(self):
-        xml = '<p xmlns:py="http://markup.edgewall.org/" py:if="bar\'" />'
-        tmpl = Template(xml, filename='test.html')
+        xml = """<p xmlns:py="http://markup.edgewall.org/" py:if="bar'" />"""
         try:
-            list(tmpl.generate())
+            tmpl = Template(xml, filename='test.html')
             self.fail('Expected SyntaxError')
         except TemplateSyntaxError, e:
             self.assertEqual('test.html', e.filename)
@@ -485,17 +484,16 @@ class TemplateTestCase(unittest.TestCase):
                 # We don't really care about the offset here, do we?
 
     def test_expression_syntax_error(self):
-        xml = '<p>\n  Foo <em>${bar"}</em>\n</p>'
-        tmpl = Template(xml, filename='test.html')
-        ctxt = Context(bar='baz')
+        xml = """<p>
+          Foo <em>${bar"}</em>
+        </p>"""
         try:
-            list(tmpl.generate(ctxt))
+            tmpl = Template(xml, filename='test.html')
             self.fail('Expected SyntaxError')
         except TemplateSyntaxError, e:
             self.assertEqual('test.html', e.filename)
             if sys.version_info[:2] >= (2, 4):
                 self.assertEqual(2, e.lineno)
-                self.assertEqual(10, e.offset)
 
     def test_markup_noescape(self):
         """

@@ -11,5 +11,5 @@
     Hello ${item.get('name')}
   </span>
   <span py:match="item.tag == '{http://www.w3.org/1999/xhtml}span' and item.get('class') == 'greeting'"
-        py:content="item.findtext('')" style="text-decoration: underline" />
+        py:content="item.text" style="text-decoration: underline" />
 </div>

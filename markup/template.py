@@ -11,28 +11,7 @@
 # individuals. For the exact contribution history, see the revision
 # history and logs, available at http://markup.edgewall.org/log/.
 
-"""Template engine that is compatible with Kid (http://kid.lesscode.org) to a
-certain extent.
-
-Differences include:
- * No generation of Python code for a template; the template is "interpreted"
- * No support for <?python ?> processing instructions
- * Expressions are evaluated in a more flexible manner, meaning you can use e.g.
-   attribute access notation to access items in a dictionary, etc
- * Use of XInclude and match templates instead of Kid's py:extends/py:layout
-   directives
- * Real (thread-safe) search path support
- * No dependency on ElementTree (due to the lack of pos info)
- * The original pos of parse events is kept throughout the processing
-   pipeline, so that errors can be tracked back to a specific line/column in
-   the template file
- * py:match directives use (basic) XPath expressions to match against input
-   nodes, making match templates more powerful while keeping the syntax simple
-
-Todo items:
- * Improved error reporting
- * Support for list comprehensions and generator expressions in expressions
-"""
+"""Implementation of the template engine."""
 
 try:
     from collections import deque

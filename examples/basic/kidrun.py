@@ -37,9 +37,12 @@ def test():
 
 if __name__ == '__main__':
     if '-p' in sys.argv:
-        import profile, pstats
-        profile.run('test()', '.tmpl_prof')
-        stats = pstats.Stats('.tmpl_prof')
-        stats.strip_dirs().sort_stats('time').print_stats(10)
+        import hotshot, hotshot.stats
+        prof = hotshot.Profile("template.prof")
+        benchtime = prof.runcall(test)
+        stats = hotshot.stats.load("template.prof")
+        stats.strip_dirs()
+        stats.sort_stats('time', 'calls')
+        stats.print_stats()
     else:
         test()

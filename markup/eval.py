@@ -267,8 +267,3 @@ class TemplateExpressionCodeGenerator(pycodegen.ExpressionCodeGenerator):
             # return
             self.nextBlock(return_)
             self.emit('LOAD_NAME', 'val')
-
-
-if __name__ == '__main__':
-    import doctest
-    doctest.testmod()

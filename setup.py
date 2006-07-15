@@ -12,14 +12,18 @@
 # individuals. For the exact contribution history, see the revision
 # history and logs, available at http://markup.edgewall.org/log/.
 
-from setuptools import setup, find_packages
+try:
+    from setuptools import setup, find_packages
+except ImportError:
+    from distutils.core import setup
 
 setup(
     name='Markup', version='0.1',
     description='Toolkit for stream-based generation of markup for the web',
     author='Edgewall Software', author_email='info@edgewall.org',
     license='BSD', url='http://markup.edgewall.org/',
-    packages=find_packages(exclude=['*.tests*']),
+    packages=['markup'],
+
     test_suite = 'markup.tests.suite',
     zip_safe = True,
     entry_points = """

@@ -19,6 +19,7 @@ try:
     frozenset
 except NameError:
     from sets import ImmutableSet as frozenset
+from itertools import chain
 
 from markup.core import escape, Markup, Namespace, QName
 from markup.core import DOCTYPE, START, END, START_NS, END_NS, TEXT
@@ -39,6 +40,22 @@ class Serializer(object):
         raise NotImplementedError
 
 
+class DocType(object):
+    """Defines a number of commonly used DOCTYPE declarations as constants."""
+
+    HTML_STRICT = ('html', '-//W3C//DTD HTML 4.01//EN',
+                   'http://www.w3.org/TR/html4/strict.dtd')
+    HTML_TRANSITIONAL = ('html', '-//W3C//DTD HTML 4.01 Transitional//EN',
+                         'http://www.w3.org/TR/html4/loose.dtd')
+    HTML = HTML_STRICT
+
+    XHTML_STRICT = ('html', '-//W3C//DTD XHTML 1.0 Strict//EN',
+                    'http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd')
+    XHTML_TRANSITIONAL = ('html', '-//W3C//DTD XHTML 1.0 Transitional//EN',
+                          'http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd')
+    XHTML = XHTML_STRICT
+
+
 class XMLSerializer(Serializer):
     """Produces XML text from an event stream.
     
@@ -47,17 +64,38 @@ class XMLSerializer(Serializer):
     >>> print ''.join(XMLSerializer().serialize(elem.generate()))
     <div><a href="foo"/><br/><hr noshade="True"/></div>
     """
+    def __init__(self, doctype=None):
+        """Initialize the XML serializer.
+        
+        @param doctype: a `(name, pubid, sysid)` tuple that represents the
+            DOCTYPE declaration that should be included at the top of the
+            generated output
+        """
+        self.preamble = []
+        if doctype:
+            self.preamble.append((DOCTYPE, doctype, (None, -1, -1)))
 
     def serialize(self, stream):
+        have_doctype = False
         ns_attrib = []
         ns_mapping = {}
 
-        stream = _PushbackIterator(stream)
+        stream = _PushbackIterator(chain(self.preamble, stream))
         for kind, data, pos in stream:
 
             if kind is DOCTYPE:
-                # FIXME: what if there's no system or public ID in the input?
-                yield Markup('<!DOCTYPE %s "%s" "%s">\n' % data)
+                if not have_doctype:
+                    name, pubid, sysid = data
+                    buf = ['<!DOCTYPE %s']
+                    if pubid:
+                        buf.append(' PUBLIC "%s"')
+                    elif sysid:
+                        buf.append(' SYSTEM')
+                    if sysid:
+                        buf.append(' "%s"')
+                    buf.append('>\n')
+                    yield Markup(''.join(buf), *filter(None, data))
+                    have_doctype = True
 
             elif kind is START_NS:
                 prefix, uri = data
@@ -132,14 +170,37 @@ class HTMLSerializer(Serializer):
                                 'defer', 'disabled', 'ismap', 'multiple',
                                 'nohref', 'noresize', 'noshade', 'nowrap'])
 
+    def __init__(self, doctype=None):
+        """Initialize the HTML serializer.
+        
+        @param doctype: a `(name, pubid, sysid)` tuple that represents the
+            DOCTYPE declaration that should be included at the top of the
+            generated output
+        """
+        self.preamble = []
+        if doctype:
+            self.preamble.append((DOCTYPE, doctype, (None, -1, -1)))
+
     def serialize(self, stream):
+        have_doctype = False
         ns_mapping = {}
 
-        stream = _PushbackIterator(stream)
+        stream = _PushbackIterator(chain(self.preamble, stream))
         for kind, data, pos in stream:
 
             if kind is DOCTYPE:
-                yield Markup('<!DOCTYPE %s "%s" "%s">\n' % data)
+                if not have_doctype:
+                    name, pubid, sysid = data
+                    buf = ['<!DOCTYPE %s']
+                    if pubid:
+                        buf.append(' PUBLIC "%s"')
+                    elif sysid:
+                        buf.append(' SYSTEM')
+                    if sysid:
+                        buf.append(' "%s"')
+                    buf.append('>\n')
+                    yield Markup(''.join(buf), *filter(None, data))
+                    have_doctype = True
 
             elif kind is START_NS:
                 prefix, uri = data

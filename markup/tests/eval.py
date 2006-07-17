@@ -180,10 +180,17 @@ class ExpressionTestCase(unittest.TestCase):
         data = {'foo': {'bar': range(42)}}
         self.assertEqual(42, Expression("len(foo.bar)").evaluate(data))
 
-    # FIXME: need support for local names in comprehensions
-    #def test_list_comprehension(self):
-    #    expr = Expression("[n for n in numbers if n < 2]")
-    #    self.assertEqual([0, 1], expr.evaluate({'numbers': range(5)}))
+    def test_list_comprehension(self):
+        expr = Expression("[n for n in numbers if n < 2]")
+        self.assertEqual([0, 1], expr.evaluate({'numbers': range(5)}))
+
+        expr = Expression("[(i, n + 1) for i, n in enumerate(numbers)]")
+        self.assertEqual([(0, 1), (1, 2), (2, 3), (3, 4), (4, 5)],
+                         expr.evaluate({'numbers': range(5)}))
+
+        expr = Expression("[offset + n for n in numbers]")
+        self.assertEqual([2, 3, 4, 5, 6],
+                         expr.evaluate({'numbers': range(5), 'offset': 2}))
 
 
 def suite():

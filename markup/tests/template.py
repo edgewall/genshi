@@ -537,6 +537,22 @@ class TemplateTestCase(unittest.TestCase):
           bar
         </div>""", str(tmpl.generate(Context(myvar='"foo"'))))
 
+    def test_normal_comment(self):
+        tmpl = Template("""<div xmlns:py="http://markup.edgewall.org/">
+          <!-- foo bar -->
+        </div>""")
+        self.assertEqual("""<div>
+          <!-- foo bar -->
+        </div>""", str(tmpl.generate()))
+
+    def test_template_comment(self):
+        tmpl = Template("""<div xmlns:py="http://markup.edgewall.org/">
+          <!-- !foo -->
+          <!--!bar-->
+        </div>""")
+        self.assertEqual("""<div>
+        </div>""", str(tmpl.generate()))
+
 
 def suite():
     suite = unittest.TestSuite()

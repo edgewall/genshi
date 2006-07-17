@@ -26,7 +26,7 @@ import re
 from StringIO import StringIO
 
 from markup.core import Attributes, Namespace, Stream, StreamEventKind
-from markup.core import START, END, START_NS, END_NS, TEXT
+from markup.core import START, END, START_NS, END_NS, TEXT, COMMENT
 from markup.eval import Expression
 from markup.input import XMLParser
 from markup.path import Path
@@ -740,6 +740,10 @@ class Template(object):
 
             elif kind is TEXT:
                 for kind, data, pos in self._interpolate(data, *pos):
+                    stream.append((kind, data, pos))
+
+            elif kind is COMMENT:
+                if not data.lstrip().startswith('!'):
                     stream.append((kind, data, pos))
 
             else:

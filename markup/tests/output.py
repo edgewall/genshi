@@ -68,6 +68,11 @@ class XMLSerializerTestCase(unittest.TestCase):
                          '"http://www.w3.org/TR/html4/strict.dtd">\n',
                          output)
 
+    def test_comment(self):
+        stream = Stream([(Stream.COMMENT, 'foo bar', ('?', -1, -1))])
+        output = stream.render(XMLSerializer)
+        self.assertEqual('<!--foo bar-->', output)
+
 
 def suite():
     suite = unittest.TestSuite()

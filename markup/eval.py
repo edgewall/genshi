@@ -42,8 +42,7 @@ class Expression(object):
     
     >>> Expression('dict.some').evaluate(data)
     'thing'
-    """
-    """
+    
     This also works the other way around: item access can be used to access
     any object attribute (meaning there's no use for `getattr()` in templates):
     
@@ -75,12 +74,12 @@ class Expression(object):
         """
         self.source = source
 
-        tree = parse(self.source, 'eval')
+        ast = parse(self.source, 'eval')
         if isinstance(filename, unicode):
             # pycodegen doesn't like unicode in the filename
             filename = filename.encode('utf-8', 'replace')
-        tree.filename = filename or '<string>'
-        gen = TemplateExpressionCodeGenerator(tree)
+        ast.filename = filename or '<string>'
+        gen = TemplateExpressionCodeGenerator(ast)
         if lineno >= 0:
             gen.emit('SET_LINENO', lineno)
         self.code = gen.getCode()

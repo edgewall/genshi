@@ -253,6 +253,7 @@ class ContentDirective(Directive):
                 previous = event
             if previous is not None:
                 yield previous
+
         return _apply_directives(_generate(), ctxt, directives)
 
 

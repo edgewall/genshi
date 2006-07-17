@@ -173,6 +173,13 @@ class ExpressionTestCase(unittest.TestCase):
         self.assertEqual(True, Expression("x != y == y").evaluate({'x': 1,
                                                                    'y': 3}))
 
+    def test_call_function(self):
+        self.assertEqual(42, Expression("foo()").evaluate({'foo': lambda: 42}))
+        data = {'foo': 'bar'}
+        self.assertEqual('BAR', Expression("foo.upper()").evaluate(data))
+        data = {'foo': {'bar': range(42)}}
+        self.assertEqual(42, Expression("len(foo.bar)").evaluate(data))
+
     # FIXME: need support for local names in comprehensions
     #def test_list_comprehension(self):
     #    expr = Expression("[n for n in numbers if n < 2]")

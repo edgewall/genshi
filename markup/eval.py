@@ -82,7 +82,10 @@ class Expression(object):
         @param data: a mapping containing the data to evaluate against
         @return: the result of the evaluation
         """
-        return eval(self.code)
+        retval = eval(self.code)
+        if callable(retval):
+            retval = retval()
+        return retval
 
     def _compile(self, source, filename, lineno):
         tree = parse(self.source, 'eval')

@@ -273,26 +273,29 @@ class DefDirective(Directive):
     ...   <p py:def="echo(greeting, name='world')" class="message">
     ...     ${greeting}, ${name}!
     ...   </p>
-    ...   ${echo('hi', name='you')}
+    ...   ${echo('Hi', name='you')}
     ... </div>''')
     >>> print tmpl.generate(ctxt)
     <div>
       <p class="message">
-        hi, you!
+        Hi, you!
       </p>
     </div>
     
+    If a function does not require parameters, the parenthesis can be omitted
+    both when defining and when calling it:
+    
     >>> ctxt = Context(bar='Bye')
     >>> tmpl = Template('''<div xmlns:py="http://markup.edgewall.org/">
-    ...   <p py:def="echo(greeting, name='world')" class="message">
-    ...     ${greeting}, ${name}!
+    ...   <p py:def="helloworld" class="message">
+    ...     Hello, world!
     ...   </p>
-    ...   <div py:replace="echo('hello')"></div>
+    ...   ${helloworld}
     ... </div>''')
     >>> print tmpl.generate(ctxt)
     <div>
       <p class="message">
-        hello, world!
+        Hello, world!
       </p>
     </div>
     """

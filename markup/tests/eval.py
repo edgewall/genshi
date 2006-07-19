@@ -180,6 +180,12 @@ class ExpressionTestCase(unittest.TestCase):
         data = {'foo': {'bar': range(42)}}
         self.assertEqual(42, Expression("len(foo.bar)").evaluate(data))
 
+    def test_call_function_without_params(self):
+        self.assertEqual(42, Expression("foo").evaluate({'foo': lambda: 42}))
+        data = {'foo': 'bar'}
+        self.assertEqual('BAR', Expression("foo.upper").evaluate(data))
+        data = {'foo': {'bar': range(42)}}
+
     def test_list_comprehension(self):
         expr = Expression("[n for n in numbers if n < 2]")
         self.assertEqual([0, 1], expr.evaluate({'numbers': range(5)}))

@@ -155,6 +155,19 @@ class DefDirectiveTestCase(unittest.TestCase):
             <b>foo</b>
         </doc>""", str(tmpl.generate()))
 
+    def test_exec_in_replace(self):
+        tmpl = Template("""<div xmlns:py="http://markup.edgewall.org/">
+          <p py:def="echo(greeting, name='world')" class="message">
+            ${greeting}, ${name}!
+          </p>
+          <div py:replace="echo('hello')"></div>
+        </div>""")
+        self.assertEqual("""<div>
+          <p class="message">
+            hello, world!
+          </p>
+        </div>""", str(tmpl.generate()))
+
     def test_as_element(self):
         """
         Verify that the directive can also be used as an element.

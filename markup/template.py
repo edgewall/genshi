@@ -366,8 +366,8 @@ class ForDirective(Directive):
     def __call__(self, stream, ctxt, directives):
         iterable = self.expr.evaluate(ctxt)
         if iterable is not None:
-            stream = list(stream)
             scope = {}
+            stream = list(stream)
             targets = self.targets
             for item in iter(iterable):
                 if len(targets) == 1:

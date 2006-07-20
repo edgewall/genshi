@@ -134,7 +134,8 @@ class WhitespaceFilter(object):
                             trim_trailing_space('',
                                 textbuf.pop())), quotes=False)
                         yield TEXT, output, pos
-                yield kind, data, pos
+                if kind is not None:
+                    yield kind, data, pos
 
 
 class HTMLSanitizer(object):

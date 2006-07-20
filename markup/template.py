@@ -367,12 +367,14 @@ class ForDirective(Directive):
         iterable = self.expr.evaluate(ctxt)
         if iterable is not None:
             stream = list(stream)
+            scope = {}
+            targets = self.targets
             for item in iter(iterable):
-                if len(self.targets) == 1:
-                    item = [item]
-                scope = {}
-                for idx, name in enumerate(self.targets):
-                    scope[name] = item[idx]
+                if len(targets) == 1:
+                    scope[targets[0]] = item
+                else:
+                    for idx, name in enumerate(targets):
+                        scope[name] = item[idx]
                 ctxt.push(**scope)
                 for event in _apply_directives(stream, ctxt, directives):
                     yield event
@@ -881,7 +883,6 @@ class Template(object):
                     substream = filter_(substream, ctxt)
                 for event in substream:
                     yield event
-                    continue
             else:
                 yield kind, data, pos
 
@@ -896,7 +897,7 @@ class Template(object):
 
             # We (currently) only care about start and end events for matching
             # We might care about namespace events in the future, though
-            if kind not in (START, END):
+            if not match_templates or kind not in (START, END):
                 yield kind, data, pos
                 continue
 

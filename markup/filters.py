@@ -13,13 +13,14 @@
 
 """Implementation of a number of stream filters."""
 
+from itertools import chain
 try:
     frozenset
 except NameError:
     from sets import ImmutableSet as frozenset
 import re
 
-from markup.core import Attributes, Markup, Namespace
+from markup.core import Attributes, Markup, Namespace, escape
 from markup.core import END, END_NS, START, START_NS, TEXT
 from markup.path import Path
 
@@ -117,23 +118,23 @@ class WhitespaceFilter(object):
         mjoin = Markup('').join
 
         textbuf = []
-        for kind, data, pos in stream:
+        for kind, data, pos in chain(stream, [(None, None, None)]):
             if kind is TEXT:
                 textbuf.append(data)
             else:
                 if textbuf:
-                    text = mjoin(textbuf, escape_quotes=False)
-                    text = trim_trailing_space('', text)
-                    text = collapse_lines('\n', text)
-                    yield TEXT, Markup(text), pos
-                    del textbuf[:]
+                    if len(textbuf) > 1:
+                        output = Markup(collapse_lines('\n',
+                            trim_trailing_space('',
+                                mjoin(textbuf, escape_quotes=False))))
+                        del textbuf[:]
+                        yield TEXT, output, pos
+                    else:
+                        output = escape(collapse_lines('\n',
+                            trim_trailing_space('',
+                                textbuf.pop())), quotes=False)
+                        yield TEXT, output, pos
                 yield kind, data, pos
-        else:
-            if textbuf:
-                text = mjoin(textbuf, escape_quotes=False)
-                text = trim_trailing_space('', text)
-                text = collapse_lines('\n', text)
-                yield TEXT, Markup(text), pos
 
 
 class HTMLSanitizer(object):

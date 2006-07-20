@@ -334,7 +334,7 @@ class Markup(unicode):
         from markup.filters import HTMLSanitizer
         from markup.input import HTMLParser
         text = StringIO(self.stripentities(keepxmlentities=True))
-        return Stream(HTMLSanitizer()(HTMLParser(text)))
+        return Markup(Stream(HTMLSanitizer()(HTMLParser(text))))
 
 
 escape = Markup.escape

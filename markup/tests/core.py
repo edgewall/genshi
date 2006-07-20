@@ -123,9 +123,9 @@ class MarkupTestCase(unittest.TestCase):
         markup = Markup('<SCRIPT SRC="http://example.com/"></SCRIPT>')
         self.assertEquals('', str(markup.sanitize()))
         markup = Markup('<SCR\0IPT>alert("foo")</SCR\0IPT>')
-        self.assertRaises(ParseError, markup.sanitize().render)
+        self.assertRaises(ParseError, markup.sanitize)
         markup = Markup('<SCRIPT&XYZ SRC="http://example.com/"></SCRIPT>')
-        self.assertRaises(ParseError, markup.sanitize().render)
+        self.assertRaises(ParseError, markup.sanitize)
 
     def test_sanitize_remove_onclick_attr(self):
         markup = Markup('<div onclick=\'alert("foo")\' />')
@@ -156,7 +156,7 @@ class MarkupTestCase(unittest.TestCase):
         self.assertEquals('<img/>', str(markup.sanitize()))
         # Grave accents (not parsed)
         markup = Markup('<IMG SRC=`javascript:alert("RSnake says, \'foo\'")`>')
-        self.assertRaises(ParseError, markup.sanitize().render)
+        self.assertRaises(ParseError, markup.sanitize)
         # Protocol encoded using UTF-8 numeric entities
         markup = Markup('<IMG SRC=\'&#106;&#97;&#118;&#97;&#115;&#99;&#114;&#105;'
                         '&#112;&#116;&#58;alert("foo")\'>')

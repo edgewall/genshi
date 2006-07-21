@@ -29,6 +29,16 @@ class ElementFactoryTestCase(unittest.TestCase):
         self.assertEqual((Stream.TEXT, u'Bar', (None, -1, -1)), bits.next())
         self.assertEqual((Stream.END, 'a', (None, -1, -1)), bits.next())
 
+    def test_nonstring_attributes(self):
+        """
+        Verify that if an attribute value is given as an int (or some other
+        non-string type), it is coverted to a string when the stream is
+        generated.
+        """
+        event = iter(tag.foo(id=3)).next()
+        self.assertEqual((Stream.START, ('foo', [('id', '3')]), (None, -1, -1)),
+                         event)
+
 
 def suite():
     suite = unittest.TestSuite()

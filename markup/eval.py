@@ -199,6 +199,7 @@ class ASTTransformer(object):
         node.expr = self.visit(node.expr, *args, **kwargs)
         return node
     visitUnaryAdd = visitUnarySub = visitNot = visitInvert = _visitUnaryOp
+    visitBackquote = _visitUnaryOp
 
     # Identifiers, Literals and Comprehensions
 

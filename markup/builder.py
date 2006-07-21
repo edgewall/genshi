@@ -11,7 +11,7 @@
 # individuals. For the exact contribution history, see the revision
 # history and logs, available at http://markup.edgewall.org/log/.
 
-from markup.core import Attributes, Namespace, QName, Stream
+from markup.core import Attributes, Namespace, QName, Stream, escape
 
 __all__ = ['Fragment', 'Element', 'tag']
 
@@ -34,7 +34,7 @@ class Fragment(object):
         return self
 
     def __iter__(self):
-        return iter(self.generate())
+        return self._generate()
 
     def __repr__(self):
         return '<%s>' % self.__class__.__name__
@@ -169,14 +169,20 @@ class Element(Fragment):
             if value is None:
                 continue
             attr = attr.rstrip('_').replace('_', '-')
-            self.attrib.set(attr, value)
-        return Fragment.__call__(self, *args)
+            self.attrib.set(attr, escape(value))
+        Fragment.__call__(self, *args)
+        return self
 
     def __repr__(self):
         return '<%s "%s">' % (self.__class__.__name__, self.tag)
 
     def _generate(self):
-        yield Stream.START, (self.tag, self.attrib), (None, -1, -1)
+        attrib = Attributes()
+        for attr, value in self.attrib:
+            if not isinstance(value, basestring):
+                value = unicode(value)
+            attrib.append((attr, value))
+        yield Stream.START, (self.tag, attrib), (None, -1, -1)
         for kind, data, pos in Fragment._generate(self):
             yield kind, data, pos
         yield Stream.END, self.tag, (None, -1, -1)

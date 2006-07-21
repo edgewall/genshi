@@ -77,58 +77,56 @@ class TemplateNotFound(TemplateError):
 
 
 class Context(object):
-    """A container for template input data.
+    """Container for template input data.
     
-    A context provides a stack of scopes. Template directives such as loops can
-    push a new scope on the stack with data that should only be available
-    inside the loop. When the loop terminates, that scope can get popped off
-    the stack again.
+    A context provides a stack of scopes (represented by dictionaries).
+    
+    Template directives such as loops can push a new scope on the stack with
+    data that should only be available inside the loop. When the loop
+    terminates, that scope can get popped off the stack again.
     
     >>> ctxt = Context(one='foo', other=1)
     >>> ctxt.get('one')
     'foo'
     >>> ctxt.get('other')
     1
-    >>> ctxt.push(one='frost')
+    >>> ctxt.push(dict(one='frost'))
     >>> ctxt.get('one')
     'frost'
     >>> ctxt.get('other')
     1
     >>> ctxt.pop()
+    {'one': 'frost'}
     >>> ctxt.get('one')
     'foo'
     """
 
     def __init__(self, **data):
         self.frames = deque([data])
+        self.pop = self.frames.popleft
+        self.push = self.frames.appendleft
 
     def __repr__(self):
         return repr(self.frames)
 
     def __setitem__(self, key, value):
-        """Set a variable in the current context."""
+        """Set a variable in the current scope."""
         self.frames[0][key] = value
 
     def get(self, key):
-        """Get a variable's value, starting at the current context frame and
-        going upward.
+        """Get a variable's value, starting at the current scope and going
+        upward.
         """
         for frame in self.frames:
             if key in frame:
                 return frame[key]
     __getitem__ = get
 
-    def push(self, **data):
-        """Push a new context frame on the stack."""
-        self.frames.appendleft(data)
+    def push(self, data):
+        """Push a new scope on the stack."""
 
     def pop(self):
-        """Pop the top-most context frame from the stack.
-        
-        If the stack is empty, an `AssertionError` is raised.
-        """
-        assert self.frames, 'Pop from empty context stack'
-        self.frames.popleft()
+        """Pop the top-most scope from the stack."""
 
 
 class Directive(object):
@@ -335,7 +333,7 @@ class DefDirective(Directive):
                 scope[name] = args.pop(0)
             else:
                 scope[name] = kwargs.pop(name, self.defaults.get(name))
-        ctxt.push(**scope)
+        ctxt.push(scope)
         for event in _apply_directives(self.stream, ctxt, self.directives):
             yield event
         ctxt.pop()
@@ -375,7 +373,7 @@ class ForDirective(Directive):
                 else:
                     for idx, name in enumerate(targets):
                         scope[name] = item[idx]
-                ctxt.push(**scope)
+                ctxt.push(scope)
                 for event in _apply_directives(stream, ctxt, directives):
                     yield event
                 ctxt.pop()
@@ -574,7 +572,7 @@ class ChooseDirective(Directive):
         if self.expr:
             self.value = self.expr.evaluate(ctxt)
         self.matched = False
-        ctxt.push(_choose=self)
+        ctxt.push(dict(_choose=self))
         for event in _apply_directives(stream, ctxt, directives):
             yield event
         ctxt.pop()
@@ -920,7 +918,8 @@ class Template(object):
                         test(kind, data, pos)
 
                     content = list(self._flatten(content, ctxt))
-                    ctxt.push(select=lambda path: Stream(content).select(path))
+                    select = lambda path: Stream(content).select(path)
+                    ctxt.push(dict(select=select))
 
                     template = _apply_directives(template, ctxt, directives)
                     for event in self._match(self._eval(template, ctxt),

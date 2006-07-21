@@ -59,21 +59,22 @@ class Fragment(object):
             except TypeError:
                 self.children.append(node)
             else:
-                for child in node:
-                    self.append(children)
+                for child in children:
+                    self.append(child)
+
+    def _generate(self):
+        for child in self.children:
+            if isinstance(child, Fragment):
+                for event in child._generate():
+                    yield event
+            else:
+                if not isinstance(child, basestring):
+                    child = unicode(child)
+                yield Stream.TEXT, child, (None, -1, -1)
 
     def generate(self):
         """Return a markup event stream for the fragment."""
-        def _generate():
-            for child in self.children:
-                if isinstance(child, Fragment):
-                    for event in child.generate():
-                        yield event
-                else:
-                    if not isinstance(child, basestring):
-                        child = unicode(child)
-                    yield Stream.TEXT, child, (-1, -1)
-        return Stream(_generate())
+        return Stream(self._generate())
 
 
 class Element(Fragment):
@@ -174,14 +175,15 @@ class Element(Fragment):
     def __repr__(self):
         return '<%s "%s">' % (self.__class__.__name__, self.tag)
 
+    def _generate(self):
+        yield Stream.START, (self.tag, self.attrib), (None, -1, -1)
+        for kind, data, pos in Fragment._generate(self):
+            yield kind, data, pos
+        yield Stream.END, self.tag, (None, -1, -1)
+
     def generate(self):
         """Return a markup event stream for the fragment."""
-        def _generate():
-            yield Stream.START, (self.tag, self.attrib), (-1, -1)
-            for kind, data, pos in Fragment.generate(self):
-                yield kind, data, pos
-            yield Stream.END, self.tag, (-1, -1)
-        return Stream(_generate())
+        return Stream(self._generate())
 
 
 class ElementFactory(object):

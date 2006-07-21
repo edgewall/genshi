@@ -25,9 +25,9 @@ class ElementFactoryTestCase(unittest.TestCase):
         link = tag.a(href='#', title='Foo', accesskey=None)('Bar')
         bits = iter(link.generate())
         self.assertEqual((Stream.START, ('a', [('href', "#"), ('title', "Foo")]),
-                          (-1, -1)), bits.next())
-        self.assertEqual((Stream.TEXT, u'Bar', (-1, -1)), bits.next())
-        self.assertEqual((Stream.END, 'a', (-1, -1)), bits.next())
+                          (None, -1, -1)), bits.next())
+        self.assertEqual((Stream.TEXT, u'Bar', (None, -1, -1)), bits.next())
+        self.assertEqual((Stream.END, 'a', (None, -1, -1)), bits.next())
 
 
 def suite():

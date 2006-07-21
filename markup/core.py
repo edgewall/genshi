@@ -68,7 +68,8 @@ class Stream(object):
         """Return a string representation of the stream.
         
         @param method: determines how the stream is serialized; can be either
-                       'xml' or 'html', or a custom `Serializer` subclass
+                       "xml", "xhtml", or "html", or a custom `Serializer`
+                       subclass
         @param encoding: how the output string should be encoded; if set to
                          `None`, this method returns a `unicode` object
 
@@ -99,7 +100,8 @@ class Stream(object):
         string.
         
         @param method: determines how the stream is serialized; can be either
-                       'xml' or 'html', or a custom `Serializer` subclass
+                       "xml", "xhtml", or "html", or a custom `Serializer`
+                       subclass
         @param filters: list of filters to apply to the stream before
                         serialization. The default is to apply whitespace
                         reduction using `markup.filters.WhitespaceFilter`.
@@ -108,8 +110,9 @@ class Stream(object):
         from markup import output
         cls = method
         if isinstance(method, basestring):
-            cls = {'xml': output.XMLSerializer,
-                   'html': output.HTMLSerializer}[method]
+            cls = {'xml':   output.XMLSerializer,
+                   'xhtml': output.XHTMLSerializer,
+                   'html':  output.HTMLSerializer}[method]
         else:
             assert issubclass(cls, output.Serializer)
         serializer = cls(**kwargs)

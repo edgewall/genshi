@@ -155,13 +155,13 @@ class XMLSerializer(Serializer):
                 yield Markup('<!--%s-->' % data)
 
 
-class HTMLSerializer(Serializer):
-    """Produces HTML text from an event stream.
+class XHTMLSerializer(XMLSerializer):
+    """Produces XHTML text from an event stream.
     
     >>> from markup.builder import tag
     >>> elem = tag.div(tag.a(href='foo'), tag.br, tag.hr(noshade=True))
-    >>> print ''.join(HTMLSerializer().serialize(elem.generate()))
-    <div><a href="foo"></a><br><hr noshade></div>
+    >>> print ''.join(XHTMLSerializer().serialize(elem.generate()))
+    <div><a href="foo"></a><br /><hr noshade="noshade" /></div>
     """
 
     NAMESPACE = Namespace('http://www.w3.org/1999/xhtml')
@@ -172,17 +172,6 @@ class HTMLSerializer(Serializer):
     _BOOLEAN_ATTRS = frozenset(['selected', 'checked', 'compact', 'declare',
                                 'defer', 'disabled', 'ismap', 'multiple',
                                 'nohref', 'noresize', 'noshade', 'nowrap'])
-
-    def __init__(self, doctype=None):
-        """Initialize the HTML serializer.
-        
-        @param doctype: a `(name, pubid, sysid)` tuple that represents the
-            DOCTYPE declaration that should be included at the top of the
-            generated output
-        """
-        self.preamble = []
-        if doctype:
-            self.preamble.append((DOCTYPE, doctype, (None, -1, -1)))
 
     def serialize(self, stream):
         have_doctype = False
@@ -215,6 +204,82 @@ class HTMLSerializer(Serializer):
                 if tag.namespace and tag not in self.NAMESPACE:
                     continue # not in the HTML namespace, so don't emit
                 buf = ['<', tag.localname]
+
+                for attr, value in attrib:
+                    if attr.namespace and attr not in self.NAMESPACE:
+                        continue # not in the HTML namespace, so don't emit
+                    if attr.localname in self._BOOLEAN_ATTRS:
+                        if value:
+                            buf.append(' %s="%s"' % (attr.localname, attr.localname))
+                    else:
+                        buf.append(' %s="%s"' % (attr.localname, escape(value)))
+
+                if tag.localname in self._EMPTY_ELEMS:
+                    kind, data, pos = stream.next()
+                    if kind is END:
+                        buf.append(' />')
+                    else:
+                        buf.append('>')
+                        stream.pushback((kind, data, pos))
+                else:
+                    buf.append('>')
+
+                yield Markup(''.join(buf))
+
+            elif kind is END:
+                tag = data
+                if tag.namespace and tag not in self.NAMESPACE:
+                    continue # not in the HTML namespace, so don't emit
+                yield Markup('</%s>' % tag.localname)
+
+            elif kind is TEXT:
+                yield escape(data, quotes=False)
+
+            elif kind is COMMENT:
+                yield Markup('<!--%s-->' % data)
+
+
+class HTMLSerializer(XHTMLSerializer):
+    """Produces HTML text from an event stream.
+    
+    >>> from markup.builder import tag
+    >>> elem = tag.div(tag.a(href='foo'), tag.br, tag.hr(noshade=True))
+    >>> print ''.join(HTMLSerializer().serialize(elem.generate()))
+    <div><a href="foo"></a><br><hr noshade></div>
+    """
+
+    def serialize(self, stream):
+        have_doctype = False
+        ns_mapping = {}
+
+        stream = _PushbackIterator(chain(self.preamble, stream))
+        for kind, data, pos in stream:
+
+            if kind is DOCTYPE:
+                if not have_doctype:
+                    name, pubid, sysid = data
+                    buf = ['<!DOCTYPE %s']
+                    if pubid:
+                        buf.append(' PUBLIC "%s"')
+                    elif sysid:
+                        buf.append(' SYSTEM')
+                    if sysid:
+                        buf.append(' "%s"')
+                    buf.append('>\n')
+                    yield Markup(''.join(buf), *filter(None, data))
+                    have_doctype = True
+
+            elif kind is START_NS:
+                prefix, uri = data
+                if uri not in ns_mapping:
+                    ns_mapping[uri] = prefix
+
+            elif kind is START:
+                tag, attrib = data
+                if tag.namespace and tag not in self.NAMESPACE:
+                    continue # not in the HTML namespace, so don't emit
+                buf = ['<', tag.localname]
+
                 for attr, value in attrib:
                     if attr.namespace and attr not in self.NAMESPACE:
                         continue # not in the HTML namespace, so don't emit

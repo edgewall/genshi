@@ -13,9 +13,9 @@
 # history and logs, available at http://markup.edgewall.org/log/.
 
 try:
-    from setuptools import setup, find_packages
+    from setuptools import setup, Extension
 except ImportError:
-    from distutils.core import setup
+    from distutils.core import setup, Extension
 
 setup(
     name='Markup', version='0.1',
@@ -23,6 +23,7 @@ setup(
     author='Edgewall Software', author_email='info@edgewall.org',
     license='BSD', url='http://markup.edgewall.org/',
     packages=['markup'],
+    ext_modules=[Extension('markup._speedups', ['markup/_speedups.c'])],
 
     test_suite = 'markup.tests.suite',
     zip_safe = True,

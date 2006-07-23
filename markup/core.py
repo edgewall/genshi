@@ -340,6 +340,11 @@ class Markup(unicode):
         return Markup(Stream(HTMLSanitizer()(HTMLParser(text))))
 
 
+try:
+    from markup._speedups import Markup
+except ImportError:
+    pass # just use the Python implementation
+
 escape = Markup.escape
 
 def unescape(text):

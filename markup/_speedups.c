@@ -92,6 +92,10 @@ escape(PyObject *text, int quotes)
 {
     PyObject *tmp, *tmp2, *args, *ret;
 
+    if (PyObject_TypeCheck(text, &MarkupType)) {
+        Py_INCREF(text);
+        return text;
+    }
     tmp = PyUnicode_Replace(text, amp1, amp2, -1);
     tmp2 = PyUnicode_Replace(tmp, lt1, lt2, -1);
     Py_DECREF(tmp);
@@ -130,36 +134,108 @@ Markup_escape(PyTypeObject* type, PyObject *args, PyObject *kwds)
 }
 
 static PyObject *
-Markup_mod(PyObject *self, PyObject *args)
+Markup_join(PyObject *self, PyObject *args, PyObject *kwds)
 {
-    PyObject *tmp, *ret, *args2;
-    int i, nargs;
+    static char *kwlist[] = {"seq", "escape_quotes", 0};
+    PyObject *seq = NULL, *seq2, *tmp;
+    char quotes = 1;
+    int n, i;
 
-    printf("1\n");
-    nargs = PyTuple_GET_SIZE(args);
-    args2 = PyTuple_New(nargs);
-    if (args2 == NULL) {
-        return NULL;
+    if (!PyArg_ParseTupleAndKeywords(args, kwds, "O|b", kwlist, &seq, &quotes))
+	return NULL;
+    if(!PySequence_Check(seq))
+	return NULL;
+    n = PySequence_Size(seq);
+    if (n < 0)
+	return NULL;
+    seq2 = PyTuple_New(n);
+    if (seq2 == NULL)
+	return NULL;
+    for(i = 0; i < n; i++) {
+	tmp = PySequence_GetItem(seq, i);
+	if (tmp == NULL) {
+	    Py_DECREF(seq2);
+	    return NULL;
+	}
+	tmp = escape(tmp, quotes);
+	if (tmp == NULL) {
+	    Py_DECREF(seq2);
+	    return NULL;
+	}
+	PyTuple_SET_ITEM(seq2, i, tmp);
     }
-    printf("2\n");
-    for(i = 0; i < nargs; i++) {
-        tmp = escape(PyTuple_GET_ITEM(args, i), 1);
-        if (tmp == NULL) {
-            Py_DECREF(args2);
-            return NULL;
-        }
-        PyTuple_SET_ITEM(args2, i, tmp);
-    }
-    printf("3\n");
-    tmp = PyUnicode_Format(self, args2);
-    Py_DECREF(args2);
+    tmp = PyUnicode_Join(self, seq2);
+    Py_DECREF(seq2);
     if (tmp == NULL)
-        return NULL;
-    printf("4\n");
+	return NULL;
     args = PyTuple_New(1);
     if (args == NULL) {
-        Py_DECREF(tmp);
-        return NULL;
+	Py_DECREF(tmp);
+	return NULL;
+    }
+    PyTuple_SET_ITEM(args, 0, tmp);
+    tmp = MarkupType.tp_new(&MarkupType, args, NULL);
+    Py_DECREF(args);
+    return tmp;
+}
+
+static PyObject *
+Markup_concat(PyObject *self, PyObject *other)
+{
+    PyObject *tmp, *tmp2, *args, *ret;
+    tmp = escape(other, 1);
+    if (tmp == NULL)
+	return NULL;
+    tmp2 = PyUnicode_Concat(self, tmp);
+    if (tmp2 == NULL) {
+	Py_DECREF(tmp);
+	return NULL;
+    }
+    Py_DECREF(tmp);
+    args = PyTuple_New(1);
+    PyTuple_SET_ITEM(args, 0, tmp2);
+    ret = MarkupType.tp_new(&MarkupType, args, NULL);
+    Py_DECREF(args);
+    return ret;
+}
+
+static PyObject *
+Markup_mod(PyObject *self, PyObject *args)
+{
+    PyObject *tmp, *tmp2, *ret, *args2;
+    int i, nargs;
+
+    if(PyTuple_Check(args)) {
+	nargs = PyTuple_GET_SIZE(args);
+	args2 = PyTuple_New(nargs);
+	if (args2 == NULL) {
+	    return NULL;
+	}
+	for(i = 0; i < nargs; i++) {
+	    tmp = escape(PyTuple_GET_ITEM(args, i), 1);
+	    if (tmp == NULL) {
+		Py_DECREF(args2);
+		return NULL;
+	    }
+	    PyTuple_SET_ITEM(args2, i, tmp);
+	}
+	tmp = PyUnicode_Format(self, args2);
+	Py_DECREF(args2);
+	if (tmp == NULL)
+	    return NULL;
+    } else {
+	tmp2 = escape(args, 1);
+	if (tmp2 == NULL) 
+	    return NULL;
+	tmp = PyUnicode_Format(self, tmp2);
+	Py_DECREF(tmp2);
+	if (tmp == NULL)
+	    return NULL;
+    }
+    args = PyTuple_New(1);
+    if (args == NULL) {
+	Py_DECREF(tmp);
+	return NULL;
     }
     PyTuple_SET_ITEM(args, 0, tmp);
     ret = PyUnicode_Type.tp_new(&MarkupType, args, NULL);
@@ -192,16 +268,28 @@ typedef struct {
 static PyMethodDef Markup_methods[] = {
     {"escape", (PyCFunction)Markup_escape, METH_VARARGS|METH_CLASS|METH_KEYWORDS, 
      escape__doc__},
+    {"join", (PyCFunction)Markup_join, METH_VARARGS|METH_KEYWORDS},
     {"unescape", (PyCFunction)Markup_unescape, METH_NOARGS, unescape__doc__},
     {NULL}  /* Sentinel */
 };
 
 static PyNumberMethods markup_as_number = {
-        0,                              /*nb_add*/
-        0,                              /*nb_subtract*/
-        0,                              /*nb_multiply*/
-        0,                              /*nb_divide*/
-        Markup_mod,                     /*nb_remainder*/
+        0, /*nb_add*/
+        0, /*nb_subtract*/
+        0, /*nb_multiply*/
+        0, /*nb_divide*/
+        Markup_mod, /*nb_remainder*/
+};
+
+static PySequenceMethods markup_as_sequence = {
+	0, /*sq_length*/
+	Markup_concat, /*sq_concat*/
+	0, /*sq_repeat*/
+	0, /*sq_item*/
+	0, /*sq_slice*/
+	0, /*sq_ass_item*/
+	0, /*sq_ass_slice*/
+	0  /*sq_contains*/
 };
 
 PyTypeObject MarkupType = {
@@ -217,7 +305,7 @@ PyTypeObject MarkupType = {
     0,          /*tp_compare*/
     0,          /*tp_repr*/
     &markup_as_number,/*tp_as_number*/
-    0,          /*tp_as_sequence*/
+    &markup_as_sequence,/*tp_as_sequence*/
     0,          /*tp_as_mapping*/
     0,          /*tp_hash */
 
@@ -227,7 +315,7 @@ PyTypeObject MarkupType = {
     0,          /*tp_setattro*/
     0,          /*tp_as_buffer*/
 
-    Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE, /*tp_flags*/
+    Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE | Py_TPFLAGS_CHECKTYPES, /*tp_flags*/
     Markup__doc__,/*tp_doc*/
     
     0,          /*tp_traverse*/

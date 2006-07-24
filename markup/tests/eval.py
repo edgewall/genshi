@@ -180,6 +180,10 @@ class ExpressionTestCase(unittest.TestCase):
         data = {'foo': {'bar': range(42)}}
         self.assertEqual(42, Expression("len(foo.bar)").evaluate(data))
 
+    def test_call_keywords(self):
+        self.assertEqual(42, Expression("foo(x=bar)").evaluate({'foo': lambda x: x,
+                                                                'bar': 42}))
+
     def test_call_function_without_params(self):
         self.assertEqual(42, Expression("foo").evaluate({'foo': lambda: 42}))
         data = {'foo': 'bar'}

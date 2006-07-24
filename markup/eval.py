@@ -209,7 +209,11 @@ class ASTTransformer(object):
     def _visitDefault(self, node, *args, **kwargs):
         return node
     visitAssName = visitAssTuple = _visitDefault
-    visitConst = visitKeyword = visitName = _visitDefault
+    visitConst = visitName = _visitDefault
+
+    def visitKeyword(self, node, *args, **kwargs):
+        node.expr = self.visit(node.expr, *args, **kwargs)
+        return node
 
     def visitDict(self, node, *args, **kwargs):
         node.items = map(lambda (k, v): (self.visit(k, *args, **kwargs),

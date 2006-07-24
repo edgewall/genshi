@@ -95,24 +95,79 @@ Markup_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
 static PyObject *
 escape(PyObject *text, int quotes)
 {
-    PyObject *tmp, *tmp2, *args, *ret;
+    PyObject *args, *ret;
+    PyUnicodeObject *in, *out;
+    Py_UNICODE *outp;
+    int i, len;
 
     if (PyObject_TypeCheck(text, &MarkupType)) {
         Py_INCREF(text);
         return text;
     }
-    tmp = PyUnicode_Replace(text, amp1, amp2, -1);
-    tmp2 = PyUnicode_Replace(tmp, lt1, lt2, -1);
-    Py_DECREF(tmp);
-    tmp = PyUnicode_Replace(tmp2, gt1, gt2, -1);
-    Py_DECREF(tmp2);
-    if (quotes) {
-        tmp2 = PyUnicode_Replace(tmp, qt1, qt2, -1);
-        Py_DECREF(tmp);
-        tmp = tmp2;
+    in = (PyUnicodeObject *)PyUnicode_FromObject(text);
+    if (in == NULL) {
+        return NULL;
+    }
+    /* First we need to figure out how long the escaped string will be */
+    len = 0;
+    for(i = 0;i < in->length; i++) {
+      switch(in->str[i]) {
+      case '&':
+        len += 5;
+        break;
+      case '"':
+        len += quotes ? 5 : 1;
+        break;
+      case '<':
+      case '>':
+        len += 4;
+        break;
+      default:
+        len++;
+      };
+    }
+    /* Do we need to escape anything at all? */
+    if (len == in->length) {
+        args = PyTuple_New(1);
+        PyTuple_SET_ITEM(args, 0, (PyObject *)in);
+        ret = MarkupType.tp_new(&MarkupType, args, NULL);
+        Py_DECREF(args);
+        return ret;
+    }
+    out = (PyUnicodeObject*) PyUnicode_FromUnicode(NULL, len);
+    if (out == NULL) {
+        return NULL;
+    }
+    outp = out->str;
+    for(i = 0;i < in->length; i++) {
+        switch(in->str[i]) {
+        case '&':
+            Py_UNICODE_COPY(outp, ((PyUnicodeObject *)amp2)->str, 5);
+            outp += 5;
+            break;
+        case '"':
+            if (quotes) {
+                Py_UNICODE_COPY(outp, ((PyUnicodeObject *)qt2)->str, 5);
+                outp += 5;
+            }
+            else {
+                *outp++ = in->str[i];
+            }
+            break;
+        case '<':
+            Py_UNICODE_COPY(outp, ((PyUnicodeObject *)lt2)->str, 4);
+            outp += 4;
+            break;
+        case '>':
+            Py_UNICODE_COPY(outp, ((PyUnicodeObject *)gt2)->str, 4);
+            outp += 4;
+            break;
+        default:
+            *outp++ = in->str[i];
+        };
     }
     args = PyTuple_New(1);
-    PyTuple_SET_ITEM(args, 0, tmp);
+    PyTuple_SET_ITEM(args, 0, (PyObject *)out);
     ret = MarkupType.tp_new(&MarkupType, args, NULL);
     Py_DECREF(args);
     return ret;

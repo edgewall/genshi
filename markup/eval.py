@@ -103,23 +103,25 @@ class Expression(object):
 
         return gen.getCode()
 
-    def _lookup_name(self, data, name, locals=None):
+    def _lookup_name(data, name, locals=None):
         val = data.get(name)
         if val is None and locals:
             val = locals.get(name)
         if val is None:
             val = getattr(__builtin__, name, None)
         return val
+    _lookup_name = staticmethod(_lookup_name)
 
-    def _lookup_attribute(self, data, obj, key):
+    def _lookup_attribute(data, obj, key):
         if hasattr(obj, key):
             return getattr(obj, key)
         try:
             return obj[key]
         except (KeyError, TypeError):
             return None
+    _lookup_attribute = staticmethod(_lookup_attribute)
 
-    def _lookup_item(self, data, obj, key):
+    def _lookup_item(data, obj, key):
         if len(key) == 1:
             key = key[0]
         try:
@@ -131,6 +133,7 @@ class Expression(object):
                     return getattr(obj, key)
                 except (AttributeError, TypeError), e:
                     pass
+    _lookup_item = staticmethod(_lookup_item)
 
 
 class ASTTransformer(object):

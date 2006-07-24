@@ -243,7 +243,7 @@ class ContentDirective(Directive):
     def __call__(self, stream, ctxt, directives):
         def _generate():
             kind, data, pos = stream.next()
-            if kind is Stream.START:
+            if kind is START:
                 yield kind, data, pos # emit start tag
             yield EXPR, self.expr, pos
             previous = stream.next()
@@ -363,20 +363,22 @@ class ForDirective(Directive):
 
     def __call__(self, stream, ctxt, directives):
         iterable = self.expr.evaluate(ctxt)
-        if iterable is not None:
-            scope = {}
-            stream = list(stream)
-            targets = self.targets
-            for item in iter(iterable):
-                if len(targets) == 1:
-                    scope[targets[0]] = item
-                else:
-                    for idx, name in enumerate(targets):
-                        scope[name] = item[idx]
-                ctxt.push(scope)
-                for event in _apply_directives(stream, ctxt, directives):
-                    yield event
-                ctxt.pop()
+        if iterable is None:
+            return
+
+        scope = {}
+        stream = list(stream)
+        targets = self.targets
+        for item in iter(iterable):
+            if len(targets) == 1:
+                scope[targets[0]] = item
+            else:
+                for idx, name in enumerate(targets):
+                    scope[name] = item[idx]
+            ctxt.push(scope)
+            for event in _apply_directives(stream, ctxt, directives):
+                yield event
+            ctxt.pop()
 
     def __repr__(self):
         return '<%s "%s in %s">' % (self.__class__.__name__,

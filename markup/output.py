@@ -330,3 +330,9 @@ class _PushbackIterator(object):
 
     def pushback(self, item):
         self.buf.append(item)
+
+
+try:
+    from markup._speedups import _PushbackIterator
+except ImportError:
+    pass

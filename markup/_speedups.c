@@ -411,6 +411,163 @@ PyTypeObject MarkupType = {
     0           /*tp_weaklist*/
 };
 
+/* _PushbackIterator class */
+
+PyAPI_DATA(PyTypeObject) _PushbackIteratorType;
+
+PyDoc_STRVAR(_PushbackIterator__doc__,
+"A simple wrapper for iterators that allows pushing items back on the\n\
+queue via the `pushback()` method.\n\
+\n\
+That can effectively be used to peek at the next item.");
+
+typedef struct {
+    PyObject_HEAD;
+    PyObject *iterable;
+    PyListObject *buf;
+} _PushbackIterator;
+
+static void
+_PushbackIterator_dealloc(_PushbackIterator *self)
+{
+    Py_XDECREF(self->iterable);
+    Py_XDECREF(self->buf);
+    self->ob_type->tp_free((PyObject *) self);
+}
+
+static int
+_PushbackIterator_init(_PushbackIterator *self, PyObject *args, PyObject *kwds)
+{
+    PyObject *iterable, *buf;
+    if (!PyArg_ParseTuple(args, "O", &iterable)) {
+        return -1;
+    }
+
+    iterable = PyObject_GetIter(iterable);
+    if (iterable == NULL) {
+        return -1;
+    }
+    Py_INCREF(iterable);
+
+    buf = PyList_New(0);
+    if (buf == NULL) {
+        Py_DECREF(iterable);
+        return -1;
+    }
+    Py_INCREF(buf);
+    self->buf = (PyListObject *) buf;
+    self->iterable = iterable;
+
+    return 0;
+}
+
+static PyObject *
+_PushbackIterator_iter(_PushbackIterator *self)
+{
+    Py_INCREF(self);
+    return (PyObject *) self;
+}
+
+static PyObject *
+_PushbackIterator_next(_PushbackIterator *self)
+{
+    PyObject *next;
+
+    if (PyList_GET_SIZE(self->buf)) {
+        next = PyList_GET_ITEM(self->buf, 0);
+        if (next == NULL) {
+            return NULL;
+        }
+        Py_INCREF(next);
+        if (PySequence_DelItem((PyObject *) self->buf, 0) == -1) {
+            Py_DECREF(next);
+            return NULL;
+        }
+    } else {
+        next = PyIter_Next(self->iterable);
+        if (next == NULL) {
+            return NULL;
+        }
+        Py_INCREF(next);
+    }
+
+    return next;
+}
+
+static PyObject *
+_PushbackIterator_pushback(_PushbackIterator *self, PyObject *args)
+{
+    PyObject *item;
+
+    if (!PyArg_ParseTuple(args, "O", &item)) {
+        return NULL;
+    }
+    if (PyList_Append((PyObject *) self->buf, item) == -1) {
+        return NULL;
+    }
+
+    Py_INCREF(Py_None);
+    return Py_None;
+}
+
+static PyMethodDef _PushbackIterator_methods[] = {
+    {"pushback", (PyCFunction)_PushbackIterator_pushback, METH_VARARGS, 
+     ""},
+    {NULL}  /* Sentinel */
+};
+
+PyTypeObject _PushbackIteratorType = {
+    PyObject_HEAD_INIT(NULL)
+    0,          /*ob_size*/
+    "markup._speedups._PushbackIterator", /*tp_name*/
+    sizeof(_PushbackIterator),/*tp_basicsize*/
+    0,          /*tp_itemsize*/
+    (destructor) _PushbackIterator_dealloc, /*tp_dealloc*/
+    0,          /*tp_print*/ 
+    0,          /*tp_getattr*/
+    0,          /*tp_setattr*/
+    0,          /*tp_compare*/
+    0,          /*tp_repr*/
+    0,          /*tp_as_number*/
+    0,          /*tp_as_sequence*/
+    0,          /*tp_as_mapping*/
+    0,          /*tp_hash */
+
+    0,          /*tp_call*/
+    0,          /*tp_str*/
+    0,          /*tp_getattro*/
+    0,          /*tp_setattro*/
+    0,          /*tp_as_buffer*/
+
+    Py_TPFLAGS_DEFAULT | Py_TPFLAGS_HAVE_ITER, /*tp_flags*/
+    _PushbackIterator__doc__,/*tp_doc*/
+
+    0,          /*tp_traverse*/
+    0,          /*tp_clear*/
+
+    0,          /*tp_richcompare*/
+    0,          /*tp_weaklistoffset*/
+
+    (getiterfunc) _PushbackIterator_iter, /*tp_iter*/
+    (iternextfunc) _PushbackIterator_next, /*tp_iternext*/
+
+    /* Attribute descriptor and subclassing stuff */
+
+    _PushbackIterator_methods, /*tp_methods*/
+    0,          /*tp_members*/
+    0,          /*tp_getset*/
+    0,          /*tp_base*/
+    0,          /*tp_dict*/
+
+    0,          /*tp_descr_get*/
+    0,          /*tp_descr_set*/
+    0,          /*tp_dictoffset*/
+
+    (initproc) _PushbackIterator_init, /*tp_init*/
+    0,          /*tp_alloc  will be set to PyType_GenericAlloc in module init*/
+    PyType_GenericNew          /*tp_new*/
+};
+
 PyMODINIT_FUNC
 init_speedups(void)
 {
@@ -418,10 +575,15 @@ init_speedups(void)
 
     if (PyType_Ready(&MarkupType) < 0)
         return;
+    if (PyType_Ready(&_PushbackIteratorType) < 0)
+        return;
 
     init_constants();
 
     module = Py_InitModule("_speedups", NULL);
     Py_INCREF(&MarkupType);
     PyModule_AddObject(module, "Markup", (PyObject *) &MarkupType);
+    Py_INCREF(&_PushbackIteratorType);
+    PyModule_AddObject(module, "_PushbackIterator",
+                       (PyObject *) &_PushbackIteratorType);
 }

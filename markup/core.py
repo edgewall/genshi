@@ -440,11 +440,11 @@ class QName(unicode):
     __slots__ = ['namespace', 'localname']
 
     def __new__(cls, qname):
-        if isinstance(qname, QName):
+        if type(qname) is cls:
             return qname
 
         parts = qname.split(u'}', 1)
-        if qname.find(u'}') > 0:
+        if len(parts) > 1:
             self = unicode.__new__(cls, u'{' + qname)
             self.namespace = unicode(parts[0])
             self.localname = unicode(parts[1])

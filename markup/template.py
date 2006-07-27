@@ -619,6 +619,47 @@ class OtherwiseDirective(Directive):
         return _apply_directives(stream, ctxt, directives)
 
 
+class WithDirective(Directive):
+    """Implementation of the `py:with` template directive, which allows
+    shorthand access to variables and expressions.
+    
+    >>> tmpl = Template('''<div xmlns:py="http://markup.edgewall.org/">
+    ...   <span py:with="y=7; z=x+10">$x $y $z</span>
+    ... </div>''')
+    >>> print tmpl.generate(Context(x=42))
+    <div>
+      <span>42 7 52</span>
+    </div>
+    """
+    __slots__ = ['vars']
+
+    ATTRIBUTE = 'vars'
+
+    def __init__(self, value, filename=None, lineno=-1, offset=-1):
+        Directive.__init__(self, None, filename, lineno, offset)
+        self.vars = []
+        try:
+            for stmt in value.split(';'):
+                name, value = stmt.split('=', 1)
+                self.vars.append((name.strip(),
+                                  Expression(value.strip(), filename, lineno)))
+        except SyntaxError, err:
+            raise TemplateSyntaxError(err, filename, lineno,
+                                      offset + (err.offset or 0))
+
+    def __call__(self, stream, ctxt, directives):
+        ctxt.push(dict([(name, expr.evaluate(ctxt))
+                        for name, expr in self.vars]))
+        for event in _apply_directives(stream, ctxt, directives):
+            yield event
+        ctxt.pop()
+
+    def __repr__(self):
+        return '<%s "%s">' % (self.__class__.__name__,
+                              '; '.join(['%s = %s' % (name, expr.source)
+                                         for name, expr in self.vars]))
+
+
 class Template(object):
     """Can parse a template and transform it into the corresponding output
     based on context data.
@@ -635,6 +676,7 @@ class Template(object):
                   ('when', WhenDirective),
                   ('otherwise', OtherwiseDirective),
                   ('choose', ChooseDirective),
+                  ('with', WithDirective),
                   ('replace', ReplaceDirective),
                   ('content', ContentDirective),
                   ('attrs', AttrsDirective),

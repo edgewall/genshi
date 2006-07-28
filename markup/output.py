@@ -83,30 +83,7 @@ class XMLSerializer(Serializer):
         stream = _PushbackIterator(chain(self.preamble, stream))
         for kind, data, pos in stream:
 
-            if kind is DOCTYPE:
-                if not have_doctype:
-                    name, pubid, sysid = data
-                    buf = ['<!DOCTYPE %s']
-                    if pubid:
-                        buf.append(' PUBLIC "%s"')
-                    elif sysid:
-                        buf.append(' SYSTEM')
-                    if sysid:
-                        buf.append(' "%s"')
-                    buf.append('>\n')
-                    yield Markup(''.join(buf), *filter(None, data))
-                    have_doctype = True
-
-            elif kind is START_NS:
-                prefix, uri = data
-                if uri not in ns_mapping:
-                    ns_mapping[uri] = prefix
-                    if not prefix:
-                        ns_attrib.append((QName('xmlns'), uri))
-                    else:
-                        ns_attrib.append((QName('xmlns:%s' % prefix), uri))
-
-            elif kind is START:
+            if kind is START:
                 tag, attrib = data
 
                 tagname = tag.localname
@@ -154,6 +131,29 @@ class XMLSerializer(Serializer):
             elif kind is COMMENT:
                 yield Markup('<!--%s-->' % data)
 
+            elif kind is DOCTYPE:
+                if not have_doctype:
+                    name, pubid, sysid = data
+                    buf = ['<!DOCTYPE %s']
+                    if pubid:
+                        buf.append(' PUBLIC "%s"')
+                    elif sysid:
+                        buf.append(' SYSTEM')
+                    if sysid:
+                        buf.append(' "%s"')
+                    buf.append('>\n')
+                    yield Markup(''.join(buf), *filter(None, data))
+                    have_doctype = True
+
+            elif kind is START_NS:
+                prefix, uri = data
+                if uri not in ns_mapping:
+                    ns_mapping[uri] = prefix
+                    if not prefix:
+                        ns_attrib.append((QName('xmlns'), uri))
+                    else:
+                        ns_attrib.append((QName('xmlns:%s' % prefix), uri))
+
             elif kind is PI:
                 yield Markup('<?%s %s?>' % data)
 
@@ -183,26 +183,7 @@ class XHTMLSerializer(XMLSerializer):
         stream = _PushbackIterator(chain(self.preamble, stream))
         for kind, data, pos in stream:
 
-            if kind is DOCTYPE:
-                if not have_doctype:
-                    name, pubid, sysid = data
-                    buf = ['<!DOCTYPE %s']
-                    if pubid:
-                        buf.append(' PUBLIC "%s"')
-                    elif sysid:
-                        buf.append(' SYSTEM')
-                    if sysid:
-                        buf.append(' "%s"')
-                    buf.append('>\n')
-                    yield Markup(''.join(buf), *filter(None, data))
-                    have_doctype = True
-
-            elif kind is START_NS:
-                prefix, uri = data
-                if uri not in ns_mapping:
-                    ns_mapping[uri] = prefix
-
-            elif kind is START:
+            if kind is START:
                 tag, attrib = data
                 if tag.namespace and tag not in self.NAMESPACE:
                     continue # not in the HTML namespace, so don't emit
@@ -241,6 +222,25 @@ class XHTMLSerializer(XMLSerializer):
             elif kind is COMMENT:
                 yield Markup('<!--%s-->' % data)
 
+            elif kind is DOCTYPE:
+                if not have_doctype:
+                    name, pubid, sysid = data
+                    buf = ['<!DOCTYPE %s']
+                    if pubid:
+                        buf.append(' PUBLIC "%s"')
+                    elif sysid:
+                        buf.append(' SYSTEM')
+                    if sysid:
+                        buf.append(' "%s"')
+                    buf.append('>\n')
+                    yield Markup(''.join(buf), *filter(None, data))
+                    have_doctype = True
+
+            elif kind is START_NS:
+                prefix, uri = data
+                if uri not in ns_mapping:
+                    ns_mapping[uri] = prefix
+
             elif kind is PI:
                 yield Markup('<?%s %s?>' % data)
 
@@ -261,26 +261,7 @@ class HTMLSerializer(XHTMLSerializer):
         stream = _PushbackIterator(chain(self.preamble, stream))
         for kind, data, pos in stream:
 
-            if kind is DOCTYPE:
-                if not have_doctype:
-                    name, pubid, sysid = data
-                    buf = ['<!DOCTYPE %s']
-                    if pubid:
-                        buf.append(' PUBLIC "%s"')
-                    elif sysid:
-                        buf.append(' SYSTEM')
-                    if sysid:
-                        buf.append(' "%s"')
-                    buf.append('>\n')
-                    yield Markup(''.join(buf), *filter(None, data))
-                    have_doctype = True
-
-            elif kind is START_NS:
-                prefix, uri = data
-                if uri not in ns_mapping:
-                    ns_mapping[uri] = prefix
-
-            elif kind is START:
+            if kind is START:
                 tag, attrib = data
                 if tag.namespace and tag not in self.NAMESPACE:
                     continue # not in the HTML namespace, so don't emit
@@ -313,6 +294,25 @@ class HTMLSerializer(XHTMLSerializer):
 
             elif kind is COMMENT:
                 yield Markup('<!--%s-->' % data)
+
+            elif kind is DOCTYPE:
+                if not have_doctype:
+                    name, pubid, sysid = data
+                    buf = ['<!DOCTYPE %s']
+                    if pubid:
+                        buf.append(' PUBLIC "%s"')
+                    elif sysid:
+                        buf.append(' SYSTEM')
+                    if sysid:
+                        buf.append(' "%s"')
+                    buf.append('>\n')
+                    yield Markup(''.join(buf), *filter(None, data))
+                    have_doctype = True
+
+            elif kind is START_NS:
+                prefix, uri = data
+                if uri not in ns_mapping:
+                    ns_mapping[uri] = prefix
 
             elif kind is PI:
                 yield Markup('<?%s %s?>' % data)

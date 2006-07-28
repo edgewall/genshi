@@ -3,6 +3,7 @@
 version = "1.0"
 
 # description = "Your plan to rule the world"
+# long_description = "More description about your plan"
 # author = "Your Name Here"
 # email = "YourEmail@YourDomain"
 # copyright = "Vintage 2006 - a good year indeed"

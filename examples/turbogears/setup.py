@@ -17,7 +17,7 @@ setup(
     #license=license,
     
     install_requires = [
-        "TurboGears >= 0.9a7dev-r1517",
+        "TurboGears >= 0.9a9dev-r1686",
     ],
     scripts = ["start-markuptest.py"],
     zip_safe=False,

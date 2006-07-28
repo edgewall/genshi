@@ -9,7 +9,7 @@
     <title>Welcome to TurboGears</title>
 </head>
 
-<body id="welcome">
+<body>
     <p>Congratulations, your TurboGears application is running as of <span py:replace="now">now</span>.</p>
 
     <h2>Are you ready to Gear Up?</h2>
@@ -30,6 +30,8 @@
     <p>If you haven't already, you might check out some of the <a href="http://www.turbogears.org/docs/" >documentation</a>.</p>
 
     <p>Thanks for using TurboGears! See you on the <a href="http://groups.google.com/group/turbogears" >mailing list</a> and the "turbogears" channel on irc.freenode.org!</p>
+
+    ${ET(widget.display())}
 
 </body>
 </html>

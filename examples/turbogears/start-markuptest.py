@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/python
 import pkg_resources
 pkg_resources.require("TurboGears")
 

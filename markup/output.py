@@ -22,7 +22,7 @@ except NameError:
 from itertools import chain
 
 from markup.core import escape, Markup, Namespace, QName
-from markup.core import DOCTYPE, START, END, START_NS, END_NS, TEXT, COMMENT
+from markup.core import DOCTYPE, START, END, START_NS, END_NS, TEXT, COMMENT, PI
 
 __all__ = ['Serializer', 'XMLSerializer', 'HTMLSerializer']
 
@@ -154,6 +154,9 @@ class XMLSerializer(Serializer):
             elif kind is COMMENT:
                 yield Markup('<!--%s-->' % data)
 
+            elif kind is PI:
+                yield Markup('<?%s %s?>' % data)
+
 
 class XHTMLSerializer(XMLSerializer):
     """Produces XHTML text from an event stream.
@@ -238,6 +241,9 @@ class XHTMLSerializer(XMLSerializer):
             elif kind is COMMENT:
                 yield Markup('<!--%s-->' % data)
 
+            elif kind is PI:
+                yield Markup('<?%s %s?>' % data)
+
 
 class HTMLSerializer(XHTMLSerializer):
     """Produces HTML text from an event stream.
@@ -307,6 +313,9 @@ class HTMLSerializer(XHTMLSerializer):
 
             elif kind is COMMENT:
                 yield Markup('<!--%s-->' % data)
+
+            elif kind is PI:
+                yield Markup('<?%s %s?>' % data)
 
 
 class _PushbackIterator(object):

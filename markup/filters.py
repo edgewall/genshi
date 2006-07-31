@@ -20,7 +20,7 @@ except NameError:
     from sets import ImmutableSet as frozenset
 import re
 
-from markup.core import Attributes, Markup, Namespace, escape
+from markup.core import Attributes, Markup, Namespace, escape, stripentities
 from markup.core import END, END_NS, START, START_NS, TEXT
 from markup.path import Path
 
@@ -130,9 +130,9 @@ class WhitespaceFilter(object):
                         del textbuf[:]
                         yield TEXT, output, pos
                     else:
-                        output = escape(collapse_lines('\n',
+                        output = Markup(collapse_lines('\n',
                             trim_trailing_space('',
-                                textbuf.pop())), quotes=False)
+                                escape(textbuf.pop(), quotes=False))))
                         yield TEXT, output, pos
                 if kind is not None:
                     yield kind, data, pos
@@ -182,6 +182,7 @@ class HTMLSanitizer(object):
 
                 new_attrib = []
                 for attr, value in attrib:
+                    value = stripentities(value)
                     if attr not in self._SAFE_ATTRS:
                         continue
                     elif attr in self._URI_ATTRS:

@@ -20,7 +20,8 @@
 
       <h2>Loop</h2>
       <ul tal:condition="items">
-        <li tal:repeat="item items" tal:content="item">Item</li>
+        <li tal:repeat="item items" tal:content="item"
+            tal:attributes="class python:repeat['item'].getEnd() and 'last' or None">Item</li>
       </ul>
 
     </div>

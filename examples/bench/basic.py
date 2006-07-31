@@ -108,7 +108,7 @@ def simpletal(dirname, verbose=False):
     template = simpleTAL.compileHTMLTemplate(fileobj)
     fileobj.close()
     def render():
-        ctxt = simpleTALES.Context()
+        ctxt = simpleTALES.Context(allowPythonPath=1)
         ctxt.addGlobal('base', base)
         ctxt.addGlobal('title', 'Just a test')
         ctxt.addGlobal('user', 'joe')

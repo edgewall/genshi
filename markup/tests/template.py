@@ -414,6 +414,30 @@ class StripDirectiveTestCase(unittest.TestCase):
         </div>""", str(tmpl.generate()))
 
 
+class WithDirectiveTestCase(unittest.TestCase):
+    """Tests for the `py:with` template directive."""
+
+    def test_shadowing(self):
+        tmpl = Template("""<div xmlns:py="http://markup.edgewall.org/">
+          ${x}
+          <span py:with="x = x * 2" py:replace="x"/>
+          ${x}
+        </div>""")
+        self.assertEqual("""<div>
+          42
+          84
+          42
+        </div>""", str(tmpl.generate(Context(x=42))))
+
+    def test_as_element(self):
+        tmpl = Template("""<div xmlns:py="http://markup.edgewall.org/">
+          <py:with vars="x = x * 2">${x}</py:with>
+        </div>""")
+        self.assertEqual("""<div>
+          84
+        </div>""", str(tmpl.generate(Context(x=42))))
+
+
 class TemplateTestCase(unittest.TestCase):
     """Tests for basic template processing, expression evaluation and error
     reporting.
@@ -578,6 +602,7 @@ def suite():
     suite.addTest(unittest.makeSuite(IfDirectiveTestCase, 'test'))
     suite.addTest(unittest.makeSuite(MatchDirectiveTestCase, 'test'))
     suite.addTest(unittest.makeSuite(StripDirectiveTestCase, 'test'))
+    suite.addTest(unittest.makeSuite(WithDirectiveTestCase, 'test'))
     return suite
 
 if __name__ == '__main__':

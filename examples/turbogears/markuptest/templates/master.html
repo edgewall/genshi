@@ -1,13 +1,15 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml"
       xmlns:py="http://markup.edgewall.org/"
       xmlns:xi="http://www.w3.org/2001/XInclude"
       py:strip="">
+
 <xi:include href="sitetemplate.html"><xi:fallback/></xi:include>
 
 <head py:match="head" py:attrs="select('@*')">
     <meta content="text/html; charset=UTF-8" http-equiv="content-type" py:replace="''"/>
     <title py:replace="''">Your title goes here</title>
-    ${select('*')}
+    <meta py:replace="select('*')"/>
     <style type="text/css">
         #pageLogin
         {
@@ -19,12 +21,13 @@
 </head>
 
 <body py:match="body" py:attrs="select('@*')">
-    <div py:if="tg.config('identity.on', False) and not logging_in"
-        id="pageLogin">
-        <span py:if="tg.identity.anonymous">
+    <div py:if="tg.config('identity.on',False) and not logging_in"
+        id="pageLogin"
+        py:choose="">
+        <span py:when="tg.identity.anonymous">
             <a href="/login">Login</a>
         </span>
-        <span py:if="not tg.identity.anonymous">
+        <span py:otherwise="">
             Welcome ${tg.identity.user.display_name}.
             <a href="/logout">Logout</a>
         </span>
@@ -32,7 +35,7 @@
 
     <div py:if="tg_flash" class="flash" py:content="tg_flash"></div>
 
-    ${select('*')}
+    <div py:replace="select('*')"/>
 
     <p align="center"><img src="/static/images/tg_under_the_hood.png" alt="TurboGears under the hood"/></p>
 </body>

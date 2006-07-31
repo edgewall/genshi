@@ -73,6 +73,11 @@ class XMLSerializerTestCase(unittest.TestCase):
         output = stream.render(XMLSerializer)
         self.assertEqual('<!--foo bar-->', output)
 
+    def test_processing_instruction(self):
+        stream = Stream([(Stream.PI, ('python', 'x = 2'), ('?', -1, -1))])
+        output = stream.render(XMLSerializer)
+        self.assertEqual('<?python x = 2?>', output)
+
 
 def suite():
     suite = unittest.TestSuite()

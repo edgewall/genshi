@@ -26,7 +26,7 @@ import re
 from StringIO import StringIO
 
 from markup.core import Attributes, Namespace, Stream, StreamEventKind
-from markup.core import START, END, START_NS, END_NS, TEXT, COMMENT
+from markup.core import _ensure, START, END, START_NS, END_NS, TEXT, COMMENT
 from markup.eval import Expression
 from markup.input import XMLParser
 from markup.path import Path
@@ -848,20 +848,11 @@ class Template(object):
             stream = filter_(iter(stream), ctxt)
         return Stream(stream)
 
-    def _ensure(self, stream, ctxt=None):
-        """Ensure that every item on the stream is actually a markup event."""
-        for event in stream:
-            try:
-                kind, data, pos = event
-            except ValueError:
-                kind, data, pos = event.totuple()
-            yield kind, data, pos
-
     def _eval(self, stream, ctxt=None):
         """Internal stream filter that evaluates any expressions in `START` and
         `TEXT` events.
         """
-        filters = (self._ensure, self._eval, self._match)
+        filters = (self._eval, self._match)
 
         for kind, data, pos in stream:
 
@@ -900,7 +891,7 @@ class Template(object):
                     # Test if the expression evaluated to an iterable, in which
                     # case we yield the individual items
                     try:
-                        substream = iter(result)
+                        substream = _ensure(result)
                         for filter_ in filters:
                             substream = filter_(substream, ctxt)
                         for event in substream:

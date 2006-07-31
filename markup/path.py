@@ -11,7 +11,25 @@
 # individuals. For the exact contribution history, see the revision
 # history and logs, available at http://markup.edgewall.org/log/.
 
-"""Basic support for evaluating XPath expressions against streams."""
+"""Basic support for evaluating XPath expressions against streams.
+
+>>> from markup.input import XML
+>>> doc = XML('''<doc>
+...  <items count="2">
+...       <item status="new">
+...         <summary>Foo</summary>
+...       </item>
+...       <item status="closed">
+...         <summary>Bar</summary>
+...       </item>
+...   </items>
+... </doc>''')
+>>> print doc.select('items/item[@status="closed"]/summary/text()')
+Bar
+
+Because the XPath engine operates on markup streams (as opposed to tree
+structures), it only implements a subset of the full XPath 1.0 language.
+"""
 
 import re
 
@@ -111,37 +129,44 @@ class Path(object):
                     stack.append(cursor)
 
                 matched = None
-                closure, node_test, predicates = steps[cursor]
+                while 1:
+                    axis, node_test, predicates = steps[cursor]
 
-                matched = node_test(kind, data, pos)
-                if matched and predicates:
-                    for predicate in predicates:
-                        if not predicate(kind, data, pos):
-                            matched = None
-                            break
+                    matched = node_test(kind, data, pos)
+                    if matched and predicates:
+                        for predicate in predicates:
+                            if not predicate(kind, data, pos):
+                                matched = None
+                                break
 
-                if matched:
-                    if cursor + 1 == size: # the last location step
-                        if ignore_context or len(stack) > 2 \
-                                          or node_test.axis != 'child':
-                            return matched
-                    else:
-                        stack[-1] += 1
+                    if matched:
+                        if cursor + 1 == size: # the last location step
+                            if ignore_context or \
+                                    kind is not START or \
+                                    axis in ('attribute', 'self') or \
+                                    len(stack) > 2:
+                                return matched
+                        else:
+                            cursor += 1
+                            stack[-1] = cursor
 
-                elif kind is START and not closure:
+                    if axis != 'self':
+                        break
+
+                if not matched and kind is START \
+                               and not axis.startswith('descendant'):
                     # If this step is not a closure, it cannot be matched until
                     # the current element is closed... so we need to move the
                     # cursor back to the last closure and retest that against
                     # the current element
-                    closures = [step for step in steps[:cursor] if step[0]]
-                    closures.reverse()
-                    for closure, node_test, predicates in closures:
-                        cursor -= 1
-                        if closure:
-                            matched = node_test(kind, data, pos)
-                            if matched:
-                                cursor += 1
-                            break
+                    backsteps = [step for step in steps[:cursor]
+                                 if step[0].startswith('descendant')]
+                    backsteps.reverse()
+                    for axis, node_test, predicates in backsteps:
+                        matched = node_test(kind, data, pos)
+                        if not matched:
+                            cursor -= 1
+                        break
                     stack[-1] = cursor
 
             return None
@@ -189,7 +214,9 @@ def _function_comment():
 
 def _function_node():
     def _function_node(kind, data, pos):
-        return True
+        if kind is START:
+            return True
+        return kind, data, pos
     _function_node.axis = None
     return _function_node
 
@@ -304,7 +331,7 @@ class _PathParser(object):
         use the union operator, the function always returns a list of size 1.
         
         Each path test in turn is a sequence of tests that correspond to the
-        location steps, each tuples of the form `(closure, testfunc, predicates)`
+        location steps, each tuples of the form `(axis, testfunc, predicates)`
         """
         paths = [self._location_path()]
         while self.cur_token == '|':
@@ -317,33 +344,46 @@ class _PathParser(object):
 
     def _location_path(self):
         next_is_closure = True
-        if self.cur_token.startswith('/'):
-            self.next_token()
-
         steps = []
         while True:
-            step = self._location_step()
-            steps.append((next_is_closure, step[1], step[2]))
-            next_is_closure = False
             if self.cur_token == '//':
                 next_is_closure = True
-            elif self.at_end or self.cur_token != '/':
+                self.next_token()
+            elif self.cur_token == '/' and not steps:
+                raise PathSyntaxError('Absolute location paths not supported')
+
+            axis, node_test, predicates = self._location_step()
+            if axis == 'child' and next_is_closure:
+                axis = 'descendant-or-self'
+            steps.append((axis, node_test, predicates))
+            next_is_closure = False
+
+            if self.at_end or not self.cur_token.startswith('/'):
                 break
             self.next_token()
+
         return steps
 
     def _location_step(self):
-        step = [False, None, []]
         if self.cur_token == '@':
             axis = 'attribute'
             self.next_token()
+        elif self.cur_token == '.':
+            axis = 'self'
+        elif self.peek_token() == '::':
+            axis = self.cur_token
+            if axis not in ('attribute', 'child', 'descendant',
+                            'descendant-or-self', 'namespace', 'self'):
+                raise PathSyntaxError('Unsupport axis "%s"' % axis)
+            self.next_token()
+            self.next_token()
         else:
-            # FIXME: support full axis specifiers (name followed by ::)
             axis = 'child'
-        step[1] = self._node_test(axis)
+        node_test = self._node_test(axis)
+        predicates = []
         while self.cur_token == '[':
-            step[2].append(self._predicate())
-        return step
+            predicates.append(self._predicate())
+        return axis, node_test, predicates
 
     def _node_test(self, axis=None):
         test = None
@@ -356,10 +396,10 @@ class _PathParser(object):
                     test = _node_test_any_attribute()
                 else:
                     test = _node_test_attribute_by_name(self.cur_token)
+            elif axis == 'self':
+                test = _node_test_current_element()
             else:
-                if self.cur_token == '.':
-                    test = _node_test_current_element()
-                elif self.cur_token == '*':
+                if self.cur_token == '*':
                     test = _node_test_any_child_element()
                 else:
                     test = _node_test_child_element_by_name(self.cur_token)
@@ -395,9 +435,11 @@ class _PathParser(object):
     def _predicate(self):
         assert self.cur_token == '['
         self.next_token()
-        return self._or_expr()
+        expr = self._or_expr()
         assert self.cur_token == ']'
-        self.next_token()
+        if not self.at_end:
+            self.next_token()
+        return expr
 
     def _or_expr(self):
         expr = self._and_expr()

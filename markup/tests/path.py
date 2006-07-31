@@ -15,53 +15,68 @@ import doctest
 import unittest
 
 from markup.input import XML
-from markup.path import Path
+from markup.path import Path, PathSyntaxError
 
 
 class PathTestCase(unittest.TestCase):
 
+    def test_error_no_absolute_path(self):
+        self.assertRaises(PathSyntaxError, Path, '/root')
+
+    def test_error_unsupported_axis(self):
+        self.assertRaises(PathSyntaxError, Path, 'parent::ma')
+
     def test_1step(self):
         xml = XML('<root><elem/></root>')
         self.assertEqual('<elem/>', Path('elem').select(xml).render())
+        self.assertEqual('<elem/>', Path('child::elem').select(xml).render())
         self.assertEqual('<elem/>', Path('//elem').select(xml).render())
+        self.assertEqual('<elem/>', Path('descendant::elem').select(xml).render())
 
     def test_1step_self(self):
         xml = XML('<root><elem/></root>')
         self.assertEqual('<root><elem/></root>', Path('.').select(xml).render())
+        #self.assertEqual('<root><elem/></root>', Path('self::node()').select(xml).render())
 
     def test_1step_wildcard(self):
         xml = XML('<root><elem/></root>')
         self.assertEqual('<elem/>', Path('*').select(xml).render())
+        self.assertEqual('<elem/>', Path('child::node()').select(xml).render())
         self.assertEqual('<elem/>', Path('//*').select(xml).render())
 
     def test_1step_attribute(self):
-        path = Path('@foo')
-        self.assertEqual('', path.select(XML('<root/>')).render())
-        self.assertEqual('bar', path.select(XML('<root foo="bar"/>')).render())
+        self.assertEqual('', Path('@foo').select(XML('<root/>')).render())
+        xml = XML('<root foo="bar"/>')
+        self.assertEqual('bar', Path('@foo').select(xml).render())
+        self.assertEqual('bar', Path('./@foo').select(xml).render())
 
-    def test_1step_attribute(self):
-        path = Path('@foo')
-        self.assertEqual('', path.select(XML('<root/>')).render())
-        self.assertEqual('bar', path.select(XML('<root foo="bar"/>')).render())
+    def test_1step_text(self):
+        xml = XML('<root>Hey</root>')
+        self.assertEqual('Hey', Path('text()').select(xml).render())
+        self.assertEqual('Hey', Path('./text()').select(xml).render())
+        self.assertEqual('Hey', Path('//text()').select(xml).render())
+        self.assertEqual('Hey', Path('.//text()').select(xml).render())
 
     def test_2step(self):
         xml = XML('<root><foo/><bar/></root>')
-        self.assertEqual('<foo/><bar/>', Path('root/*').select(xml).render())
-        self.assertEqual('<bar/>', Path('root/bar').select(xml).render())
-        self.assertEqual('', Path('root/baz').select(xml).render())
+        self.assertEqual('<foo/><bar/>', Path('*').select(xml).render())
+        self.assertEqual('<bar/>', Path('bar').select(xml).render())
+        self.assertEqual('', Path('baz').select(xml).render())
 
     def test_2step_complex(self):
         xml = XML('<root><foo><bar/></foo></root>')
         self.assertEqual('<bar/>', Path('foo/bar').select(xml).render())
         self.assertEqual('<bar/>', Path('foo/*').select(xml).render())
-        self.assertEqual('', Path('root/bar').select(xml).render())
 
         xml = XML('<root><foo><bar id="1"/></foo><bar id="2"/></root>')
-        self.assertEqual('<bar id="2"/>', Path('root/bar').select(xml).render())
+        self.assertEqual('<bar id="1"/><bar id="2"/>',
+                         Path('bar').select(xml).render())
 
     def test_2step_text(self):
         xml = XML('<root><item>Foo</item></root>')
         self.assertEqual('Foo', Path('item/text()').select(xml).render())
+        self.assertEqual('Foo', Path('*/text()').select(xml).render())
+        self.assertEqual('Foo', Path('//text()').select(xml).render())
         xml = XML('<root><item>Foo</item><item>Bar</item></root>')
         self.assertEqual('FooBar', Path('item/text()').select(xml).render())
 
@@ -88,7 +103,7 @@ class PathTestCase(unittest.TestCase):
 
     def test_node_type_node(self):
         xml = XML('<root>Some text <br/>in here.</root>')
-        self.assertEqual('<root>Some text <br/>in here.</root>',
+        self.assertEqual('Some text <br/>in here.',
                          Path('node()').select(xml).render())
 
     def test_node_type_processing_instruction(self):
@@ -134,7 +149,7 @@ class PathTestCase(unittest.TestCase):
 
 def suite():
     suite = unittest.TestSuite()
-    #suite.addTest(doctest.DocTestSuite(Path.__module__))
+    suite.addTest(doctest.DocTestSuite(Path.__module__))
     suite.addTest(unittest.makeSuite(PathTestCase, 'test'))
     return suite
 

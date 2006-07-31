@@ -117,7 +117,7 @@ class Stream(object):
             assert issubclass(cls, output.Serializer)
         serializer = cls(**kwargs)
 
-        stream = self
+        stream = _ensure(self)
         if filters is None:
             filters = [WhitespaceFilter()]
         for filter_ in filters:
@@ -141,6 +141,15 @@ START_NS = Stream.START_NS
 END_NS = Stream.END_NS
 PI = Stream.PI
 COMMENT = Stream.COMMENT
+
+def _ensure(stream):
+    """Ensure that every item on the stream is actually a markup event."""
+    for event in stream:
+        try:
+            kind, data, pos = event
+        except ValueError:
+            kind, data, pos = event.totuple()
+        yield kind, data, pos
 
 
 class Attributes(list):

@@ -4,7 +4,7 @@
 <html xmlns:py="http://markup.edgewall.org/" py:strip="">
 
   <!--! Add a header DIV on top of every page with a logo image -->
-  <body py:match="body">
+  <body py:match="BODY|body">
     <div id="header">
       <img src="logo.png" alt="Bad Style"/>
     </div>

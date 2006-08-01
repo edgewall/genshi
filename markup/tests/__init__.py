@@ -16,12 +16,14 @@ import unittest
 
 def suite():
     import markup
-    from markup.tests import builder, core, eval, input, output, path, template
+    from markup.tests import builder, core, eval, filters, input, output, \
+                             path, template
     suite = unittest.TestSuite()
     suite.addTest(doctest.DocTestSuite(markup))
     suite.addTest(builder.suite())
     suite.addTest(core.suite())
     suite.addTest(eval.suite())
+    suite.addTest(filters.suite())
     suite.addTest(input.suite())
     suite.addTest(output.suite())
     suite.addTest(path.suite())

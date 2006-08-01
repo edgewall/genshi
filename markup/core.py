@@ -71,7 +71,7 @@ class Stream(object):
         filter must be a callable that accepts the stream object as parameter,
         and returns the filtered stream.
         """
-        return Stream(func(html))
+        return Stream(func(self))
 
     def render(self, method='xml', encoding='utf-8', filters=None, **kwargs):
         """Return a string representation of the stream.

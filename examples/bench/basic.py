@@ -121,7 +121,7 @@ def simpletal(dirname, verbose=False):
         print render()
     return render
 
-def run(engines, verbose=False):
+def run(engines, number=2000, verbose=False):
     basepath = os.path.abspath(os.path.dirname(__file__))
     for engine in engines:
         dirname = os.path.join(basepath, engine)
@@ -133,7 +133,7 @@ def run(engines, verbose=False):
         t = timeit.Timer(setup='from __main__ import %s; render = %s("%s", %s)'
                                % (engine, engine, dirname, verbose),
                          stmt='render()')
-        time = t.timeit(number=2000) / 2000
+        time = t.timeit(number=number) / number
         if verbose:
             print '--------------------------------------------------------'
         print '%.2f ms' % (1000 * time)
@@ -151,7 +151,7 @@ if __name__ == '__main__':
     if '-p' in sys.argv:
         import hotshot, hotshot.stats
         prof = hotshot.Profile("template.prof")
-        benchtime = prof.runcall(run, engines, verbose=verbose)
+        benchtime = prof.runcall(run, engines, number=100, verbose=verbose)
         stats = hotshot.stats.load("template.prof")
         stats.strip_dirs()
         stats.sort_stats('time', 'calls')

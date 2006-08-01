@@ -936,9 +936,8 @@ class Template(object):
 
             for idx, (test, path, template, directives) in \
                     enumerate(match_templates):
-                result = test(kind, data, pos)
 
-                if result:
+                if test(kind, data, pos) is True:
                     # Consume and store all events until an end event
                     # corresponding to this start event is encountered
                     content = [(kind, data, pos)]
@@ -961,8 +960,8 @@ class Template(object):
                                              ctxt, match_templates[:idx] +
                                              match_templates[idx + 1:]):
                         yield event
-                    ctxt.pop()
 
+                    ctxt.pop()
                     break
 
             else: # no matches

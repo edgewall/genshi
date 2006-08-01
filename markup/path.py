@@ -38,6 +38,32 @@ from markup.core import QName, Stream, START, END, TEXT, COMMENT, PI
 __all__ = ['Path', 'PathSyntaxError']
 
 
+class Axis(object):
+    """Defines constants for the various supported XPath axes."""
+
+    ATTRIBUTE = 'attribute'
+    CHILD = 'child'
+    DESCENDANT = 'descendant'
+    DESCENDANT_OR_SELF = 'descendant-or-self'
+    NAMESPACE = 'namespace'
+    SELF = 'self'
+
+    def forname(cls, name):
+        """Return the axis constant for the given name, or `None` if no such
+        axis was defined.
+        """
+        return getattr(cls, name.upper().replace('-', '_'), None)
+    forname = classmethod(forname)
+
+
+ATTRIBUTE = Axis.ATTRIBUTE
+CHILD = Axis.CHILD
+DESCENDANT = Axis.DESCENDANT
+DESCENDANT_OR_SELF = Axis.DESCENDANT_OR_SELF
+NAMESPACE = Axis.NAMESPACE
+SELF = Axis.SELF
+
+
 class Path(object):
     """Implements basic XPath support on streams.
     
@@ -143,24 +169,24 @@ class Path(object):
                         if cursor + 1 == size: # the last location step
                             if ignore_context or \
                                     kind is not START or \
-                                    axis in ('attribute', 'self') or \
+                                    axis in (ATTRIBUTE, SELF) or \
                                     len(stack) > 2:
                                 return matched
                         else:
                             cursor += 1
                             stack[-1] = cursor
 
-                    if axis != 'self':
+                    if axis is not SELF:
                         break
 
                 if not matched and kind is START \
-                               and not axis.startswith('descendant'):
+                               and axis not in (DESCENDANT, DESCENDANT_OR_SELF):
                     # If this step is not a closure, it cannot be matched until
                     # the current element is closed... so we need to move the
-                    # cursor back to the last closure and retest that against
-                    # the current element
+                    # cursor back to the previous closure and retest that
+                    # against the current element
                     backsteps = [step for step in steps[:cursor]
-                                 if step[0].startswith('descendant')]
+                                 if step[0] in (DESCENDANT, DESCENDANT_OR_SELF)]
                     backsteps.reverse()
                     for axis, node_test, predicates in backsteps:
                         matched = node_test(kind, data, pos)
@@ -177,39 +203,33 @@ class Path(object):
 def _node_test_current_element():
     def _node_test_current_element(kind, *_):
         return kind is START
-    _node_test_current_element.axis = 'self'
     return _node_test_current_element
 
 def _node_test_any_child_element():
     def _node_test_any_child_element(kind, *_):
         return kind is START
-    _node_test_any_child_element.axis = 'child'
     return _node_test_any_child_element
 
 def _node_test_child_element_by_name(name):
     def _node_test_child_element_by_name(kind, data, _):
         return kind is START and data[0].localname == name
-    _node_test_child_element_by_name.axis = 'child'
     return _node_test_child_element_by_name
 
 def _node_test_any_attribute():
     def _node_test_any_attribute(kind, data, _):
         if kind is START and data[1]:
             return data[1]
-    _node_test_any_attribute.axis = 'attribute'
     return _node_test_any_attribute
 
 def _node_test_attribute_by_name(name):
     def _node_test_attribute_by_name(kind, data, pos):
         if kind is START and name in data[1]:
             return TEXT, data[1].get(name), pos
-    _node_test_attribute_by_name.axis = 'attribute'
     return _node_test_attribute_by_name
 
 def _function_comment():
     def _function_comment(kind, data, pos):
         return kind is COMMENT and (kind, data, pos)
-    _function_comment.axis = None
     return _function_comment
 
 def _function_node():
@@ -217,26 +237,22 @@ def _function_node():
         if kind is START:
             return True
         return kind, data, pos
-    _function_node.axis = None
     return _function_node
 
 def _function_processing_instruction(name=None):
     def _function_processing_instruction(kind, data, pos):
         if kind is PI and (not name or data[0] == name):
             return (kind, data, pos)
-    _function_processing_instruction.axis = None
     return _function_processing_instruction
 
 def _function_text():
     def _function_text(kind, data, pos):
         return kind is TEXT and (kind, data, pos)
-    _function_text.axis = None
     return _function_text
 
 def _literal_string(text):
     def _literal_string(*_):
         return TEXT, text, (None, -1, -1)
-    _literal_string.axis = None
     return _literal_string
 
 def _operator_eq(lval, rval):
@@ -244,7 +260,6 @@ def _operator_eq(lval, rval):
         lv = lval(kind, data, pos)
         rv = rval(kind, data, pos)
         return (lv and lv[1]) == (rv and rv[1])
-    _operator_eq.axis = None
     return _operator_eq
 
 def _operator_neq(lval, rval):
@@ -252,7 +267,6 @@ def _operator_neq(lval, rval):
         lv = lval(kind, data, pos)
         rv = rval(kind, data, pos)
         return (lv and lv[1]) != (rv and rv[1])
-    _operator_neq.axis = None
     return _operator_neq
 
 def _operator_and(lval, rval):
@@ -264,7 +278,6 @@ def _operator_and(lval, rval):
         if not rv or (rv is not True and not rv[1]):
             return False
         return True
-    _operator_and.axis = None
     return _operator_and
 
 def _operator_or(lval, rval):
@@ -276,7 +289,6 @@ def _operator_or(lval, rval):
         if rv and (rv is True or rv[1]):
             return True
         return False
-    _operator_or.axis = None
     return _operator_or
 
 
@@ -353,8 +365,8 @@ class _PathParser(object):
                 raise PathSyntaxError('Absolute location paths not supported')
 
             axis, node_test, predicates = self._location_step()
-            if axis == 'child' and next_is_closure:
-                axis = 'descendant-or-self'
+            if axis is CHILD and next_is_closure:
+                axis = DESCENDANT_OR_SELF
             steps.append((axis, node_test, predicates))
             next_is_closure = False
 
@@ -366,19 +378,18 @@ class _PathParser(object):
 
     def _location_step(self):
         if self.cur_token == '@':
-            axis = 'attribute'
+            axis = ATTRIBUTE
             self.next_token()
         elif self.cur_token == '.':
-            axis = 'self'
+            axis = SELF
         elif self.peek_token() == '::':
-            axis = self.cur_token
-            if axis not in ('attribute', 'child', 'descendant',
-                            'descendant-or-self', 'namespace', 'self'):
+            axis = Axis.forname(self.cur_token)
+            if axis is None:
                 raise PathSyntaxError('Unsupport axis "%s"' % axis)
             self.next_token()
             self.next_token()
         else:
-            axis = 'child'
+            axis = CHILD
         node_test = self._node_test(axis)
         predicates = []
         while self.cur_token == '[':
@@ -391,12 +402,12 @@ class _PathParser(object):
             test = self._node_type()
 
         else: # Name test
-            if axis == 'attribute':
+            if axis is ATTRIBUTE:
                 if self.cur_token == '*':
                     test = _node_test_any_attribute()
                 else:
                     test = _node_test_attribute_by_name(self.cur_token)
-            elif axis == 'self':
+            elif axis is SELF:
                 test = _node_test_current_element()
             else:
                 if self.cur_token == '*':
@@ -474,6 +485,6 @@ class _PathParser(object):
         else:
             axis = None
             if token == '@':
-                axis = 'attribute'
+                axis = ATTRIBUTE
                 self.next_token()
             return self._node_test(axis)

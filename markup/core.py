@@ -64,13 +64,14 @@ class Stream(object):
     def __iter__(self):
         return iter(self.events)
 
-    def filter(self, filter):
+    def filter(self, func):
         """Apply a filter to the stream.
         
         This method returns a new stream with the given filter applied. The
-        filter must be a callable that accepts the stream object as parameter.
+        filter must be a callable that accepts the stream object as parameter,
+        and returns the filtered stream.
         """
-        return Stream(filter(html))
+        return Stream(func(html))
 
     def render(self, method='xml', encoding='utf-8', filters=None, **kwargs):
         """Return a string representation of the stream.

@@ -246,8 +246,8 @@ class ASTTransformer(object):
 
 
 class ExpressionASTTransformer(ASTTransformer):
-    """Concrete AST transformer that implementations the AST transformations
-    needed for template expressions.
+    """Concrete AST transformer that implements the AST transformations needed
+    for template expressions.
     """
 
     def visitGetattr(self, node, *args, **kwargs):

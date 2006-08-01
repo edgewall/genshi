@@ -64,6 +64,15 @@ class Stream(object):
     def __iter__(self):
         return iter(self.events)
 
+    def filter(self, func):
+        """Apply a filter to the stream.
+        
+        This method returns a new stream with the given filter applied. The
+        filter must be a callable that accepts the stream object as parameter,
+        and returns the filtered stream.
+        """
+        return Stream(func(self))
+
     def render(self, method='xml', encoding='utf-8', filters=None, **kwargs):
         """Return a string representation of the stream.
         
@@ -238,6 +247,39 @@ class Attributes(list):
         return TEXT, u''.join([x[1] for x in self]), (None, -1, -1)
 
 
+def stripentities(text, keepxmlentities=False):
+    """Return a copy of the given text with any character or numeric entities
+    replaced by the equivalent UTF-8 characters.
+    
+    If the `keepxmlentities` parameter is provided and evaluates to `True`,
+    the core XML entities (&amp;, &apos;, &gt;, &lt; and &quot;) are not
+    stripped.
+    """
+    def _replace_entity(match):
+        if match.group(1): # numeric entity
+            ref = match.group(1)
+            if ref.startswith('x'):
+                ref = int(ref[1:], 16)
+            else:
+                ref = int(ref, 10)
+            return unichr(ref)
+        else: # character entity
+            ref = match.group(2)
+            if keepxmlentities and ref in ('amp', 'apos', 'gt', 'lt',
+                                           'quot'):
+                return '&%s;' % ref
+            try:
+                codepoint = htmlentitydefs.name2codepoint[ref]
+                return unichr(codepoint)
+            except KeyError:
+                if keepxmlentities:
+                    return '&amp;%s;' % ref
+                else:
+                    return ref
+    return re.sub(r'&(?:#((?:\d+)|(?:[xX][0-9a-fA-F]+));?|(\w+);)',
+                  _replace_entity, text)
+
+
 class Markup(unicode):
     """Marks a string as being safe for inclusion in HTML/XML output without
     needing to be escaped.
@@ -276,29 +318,7 @@ class Markup(unicode):
         the core XML entities (&amp;, &apos;, &gt;, &lt; and &quot;) are not
         stripped.
         """
-        def _replace_entity(match):
-            if match.group(1): # numeric entity
-                ref = match.group(1)
-                if ref.startswith('x'):
-                    ref = int(ref[1:], 16)
-                else:
-                    ref = int(ref, 10)
-                return unichr(ref)
-            else: # character entity
-                ref = match.group(2)
-                if keepxmlentities and ref in ('amp', 'apos', 'gt', 'lt',
-                                               'quot'):
-                    return '&%s;' % ref
-                try:
-                    codepoint = htmlentitydefs.name2codepoint[ref]
-                    return unichr(codepoint)
-                except KeyError:
-                    if keepxmlentities:
-                        return '&amp;%s;' % ref
-                    else:
-                        return ref
-        return Markup(re.sub(r'&(?:#((?:\d+)|(?:[xX][0-9a-fA-F]+));?|(\w+);)',
-                             _replace_entity, self))
+        return Markup(stripentities(self, keepxmlentities=keepxmlentities))
 
     def striptags(self):
         """Return a copy of the text with all XML/HTML tags removed."""
@@ -341,12 +361,6 @@ class Markup(unicode):
         if not keeplinebreaks:
             text = text.replace(u'\n', u' ')
         return text
-
-    def sanitize(self):
-        from markup.filters import HTMLSanitizer
-        from markup.input import HTMLParser
-        text = StringIO(self.stripentities(keepxmlentities=True))
-        return Markup(Stream(HTMLSanitizer()(HTMLParser(text))))
 
 
 try:

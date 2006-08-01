@@ -5,6 +5,7 @@
 #
 # Author: Jonas Borgström <jonas@edgewall.com>
 
+import cgi
 import sys
 import timeit
 
@@ -109,7 +110,7 @@ def test_clearsilver():
     hdf = neo_util.HDF()
     for i, row in enumerate(table):
         for j, c in enumerate(row.values()):
-            hdf.setValue("rows.%d.cell.%d" % (i, j), str(c))
+            hdf.setValue("rows.%d.cell.%d" % (i, j), cgi.escape(str(c)))
 
     cs = neo_cs.CS(hdf)
     cs.parseStr("""

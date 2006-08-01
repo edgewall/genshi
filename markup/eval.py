@@ -82,7 +82,10 @@ class Expression(object):
         @param data: a mapping containing the data to evaluate against
         @return: the result of the evaluation
         """
-        retval = eval(self.code)
+        retval = eval(self.code, {'data': data,
+                                  '_lookup_name': _lookup_name,
+                                  '_lookup_attr': _lookup_attr,
+                                  '_lookup_item': _lookup_item})
         if callable(retval):
             retval = retval()
         return retval
@@ -112,7 +115,7 @@ def _lookup_name(data, name, locals=None):
         val = getattr(__builtin__, name, None)
     return val
 
-def _lookup_attribute(data, obj, key):
+def _lookup_attr(data, obj, key):
     if hasattr(obj, key):
         return getattr(obj, key)
     try:
@@ -163,6 +166,11 @@ class ASTTransformer(object):
         if node.dstar_args:
             node.dstart_args = map(lambda x: self.visit(x, *args, **kwargs),
                                    node.dstar_args)
+        return node
+
+    def visitLambda(self, node, *args, **kwargs):
+        node.code = self.visit(node.code, *args, **kwargs)
+        node.filename = '<string>' # workaround for bug in pycodegen
         return node
 
     def visitGetattr(self, node, *args, **kwargs):
@@ -248,10 +256,18 @@ class ExpressionASTTransformer(ASTTransformer):
     """
 
     def visitGetattr(self, node, *args, **kwargs):
-        return ast.CallFunc(ast.Name('_lookup_attribute'),
+        return ast.CallFunc(ast.Name('_lookup_attr'),
             [ast.Name('data'), self.visit(node.expr, *args, **kwargs),
              ast.Const(node.attrname)]
         )
+
+    def visitLambda(self, node, *args, **kwargs):
+        old_lookup_locals = kwargs.get('lookup_locals', False)
+        kwargs['lookup_locals'] = True
+        node.code = self.visit(node.code, *args, **kwargs)
+        node.filename = '<string>' # workaround for bug in pycodegen
+        kwargs['lookup_locals'] = old_lookup_locals
+        return node
 
     def visitListComp(self, node, *args, **kwargs):
         old_lookup_locals = kwargs.get('lookup_locals', False)

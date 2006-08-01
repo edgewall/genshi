@@ -71,7 +71,7 @@ class Expression(object):
         @param source: the expression as string
         """
         self.source = source
-        self.code = self._compile(source, filename, lineno)
+        self.code = _compile(source, filename, lineno)
 
     def __repr__(self):
         return '<Expression "%s">' % self.source
@@ -87,54 +87,51 @@ class Expression(object):
             retval = retval()
         return retval
 
-    def _compile(self, source, filename, lineno):
-        tree = parse(self.source, 'eval')
-        xform = ExpressionASTTransformer()
-        tree = xform.visit(tree)
 
-        if isinstance(filename, unicode):
-            # pycodegen doesn't like unicode in the filename
-            filename = filename.encode('utf-8', 'replace')
-        tree.filename = filename or '<string>'
+def _compile(source, filename=None, lineno=-1):
+    tree = parse(source, 'eval')
+    xform = ExpressionASTTransformer()
+    tree = xform.visit(tree)
 
-        gen = ExpressionCodeGenerator(tree)
-        if lineno >= 0:
-            gen.emit('SET_LINENO', lineno)
+    if isinstance(filename, unicode):
+        # pycodegen doesn't like unicode in the filename
+        filename = filename.encode('utf-8', 'replace')
+    tree.filename = filename or '<string>'
 
-        return gen.getCode()
+    gen = ExpressionCodeGenerator(tree)
+    if lineno >= 0:
+        gen.emit('SET_LINENO', lineno)
 
-    def _lookup_name(data, name, locals=None):
-        val = data.get(name)
-        if val is None and locals:
-            val = locals.get(name)
-        if val is None:
-            val = getattr(__builtin__, name, None)
-        return val
-    _lookup_name = staticmethod(_lookup_name)
+    return gen.getCode()
 
-    def _lookup_attribute(data, obj, key):
-        if hasattr(obj, key):
-            return getattr(obj, key)
-        try:
-            return obj[key]
-        except (KeyError, TypeError):
-            return None
-    _lookup_attribute = staticmethod(_lookup_attribute)
+def _lookup_name(data, name, locals=None):
+    val = data.get(name)
+    if val is None and locals:
+        val = locals.get(name)
+    if val is None:
+        val = getattr(__builtin__, name, None)
+    return val
 
-    def _lookup_item(data, obj, key):
-        if len(key) == 1:
-            key = key[0]
-        try:
-            return obj[key]
-        except (KeyError, IndexError, TypeError), e:
-            pass
-            if isinstance(key, basestring):
-                try:
-                    return getattr(obj, key)
-                except (AttributeError, TypeError), e:
-                    pass
-    _lookup_item = staticmethod(_lookup_item)
+def _lookup_attribute(data, obj, key):
+    if hasattr(obj, key):
+        return getattr(obj, key)
+    try:
+        return obj[key]
+    except (KeyError, TypeError):
+        return None
 
+def _lookup_item(data, obj, key):
+    if len(key) == 1:
+        key = key[0]
+    try:
+        return obj[key]
+    except (KeyError, IndexError, TypeError), e:
+        pass
+        if isinstance(key, basestring):
+            try:
+                return getattr(obj, key)
+            except (AttributeError, TypeError), e:
+                pass
 
 class ASTTransformer(object):
     """General purpose base class for AST transformations.
@@ -251,8 +248,7 @@ class ExpressionASTTransformer(ASTTransformer):
     """
 
     def visitGetattr(self, node, *args, **kwargs):
-        return ast.CallFunc(
-            ast.Getattr(ast.Name('self'), '_lookup_attribute'),
+        return ast.CallFunc(ast.Name('_lookup_attribute'),
             [ast.Name('data'), self.visit(node.expr, *args, **kwargs),
              ast.Const(node.attrname)]
         )
@@ -269,14 +265,11 @@ class ExpressionASTTransformer(ASTTransformer):
         func_args = [ast.Name('data'), ast.Const(node.name)]
         if kwargs.get('lookup_locals'):
             func_args.append(ast.CallFunc(ast.Name('locals'), []))
-        return ast.CallFunc(
-            ast.Getattr(ast.Name('self'), '_lookup_name'), func_args
-        )
+        return ast.CallFunc(ast.Name('_lookup_name'), func_args)
         return node
 
     def visitSubscript(self, node, *args, **kwargs):
-        return ast.CallFunc(
-            ast.Getattr(ast.Name('self'), '_lookup_item'),
+        return ast.CallFunc(ast.Name('_lookup_item'),
             [ast.Name('data'), self.visit(node.expr, *args, **kwargs),
              ast.Tuple(map(self.visit, node.subs, *args, **kwargs))]
         )

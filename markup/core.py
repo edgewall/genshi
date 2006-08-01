@@ -160,6 +160,11 @@ def _ensure(stream):
             kind, data, pos = event.totuple()
         yield kind, data, pos
 
+try:
+    from markup._speedups import _ensure
+except ImportError:
+    pass # just use the Python implementation
+
 
 class Attributes(list):
     """Sequence type that stores the attributes of an element.

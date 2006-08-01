@@ -247,6 +247,15 @@ class Attributes(list):
         return TEXT, u''.join([x[1] for x in self]), (None, -1, -1)
 
 
+def plaintext(text, keeplinebreaks=True):
+    """Returns the text as a `unicode` string with all entities and tags
+    removed.
+    """
+    text = stripentities(striptags(text))
+    if not keeplinebreaks:
+        text = text.replace(u'\n', u' ')
+    return text
+
 def stripentities(text, keepxmlentities=False):
     """Return a copy of the given text with any character or numeric entities
     replaced by the equivalent UTF-8 characters.
@@ -314,20 +323,6 @@ class Markup(unicode):
         return Markup(unicode(self).join([escape(item, quotes=escape_quotes)
                                           for item in seq]))
 
-    def stripentities(self, keepxmlentities=False):
-        """Return a copy of the text with any character or numeric entities
-        replaced by the equivalent UTF-8 characters.
-        
-        If the `keepxmlentities` parameter is provided and evaluates to `True`,
-        the core XML entities (&amp;, &apos;, &gt;, &lt; and &quot;) are not
-        stripped.
-        """
-        return Markup(stripentities(self, keepxmlentities=keepxmlentities))
-
-    def striptags(self):
-        """Return a copy of the text with all XML/HTML tags removed."""
-        return Markup(striptags(self))
-
     def escape(cls, text, quotes=True):
         """Create a Markup instance from a string and escape special characters
         it may contain (<, >, & and \").
@@ -357,14 +352,19 @@ class Markup(unicode):
                             .replace('&lt;', '<') \
                             .replace('&amp;', '&')
 
-    def plaintext(self, keeplinebreaks=True):
-        """Returns the text as a `unicode` string with all entities and tags
-        removed.
+    def stripentities(self, keepxmlentities=False):
+        """Return a copy of the text with any character or numeric entities
+        replaced by the equivalent UTF-8 characters.
+        
+        If the `keepxmlentities` parameter is provided and evaluates to `True`,
+        the core XML entities (&amp;, &apos;, &gt;, &lt; and &quot;) are not
+        stripped.
         """
-        text = unicode(self.striptags().stripentities())
-        if not keeplinebreaks:
-            text = text.replace(u'\n', u' ')
-        return text
+        return Markup(stripentities(self, keepxmlentities=keepxmlentities))
+
+    def striptags(self):
+        """Return a copy of the text with all XML/HTML tags removed."""
+        return Markup(striptags(self))
 
 
 try:

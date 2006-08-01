@@ -322,6 +322,23 @@ Markup_mul(PyObject *self, PyObject *num)
     return result;
 }
 
+static PyObject *
+Markup_repr(PyObject *self)
+{
+    PyObject *format, *result, *args;
+
+    format = PyString_FromString("<Markup %r>");
+    if (format == NULL) return NULL;
+    result = PyObject_Unicode(self);
+    if (result == NULL) return NULL;
+    args = PyTuple_Pack(1, result);
+    Py_DECREF(result);
+    if (args == NULL) return NULL;
+    result = PyString_Format(format, args);
+    Py_DECREF(args);
+    return result;
+}
+
 PyDoc_STRVAR(unescape__doc__,
 "Reverse-escapes &, <, > and \" and returns a `unicode` object.");
 
@@ -448,9 +465,9 @@ PyTypeObject MarkupType = {
     0,          /*tp_getattr*/
     0,          /*tp_setattr*/
     0,          /*tp_compare*/
-    0,          /*tp_repr*/
-    &markup_as_number,/*tp_as_number*/
-    &markup_as_sequence,/*tp_as_sequence*/
+    Markup_repr, /*tp_repr*/
+    &markup_as_number, /*tp_as_number*/
+    &markup_as_sequence, /*tp_as_sequence*/
     0,          /*tp_as_mapping*/
     0,          /*tp_hash */
 

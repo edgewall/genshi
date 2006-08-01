@@ -24,17 +24,6 @@ PyDoc_STRVAR(Markup__doc__,
 "Marks a string as being safe for inclusion in HTML/XML output without\n\
 needing to be escaped.");
 
-PyDoc_STRVAR(escape__doc__,
-"Create a Markup instance from a string and escape special characters\n\
-it may contain (<, >, & and \").\n\
-\n\
-If the `quotes` parameter is set to `False`, the \" character is left\n\
-as is. Escaping quotes is generally only required for strings that are\n\
-to be used in attribute values.");
-
-PyDoc_STRVAR(unescape__doc__,
-"Reverse-escapes &, <, > and \" and returns a `unicode` object.");
-
 static PyObject *amp1, *amp2, *lt1, *lt2, *gt1, *gt2, *qt1, *qt2;
 
 static void
@@ -59,11 +48,9 @@ Markup_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
     nargs = PyTuple_GET_SIZE(args);
     if (nargs == 0) {
         return PyUnicode_Type.tp_new(type, args, NULL);
-    }
-    else if (nargs == 1) {
+    } else if (nargs == 1) {
         return PyUnicode_Type.tp_new(type, args, NULL);
-    }
-    else {
+    } else {
         text = PyTuple_GET_ITEM(args, 0);
         args2 = PyTuple_New(nargs - 1);
         if (args2 == NULL) {
@@ -105,27 +92,20 @@ escape(PyObject *text, int quotes)
         Py_INCREF(text);
         return text;
     }
-    in = (PyUnicodeObject *)PyUnicode_FromObject(text);
+    in = (PyUnicodeObject *) PyObject_Unicode(text);
     if (in == NULL) {
         return NULL;
     }
     /* First we need to figure out how long the escaped string will be */
     len = 0;
-    for(i = 0;i < in->length; i++) {
-      switch(in->str[i]) {
-      case '&':
-        len += 5;
-        break;
-      case '"':
-        len += quotes ? 5 : 1;
-        break;
-      case '<':
-      case '>':
-        len += 4;
-        break;
-      default:
-        len++;
-      };
+    for (i = 0;i < in->length; i++) {
+        switch (in->str[i]) {
+            case '&': len += 5;                 break;
+            case '"': len += quotes ? 5 : 1;    break;
+            case '<':
+            case '>': len += 4;                 break;
+            default:  len++;
+        }
     }
     /* Do we need to escape anything at all? */
     if (len == in->length) {
@@ -143,42 +123,49 @@ escape(PyObject *text, int quotes)
         return NULL;
     }
     outp = out->str;
-    for(i = 0;i < in->length; i++) {
-        switch(in->str[i]) {
+    for (i = 0;i < in->length; i++) {
+        switch (in->str[i]) {
         case '&':
-            Py_UNICODE_COPY(outp, ((PyUnicodeObject *)amp2)->str, 5);
+            Py_UNICODE_COPY(outp, ((PyUnicodeObject *) amp2)->str, 5);
             outp += 5;
             break;
         case '"':
             if (quotes) {
-                Py_UNICODE_COPY(outp, ((PyUnicodeObject *)qt2)->str, 5);
+                Py_UNICODE_COPY(outp, ((PyUnicodeObject *) qt2)->str, 5);
                 outp += 5;
-            }
-            else {
+            } else {
                 *outp++ = in->str[i];
             }
             break;
         case '<':
-            Py_UNICODE_COPY(outp, ((PyUnicodeObject *)lt2)->str, 4);
+            Py_UNICODE_COPY(outp, ((PyUnicodeObject *) lt2)->str, 4);
             outp += 4;
             break;
         case '>':
-            Py_UNICODE_COPY(outp, ((PyUnicodeObject *)gt2)->str, 4);
+            Py_UNICODE_COPY(outp, ((PyUnicodeObject *) gt2)->str, 4);
             outp += 4;
             break;
         default:
             *outp++ = in->str[i];
         };
     }
-    args = PyTuple_Pack(1, (PyObject *)out);
+    args = PyTuple_Pack(1, (PyObject *) out);
     if (args == NULL) {
-        Py_DECREF((PyObject *)out);
+        Py_DECREF((PyObject *) out);
         return NULL;
     }
     ret = MarkupType.tp_new(&MarkupType, args, NULL);
     Py_DECREF(args);
     return ret;
 }
+
+PyDoc_STRVAR(escape__doc__,
+"Create a Markup instance from a string and escape special characters\n\
+it may contain (<, >, & and \").\n\
+\n\
+If the `quotes` parameter is set to `False`, the \" character is left\n\
+as is. Escaping quotes is generally only required for strings that are\n\
+to be used in attribute values.");
 
 static PyObject *
 Markup_escape(PyTypeObject* type, PyObject *args, PyObject *kwds)
@@ -211,7 +198,7 @@ Markup_join(PyObject *self, PyObject *args, PyObject *kwds)
     if (!PyArg_ParseTupleAndKeywords(args, kwds, "O|b", kwlist, &seq, &quotes)) {
         return NULL;
     }
-    if(!PySequence_Check(seq)) {
+    if (!PySequence_Check(seq)) {
         return NULL;
     }
     n = PySequence_Size(seq);
@@ -278,13 +265,13 @@ Markup_mod(PyObject *self, PyObject *args)
     PyObject *tmp, *tmp2, *ret, *args2;
     int i, nargs;
 
-    if(PyTuple_Check(args)) {
+    if (PyTuple_Check(args)) {
         nargs = PyTuple_GET_SIZE(args);
         args2 = PyTuple_New(nargs);
         if (args2 == NULL) {
             return NULL;
         }
-        for(i = 0; i < nargs; i++) {
+        for (i = 0; i < nargs; i++) {
             tmp = escape(PyTuple_GET_ITEM(args, i), 1);
             if (tmp == NULL) {
                 Py_DECREF(args2);
@@ -297,8 +284,7 @@ Markup_mod(PyObject *self, PyObject *args)
         if (tmp == NULL) {
             return NULL;
         }
-    }
-    else {
+    } else {
         tmp2 = escape(args, 1);
         if (tmp2 == NULL) {
             return NULL;
@@ -320,21 +306,100 @@ Markup_mod(PyObject *self, PyObject *args)
 }
 
 static PyObject *
+Markup_mul(PyObject *self, PyObject *num)
+{
+    PyObject *unicode, *result, *args;
+
+    unicode = PyObject_Unicode(self);
+    if (unicode == NULL) return NULL;
+    result = PyNumber_Multiply(unicode, num);
+    if (result == NULL) return NULL;
+    args = PyTuple_Pack(1, result);
+    Py_DECREF(result);
+    if (args == NULL) return NULL;
+    result = PyUnicode_Type.tp_new(&MarkupType, args, NULL);
+    Py_DECREF(args);
+    return result;
+}
+
+PyDoc_STRVAR(unescape__doc__,
+"Reverse-escapes &, <, > and \" and returns a `unicode` object.");
+
+static PyObject *
 Markup_unescape(PyObject* self)
 {
     PyObject *tmp, *tmp2;
 
     tmp = PyUnicode_Replace(self, qt2, qt1, -1);
-    if(tmp == NULL) return NULL;
+    if (tmp == NULL) return NULL;
     tmp2 = PyUnicode_Replace(tmp, gt2, gt1, -1);
     Py_DECREF(tmp);
-    if(tmp2 == NULL) return NULL;
+    if (tmp2 == NULL) return NULL;
     tmp = PyUnicode_Replace(tmp2, lt2, lt1, -1);
     Py_DECREF(tmp2);
-    if(tmp == NULL) return NULL;
+    if (tmp == NULL) return NULL;
     tmp2 = PyUnicode_Replace(tmp, amp2, amp1, -1);
     Py_DECREF(tmp);
     return tmp2;
+}
+
+PyDoc_STRVAR(stripentities__doc__,
+"Return a copy of the text with any character or numeric entities\n\
+replaced by the equivalent UTF-8 characters.\n\
+\n\
+If the `keepxmlentities` parameter is provided and evaluates to `True`,\n\
+the core XML entities (&amp;, &apos;, &gt;, &lt; and &quot;) are not\n\
+stripped.");
+
+static PyObject *
+Markup_stripentities(PyObject* self, PyObject *args, PyObject *kwds)
+{
+    static char *kwlist[] = {"keepxmlentities", 0};
+    PyObject *module, *func, *result, *args2;
+    char keepxml = 0;
+
+    if (!PyArg_ParseTupleAndKeywords(args, kwds, "|b", kwlist, &keepxml)) {
+        return NULL;
+    }
+
+    module = PyImport_ImportModule("markup.core");
+    if (module == NULL) return NULL;
+    func = PyObject_GetAttrString(module, "stripentities");
+    Py_DECREF(module);
+    if (func == NULL) return NULL;
+    result = PyObject_CallFunction(func, "Ob", self, keepxml);
+    Py_DECREF(func);
+    if (result == NULL) return NULL;
+    args2 = PyTuple_Pack(1, result);
+    Py_DECREF(result);
+    if (args2 == NULL) return NULL;
+    result = MarkupType.tp_new(&MarkupType, args2, NULL);
+    Py_DECREF(args2);
+    return result;
+}
+
+PyDoc_STRVAR(striptags__doc__,
+"Return a copy of the text with all XML/HTML tags removed.");
+
+static PyObject *
+Markup_striptags(PyObject* self)
+{
+    PyObject *module, *func, *result, *args;
+
+    module = PyImport_ImportModule("markup.core");
+    if (module == NULL) return NULL;
+    func = PyObject_GetAttrString(module, "striptags");
+    Py_DECREF(module);
+    if (func == NULL) return NULL;
+    result = PyObject_CallFunction(func, "O", self);
+    Py_DECREF(func);
+    if (result == NULL) return NULL;
+    args = PyTuple_Pack(1, result);
+    Py_DECREF(result);
+    if (args == NULL) return NULL;
+    result = MarkupType.tp_new(&MarkupType, args, NULL);
+    Py_DECREF(args);
+    return result;
 }
 
 typedef struct {
@@ -342,17 +407,21 @@ typedef struct {
 } MarkupObject;
 
 static PyMethodDef Markup_methods[] = {
-    {"escape", (PyCFunction)Markup_escape, METH_VARARGS|METH_CLASS|METH_KEYWORDS, 
-     escape__doc__},
+    {"escape", (PyCFunction) Markup_escape,
+     METH_VARARGS|METH_CLASS|METH_KEYWORDS,  escape__doc__},
     {"join", (PyCFunction)Markup_join, METH_VARARGS|METH_KEYWORDS},
     {"unescape", (PyCFunction)Markup_unescape, METH_NOARGS, unescape__doc__},
+    {"stripentities", (PyCFunction) Markup_stripentities,
+     METH_VARARGS|METH_KEYWORDS, stripentities__doc__},
+    {"striptags", (PyCFunction) Markup_striptags, METH_NOARGS,
+     striptags__doc__},
     {NULL}  /* Sentinel */
 };
 
 static PyNumberMethods markup_as_number = {
         0, /*nb_add*/
         0, /*nb_subtract*/
-        0, /*nb_multiply*/
+        Markup_mul, /*nb_multiply*/
         0, /*nb_divide*/
         Markup_mod, /*nb_remainder*/
 };
@@ -455,14 +524,10 @@ static int
 _PushbackIterator_init(_PushbackIterator *self, PyObject *args, PyObject *kwds)
 {
     PyObject *iterable, *buf;
-    if (!PyArg_ParseTuple(args, "O", &iterable)) {
-        return -1;
-    }
+    if (!PyArg_ParseTuple(args, "O", &iterable)) return -1;
 
     iterable = PyObject_GetIter(iterable);
-    if (iterable == NULL) {
-        return -1;
-    }
+    if (iterable == NULL) return -1;
     Py_INCREF(iterable);
 
     buf = PyList_New(0);
@@ -491,9 +556,7 @@ _PushbackIterator_next(_PushbackIterator *self)
 
     if (PyList_GET_SIZE(self->buf)) {
         next = PyList_GET_ITEM(self->buf, 0);
-        if (next == NULL) {
-            return NULL;
-        }
+        if (next == NULL) return NULL;
         Py_INCREF(next);
         if (PySequence_DelItem((PyObject *) self->buf, 0) == -1) {
             Py_DECREF(next);
@@ -501,9 +564,7 @@ _PushbackIterator_next(_PushbackIterator *self)
         }
     } else {
         next = PyIter_Next(self->iterable);
-        if (next == NULL) {
-            return NULL;
-        }
+        if (next == NULL) return NULL;
         Py_INCREF(next);
     }
 
@@ -515,12 +576,8 @@ _PushbackIterator_pushback(_PushbackIterator *self, PyObject *args)
 {
     PyObject *item;
 
-    if (!PyArg_ParseTuple(args, "O", &item)) {
-        return NULL;
-    }
-    if (PyList_Append((PyObject *) self->buf, item) == -1) {
-        return NULL;
-    }
+    if (!PyArg_ParseTuple(args, "O", &item)) return NULL;
+    if (PyList_Append((PyObject *) self->buf, item) == -1) return NULL;
 
     Py_INCREF(Py_None);
     return Py_None;

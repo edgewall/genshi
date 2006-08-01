@@ -77,9 +77,9 @@ class MarkupTestCase(unittest.TestCase):
         self.assertEquals('& j', markup)
 
     def test_stripentities_keepxml(self):
-        markup = Markup('<a href="#">fo<br />o</a>').striptags()
+        markup = Markup('&amp; &#106;').stripentities(keepxmlentities=True)
         assert isinstance(markup, Markup)
-        self.assertEquals('foo', markup)
+        self.assertEquals('&amp; j', markup)
 
     def test_striptags_empty(self):
         markup = Markup('<br />').striptags()

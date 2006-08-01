@@ -279,6 +279,10 @@ def stripentities(text, keepxmlentities=False):
     return re.sub(r'&(?:#((?:\d+)|(?:[xX][0-9a-fA-F]+));?|(\w+);)',
                   _replace_entity, text)
 
+def striptags(text):
+    """Return a copy of the text with all XML/HTML tags removed."""
+    return re.sub(r'<[^>]*?>', '', text)
+
 
 class Markup(unicode):
     """Marks a string as being safe for inclusion in HTML/XML output without
@@ -322,7 +326,7 @@ class Markup(unicode):
 
     def striptags(self):
         """Return a copy of the text with all XML/HTML tags removed."""
-        return Markup(re.sub(r'<[^>]*?>', '', self))
+        return Markup(striptags(self))
 
     def escape(cls, text, quotes=True):
         """Create a Markup instance from a string and escape special characters

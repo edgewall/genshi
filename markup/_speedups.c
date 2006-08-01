@@ -327,7 +327,7 @@ Markup_repr(PyObject *self)
 {
     PyObject *format, *result, *args;
 
-    format = PyString_FromString("<Markup %r>");
+    format = PyString_FromString("<Markup \"%s\">");
     if (format == NULL) return NULL;
     result = PyObject_Unicode(self);
     if (result == NULL) return NULL;

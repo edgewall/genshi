@@ -22,7 +22,7 @@ class MarkupTestCase(unittest.TestCase):
 
     def test_repr(self):
         markup = Markup('foo')
-        self.assertEquals("<Markup u'foo'>", repr(markup))
+        self.assertEquals('<Markup "foo">', repr(markup))
 
     def test_escape(self):
         markup = escape('<b>"&"</b>')

@@ -190,6 +190,18 @@ class ExpressionTestCase(unittest.TestCase):
         self.assertEqual('BAR', Expression("foo.upper").evaluate(data))
         data = {'foo': {'bar': range(42)}}
 
+    def test_lambda(self):
+        # Define a custom `sorted` function cause the builtin isn't available
+        # on Python 2.3
+        def sorted(items, compfunc):
+            items.sort(compfunc)
+            return items
+        data = {'items': [{'name': 'b', 'value': 0}, {'name': 'a', 'value': 1}],
+                'sorted': sorted}
+        expr = Expression("sorted(items, lambda a, b: cmp(a.name, b.name))")
+        self.assertEqual([{'name': 'a', 'value': 1}, {'name': 'b', 'value': 0}],
+                         expr.evaluate(data))
+
     def test_list_comprehension(self):
         expr = Expression("[n for n in numbers if n < 2]")
         self.assertEqual([0, 1], expr.evaluate({'numbers': range(5)}))

@@ -69,11 +69,12 @@ Markup_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
         if (tmp == NULL) {
             return NULL;
         }
-        args = PyTuple_Pack(1, tmp);
+        args = PyTuple_New(1);
         if (args == NULL) {
             Py_DECREF(tmp);
             return NULL;
         }
+        PyTuple_SET_ITEM(args, 0, tmp);
         self = PyUnicode_Type.tp_new(type, args, NULL);
         Py_DECREF(args);
         return self;
@@ -109,11 +110,12 @@ escape(PyObject *text, int quotes)
     }
     /* Do we need to escape anything at all? */
     if (len == in->length) {
-        args = PyTuple_Pack(1, in);
+        args = PyTuple_New(1);
         if (args == NULL) {
-            Py_DECREF((PyObject *)in);
+            Py_DECREF((PyObject *) in);
             return NULL;
         }
+        PyTuple_SET_ITEM(args, 0, (PyObject *) in);
         ret = MarkupType.tp_new(&MarkupType, args, NULL);
         Py_DECREF(args);
         return ret;
@@ -149,11 +151,12 @@ escape(PyObject *text, int quotes)
             *outp++ = in->str[i];
         };
     }
-    args = PyTuple_Pack(1, (PyObject *) out);
+    args = PyTuple_New(1);
     if (args == NULL) {
         Py_DECREF((PyObject *) out);
         return NULL;
     }
+    PyTuple_SET_ITEM(args, 0, (PyObject *) out);
     ret = MarkupType.tp_new(&MarkupType, args, NULL);
     Py_DECREF(args);
     return ret;
@@ -226,11 +229,12 @@ Markup_join(PyObject *self, PyObject *args, PyObject *kwds)
     Py_DECREF(seq2);
     if (tmp == NULL)
         return NULL;
-    args = PyTuple_Pack(1, tmp);
+    args = PyTuple_New(1);
     if (args == NULL) {
         Py_DECREF(tmp);
         return NULL;
     }
+    PyTuple_SET_ITEM(args, 0, tmp);
     tmp = MarkupType.tp_new(&MarkupType, args, NULL);
     Py_DECREF(args);
     return tmp;
@@ -249,11 +253,12 @@ Markup_concat(PyObject *self, PyObject *other)
         return NULL;
     }
     Py_DECREF(tmp);
-    args = PyTuple_Pack(1, tmp2);
+    args = PyTuple_New(1);
     if (args == NULL) {
         Py_DECREF(tmp2);
         return NULL;
     }
+    PyTuple_SET_ITEM(args, 0, tmp2);
     ret = MarkupType.tp_new(&MarkupType, args, NULL);
     Py_DECREF(args);
     return ret;
@@ -295,11 +300,12 @@ Markup_mod(PyObject *self, PyObject *args)
             return NULL;
         }
     }
-    args = PyTuple_Pack(1, tmp);
+    args = PyTuple_New(1);
     if (args == NULL) {
         Py_DECREF(tmp);
         return NULL;
     }
+    PyTuple_SET_ITEM(args, 0, tmp);
     ret = PyUnicode_Type.tp_new(&MarkupType, args, NULL);
     Py_DECREF(args);
     return ret;
@@ -314,9 +320,12 @@ Markup_mul(PyObject *self, PyObject *num)
     if (unicode == NULL) return NULL;
     result = PyNumber_Multiply(unicode, num);
     if (result == NULL) return NULL;
-    args = PyTuple_Pack(1, result);
-    Py_DECREF(result);
-    if (args == NULL) return NULL;
+    args = PyTuple_New(1);
+    if (args == NULL) {
+        Py_DECREF(result);
+        return NULL;
+    }
+    PyTuple_SET_ITEM(args, 0, result);
     result = PyUnicode_Type.tp_new(&MarkupType, args, NULL);
     Py_DECREF(args);
     return result;
@@ -331,9 +340,12 @@ Markup_repr(PyObject *self)
     if (format == NULL) return NULL;
     result = PyObject_Unicode(self);
     if (result == NULL) return NULL;
-    args = PyTuple_Pack(1, result);
-    Py_DECREF(result);
-    if (args == NULL) return NULL;
+    args = PyTuple_New(1);
+    if (args == NULL) {
+        Py_DECREF(result);
+        return NULL;
+    }
+    PyTuple_SET_ITEM(args, 0, result);
     result = PyString_Format(format, args);
     Py_DECREF(args);
     return result;
@@ -387,9 +399,12 @@ Markup_stripentities(PyObject* self, PyObject *args, PyObject *kwds)
     result = PyObject_CallFunction(func, "Ob", self, keepxml);
     Py_DECREF(func);
     if (result == NULL) return NULL;
-    args2 = PyTuple_Pack(1, result);
-    Py_DECREF(result);
-    if (args2 == NULL) return NULL;
+    args2 = PyTuple_New(1);
+    if (args2 == NULL) {
+        Py_DECREF(result);
+        return NULL;
+    }
+    PyTuple_SET_ITEM(args2, 0, result);
     result = MarkupType.tp_new(&MarkupType, args2, NULL);
     Py_DECREF(args2);
     return result;
@@ -411,9 +426,12 @@ Markup_striptags(PyObject* self)
     result = PyObject_CallFunction(func, "O", self);
     Py_DECREF(func);
     if (result == NULL) return NULL;
-    args = PyTuple_Pack(1, result);
-    Py_DECREF(result);
-    if (args == NULL) return NULL;
+    args = PyTuple_New(1);
+    if (args == NULL) {
+        Py_DECREF(result);
+        return NULL;
+    }
+    PyTuple_SET_ITEM(args, 0, result);
     result = MarkupType.tp_new(&MarkupType, args, NULL);
     Py_DECREF(args);
     return result;

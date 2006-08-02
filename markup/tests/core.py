@@ -14,6 +14,7 @@
 import doctest
 import unittest
 
+from markup import core
 from markup.core import *
 from markup.input import ParseError
 
@@ -99,7 +100,7 @@ class MarkupTestCase(unittest.TestCase):
 def suite():
     suite = unittest.TestSuite()
     suite.addTest(unittest.makeSuite(MarkupTestCase, 'test'))
-    suite.addTest(doctest.DocTestSuite(Markup.__module__))
+    suite.addTest(doctest.DocTestSuite(core))
     return suite
 
 if __name__ == '__main__':

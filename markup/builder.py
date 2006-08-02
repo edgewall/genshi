@@ -204,6 +204,12 @@ class ElementFactory(object):
     >>> print factory.foo(id=2)
     <foo id="2"/>
     
+    Markup fragments (lists of nodes without a parent element) can be created
+    by calling the factory:
+    
+    >>> print factory('Hello, ', factory.em('world'), '!')
+    Hello, <em>world</em>!
+    
     A factory can also be bound to a specific namespace:
     
     >>> factory = ElementFactory('http://www.w3.org/1999/xhtml')
@@ -230,6 +236,9 @@ class ElementFactory(object):
         if namespace and not isinstance(namespace, Namespace):
             namespace = Namespace(namespace)
         self.namespace = namespace
+
+    def __call__(self, *args):
+        return Fragment()(*args)
 
     def __getitem__(self, namespace):
         """Return a new factory that is bound to the specified namespace."""

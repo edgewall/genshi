@@ -236,21 +236,18 @@ def _function_local_name():
     def _function_local_name(kind, data, pos):
         if kind is START:
             return TEXT, data[0].localname, pos
-        return kind, data, pos
     return _function_local_name
 
 def _function_name():
     def _function_name(kind, data, pos):
         if kind is START:
             return TEXT, data[0], pos
-        return kind, data, pos
     return _function_name
 
 def _function_namespace_uri():
     def _function_namespace_uri(kind, data, pos):
         if kind is START:
             return TEXT, data[0].namespace, pos
-        return kind, data, pos
     return _function_namespace_uri
 
 def _function_node():

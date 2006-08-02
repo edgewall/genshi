@@ -232,12 +232,38 @@ def _function_comment():
         return kind is COMMENT and (kind, data, pos)
     return _function_comment
 
+def _function_local_name():
+    def _function_local_name(kind, data, pos):
+        if kind is START:
+            return TEXT, data[0].localname, pos
+        return kind, data, pos
+    return _function_local_name
+
+def _function_name():
+    def _function_name(kind, data, pos):
+        if kind is START:
+            return TEXT, data[0], pos
+        return kind, data, pos
+    return _function_name
+
+def _function_namespace_uri():
+    def _function_namespace_uri(kind, data, pos):
+        if kind is START:
+            return TEXT, data[0].namespace, pos
+        return kind, data, pos
+    return _function_namespace_uri
+
 def _function_node():
     def _function_node(kind, data, pos):
         if kind is START:
             return True
         return kind, data, pos
     return _function_node
+
+def _function_not(expr):
+    def _function_not(kind, data, pos):
+        return not expr(kind, data, pos)
+    return _function_not
 
 def _function_processing_instruction(name=None):
     def _function_processing_instruction(kind, data, pos):
@@ -258,37 +284,49 @@ def _literal_string(text):
 def _operator_eq(lval, rval):
     def _operator_eq(kind, data, pos):
         lv = lval(kind, data, pos)
+        if type(lv) is tuple:
+            lv = lv[1]
         rv = rval(kind, data, pos)
-        return (lv and lv[1]) == (rv and rv[1])
+        if type(rv) is tuple:
+            rv = rv[1]
+        return lv == rv
     return _operator_eq
 
 def _operator_neq(lval, rval):
     def _operator_neq(kind, data, pos):
         lv = lval(kind, data, pos)
+        if type(lv) is tuple:
+            lv = lv[1]
         rv = rval(kind, data, pos)
-        return (lv and lv[1]) != (rv and rv[1])
+        if type(rv) is tuple:
+            rv = rv[1]
+        return lv != rv
     return _operator_neq
 
 def _operator_and(lval, rval):
     def _operator_and(kind, data, pos):
         lv = lval(kind, data, pos)
-        if not lv or (lv is not True and not lv[1]):
+        if type(lv) is tuple:
+            lv = lv[1]
+        if not lv:
             return False
         rv = rval(kind, data, pos)
-        if not rv or (rv is not True and not rv[1]):
-            return False
-        return True
+        if type(rv) is tuple:
+            rv = rv[1]
+        return bool(rv)
     return _operator_and
 
 def _operator_or(lval, rval):
     def _operator_or(kind, data, pos):
         lv = lval(kind, data, pos)
-        if lv and (lv is True or lv[1]):
+        if type(lv) is tuple:
+            lv = lv[1]
+        if lv:
             return True
         rv = rval(kind, data, pos)
-        if rv and (rv is True or rv[1]):
-            return True
-        return False
+        if type(rv) is tuple:
+            rv = rv[1]
+        return bool(rv)
     return _operator_or
 
 
@@ -309,7 +347,7 @@ class _PathParser(object):
 
     _QUOTES = (("'", "'"), ('"', '"'))
     _TOKENS = ('::', ':', '..', '.', '//', '/', '[', ']', '()', '(', ')', '@',
-               '=', '!=', '!', '|')
+               '=', '!=', '!', '|', ',')
     _tokenize = re.compile('(%s)|([^%s\s]+)|\s+' % (
                            '|'.join([re.escape(t) for t in _TOKENS]),
                            ''.join([re.escape(t[0]) for t in _TOKENS]))).findall
@@ -447,7 +485,9 @@ class _PathParser(object):
         assert self.cur_token == '['
         self.next_token()
         expr = self._or_expr()
-        assert self.cur_token == ']'
+        if self.cur_token != ']':
+            raise PathSyntaxError('Expected "]" to close predicate, '
+                                  'but found "%s"' % self.cur_token)
         if not self.at_end:
             self.next_token()
         return expr
@@ -482,6 +522,25 @@ class _PathParser(object):
         elif token[0].isdigit():
             self.next_token()
             return _literal_number(float(token))
+        elif not self.at_end and self.peek_token().startswith('('):
+            if self.next_token() == '()':
+                args = []
+            else:
+                self.next_token()
+                args = [self._or_expr()]
+                while self.cur_token not in (',', ')'):
+                    args.append(self._or_expr())
+            self.next_token()
+            if token == 'local-name':
+                return _function_local_name(*args)
+            elif token == 'name':
+                return _function_name(*args)
+            elif token == 'namespace-uri':
+                return _function_namespace_uri(*args)
+            elif token == 'not':
+                return _function_not(*args)
+            else:
+                raise PathSyntaxError('Unsupported function "%s"' % token)
         else:
             axis = None
             if token == '@':

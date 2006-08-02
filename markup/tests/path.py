@@ -118,6 +118,26 @@ class PathTestCase(unittest.TestCase):
         self.assertEqual('Oh <foo>my</foo>',
                          Path('*|text()').select(xml).render())
 
+    def test_predicate_name(self):
+        xml = XML('<root><foo/><bar/></root>')
+        self.assertEqual('<foo/>',
+                         Path('*[name()="foo"]').select(xml).render())
+
+    def test_predicate_localname(self):
+        xml = XML('<root><foo xmlns="NS"/><bar/></root>')
+        self.assertEqual('<foo xmlns="NS"/>',
+                         Path('*[local-name()="foo"]').select(xml).render())
+
+    def test_predicate_namespace(self):
+        xml = XML('<root><foo xmlns="NS"/><bar/></root>')
+        self.assertEqual('<foo xmlns="NS"/>',
+                         Path('*[namespace-uri()="NS"]').select(xml).render())
+
+    def test_predicate_not_name(self):
+        xml = XML('<root><foo/><bar/></root>')
+        self.assertEqual('<bar/>',
+                         Path('*[not(name()="foo")]').select(xml).render())
+
     def test_predicate_attr(self):
         xml = XML('<root><item/><item important="very"/></root>')
         self.assertEqual('<item important="very"/>',

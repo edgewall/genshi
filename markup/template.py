@@ -648,7 +648,7 @@ class WithDirective(Directive):
                                       offset + (err.offset or 0))
 
     def __call__(self, stream, ctxt, directives):
-        ctxt.push(dict([(name, expr.evaluate(ctxt))
+        ctxt.push(dict([(name, expr.evaluate(ctxt, nocall=True))
                         for name, expr in self.vars]))
         for event in _apply_directives(stream, ctxt, directives):
             yield event
@@ -671,10 +671,10 @@ class Template(object):
 
     directives = [('def', DefDirective),
                   ('match', MatchDirective),
-                  ('for', ForDirective),
-                  ('if', IfDirective),
                   ('when', WhenDirective),
                   ('otherwise', OtherwiseDirective),
+                  ('for', ForDirective),
+                  ('if', IfDirective),
                   ('choose', ChooseDirective),
                   ('with', WithDirective),
                   ('replace', ReplaceDirective),

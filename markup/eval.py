@@ -76,17 +76,19 @@ class Expression(object):
     def __repr__(self):
         return '<Expression "%s">' % self.source
 
-    def evaluate(self, data):
+    def evaluate(self, data, nocall=False):
         """Evaluate the expression against the given data dictionary.
         
         @param data: a mapping containing the data to evaluate against
+        @param nocall: if true, the result of the evaluation is not called if
+            if it is a callable
         @return: the result of the evaluation
         """
         retval = eval(self.code, {'data': data,
                                   '_lookup_name': _lookup_name,
                                   '_lookup_attr': _lookup_attr,
                                   '_lookup_item': _lookup_item})
-        if callable(retval):
+        if not nocall and callable(retval):
             retval = retval()
         return retval
 

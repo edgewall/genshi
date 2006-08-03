@@ -18,7 +18,7 @@ except ImportError:
     from distutils.core import setup
 
 setup(
-    name='Markup', version='0.1',
+    name='Markup', version='0.2',
     description='Toolkit for stream-based generation of markup for the web',
     author='Edgewall Software', author_email='info@edgewall.org',
     license='BSD', url='http://markup.edgewall.org/',

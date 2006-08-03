@@ -22,7 +22,7 @@ setup(
     description='Toolkit for stream-based generation of markup for the web',
     author='Edgewall Software', author_email='info@edgewall.org',
     license='BSD', url='http://markup.edgewall.org/',
-    download_url='http://markup.edgewall.org/wiki/MarkupDownload'
+    download_url='http://markup.edgewall.org/wiki/MarkupDownload',
     classifiers = [
         'Development Status :: 4 - Beta',
         'Environment :: Web Environment',

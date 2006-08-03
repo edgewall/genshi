@@ -63,22 +63,36 @@ class PathTestCase(unittest.TestCase):
         self.assertEqual('<bar/>', Path('bar').select(xml).render())
         self.assertEqual('', Path('baz').select(xml).render())
 
+    def test_2step_attribute(self):
+        xml = XML('<elem class="x"><span id="joe">Hey Joe</span></elem>')
+        self.assertEqual('x', Path('@*').select(xml).render())
+        self.assertEqual('x', Path('./@*').select(xml).render())
+        self.assertEqual('xjoe', Path('//@*').select(xml).render())
+        self.assertEqual('joe', Path('*/@*').select(xml).render())
+
+        xml = XML('<elem><foo id="1"/>foo id="2"/></elem>')
+        self.assertEqual('', Path('@*').select(xml).render())
+        self.assertEqual('12', Path('foo/@*').select(xml).render())
+
     def test_2step_complex(self):
         xml = XML('<root><foo><bar/></foo></root>')
         self.assertEqual('<bar/>', Path('foo/bar').select(xml).render())
         self.assertEqual('<bar/>', Path('foo/*').select(xml).render())
+        self.assertEqual('', Path('./bar').select(xml).render())
 
         xml = XML('<root><foo><bar id="1"/></foo><bar id="2"/></root>')
-        self.assertEqual('<bar id="1"/><bar id="2"/>',
-                         Path('bar').select(xml).render())
+        self.assertEqual('<bar id="2"/>', Path('bar').select(xml).render())
 
     def test_2step_text(self):
         xml = XML('<root><item>Foo</item></root>')
         self.assertEqual('Foo', Path('item/text()').select(xml).render())
         self.assertEqual('Foo', Path('*/text()').select(xml).render())
         self.assertEqual('Foo', Path('//text()').select(xml).render())
+        self.assertEqual('', Path('./text()').select(xml).render())
         xml = XML('<root><item>Foo</item><item>Bar</item></root>')
         self.assertEqual('FooBar', Path('item/text()').select(xml).render())
+        xml = XML('<root><item>Foo</item>Bar</root>')
+        self.assertEqual('Bar', Path('./text()').select(xml).render())
 
     def test_3step(self):
         xml = XML('<root><foo><bar/></foo></root>')

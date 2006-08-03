@@ -16,7 +16,9 @@ import unittest
 import sys
 
 from markup.core import Stream
-from markup.output import DocType, XMLSerializer
+from markup.input import HTML
+from markup.output import DocType, XMLSerializer, XHTMLSerializer, \
+                          HTMLSerializer
 
 
 class XMLSerializerTestCase(unittest.TestCase):
@@ -79,9 +81,33 @@ class XMLSerializerTestCase(unittest.TestCase):
         self.assertEqual('<?python x = 2?>', output)
 
 
+class XHTMLSerializerTestCase(unittest.TestCase):
+
+    def test_textarea_whitespace(self):
+        content = '\nHey there.  \n\n    I am indented.\n'
+        stream = HTML('<textarea name="foo">%s</textarea>' % content)
+        output = stream.render(XHTMLSerializer)
+        self.assertEqual('<textarea name="foo">%s</textarea>' % content, output)
+
+    def test_xml_space(self):
+        text = '<foo xml:space="preserve"> Do not mess  \n\n with me </foo>'
+        output = HTML(text).render(XHTMLSerializer)
+        self.assertEqual(text, output)
+
+
+class HTMLSerializerTestCase(unittest.TestCase):
+
+    def test_xml_space(self):
+        text = '<foo xml:space="preserve"> Do not mess  \n\n with me </foo>'
+        output = HTML(text).render(HTMLSerializer)
+        self.assertEqual('<foo> Do not mess  \n\n with me </foo>', output)
+
+
 def suite():
     suite = unittest.TestSuite()
     suite.addTest(unittest.makeSuite(XMLSerializerTestCase, 'test'))
+    suite.addTest(unittest.makeSuite(XHTMLSerializerTestCase, 'test'))
+    suite.addTest(unittest.makeSuite(HTMLSerializerTestCase, 'test'))
     suite.addTest(doctest.DocTestSuite(XMLSerializer.__module__))
     return suite
 

@@ -50,7 +50,7 @@ def test_markup():
     """Markup template"""
     ctxt = Context(table=table)
     stream = markup_tmpl.generate(ctxt)
-    stream.render('html')
+    stream.render('html', strip_whitespace=False)
 
 def test_markup_builder():
     """Markup template + tag builder"""
@@ -60,7 +60,7 @@ def test_markup_builder():
     ]).generate()
     ctxt = Context(table=stream)
     stream = markup_tmpl2.generate(ctxt)
-    stream.render('html')
+    stream.render('html', strip_whitespace=False)
 
 def test_builder():
     """Markup tag builder"""
@@ -70,7 +70,7 @@ def test_builder():
         ])
         for row in table
     ]).generate()
-    stream.render('html')
+    stream.render('html', strip_whitespace=False)
 
 def test_kid():
     """Kid template"""

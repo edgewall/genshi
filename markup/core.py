@@ -64,16 +64,19 @@ class Stream(object):
     def __iter__(self):
         return iter(self.events)
 
-    def filter(self, func):
-        """Apply a filter to the stream.
+    def filter(self, *filters):
+        """Apply filters to the stream.
         
-        This method returns a new stream with the given filter applied. The
-        filter must be a callable that accepts the stream object as parameter,
-        and returns the filtered stream.
+        This method returns a new stream with the given filters applied. The
+        filters must be callables that accept the stream object as parameter,
+        and return the filtered stream.
         """
-        return Stream(func(self))
+        stream = self
+        for filter_ in filters:
+            stream = filter_(iter(stream))
+        return Stream(stream)
 
-    def render(self, method='xml', encoding='utf-8', filters=None, **kwargs):
+    def render(self, method='xml', encoding='utf-8', **kwargs):
         """Return a string representation of the stream.
         
         @param method: determines how the stream is serialized; can be either
@@ -85,7 +88,7 @@ class Stream(object):
         Any additional keyword arguments are passed to the serializer, and thus
         depend on the `method` parameter value.
         """
-        generator = self.serialize(method=method, filters=filters, **kwargs)
+        generator = self.serialize(method=method, **kwargs)
         output = u''.join(list(generator))
         if encoding is not None:
             return output.encode(encoding)
@@ -100,7 +103,7 @@ class Stream(object):
         from markup.path import Path
         return Path(path).select(self)
 
-    def serialize(self, method='xml', filters=None, **kwargs):
+    def serialize(self, method='xml', **kwargs):
         """Generate strings corresponding to a specific serialization of the
         stream.
         
@@ -109,30 +112,16 @@ class Stream(object):
         string.
         
         @param method: determines how the stream is serialized; can be either
-                       "xml", "xhtml", or "html", or a custom `Serializer`
-                       subclass
-        @param filters: list of filters to apply to the stream before
-                        serialization. The default is to apply whitespace
-                        reduction using `markup.filters.WhitespaceFilter`.
+                       "xml", "xhtml", or "html", or a custom serializer class
         """
-        from markup.filters import WhitespaceFilter
         from markup import output
         cls = method
         if isinstance(method, basestring):
             cls = {'xml':   output.XMLSerializer,
                    'xhtml': output.XHTMLSerializer,
                    'html':  output.HTMLSerializer}[method]
-        else:
-            assert issubclass(cls, output.Serializer)
-        serializer = cls(**kwargs)
-
-        stream = _ensure(self)
-        if filters is None:
-            filters = [WhitespaceFilter()]
-        for filter_ in filters:
-            stream = filter_(iter(stream))
-
-        return serializer.serialize(stream)
+        serialize = cls(**kwargs)
+        return serialize(_ensure(self))
 
     def __str__(self):
         return self.render()

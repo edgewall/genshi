@@ -15,29 +15,17 @@
 streams.
 """
 
+from itertools import chain
 try:
     frozenset
 except NameError:
     from sets import ImmutableSet as frozenset
-from itertools import chain
+import re
 
 from markup.core import escape, Markup, Namespace, QName
 from markup.core import DOCTYPE, START, END, START_NS, END_NS, TEXT, COMMENT, PI
 
 __all__ = ['Serializer', 'XMLSerializer', 'HTMLSerializer']
-
-
-class Serializer(object):
-    """Base class for serializers."""
-
-    def serialize(self, stream):
-        """Must be implemented by concrete subclasses to serialize the given
-        stream.
-        
-        This method must be implemented as a generator, producing the
-        serialized output incrementally as unicode strings.
-        """
-        raise NotImplementedError
 
 
 class DocType(object):
@@ -56,56 +44,66 @@ class DocType(object):
     XHTML = XHTML_STRICT
 
 
-class XMLSerializer(Serializer):
+class XMLSerializer(object):
     """Produces XML text from an event stream.
     
     >>> from markup.builder import tag
     >>> elem = tag.div(tag.a(href='foo'), tag.br, tag.hr(noshade=True))
-    >>> print ''.join(XMLSerializer().serialize(elem.generate()))
+    >>> print ''.join(XMLSerializer()(elem.generate()))
     <div><a href="foo"/><br/><hr noshade="True"/></div>
     """
-    def __init__(self, doctype=None):
+
+    _PRESERVE_SPACE = frozenset()
+
+    def __init__(self, doctype=None, strip_whitespace=True):
         """Initialize the XML serializer.
         
         @param doctype: a `(name, pubid, sysid)` tuple that represents the
             DOCTYPE declaration that should be included at the top of the
             generated output
+        @param strip_whitespace: whether extraneous whitespace should be
+            stripped from the output
         """
         self.preamble = []
         if doctype:
             self.preamble.append((DOCTYPE, doctype, (None, -1, -1)))
+        self.filters = []
+        if strip_whitespace:
+            self.filters.append(WhitespaceFilter(self._PRESERVE_SPACE))
 
-    def serialize(self, stream):
+    def __call__(self, stream):
         have_doctype = False
         ns_attrib = []
         ns_mapping = {}
 
-        stream = _PushbackIterator(chain(self.preamble, stream))
+        stream = chain(self.preamble, stream)
+        for filter_ in self.filters:
+            stream = filter_(stream)
+        stream = _PushbackIterator(stream)
         for kind, data, pos in stream:
 
             if kind is START:
                 tag, attrib = data
 
                 tagname = tag.localname
-                if tag.namespace:
-                    try:
-                        prefix = ns_mapping[tag.namespace]
+                namespace = tag.namespace
+                if namespace:
+                    if namespace in ns_mapping:
+                        prefix = ns_mapping[namespace]
                         if prefix:
-                            tagname = '%s:%s' % (prefix, tag.localname)
-                    except KeyError:
-                        ns_attrib.append((QName('xmlns'), tag.namespace))
+                            tagname = '%s:%s' % (prefix, tagname)
+                    else:
+                        ns_attrib.append((QName('xmlns'), namespace))
                 buf = ['<%s' % tagname]
 
-                if ns_attrib:
-                    attrib.extend(ns_attrib)
-                    ns_attrib = []
-                for attr, value in attrib:
+                for attr, value in attrib + ns_attrib:
                     attrname = attr.localname
                     if attr.namespace:
                         prefix = ns_mapping.get(attr.namespace)
                         if prefix:
                             attrname = '%s:%s' % (prefix, attrname)
                     buf.append(' %s="%s"' % (attrname, escape(value)))
+                ns_attrib = []
 
                 kind, data, pos = stream.next()
                 if kind is END:
@@ -163,7 +161,7 @@ class XHTMLSerializer(XMLSerializer):
     
     >>> from markup.builder import tag
     >>> elem = tag.div(tag.a(href='foo'), tag.br, tag.hr(noshade=True))
-    >>> print ''.join(XHTMLSerializer().serialize(elem.generate()))
+    >>> print ''.join(XHTMLSerializer()(elem.generate()))
     <div><a href="foo"></a><br /><hr noshade="noshade" /></div>
     """
 
@@ -175,12 +173,16 @@ class XHTMLSerializer(XMLSerializer):
     _BOOLEAN_ATTRS = frozenset(['selected', 'checked', 'compact', 'declare',
                                 'defer', 'disabled', 'ismap', 'multiple',
                                 'nohref', 'noresize', 'noshade', 'nowrap'])
+    _PRESERVE_SPACE = frozenset([QName('pre'), QName('textarea')])
 
-    def serialize(self, stream):
+    def __call__(self, stream):
         have_doctype = False
         ns_mapping = {}
 
-        stream = _PushbackIterator(chain(self.preamble, stream))
+        stream = chain(self.preamble, stream)
+        for filter_ in self.filters:
+            stream = filter_(stream)
+        stream = _PushbackIterator(stream)
         for kind, data, pos in stream:
 
             if kind is START:
@@ -250,15 +252,18 @@ class HTMLSerializer(XHTMLSerializer):
     
     >>> from markup.builder import tag
     >>> elem = tag.div(tag.a(href='foo'), tag.br, tag.hr(noshade=True))
-    >>> print ''.join(HTMLSerializer().serialize(elem.generate()))
+    >>> print ''.join(HTMLSerializer()(elem.generate()))
     <div><a href="foo"></a><br><hr noshade></div>
     """
 
-    def serialize(self, stream):
+    def __call__(self, stream):
         have_doctype = False
         ns_mapping = {}
 
-        stream = _PushbackIterator(chain(self.preamble, stream))
+        stream = chain(self.preamble, stream)
+        for filter_ in self.filters:
+            stream = filter_(stream)
+        stream = _PushbackIterator(stream)
         for kind, data, pos in stream:
 
             if kind is START:
@@ -268,7 +273,8 @@ class HTMLSerializer(XHTMLSerializer):
                 buf = ['<', tag.localname]
 
                 for attr, value in attrib:
-                    if attr.namespace and attr not in self.NAMESPACE:
+                    if attr.namespace and attr not in self.NAMESPACE \
+                            or attr.localname.startswith('xml:'):
                         continue # not in the HTML namespace, so don't emit
                     if attr.localname in self._BOOLEAN_ATTRS:
                         if value:
@@ -316,6 +322,52 @@ class HTMLSerializer(XHTMLSerializer):
 
             elif kind is PI:
                 yield Markup('<?%s %s?>' % data)
+
+
+class WhitespaceFilter(object):
+    """A filter that removes extraneous ignorable white space from the
+    stream."""
+
+    _TRAILING_SPACE = re.compile('[ \t]+(?=\n)')
+    _LINE_COLLAPSE = re.compile('\n{2,}')
+
+    def __init__(self, preserve=None):
+        """Initialize the filter.
+        
+        @param preserve: a sequence of tag names for which white-space should
+            be ignored.
+        """
+        if preserve is None:
+            preserve = []
+        self.preserve = frozenset(preserve)
+
+    def __call__(self, stream, ctxt=None):
+        trim_trailing_space = self._TRAILING_SPACE.sub
+        collapse_lines = self._LINE_COLLAPSE.sub
+        mjoin = Markup('').join
+        preserve = [False]
+
+        textbuf = []
+        for kind, data, pos in chain(stream, [(None, None, None)]):
+            if kind is TEXT:
+                textbuf.append(data)
+            else:
+                if kind is START:
+                    preserve.append(data[0] in self.preserve or 
+                                    data[1].get('xml:space') == 'preserve')
+                if textbuf:
+                    if len(textbuf) > 1:
+                        text = mjoin(textbuf, escape_quotes=False)
+                        del textbuf[:]
+                    else:
+                        text = escape(textbuf.pop(), quotes=False)
+                    if not preserve[-1]:
+                        text = collapse_lines('\n', trim_trailing_space('', text))
+                    yield TEXT, Markup(text), pos
+                if kind is END:
+                    preserve.pop()
+                if kind is not None:
+                    yield kind, data, pos
 
 
 class _PushbackIterator(object):

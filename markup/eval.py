@@ -104,7 +104,7 @@ def _compile(source, filename=None, lineno=-1):
         filename = filename.encode('utf-8', 'replace')
     elif not filename:
         filename = '<string>'
-    tree.filename = '<string>'
+    tree.filename = filename
     if lineno <= 0:
         lineno = 1
 
@@ -119,10 +119,12 @@ def _compile(source, filename=None, lineno=-1):
                     code.co_names, code.co_varnames, filename, code.co_name,
                     lineno, code.co_lnotab, (), ())
 
-def _lookup_name(data, name, locals=None):
-    val = data.get(name)
-    if val is None and locals:
-        val = locals.get(name)
+def _lookup_name(data, name, locals_=None):
+    val = None
+    if locals_:
+        val = locals_.get(name)
+    if val is None:
+        val = data.get(name)
     if val is None:
         val = getattr(__builtin__, name, None)
     return val

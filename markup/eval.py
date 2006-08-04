@@ -16,6 +16,7 @@
 import __builtin__
 from compiler import ast, parse
 from compiler.pycodegen import ExpressionCodeGenerator
+import new
 
 from markup.core import Stream
 
@@ -99,15 +100,24 @@ def _compile(source, filename=None, lineno=-1):
     tree = xform.visit(tree)
 
     if isinstance(filename, unicode):
-        # pycodegen doesn't like unicode in the filename
+        # unicode file names not allowed for code objects
         filename = filename.encode('utf-8', 'replace')
-    tree.filename = filename or '<string>'
+    elif not filename:
+        filename = '<string>'
+    tree.filename = '<string>'
+    if lineno <= 0:
+        lineno = 1
 
     gen = ExpressionCodeGenerator(tree)
-    if lineno >= 0:
-        gen.emit('SET_LINENO', lineno)
+    gen.optimized = True
+    code = gen.getCode()
 
-    return gen.getCode()
+    # We'd like to just set co_firstlineno, but it's readonly. So we need to
+    # clone the code object while adjusting the line number
+    return new.code(0, code.co_nlocals, code.co_stacksize,
+                    code.co_flags | 0x0040, code.co_code, code.co_consts,
+                    code.co_names, code.co_varnames, filename, code.co_name,
+                    lineno, code.co_lnotab, (), ())
 
 def _lookup_name(data, name, locals=None):
     val = data.get(name)
@@ -257,37 +267,30 @@ class ExpressionASTTransformer(ASTTransformer):
     for template expressions.
     """
 
-    def visitGetattr(self, node, *args, **kwargs):
-        return ast.CallFunc(ast.Name('_lookup_attr'),
-            [ast.Name('data'), self.visit(node.expr, *args, **kwargs),
-             ast.Const(node.attrname)]
-        )
+    def visitGetattr(self, node, locals_=False):
+        return ast.CallFunc(ast.Name('_lookup_attr'), [
+            ast.Name('data'), self.visit(node.expr, locals_=locals_),
+            ast.Const(node.attrname)
+        ])
 
-    def visitLambda(self, node, *args, **kwargs):
-        old_lookup_locals = kwargs.get('lookup_locals', False)
-        kwargs['lookup_locals'] = True
-        node.code = self.visit(node.code, *args, **kwargs)
+    def visitLambda(self, node, locals_=False):
+        node.code = self.visit(node.code, locals_=True)
         node.filename = '<string>' # workaround for bug in pycodegen
-        kwargs['lookup_locals'] = old_lookup_locals
         return node
 
-    def visitListComp(self, node, *args, **kwargs):
-        old_lookup_locals = kwargs.get('lookup_locals', False)
-        kwargs['lookup_locals'] = True
-        node.expr = self.visit(node.expr, *args, **kwargs)
-        node.quals = map(lambda x: self.visit(x, *args, **kwargs), node.quals)
-        kwargs['lookup_locals'] = old_lookup_locals
+    def visitListComp(self, node, locals_=False):
+        node.expr = self.visit(node.expr, locals_=True)
+        node.quals = map(lambda x: self.visit(x, locals_=True), node.quals)
         return node
 
-    def visitName(self, node, *args, **kwargs):
+    def visitName(self, node, locals_=False):
         func_args = [ast.Name('data'), ast.Const(node.name)]
-        if kwargs.get('lookup_locals'):
+        if locals_:
             func_args.append(ast.CallFunc(ast.Name('locals'), []))
         return ast.CallFunc(ast.Name('_lookup_name'), func_args)
-        return node
 
-    def visitSubscript(self, node, *args, **kwargs):
-        return ast.CallFunc(ast.Name('_lookup_item'),
-            [ast.Name('data'), self.visit(node.expr, *args, **kwargs),
-             ast.Tuple(map(self.visit, node.subs, *args, **kwargs))]
-        )
+    def visitSubscript(self, node, locals_=False):
+        return ast.CallFunc(ast.Name('_lookup_item'), [
+            ast.Name('data'), self.visit(node.expr, locals_=locals_),
+            ast.Tuple(map(lambda x: self.visit(x, locals_=locals_), node.subs))
+        ])

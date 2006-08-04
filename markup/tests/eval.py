@@ -12,6 +12,7 @@
 # history and logs, available at hhttp://markup.edgewall.org/log/.
 
 import doctest
+import sys
 import unittest
 
 from markup.eval import Expression
@@ -213,6 +214,29 @@ class ExpressionTestCase(unittest.TestCase):
         expr = Expression("[offset + n for n in numbers]")
         self.assertEqual([2, 3, 4, 5, 6],
                          expr.evaluate({'numbers': range(5), 'offset': 2}))
+
+    def test_list_comprehension_with_getattr(self):
+        items = [{'name': 'a', 'value': 1}, {'name': 'b', 'value': 2}]
+        expr = Expression("[i.name for i in items if i.value > 1]")
+        self.assertEqual(['b'], expr.evaluate({'items': items}))
+
+    def test_list_comprehension_with_getitem(self):
+        items = [{'name': 'a', 'value': 1}, {'name': 'b', 'value': 2}]
+        expr = Expression("[i['name'] for i in items if i['value'] > 1]")
+        self.assertEqual(['b'], expr.evaluate({'items': items}))
+
+    def test_error_position(self):
+        expr = Expression("nothing()", filename='index.html', lineno=50)
+        try:
+            expr.evaluate({})
+            self.fail('Expected TypeError')
+        except TypeError, e:
+            exc_type, exc_value, exc_traceback = sys.exc_info()
+            frame = exc_traceback.tb_next
+            while frame.tb_next:
+                frame = frame.tb_next
+            self.assertEqual('index.html', frame.tb_frame.f_code.co_filename)
+            self.assertEqual(50, frame.tb_lineno)
 
 
 def suite():

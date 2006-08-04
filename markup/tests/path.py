@@ -69,8 +69,8 @@ class PathTestCase(unittest.TestCase):
         self.assertEqual('<bar/>', Path('foo/*').select(xml).render())
 
         xml = XML('<root><foo><bar id="1"/></foo><bar id="2"/></root>')
-        self.assertEqual('<bar id="1"/><bar id="2"/>',
-                         Path('bar').select(xml).render())
+        self.assertEqual('<bar id="1"/><bar id="2"/>', 
+                         Path('bar').select(xml).render()) 
 
     def test_2step_text(self):
         xml = XML('<root><item>Foo</item></root>')

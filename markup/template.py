@@ -1064,7 +1064,7 @@ class TemplateLoader(object):
         for dirname in search_path:
             filepath = os.path.join(dirname, filename)
             try:
-                fileobj = file(filepath, 'rt')
+                fileobj = open(filepath, 'U')
                 try:
                     tmpl = Template(fileobj, basedir=dirname, filename=filename)
                     tmpl.filters.append(IncludeFilter(self))

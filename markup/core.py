@@ -197,7 +197,9 @@ class Attributes(list):
         """Return whether the list includes an attribute with the specified
         name.
         """
-        return name in [attr for attr, _ in self]
+        for attr, _ in self:
+            if attr == name:
+                return True
 
     def get(self, name, default=None):
         """Return the value of the attribute with the specified name, or the

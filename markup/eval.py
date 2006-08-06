@@ -143,7 +143,6 @@ def _lookup_item(data, obj, key):
     try:
         return obj[key]
     except (KeyError, IndexError, TypeError), e:
-        pass
         if isinstance(key, basestring):
             try:
                 return getattr(obj, key)

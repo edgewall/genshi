@@ -518,7 +518,6 @@ class TemplateTestCase(unittest.TestCase):
             self.assertEqual('test.html', e.filename)
             if sys.version_info[:2] >= (2, 4):
                 self.assertEqual(1, e.lineno)
-                # We don't really care about the offset here, do we?
 
     def test_expression_syntax_error(self):
         xml = """<p>
@@ -531,6 +530,20 @@ class TemplateTestCase(unittest.TestCase):
             self.assertEqual('test.html', e.filename)
             if sys.version_info[:2] >= (2, 4):
                 self.assertEqual(2, e.lineno)
+
+    def test_expression_syntax_error_multi_line(self):
+        xml = """<p><em></em>
+
+ ${bar"}
+
+        </p>"""
+        try:
+            tmpl = Template(xml, filename='test.html')
+            self.fail('Expected SyntaxError')
+        except TemplateSyntaxError, e:
+            self.assertEqual('test.html', e.filename)
+            if sys.version_info[:2] >= (2, 4):
+                self.assertEqual(3, e.lineno)
 
     def test_markup_noescape(self):
         """

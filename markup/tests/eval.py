@@ -235,6 +235,8 @@ class ExpressionTestCase(unittest.TestCase):
             frame = exc_traceback.tb_next
             while frame.tb_next:
                 frame = frame.tb_next
+            self.assertEqual('<Expression "nothing()">',
+                             frame.tb_frame.f_code.co_name)
             self.assertEqual('index.html', frame.tb_frame.f_code.co_filename)
             self.assertEqual(50, frame.tb_lineno)
 

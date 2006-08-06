@@ -11,7 +11,7 @@
 # individuals. For the exact contribution history, see the revision
 # history and logs, available at http://markup.edgewall.org/log/.
 
-from markup.core import Attributes, Namespace, QName, Stream, escape
+from markup.core import Attributes, Namespace, QName, Stream, START, END, TEXT
 
 __all__ = ['Fragment', 'Element', 'tag']
 
@@ -29,8 +29,7 @@ class Fragment(object):
         return Fragment()(self, other)
 
     def __call__(self, *args):
-        for arg in args:
-            self.append(arg)
+        map(self.append, args)
         return self
 
     def __iter__(self):
@@ -52,15 +51,12 @@ class Fragment(object):
             # whether it is iterable for better performance
             self.children.append(node)
         elif isinstance(node, Fragment):
-            self.children += node.children
+            self.children.extend(node.children)
         elif node is not None:
             try:
-                children = iter(node)
+                map(self.append, iter(node))
             except TypeError:
                 self.children.append(node)
-            else:
-                for child in children:
-                    self.append(child)
 
     def _generate(self):
         for child in self.children:
@@ -70,7 +66,7 @@ class Fragment(object):
             else:
                 if not isinstance(child, basestring):
                     child = unicode(child)
-                yield Stream.TEXT, child, (None, -1, -1)
+                yield TEXT, child, (None, -1, -1)
 
     def generate(self):
         """Return a markup event stream for the fragment."""
@@ -162,14 +158,19 @@ class Element(Fragment):
         Fragment.__init__(self)
         self.tag = QName(tag_)
         self.attrib = Attributes()
-        self(**attrib)
+        for attr, value in attrib.items():
+            if value is not None:
+                if not isinstance(value, basestring):
+                    value = unicode(value)
+                self.attrib.append((QName(attr.rstrip('_').replace('_', '-')),
+                                    value))
 
     def __call__(self, *args, **kwargs):
         for attr, value in kwargs.items():
-            if value is None:
-                continue
-            attr = attr.rstrip('_').replace('_', '-')
-            self.attrib.set(attr, escape(value))
+            if value is not None:
+                if not isinstance(value, basestring):
+                    value = unicode(value)
+                self.attrib.set(attr.rstrip('_').replace('_', '-'), value)
         Fragment.__call__(self, *args)
         return self
 
@@ -177,15 +178,10 @@ class Element(Fragment):
         return '<%s "%s">' % (self.__class__.__name__, self.tag)
 
     def _generate(self):
-        attrib = Attributes()
-        for attr, value in self.attrib:
-            if not isinstance(value, basestring):
-                value = unicode(value)
-            attrib.append((attr, value))
-        yield Stream.START, (self.tag, attrib), (None, -1, -1)
+        yield START, (self.tag, self.attrib), (None, -1, -1)
         for kind, data, pos in Fragment._generate(self):
             yield kind, data, pos
-        yield Stream.END, self.tag, (None, -1, -1)
+        yield END, self.tag, (None, -1, -1)
 
     def generate(self):
         """Return a markup event stream for the fragment."""

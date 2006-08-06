@@ -214,6 +214,16 @@ class ExpressionTestCase(unittest.TestCase):
         self.assertEqual([2, 3, 4, 5, 6],
                          expr.evaluate({'numbers': range(5), 'offset': 2}))
 
+    def test_list_comprehension_with_getattr(self):
+        items = [{'name': 'a', 'value': 1}, {'name': 'b', 'value': 2}]
+        expr = Expression("[i.name for i in items if i.value > 1]")
+        self.assertEqual(['b'], expr.evaluate({'items': items}))
+
+    def test_list_comprehension_with_getitem(self):
+        items = [{'name': 'a', 'value': 1}, {'name': 'b', 'value': 2}]
+        expr = Expression("[i['name'] for i in items if i['value'] > 1]")
+        self.assertEqual(['b'], expr.evaluate({'items': items}))
+
 
 def suite():
     suite = unittest.TestSuite()

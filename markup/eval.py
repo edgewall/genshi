@@ -289,5 +289,5 @@ class ExpressionASTTransformer(ASTTransformer):
     def visitSubscript(self, node, *args, **kwargs):
         return ast.CallFunc(ast.Name('_lookup_item'),
             [ast.Name('data'), self.visit(node.expr, *args, **kwargs),
-             ast.Tuple(map(self.visit, node.subs, *args, **kwargs))]
+             ast.Tuple(map(lambda x: self.visit(x, *args, **kwargs), node.subs))]
         )

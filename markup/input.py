@@ -109,13 +109,27 @@ class XMLParser(object):
     def _enqueue(self, kind, data, pos=None):
         if pos is None:
             pos = self._getpos()
+        if kind is Stream.TEXT:
+            # Expat reports the *end* of the text event as current position. We
+            # try to fix that up here as much as possible. Unfortunately, the
+            # offset is only valid for single-line text. For multi-line text,
+            # it is apparently not possible to determine at what offset it
+            # started
+            if '\n' in data:
+                lines = data.splitlines()
+                lineno = pos[1] - len(lines) + 1
+                offset = -1
+            else:
+                lineno = pos[1]
+                offset = pos[2] - len(data)
+            pos = (pos[0], lineno, offset)
         self._queue.append((kind, data, pos))
 
     def _getpos_unknown(self):
-        return (self.filename or '<string>', -1, -1)
+        return (self.filename, -1, -1)
 
     def _getpos(self):
-        return (self.filename or '<string>', self.expat.CurrentLineNumber,
+        return (self.filename, self.expat.CurrentLineNumber,
                 self.expat.CurrentColumnNumber)
 
     def _handle_start(self, tag, attrib):

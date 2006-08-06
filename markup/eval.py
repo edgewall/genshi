@@ -72,7 +72,7 @@ class Expression(object):
         @param source: the expression as string
         """
         self.source = source
-        self.code = _compile(source, filename, lineno)
+        self.code = _compile(self, filename, lineno)
 
     def __repr__(self):
         return '<Expression "%s">' % self.source
@@ -94,8 +94,8 @@ class Expression(object):
         return retval
 
 
-def _compile(source, filename=None, lineno=-1):
-    tree = parse(source, 'eval')
+def _compile(expr, filename=None, lineno=-1):
+    tree = parse(expr.source, 'eval')
     xform = ExpressionASTTransformer()
     tree = xform.visit(tree)
 
@@ -116,7 +116,7 @@ def _compile(source, filename=None, lineno=-1):
     # clone the code object while adjusting the line number
     return new.code(0, code.co_nlocals, code.co_stacksize,
                     code.co_flags | 0x0040, code.co_code, code.co_consts,
-                    code.co_names, code.co_varnames, filename, code.co_name,
+                    code.co_names, code.co_varnames, filename, repr(expr),
                     lineno, code.co_lnotab, (), ())
 
 def _lookup_name(data, name, locals_=None):

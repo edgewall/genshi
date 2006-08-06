@@ -812,12 +812,13 @@ class Template(object):
         @param offset: the column number at which the text starts in the source
             (optional)
         """
-        def _interpolate(text, patterns):
+        def _interpolate(text, patterns, filename=filename, lineno=lineno,
+                         offset=offset):
             for idx, group in enumerate(patterns.pop(0).split(text)):
                 if idx % 2:
                     try:
                         yield EXPR, Expression(group, filename, lineno), \
-                              (lineno, offset)
+                              (filename, lineno, offset)
                     except SyntaxError, err:
                         raise TemplateSyntaxError(err, filename, lineno,
                                                   offset + (err.offset or 0))
@@ -826,8 +827,14 @@ class Template(object):
                         for result in _interpolate(group, patterns[:]):
                             yield result
                     else:
-                        yield TEXT, group.replace('$$', '$'), (filename, lineno,
-                                                               offset)
+                        yield TEXT, group.replace('$$', '$'), \
+                              (filename, lineno, offset)
+                if '\n' in group:
+                    lines = group.splitlines()
+                    lineno += len(lines) - 1
+                    offset += len(lines[-1])
+                else:
+                    offset += len(group)
         return _interpolate(text, [cls._FULL_EXPR_RE, cls._SHORT_EXPR_RE])
     _interpolate = classmethod(_interpolate)
 

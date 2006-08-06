@@ -13,7 +13,7 @@ def markup(dirname, verbose=False):
     def render():
         ctxt = Context(title='Just a test', user='joe',
                        items=['Number %d' % num for num in range(1, 15)])
-        return template.generate(ctxt).render('html')
+        return template.generate(ctxt).render('xhtml')
 
     if verbose:
         print render()

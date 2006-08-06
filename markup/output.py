@@ -80,6 +80,7 @@ class XMLSerializer(object):
         for filter_ in self.filters:
             stream = filter_(stream)
         stream = _PushbackIterator(stream)
+        pushback = stream.pushback
         for kind, data, pos in stream:
 
             if kind is START:
@@ -94,7 +95,7 @@ class XMLSerializer(object):
                             tagname = '%s:%s' % (prefix, tagname)
                     else:
                         ns_attrib.append((QName('xmlns'), namespace))
-                buf = ['<%s' % tagname]
+                buf = ['<', tagname]
 
                 for attr, value in attrib + ns_attrib:
                     attrname = attr.localname
@@ -102,15 +103,15 @@ class XMLSerializer(object):
                         prefix = ns_mapping.get(attr.namespace)
                         if prefix:
                             attrname = '%s:%s' % (prefix, attrname)
-                    buf.append(' %s="%s"' % (attrname, escape(value)))
+                    buf += [' ', attrname, '="', escape(value), '"']
                 ns_attrib = []
 
                 kind, data, pos = stream.next()
                 if kind is END:
-                    buf.append('/>')
+                    buf += ['/>']
                 else:
-                    buf.append('>')
-                    stream.pushback((kind, data, pos))
+                    buf += ['>']
+                    pushback((kind, data, pos))
 
                 yield Markup(''.join(buf))
 
@@ -129,19 +130,18 @@ class XMLSerializer(object):
             elif kind is COMMENT:
                 yield Markup('<!--%s-->' % data)
 
-            elif kind is DOCTYPE:
-                if not have_doctype:
-                    name, pubid, sysid = data
-                    buf = ['<!DOCTYPE %s']
-                    if pubid:
-                        buf.append(' PUBLIC "%s"')
-                    elif sysid:
-                        buf.append(' SYSTEM')
-                    if sysid:
-                        buf.append(' "%s"')
-                    buf.append('>\n')
-                    yield Markup(''.join(buf), *filter(None, data))
-                    have_doctype = True
+            elif kind is DOCTYPE and not have_doctype:
+                name, pubid, sysid = data
+                buf = ['<!DOCTYPE %s']
+                if pubid:
+                    buf += [' PUBLIC "%s"']
+                elif sysid:
+                    buf += [' SYSTEM']
+                if sysid:
+                    buf += [' "%s"']
+                buf += ['>\n']
+                yield Markup(''.join(buf), *filter(None, data))
+                have_doctype = True
 
             elif kind is START_NS:
                 prefix, uri = data
@@ -176,47 +176,50 @@ class XHTMLSerializer(XMLSerializer):
     _PRESERVE_SPACE = frozenset([QName('pre'), QName('textarea')])
 
     def __call__(self, stream):
-        have_doctype = False
+        namespace = self.NAMESPACE
         ns_mapping = {}
+        boolean_attrs = self._BOOLEAN_ATTRS
+        empty_elems = self._EMPTY_ELEMS
+        have_doctype = False
 
         stream = chain(self.preamble, stream)
         for filter_ in self.filters:
             stream = filter_(stream)
         stream = _PushbackIterator(stream)
+        pushback = stream.pushback
         for kind, data, pos in stream:
 
             if kind is START:
                 tag, attrib = data
-                if tag.namespace and tag not in self.NAMESPACE:
-                    continue # not in the HTML namespace, so don't emit
-                buf = ['<', tag.localname]
+                if not tag.namespace or tag in namespace:
+                    tagname = tag.localname
+                    buf = ['<', tagname]
 
-                for attr, value in attrib:
-                    if attr.namespace and attr not in self.NAMESPACE:
-                        continue # not in the HTML namespace, so don't emit
-                    if attr.localname in self._BOOLEAN_ATTRS:
-                        if value:
-                            buf.append(' %s="%s"' % (attr.localname, attr.localname))
+                    for attr, value in attrib:
+                        if not attr.namespace or attr in namespace:
+                            attrname = attr.localname
+                            if attrname in boolean_attrs:
+                                if value:
+                                    buf += [' ', attrname, '="', attrname, '"']
+                            else:
+                                buf += [' ', attrname, '="', escape(value), '"']
+
+                    if tagname in empty_elems:
+                        kind, data, pos = stream.next()
+                        if kind is END:
+                            buf += [' />']
+                        else:
+                            buf += ['>']
+                            pushback((kind, data, pos))
                     else:
-                        buf.append(' %s="%s"' % (attr.localname, escape(value)))
+                        buf += ['>']
 
-                if tag.localname in self._EMPTY_ELEMS:
-                    kind, data, pos = stream.next()
-                    if kind is END:
-                        buf.append(' />')
-                    else:
-                        buf.append('>')
-                        stream.pushback((kind, data, pos))
-                else:
-                    buf.append('>')
-
-                yield Markup(''.join(buf))
+                    yield Markup(''.join(buf))
 
             elif kind is END:
                 tag = data
-                if tag.namespace and tag not in self.NAMESPACE:
-                    continue # not in the HTML namespace, so don't emit
-                yield Markup('</%s>' % tag.localname)
+                if not tag.namespace or tag in namespace:
+                    yield Markup('</%s>' % tag.localname)
 
             elif kind is TEXT:
                 yield escape(data, quotes=False)
@@ -224,24 +227,21 @@ class XHTMLSerializer(XMLSerializer):
             elif kind is COMMENT:
                 yield Markup('<!--%s-->' % data)
 
-            elif kind is DOCTYPE:
-                if not have_doctype:
-                    name, pubid, sysid = data
-                    buf = ['<!DOCTYPE %s']
-                    if pubid:
-                        buf.append(' PUBLIC "%s"')
-                    elif sysid:
-                        buf.append(' SYSTEM')
-                    if sysid:
-                        buf.append(' "%s"')
-                    buf.append('>\n')
-                    yield Markup(''.join(buf), *filter(None, data))
-                    have_doctype = True
+            elif kind is DOCTYPE and not have_doctype:
+                name, pubid, sysid = data
+                buf = ['<!DOCTYPE %s']
+                if pubid:
+                    buf += [' PUBLIC "%s"']
+                elif sysid:
+                    buf += [' SYSTEM']
+                if sysid:
+                    buf += [' "%s"']
+                buf += ['>\n']
+                yield Markup(''.join(buf), *filter(None, data))
+                have_doctype = True
 
-            elif kind is START_NS:
-                prefix, uri = data
-                if uri not in ns_mapping:
-                    ns_mapping[uri] = prefix
+            elif kind is START_NS and data[1] not in ns_mapping:
+                ns_mapping[data[1]] = data[0]
 
             elif kind is PI:
                 yield Markup('<?%s %s?>' % data)
@@ -257,8 +257,11 @@ class HTMLSerializer(XHTMLSerializer):
     """
 
     def __call__(self, stream):
-        have_doctype = False
+        namespace = self.NAMESPACE
         ns_mapping = {}
+        boolean_attrs = self._BOOLEAN_ATTRS
+        empty_elems = self._EMPTY_ELEMS
+        have_doctype = False
 
         stream = chain(self.preamble, stream)
         for filter_ in self.filters:
@@ -268,32 +271,33 @@ class HTMLSerializer(XHTMLSerializer):
 
             if kind is START:
                 tag, attrib = data
-                if tag.namespace and tag not in self.NAMESPACE:
-                    continue # not in the HTML namespace, so don't emit
-                buf = ['<', tag.localname]
+                if not tag.namespace or tag in namespace:
+                    tagname = tag.localname
+                    buf = ['<', tagname]
 
-                for attr, value in attrib:
-                    if attr.namespace and attr not in self.NAMESPACE \
-                            or attr.localname.startswith('xml:'):
-                        continue # not in the HTML namespace, so don't emit
-                    if attr.localname in self._BOOLEAN_ATTRS:
-                        if value:
-                            buf.append(' %s' % attr.localname)
-                    else:
-                        buf.append(' %s="%s"' % (attr.localname, escape(value)))
+                    for attr, value in attrib:
+                        attrname = attr.localname
+                        if not attr.namespace and not \
+                                attrname.startswith('xml:') or \
+                                attr in namespace:
+                            if attrname in boolean_attrs:
+                                if value:
+                                    buf += [' ', attrname]
+                            else:
+                                buf += [' ', attrname, '="', escape(value), '"']
 
-                if tag.localname in self._EMPTY_ELEMS:
-                    kind, data, pos = stream.next()
-                    if kind is not END:
-                        stream.pushback((kind, data, pos))
+                    if tagname in empty_elems:
+                        kind, data, pos = stream.next()
+                        if kind is not END:
+                            stream.pushback((kind, data, pos))
 
-                yield Markup(''.join(buf + ['>']))
+                buf += ['>']
+                yield Markup(''.join(buf))
 
             elif kind is END:
                 tag = data
-                if tag.namespace and tag not in self.NAMESPACE:
-                    continue # not in the HTML namespace, so don't emit
-                yield Markup('</%s>' % tag.localname)
+                if not tag.namespace or tag in namespace:
+                    yield Markup('</%s>' % tag.localname)
 
             elif kind is TEXT:
                 yield escape(data, quotes=False)
@@ -301,24 +305,21 @@ class HTMLSerializer(XHTMLSerializer):
             elif kind is COMMENT:
                 yield Markup('<!--%s-->' % data)
 
-            elif kind is DOCTYPE:
-                if not have_doctype:
-                    name, pubid, sysid = data
-                    buf = ['<!DOCTYPE %s']
-                    if pubid:
-                        buf.append(' PUBLIC "%s"')
-                    elif sysid:
-                        buf.append(' SYSTEM')
-                    if sysid:
-                        buf.append(' "%s"')
-                    buf.append('>\n')
-                    yield Markup(''.join(buf), *filter(None, data))
-                    have_doctype = True
+            elif kind is DOCTYPE and not have_doctype:
+                name, pubid, sysid = data
+                buf = ['<!DOCTYPE %s']
+                if pubid:
+                    buf += [' PUBLIC "%s"']
+                elif sysid:
+                    buf += [' SYSTEM']
+                if sysid:
+                    buf += [' "%s"']
+                buf += ['>\n']
+                yield Markup(''.join(buf), *filter(None, data))
+                have_doctype = True
 
-            elif kind is START_NS:
-                prefix, uri = data
-                if uri not in ns_mapping:
-                    ns_mapping[uri] = prefix
+            elif kind is START_NS and data[1] not in ns_mapping:
+                ns_mapping[data[1]] = data[0]
 
             elif kind is PI:
                 yield Markup('<?%s %s?>' % data)
@@ -346,27 +347,31 @@ class WhitespaceFilter(object):
         collapse_lines = self._LINE_COLLAPSE.sub
         mjoin = Markup('').join
         preserve = [False]
+        append_preserve = preserve.append
+        pop_preserve = preserve.pop
 
         textbuf = []
+        append_text = textbuf.append
+        pop_text = textbuf.pop
         for kind, data, pos in chain(stream, [(None, None, None)]):
             if kind is TEXT:
-                textbuf.append(data)
+                append_text(data)
             else:
                 if kind is START:
-                    preserve.append(data[0] in self.preserve or 
+                    append_preserve(data[0] in self.preserve or 
                                     data[1].get('xml:space') == 'preserve')
                 if textbuf:
                     if len(textbuf) > 1:
                         text = mjoin(textbuf, escape_quotes=False)
                         del textbuf[:]
                     else:
-                        text = escape(textbuf.pop(), quotes=False)
+                        text = escape(pop_text(), quotes=False)
                     if not preserve[-1]:
                         text = collapse_lines('\n', trim_trailing_space('', text))
                     yield TEXT, Markup(text), pos
                 if kind is END:
-                    preserve.pop()
-                if kind is not None:
+                    pop_preserve()
+                if kind:
                     yield kind, data, pos
 
 

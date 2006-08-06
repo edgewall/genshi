@@ -292,7 +292,7 @@ class Markup(unicode):
 
     def __new__(cls, text='', *args):
         if args:
-            text %= tuple([escape(arg) for arg in args])
+            text %= tuple(map(escape, args))
         return unicode.__new__(cls, text)
 
     def __add__(self, other):
@@ -301,8 +301,7 @@ class Markup(unicode):
     def __mod__(self, args):
         if not isinstance(args, (list, tuple)):
             args = [args]
-        return Markup(unicode.__mod__(self,
-                                      tuple([escape(arg) for arg in args])))
+        return Markup(unicode.__mod__(self, tuple(map(escape, args))))
 
     def __mul__(self, num):
         return Markup(unicode(self) * num)
@@ -463,11 +462,9 @@ class QName(unicode):
 
         parts = qname.split(u'}', 1)
         if len(parts) > 1:
-            self = unicode.__new__(cls, u'{' + qname)
-            self.namespace = unicode(parts[0])
-            self.localname = unicode(parts[1])
+            self = unicode.__new__(cls, u'{%s' % qname)
+            self.namespace, self.localname = map(unicode, parts)
         else:
             self = unicode.__new__(cls, qname)
-            self.namespace = None
-            self.localname = unicode(qname)
+            self.namespace, self.localname = None, unicode(qname)
         return self

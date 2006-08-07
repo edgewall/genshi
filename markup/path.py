@@ -78,10 +78,18 @@ class Path(object):
         @param text: the path expression
         """
         self.source = text
-        self.paths = _PathParser(text).parse()
+        self.paths = PathParser(text).parse()
 
     def __repr__(self):
-        return '<%s "%s">' % (self.__class__.__name__, self.source)
+        paths = []
+        for path in self.paths:
+            steps = []
+            for axis, nodetest, predicates in path:
+                steps.append('%s::%s' % (axis, nodetest))
+                for predicate in predicates:
+                    steps.append('[%s]' % predicate)
+            paths.append('/'.join(steps))
+        return '<%s "%s">' % (self.__class__.__name__, '|'.join(paths))
 
     def select(self, stream):
         """Returns a substream of the given stream that matches the path.
@@ -138,11 +146,10 @@ class Path(object):
         START (u'child', [(u'id', u'1')])
         START (u'child', [(u'id', u'2')])
         """
-        paths = [(idx, steps, len(steps), [0])
-                 for idx, steps in enumerate(self.paths)]
+        paths = [(steps, len(steps), [0]) for steps in self.paths]
 
         def _test(kind, data, pos):
-            for idx, steps, size, stack in paths:
+            for steps, size, stack in paths:
                 if not stack:
                     continue
                 cursor = stack[-1]
@@ -150,15 +157,13 @@ class Path(object):
                 if kind is END:
                     stack.pop()
                     continue
-
                 elif kind is START:
                     stack.append(cursor)
 
-                matched = None
                 while 1:
-                    axis, node_test, predicates = steps[cursor]
+                    axis, nodetest, predicates = steps[cursor]
 
-                    matched = node_test(kind, data, pos)
+                    matched = nodetest(kind, data, pos)
                     if matched and predicates:
                         for predicate in predicates:
                             if not predicate(kind, data, pos):
@@ -169,7 +174,7 @@ class Path(object):
                         if cursor + 1 == size: # the last location step
                             if ignore_context or \
                                     kind is not START or \
-                                    axis in (ATTRIBUTE, SELF) or \
+                                    axis in (ATTRIBUTE, NAMESPACE, SELF) or \
                                     len(stack) > 2:
                                 return matched
                         else:
@@ -188,8 +193,8 @@ class Path(object):
                     backsteps = [step for step in steps[:cursor]
                                  if step[0] in (DESCENDANT, DESCENDANT_OR_SELF)]
                     backsteps.reverse()
-                    for axis, node_test, predicates in backsteps:
-                        matched = node_test(kind, data, pos)
+                    for axis, nodetest, predicates in backsteps:
+                        matched = nodetest(kind, data, pos)
                         if not matched:
                             cursor -= 1
                         break
@@ -198,133 +203,6 @@ class Path(object):
             return None
 
         return _test
-
-
-def _node_test_current_element():
-    def _node_test_current_element(kind, *_):
-        return kind is START
-    return _node_test_current_element
-
-def _node_test_any_child_element():
-    def _node_test_any_child_element(kind, *_):
-        return kind is START
-    return _node_test_any_child_element
-
-def _node_test_child_element_by_name(name):
-    def _node_test_child_element_by_name(kind, data, _):
-        return kind is START and data[0].localname == name
-    return _node_test_child_element_by_name
-
-def _node_test_any_attribute():
-    def _node_test_any_attribute(kind, data, _):
-        if kind is START and data[1]:
-            return data[1]
-    return _node_test_any_attribute
-
-def _node_test_attribute_by_name(name):
-    def _node_test_attribute_by_name(kind, data, pos):
-        if kind is START and name in data[1]:
-            return TEXT, data[1].get(name), pos
-    return _node_test_attribute_by_name
-
-def _function_comment():
-    def _function_comment(kind, data, pos):
-        return kind is COMMENT and (kind, data, pos)
-    return _function_comment
-
-def _function_local_name():
-    def _function_local_name(kind, data, pos):
-        if kind is START:
-            return TEXT, data[0].localname, pos
-    return _function_local_name
-
-def _function_name():
-    def _function_name(kind, data, pos):
-        if kind is START:
-            return TEXT, data[0], pos
-    return _function_name
-
-def _function_namespace_uri():
-    def _function_namespace_uri(kind, data, pos):
-        if kind is START:
-            return TEXT, data[0].namespace, pos
-    return _function_namespace_uri
-
-def _function_node():
-    def _function_node(kind, data, pos):
-        if kind is START:
-            return True
-        return kind, data, pos
-    return _function_node
-
-def _function_not(expr):
-    def _function_not(kind, data, pos):
-        return not expr(kind, data, pos)
-    return _function_not
-
-def _function_processing_instruction(name=None):
-    def _function_processing_instruction(kind, data, pos):
-        if kind is PI and (not name or data[0] == name):
-            return (kind, data, pos)
-    return _function_processing_instruction
-
-def _function_text():
-    def _function_text(kind, data, pos):
-        return kind is TEXT and (kind, data, pos)
-    return _function_text
-
-def _literal_string(text):
-    def _literal_string(*_):
-        return TEXT, text, (None, -1, -1)
-    return _literal_string
-
-def _operator_eq(lval, rval):
-    def _operator_eq(kind, data, pos):
-        lv = lval(kind, data, pos)
-        if type(lv) is tuple:
-            lv = lv[1]
-        rv = rval(kind, data, pos)
-        if type(rv) is tuple:
-            rv = rv[1]
-        return lv == rv
-    return _operator_eq
-
-def _operator_neq(lval, rval):
-    def _operator_neq(kind, data, pos):
-        lv = lval(kind, data, pos)
-        if type(lv) is tuple:
-            lv = lv[1]
-        rv = rval(kind, data, pos)
-        if type(rv) is tuple:
-            rv = rv[1]
-        return lv != rv
-    return _operator_neq
-
-def _operator_and(lval, rval):
-    def _operator_and(kind, data, pos):
-        lv = lval(kind, data, pos)
-        if type(lv) is tuple:
-            lv = lv[1]
-        if not lv:
-            return False
-        rv = rval(kind, data, pos)
-        if type(rv) is tuple:
-            rv = rv[1]
-        return bool(rv)
-    return _operator_and
-
-def _operator_or(lval, rval):
-    def _operator_or(kind, data, pos):
-        lv = lval(kind, data, pos)
-        if type(lv) is tuple:
-            lv = lv[1]
-        if lv:
-            return True
-        rv = rval(kind, data, pos)
-        if type(rv) is tuple:
-            rv = rv[1]
-        return bool(rv)
-    return _operator_or
 
 
 class PathSyntaxError(Exception):
@@ -339,7 +217,7 @@ class PathSyntaxError(Exception):
         self.offset = offset
 
 
-class _PathParser(object):
+class PathParser(object):
     """Tokenizes and parses an XPath expression."""
 
     _QUOTES = (("'", "'"), ('"', '"'))
@@ -390,20 +268,20 @@ class _PathParser(object):
         return paths
 
     def _location_path(self):
-        next_is_closure = True
         steps = []
         while True:
             if self.cur_token == '//':
-                next_is_closure = True
+                steps.append((DESCENDANT_OR_SELF, NodeTest(), []))
                 self.next_token()
             elif self.cur_token == '/' and not steps:
                 raise PathSyntaxError('Absolute location paths not supported')
 
-            axis, node_test, predicates = self._location_step()
-            if axis is CHILD and next_is_closure:
-                axis = DESCENDANT_OR_SELF
-            steps.append((axis, node_test, predicates))
-            next_is_closure = False
+            axis, nodetest, predicates = self._location_step()
+            if not axis:
+                # The default axis for the first step is "descendant", for other
+                # steps it's "child"
+                axis = steps and CHILD or DESCENDANT
+            steps.append((axis, nodetest, predicates))
 
             if self.at_end or not self.cur_token.startswith('/'):
                 break
@@ -417,6 +295,8 @@ class _PathParser(object):
             self.next_token()
         elif self.cur_token == '.':
             axis = SELF
+        elif self.cur_token == '..':
+            raise PathSyntaxError('Unsupported axis "parent"')
         elif self.peek_token() == '::':
             axis = Axis.forname(self.cur_token)
             if axis is None:
@@ -424,12 +304,12 @@ class _PathParser(object):
             self.next_token()
             self.next_token()
         else:
-            axis = CHILD
-        node_test = self._node_test(axis)
+            axis = None
+        nodetest = self._node_test(axis or CHILD)
         predicates = []
         while self.cur_token == '[':
             predicates.append(self._predicate())
-        return axis, node_test, predicates
+        return axis, nodetest, predicates
 
     def _node_test(self, axis=None):
         test = None
@@ -437,18 +317,12 @@ class _PathParser(object):
             test = self._node_type()
 
         else: # Name test
-            if axis is ATTRIBUTE:
-                if self.cur_token == '*':
-                    test = _node_test_any_attribute()
-                else:
-                    test = _node_test_attribute_by_name(self.cur_token)
-            elif axis is SELF:
-                test = _node_test_current_element()
+            if self.cur_token == '*':
+                test = PrincipalTypeTest(axis)
+            elif self.cur_token == '.':
+                test = NodeTest()
             else:
-                if self.cur_token == '*':
-                    test = _node_test_any_child_element()
-                else:
-                    test = _node_test_child_element_by_name(self.cur_token)
+                test = LocalNameTest(axis, self.cur_token)
 
         if not self.at_end:
             self.next_token()
@@ -457,26 +331,22 @@ class _PathParser(object):
     def _node_type(self):
         name = self.cur_token
         self.next_token()
-        if name == 'comment':
-            return _function_comment()
-        elif name == 'node':
-            return _function_node()
-        elif name == 'processing-instruction':
-            args = []
-            if self.cur_token != '()':
-                # The processing-instruction() function optionally accepts the
-                # name of the PI as argument, which must be a literal string
-                self.next_token() # (
-                if self.cur_token != ')':
-                    string = self.cur_token
-                    if (string[0], string[-1]) in self._QUOTES:
-                        string = string[1:-1]
-                    args.append(string)
-            return _function_processing_instruction(*args)
-        elif name == 'text':
-            return _function_text()
-        else:
+
+        args = []
+        if self.cur_token != '()':
+            # The processing-instruction() function optionally accepts the
+            # name of the PI as argument, which must be a literal string
+            self.next_token() # (
+            if self.cur_token != ')':
+                string = self.cur_token
+                if (string[0], string[-1]) in self._QUOTES:
+                    string = string[1:-1]
+                args.append(string)
+
+        cls = _nodetest_map.get(name)
+        if not cls:
             raise PathSyntaxError('%s() not allowed here' % name)
+        return cls(*args)
 
     def _predicate(self):
         assert self.cur_token == '['
@@ -493,20 +363,20 @@ class _PathParser(object):
         expr = self._and_expr()
         while self.cur_token == 'or':
             self.next_token()
-            expr = _operator_or(expr, self._and_expr())
+            expr = OrOperator(expr, self._and_expr())
         return expr
 
     def _and_expr(self):
         expr = self._equality_expr()
         while self.cur_token == 'and':
             self.next_token()
-            expr = _operator_and(expr, self._equality_expr())
+            expr = AndOperator(expr, self._equality_expr())
         return expr
 
     def _equality_expr(self):
         expr = self._primary_expr()
         while self.cur_token in ('=', '!='):
-            op = {'=': _operator_eq, '!=': _operator_neq}[self.cur_token]
+            op = _operator_map.get(self.cur_token)
             self.next_token()
             expr = op(expr, self._primary_expr())
         return expr
@@ -515,10 +385,10 @@ class _PathParser(object):
         token = self.cur_token
         if len(token) > 1 and (token[0], token[-1]) in self._QUOTES:
             self.next_token()
-            return _literal_string(token[1:-1])
+            return StringLiteral(token[1:-1])
         elif token[0].isdigit():
             self.next_token()
-            return _literal_number(float(token))
+            return NumberLiteral(float(token))
         elif not self.at_end and self.peek_token().startswith('('):
             if self.next_token() == '()':
                 args = []
@@ -528,19 +398,213 @@ class _PathParser(object):
                 while self.cur_token not in (',', ')'):
                     args.append(self._or_expr())
             self.next_token()
-            if token == 'local-name':
-                return _function_local_name(*args)
-            elif token == 'name':
-                return _function_name(*args)
-            elif token == 'namespace-uri':
-                return _function_namespace_uri(*args)
-            elif token == 'not':
-                return _function_not(*args)
-            else:
+            cls = _function_map.get(token)
+            if not cls:
                 raise PathSyntaxError('Unsupported function "%s"' % token)
+            return cls(*args)
         else:
             axis = None
             if token == '@':
                 axis = ATTRIBUTE
                 self.next_token()
             return self._node_test(axis)
+
+
+# Node tests
+
+class PrincipalTypeTest(object):
+    __slots__ = ['principal_type']
+    def __init__(self, principal_type):
+        self.principal_type = principal_type
+    def __call__(self, kind, data, pos):
+        if kind is START:
+            if self.principal_type is ATTRIBUTE:
+                return data[1] or None
+            else:
+                return True
+    def __repr__(self):
+        return '*'
+
+class LocalNameTest(object):
+    __slots__ = ['principal_type', 'name']
+    def __init__(self, principal_type, name):
+        self.principal_type = principal_type
+        self.name = name
+    def __call__(self, kind, data, pos):
+        if kind is START:
+            if self.principal_type is ATTRIBUTE and self.name in data[1]:
+                return TEXT, data[1].get(self.name), pos
+            else:
+                return data[0].localname == self.name
+    def __repr__(self):
+        return self.name
+
+class CommentNodeTest(object):
+    __slots__ = []
+    def __call__(self, kind, data, pos):
+        return kind is COMMENT and (kind, data, pos)
+    def __repr__(self):
+        return 'comment()'
+
+class NodeTest(object):
+    __slots__ = []
+    def __call__(self, kind, data, pos):
+        if kind is START:
+            return True
+        return kind, data, pos
+    def __repr__(self):
+        return 'node()'
+
+class ProcessingInstructionNodeTest(object):
+    __slots__ = ['target']
+    def __init__(self, target=None):
+        self.target = target
+    def __call__(self, kind, data, pos):
+        if kind is PI and (not self.target or data[0] == self.target):
+            return (kind, data, pos)
+    def __repr__(self):
+        arg = ''
+        if self.target:
+            arg = '"' + self.target + '"'
+        return 'processing-instruction(%s)' % arg
+
+class TextNodeTest(object):
+    __slots__ = []
+    def __call__(self, kind, data, pos):
+        return kind is TEXT and (kind, data, pos)
+    def __repr__(self):
+        return 'text()'
+
+_nodetest_map = {'comment': CommentNodeTest, 'node': NodeTest,
+                 'processing-instruction': ProcessingInstructionNodeTest,
+                 'text': TextNodeTest}
+
+# Functions
+
+class LocalNameFunction(object):
+    __slots__ = []
+    def __call__(self, kind, data, pos):
+        if kind is START:
+            return TEXT, data[0].localname, pos
+    def __repr__(self):
+        return 'local-name()'
+
+class NameFunction(object):
+    __slots__ = []
+    def __call__(self, kind, data, pos):
+        if kind is START:
+            return TEXT, data[0], pos
+    def __repr__(self):
+        return 'name()'
+
+class NamespaceUriFunction(object):
+    __slots__ = []
+    def __call__(self, kind, data, pos):
+        if kind is START:
+            return TEXT, data[0].namespace, pos
+    def __repr__(self):
+        return 'namespace-uri()'
+
+class NotFunction(object):
+    __slots__ = ['expr']
+    def __init__(self, expr):
+        self.expr = expr
+    def __call__(self, kind, data, pos):
+        return not self.expr(kind, data, pos)
+    def __repr__(self):
+        return 'not(%s)' % self.expr
+
+_function_map = {'local-name': LocalNameFunction, 'name': NameFunction,
+                 'namespace-uri': NamespaceUriFunction, 'not': NotFunction}
+
+# Literals
+
+class StringLiteral(object):
+    __slots__ = ['text']
+    def __init__(self, text):
+        self.text = text
+    def __call__(self, kind, data, pos):
+        return TEXT, self.text, (None, -1, -1)
+    def __repr__(self):
+        return '"%s"' % self.text
+
+class NumberLiteral(object):
+    __slots__ = ['number']
+    def __init__(self, number):
+        self.number = number
+    def __call__(self, kind, data, pos):
+        return TEXT, unicode(self.number), (None, -1, -1)
+    def __repr__(self):
+        return str(self.number)
+
+# Operators
+
+class AndOperator(object):
+    __slots__ = ['lval', 'rval']
+    def __init__(self, lval, rval):
+        self.lval = lval
+        self.rval = rval
+    def __call__(self, kind, data, pos):
+        lv = self.lval(kind, data, pos)
+        if type(lv) is tuple:
+            lv = lv[1]
+        if not lv:
+            return False
+        rv = self.rval(kind, data, pos)
+        if type(rv) is tuple:
+            rv = rv[1]
+        return bool(rv)
+    def __repr__(self):
+        return '%s and %s' % (self.lval, self.rval)
+
+class EqualsOperator(object):
+    __slots__ = ['lval', 'rval']
+    def __init__(self, lval, rval):
+        self.lval = lval
+        self.rval = rval
+    def __call__(self, kind, data, pos):
+        lv = self.lval(kind, data, pos)
+        if type(lv) is tuple:
+            lv = lv[1]
+        rv = self.rval(kind, data, pos)
+        if type(rv) is tuple:
+            rv = rv[1]
+        return lv == rv
+    def __repr__(self):
+        return '%s=%s' % (self.lval, self.rval)
+
+class NotEqualsOperator(object):
+    __slots__ = ['lval', 'rval']
+    def __init__(self, lval, rval):
+        self.lval = lval
+        self.rval = rval
+    def __call__(self, kind, data, pos):
+        lv = self.lval(kind, data, pos)
+        if type(lv) is tuple:
+            lv = lv[1]
+        rv = self.rval(kind, data, pos)
+        if type(rv) is tuple:
+            rv = rv[1]
+        return lv != rv
+    def __repr__(self):
+        return '%s!=%s' % (self.lval, self.rval)
+
+class OrOperator(object):
+    __slots__ = ['lval', 'rval']
+    def __init__(self, lval, rval):
+        self.lval = lval
+        self.rval = rval
+    def __call__(self, kind, data, pos):
+        lv = self.lval(kind, data, pos)
+        if type(lv) is tuple:
+            lv = lv[1]
+        if lv:
+            return True
+        rv = self.rval(kind, data, pos)
+        if type(rv) is tuple:
+            rv = rv[1]
+        return bool(rv)
+    def __repr__(self):
+        return '%s or %s' % (self.lval, self.rval)
+
+_operator_map = {'=': EqualsOperator, '!=': NotEqualsOperator}

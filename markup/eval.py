@@ -95,10 +95,7 @@ class Expression(object):
 
 
 def _compile(expr, filename=None, lineno=-1):
-    tree = parse(expr.source, 'eval')
-    xform = ExpressionASTTransformer()
-    tree = xform.visit(tree)
-
+    tree = ExpressionASTTransformer().visit(parse(expr.source, 'eval'))
     if isinstance(filename, unicode):
         # unicode file names not allowed for code objects
         filename = filename.encode('utf-8', 'replace')
@@ -148,6 +145,7 @@ def _lookup_item(data, obj, key):
                 return getattr(obj, key)
             except (AttributeError, TypeError), e:
                 pass
+
 
 class ASTTransformer(object):
     """General purpose base class for AST transformations.

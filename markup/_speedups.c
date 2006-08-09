@@ -46,39 +46,37 @@ Markup_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
     int nargs, i;
 
     nargs = PyTuple_GET_SIZE(args);
-    if (nargs == 0) {
+    if (nargs < 2) {
         return PyUnicode_Type.tp_new(type, args, NULL);
-    } else if (nargs == 1) {
-        return PyUnicode_Type.tp_new(type, args, NULL);
-    } else {
-        text = PyTuple_GET_ITEM(args, 0);
-        args2 = PyTuple_New(nargs - 1);
-        if (args2 == NULL) {
-            return NULL;
-        }
-        for (i = 1; i < nargs; i++) {
-            tmp = escape(PyTuple_GET_ITEM(args, i), 1);
-            if (tmp == NULL) {
-                Py_DECREF(args2);
-                return NULL;
-            }
-            PyTuple_SET_ITEM(args2, i - 1, tmp);
-        }
-        tmp = PyUnicode_Format(text, args2);
-        Py_DECREF(args2);
-        if (tmp == NULL) {
-            return NULL;
-        }
-        args = PyTuple_New(1);
-        if (args == NULL) {
-            Py_DECREF(tmp);
-            return NULL;
-        }
-        PyTuple_SET_ITEM(args, 0, tmp);
-        self = PyUnicode_Type.tp_new(type, args, NULL);
-        Py_DECREF(args);
-        return self;
     }
+
+    text = PyTuple_GET_ITEM(args, 0);
+    args2 = PyTuple_New(nargs - 1);
+    if (args2 == NULL) {
+        return NULL;
+    }
+    for (i = 1; i < nargs; i++) {
+        tmp = escape(PyTuple_GET_ITEM(args, i), 1);
+        if (tmp == NULL) {
+            Py_DECREF(args2);
+            return NULL;
+        }
+        PyTuple_SET_ITEM(args2, i - 1, tmp);
+    }
+    tmp = PyUnicode_Format(text, args2);
+    Py_DECREF(args2);
+    if (tmp == NULL) {
+        return NULL;
+    }
+    args = PyTuple_New(1);
+    if (args == NULL) {
+        Py_DECREF(tmp);
+        return NULL;
+    }
+    PyTuple_SET_ITEM(args, 0, tmp);
+    self = PyUnicode_Type.tp_new(type, args, NULL);
+    Py_DECREF(args);
+    return self;
 }
 
 static PyObject *

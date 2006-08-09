@@ -430,7 +430,7 @@ class MatchDirective(Directive):
 
     def __init__(self, value, filename=None, lineno=-1, offset=-1):
         Directive.__init__(self, None, filename, lineno, offset)
-        self.path = Path(value)
+        self.path = Path(value, filename, lineno)
         self.stream = []
 
     def __call__(self, stream, ctxt, directives):

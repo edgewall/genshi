@@ -66,7 +66,6 @@ class XMLParser(object):
         parser.StartElementHandler = self._handle_start
         parser.EndElementHandler = self._handle_end
         parser.CharacterDataHandler = self._handle_data
-        parser.XmlDeclHandler = self._handle_prolog
         parser.StartDoctypeDeclHandler = self._handle_doctype
         parser.StartNamespaceDeclHandler = self._handle_start_ns
         parser.EndNamespaceDeclHandler = self._handle_end_ns
@@ -140,9 +139,6 @@ class XMLParser(object):
 
     def _handle_data(self, text):
         self._enqueue(Stream.TEXT, text)
-
-    def _handle_prolog(self, version, encoding, standalone):
-        self._enqueue(Stream.PROLOG, (version, encoding, standalone))
 
     def _handle_doctype(self, name, sysid, pubid, has_internal_subset):
         self._enqueue(Stream.DOCTYPE, (name, pubid, sysid))

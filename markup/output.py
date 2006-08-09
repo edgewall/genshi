@@ -291,8 +291,8 @@ class HTMLSerializer(XHTMLSerializer):
                         if kind is not END:
                             stream.pushback((kind, data, pos))
 
-                buf += ['>']
-                yield Markup(''.join(buf))
+                    buf += ['>']
+                    yield Markup(''.join(buf))
 
             elif kind is END:
                 tag = data

@@ -359,7 +359,7 @@ class ForDirective(Directive):
     def __init__(self, value, filename=None, lineno=-1, offset=-1):
         targets, value = value.split(' in ', 1)
         self.targets = [str(name.strip()) for name in targets.split(',')]
-        Directive.__init__(self, value, filename, lineno, offset)
+        Directive.__init__(self, value.strip(), filename, lineno, offset)
 
     def __call__(self, stream, ctxt, directives):
         iterable = self.expr.evaluate(ctxt)
@@ -369,8 +369,9 @@ class ForDirective(Directive):
         scope = {}
         stream = list(stream)
         targets = self.targets
+        single = len(targets) == 1
         for item in iter(iterable):
-            if len(targets) == 1:
+            if single:
                 scope[targets[0]] = item
             else:
                 for idx, name in enumerate(targets):

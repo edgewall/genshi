@@ -47,7 +47,6 @@ class Stream(object):
     START = StreamEventKind('START') # a start tag
     END = StreamEventKind('END') # an end tag
     TEXT = StreamEventKind('TEXT') # literal text
-    PROLOG = StreamEventKind('PROLOG') # XML prolog
     DOCTYPE = StreamEventKind('DOCTYPE') # doctype declaration
     START_NS = StreamEventKind('START-NS') # start namespace mapping
     END_NS = StreamEventKind('END-NS') # end namespace mapping
@@ -133,7 +132,6 @@ class Stream(object):
 START = Stream.START
 END = Stream.END
 TEXT = Stream.TEXT
-PROLOG = Stream.PROLOG
 DOCTYPE = Stream.DOCTYPE
 START_NS = Stream.START_NS
 END_NS = Stream.END_NS

@@ -72,13 +72,13 @@ class Path(object):
     substream matching that path.
     """
 
-    def __init__(self, text):
+    def __init__(self, text, filename=None, lineno=-1):
         """Create the path object from a string.
         
         @param text: the path expression
         """
         self.source = text
-        self.paths = PathParser(text).parse()
+        self.paths = PathParser(text, filename, lineno).parse()
 
     def __repr__(self):
         paths = []
@@ -227,7 +227,9 @@ class PathParser(object):
                            '|'.join([re.escape(t) for t in _TOKENS]),
                            ''.join([re.escape(t[0]) for t in _TOKENS]))).findall
 
-    def __init__(self, text):
+    def __init__(self, text, filename=None, lineno=-1):
+        self.filename = filename
+        self.lineno = lineno
         self.tokens = filter(None, [a or b for a, b in self._tokenize(text)])
         self.pos = 0
 
@@ -264,7 +266,7 @@ class PathParser(object):
             paths.append(self._location_path())
         if not self.at_end:
             raise PathSyntaxError('Unexpected token %r after end of expression'
-                                  % self.cur_token)
+                                  % self.cur_token, self.filename, self.lineno)
         return paths
 
     def _location_path(self):
@@ -274,7 +276,8 @@ class PathParser(object):
                 steps.append((DESCENDANT_OR_SELF, NodeTest(), []))
                 self.next_token()
             elif self.cur_token == '/' and not steps:
-                raise PathSyntaxError('Absolute location paths not supported')
+                raise PathSyntaxError('Absolute location paths not supported',
+                                      self.filename, self.lineno)
 
             axis, nodetest, predicates = self._location_step()
             if not axis:
@@ -296,11 +299,13 @@ class PathParser(object):
         elif self.cur_token == '.':
             axis = SELF
         elif self.cur_token == '..':
-            raise PathSyntaxError('Unsupported axis "parent"')
+            raise PathSyntaxError('Unsupported axis "parent"', self.filename,
+                                  self.lineno)
         elif self.peek_token() == '::':
             axis = Axis.forname(self.cur_token)
             if axis is None:
-                raise PathSyntaxError('Unsupport axis "%s"' % axis)
+                raise PathSyntaxError('Unsupport axis "%s"' % axis,
+                                      self.filename, self.lineno)
             self.next_token()
             self.next_token()
         else:
@@ -345,7 +350,8 @@ class PathParser(object):
 
         cls = _nodetest_map.get(name)
         if not cls:
-            raise PathSyntaxError('%s() not allowed here' % name)
+            raise PathSyntaxError('%s() not allowed here' % name, self.filename,
+                                  self.lineno)
         return cls(*args)
 
     def _predicate(self):
@@ -354,7 +360,8 @@ class PathParser(object):
         expr = self._or_expr()
         if self.cur_token != ']':
             raise PathSyntaxError('Expected "]" to close predicate, '
-                                  'but found "%s"' % self.cur_token)
+                                  'but found "%s"' % self.cur_token,
+                                  self.filename, self.lineno)
         if not self.at_end:
             self.next_token()
         return expr
@@ -400,7 +407,8 @@ class PathParser(object):
             self.next_token()
             cls = _function_map.get(token)
             if not cls:
-                raise PathSyntaxError('Unsupported function "%s"' % token)
+                raise PathSyntaxError('Unsupported function "%s"' % token,
+                                      self.filename, self.lineno)
             return cls(*args)
         else:
             axis = None

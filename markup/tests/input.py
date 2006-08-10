@@ -66,7 +66,7 @@ bar</elem>'''
 
 def suite():
     suite = unittest.TestSuite()
-    #suite.addTest(doctest.DocTestSuite(XMLParser.__module__))
+    suite.addTest(doctest.DocTestSuite(XMLParser.__module__))
     suite.addTest(unittest.makeSuite(XMLParserTestCase, 'test'))
     suite.addTest(unittest.makeSuite(HTMLParserTestCase, 'test'))
     return suite

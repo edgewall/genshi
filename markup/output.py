@@ -22,7 +22,7 @@ except NameError:
     from sets import ImmutableSet as frozenset
 import re
 
-from markup.core import escape, Markup, Namespace, QName
+from markup.core import escape, Markup, Namespace, QName, XML_NAMESPACE
 from markup.core import DOCTYPE, START, END, START_NS, END_NS, TEXT, COMMENT, PI
 
 __all__ = ['Serializer', 'XMLSerializer', 'HTMLSerializer']
@@ -74,7 +74,7 @@ class XMLSerializer(object):
     def __call__(self, stream):
         have_doctype = False
         ns_attrib = []
-        ns_mapping = {}
+        ns_mapping = {XML_NAMESPACE.uri: 'xml'}
 
         stream = chain(self.preamble, stream)
         for filter_ in self.filters:
@@ -177,7 +177,8 @@ class XHTMLSerializer(XMLSerializer):
 
     def __call__(self, stream):
         namespace = self.NAMESPACE
-        ns_mapping = {}
+        ns_attrib = []
+        ns_mapping = {XML_NAMESPACE.uri: 'xml'}
         boolean_attrs = self._BOOLEAN_ATTRS
         empty_elems = self._EMPTY_ELEMS
         have_doctype = False
@@ -191,35 +192,52 @@ class XHTMLSerializer(XMLSerializer):
 
             if kind is START:
                 tag, attrib = data
-                if not tag.namespace or tag in namespace:
-                    tagname = tag.localname
-                    buf = ['<', tagname]
 
-                    for attr, value in attrib:
-                        if not attr.namespace or attr in namespace:
-                            attrname = attr.localname
-                            if attrname in boolean_attrs:
-                                if value:
-                                    buf += [' ', attrname, '="', attrname, '"']
-                            else:
-                                buf += [' ', attrname, '="', escape(value), '"']
+                tagname = tag.localname
+                namespace = tag.namespace
+                if namespace:
+                    if namespace in ns_mapping:
+                        prefix = ns_mapping[namespace]
+                        if prefix:
+                            tagname = '%s:%s' % (prefix, tagname)
+                    else:
+                        ns_attrib.append((QName('xmlns'), namespace))
+                buf = ['<', tagname]
 
-                    if tagname in empty_elems:
-                        kind, data, pos = stream.next()
-                        if kind is END:
-                            buf += [' />']
-                        else:
-                            buf += ['>']
-                            pushback((kind, data, pos))
+                for attr, value in attrib + ns_attrib:
+                    attrname = attr.localname
+                    if attr.namespace:
+                        prefix = ns_mapping.get(attr.namespace)
+                        if prefix:
+                            attrname = '%s:%s' % (prefix, attrname)
+                    if attrname in boolean_attrs:
+                        if value:
+                            buf += [' ', attrname, '="', attrname, '"']
+                    else:
+                        buf += [' ', attrname, '="', escape(value), '"']
+                ns_attrib = []
+
+                if (not tag.namespace or tag in namespace) and \
+                        tagname in empty_elems:
+                    kind, data, pos = stream.next()
+                    if kind is END:
+                        buf += [' />']
                     else:
                         buf += ['>']
+                        pushback((kind, data, pos))
+                else:
+                    buf += ['>']
 
-                    yield Markup(''.join(buf))
+                yield Markup(''.join(buf))
 
             elif kind is END:
                 tag = data
-                if not tag.namespace or tag in namespace:
-                    yield Markup('</%s>' % tag.localname)
+                tagname = tag.localname
+                if tag.namespace:
+                    prefix = ns_mapping.get(tag.namespace)
+                    if prefix:
+                        tagname = '%s:%s' % (prefix, tag.localname)
+                yield Markup('</%s>' % tagname)
 
             elif kind is TEXT:
                 yield escape(data, quotes=False)
@@ -240,8 +258,14 @@ class XHTMLSerializer(XMLSerializer):
                 yield Markup(''.join(buf), *filter(None, data))
                 have_doctype = True
 
-            elif kind is START_NS and data[1] not in ns_mapping:
-                ns_mapping[data[1]] = data[0]
+            elif kind is START_NS:
+                prefix, uri = data
+                if uri not in ns_mapping:
+                    ns_mapping[uri] = prefix
+                    if not prefix:
+                        ns_attrib.append((QName('xmlns'), uri))
+                    else:
+                        ns_attrib.append((QName('xmlns:%s' % prefix), uri))
 
             elif kind is PI:
                 yield Markup('<?%s %s?>' % data)
@@ -256,17 +280,36 @@ class HTMLSerializer(XHTMLSerializer):
     <div><a href="foo"></a><br><hr noshade></div>
     """
 
+    _NOESCAPE_ELEMS = frozenset([QName('script'), QName('style')])
+
+    def __init__(self, doctype=None, strip_whitespace=True):
+        """Initialize the HTML serializer.
+        
+        @param doctype: a `(name, pubid, sysid)` tuple that represents the
+            DOCTYPE declaration that should be included at the top of the
+            generated output
+        @param strip_whitespace: whether extraneous whitespace should be
+            stripped from the output
+        """
+        super(HTMLSerializer, self).__init__(doctype, False)
+        if strip_whitespace:
+            self.filters.append(WhitespaceFilter(self._PRESERVE_SPACE,
+                                                 self._NOESCAPE_ELEMS))
+
     def __call__(self, stream):
         namespace = self.NAMESPACE
         ns_mapping = {}
         boolean_attrs = self._BOOLEAN_ATTRS
         empty_elems = self._EMPTY_ELEMS
+        noescape_elems = self._NOESCAPE_ELEMS
         have_doctype = False
+        noescape = False
 
         stream = chain(self.preamble, stream)
         for filter_ in self.filters:
             stream = filter_(stream)
         stream = _PushbackIterator(stream)
+        pushback = stream.pushback
         for kind, data, pos in stream:
 
             if kind is START:
@@ -277,9 +320,7 @@ class HTMLSerializer(XHTMLSerializer):
 
                     for attr, value in attrib:
                         attrname = attr.localname
-                        if not attr.namespace and not \
-                                attrname.startswith('xml:') or \
-                                attr in namespace:
+                        if not attr.namespace or attr in namespace:
                             if attrname in boolean_attrs:
                                 if value:
                                     buf += [' ', attrname]
@@ -289,18 +330,26 @@ class HTMLSerializer(XHTMLSerializer):
                     if tagname in empty_elems:
                         kind, data, pos = stream.next()
                         if kind is not END:
-                            stream.pushback((kind, data, pos))
+                            pushback((kind, data, pos))
 
                     buf += ['>']
                     yield Markup(''.join(buf))
+
+                    if tagname in noescape_elems:
+                        noescape = True
 
             elif kind is END:
                 tag = data
                 if not tag.namespace or tag in namespace:
                     yield Markup('</%s>' % tag.localname)
 
+                noescape = False
+
             elif kind is TEXT:
-                yield escape(data, quotes=False)
+                if noescape:
+                    yield data
+                else:
+                    yield escape(data, quotes=False)
 
             elif kind is COMMENT:
                 yield Markup('<!--%s-->' % data)
@@ -331,46 +380,67 @@ class WhitespaceFilter(object):
 
     _TRAILING_SPACE = re.compile('[ \t]+(?=\n)')
     _LINE_COLLAPSE = re.compile('\n{2,}')
+    _XML_SPACE = XML_NAMESPACE['space']
 
-    def __init__(self, preserve=None):
+    def __init__(self, preserve=None, noescape=None):
         """Initialize the filter.
         
-        @param preserve: a sequence of tag names for which white-space should
-            be ignored.
+        @param preserve: a set or sequence of tag names for which white-space
+            should be ignored.
+        @param noescape: a set or sequence of tag names for which text content
+            should not be escaped
+        
+        Both the `preserve` and `noescape` sets are expected to refer to
+        elements that cannot contain further child elements.
         """
         if preserve is None:
             preserve = []
         self.preserve = frozenset(preserve)
+        if noescape is None:
+            noescape = []
+        self.noescape = frozenset(noescape)
 
     def __call__(self, stream, ctxt=None):
         trim_trailing_space = self._TRAILING_SPACE.sub
         collapse_lines = self._LINE_COLLAPSE.sub
+        xml_space = self._XML_SPACE
         mjoin = Markup('').join
-        preserve = [False]
-        append_preserve = preserve.append
-        pop_preserve = preserve.pop
+        preserve_elems = self.preserve
+        preserve = False
+        noescape_elems = self.noescape
+        noescape = False
 
         textbuf = []
-        append_text = textbuf.append
+        push_text = textbuf.append
         pop_text = textbuf.pop
         for kind, data, pos in chain(stream, [(None, None, None)]):
             if kind is TEXT:
-                append_text(data)
+                if noescape:
+                    data = Markup(data)
+                push_text(data)
             else:
-                if kind is START:
-                    append_preserve(data[0] in self.preserve or 
-                                    data[1].get('xml:space') == 'preserve')
                 if textbuf:
                     if len(textbuf) > 1:
                         text = mjoin(textbuf, escape_quotes=False)
                         del textbuf[:]
                     else:
                         text = escape(pop_text(), quotes=False)
-                    if not preserve[-1]:
+                    if not preserve:
                         text = collapse_lines('\n', trim_trailing_space('', text))
                     yield TEXT, Markup(text), pos
-                if kind is END:
-                    pop_preserve()
+
+                if kind is START:
+                    tag, attrib = data
+                    if tag.localname in preserve_elems or \
+                            data[1].get(xml_space) == 'preserve':
+                        preserve = True
+
+                    if tag.localname in noescape_elems:
+                        noescape = True
+
+                elif kind is END:
+                    preserve = noescape = False
+
                 if kind:
                     yield kind, data, pos
 

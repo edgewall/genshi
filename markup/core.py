@@ -429,6 +429,9 @@ class Namespace(object):
         return self.uri
 
 
+XML_NAMESPACE = Namespace('http://www.w3.org/XML/1998/namespace')
+
+
 class QName(unicode):
     """A qualified element or attribute name.
     

@@ -11,6 +11,7 @@
 # individuals. For the exact contribution history, see the revision
 # history and logs, available at http://markup.edgewall.org/log/.
 
+from itertools import chain
 from xml.parsers import expat
 try:
     frozenset
@@ -21,6 +22,10 @@ import htmlentitydefs
 from StringIO import StringIO
 
 from markup.core import Attributes, Markup, QName, Stream
+from markup.core import DOCTYPE, START, END, START_NS, END_NS, TEXT, \
+                        START_CDATA, END_CDATA, PI, COMMENT
+
+__all__ = ['ParseError', 'XMLParser', 'XML', 'HTMLParser', 'HTML']
 
 
 class ParseError(Exception):
@@ -82,35 +87,40 @@ class XMLParser(object):
         self.expat = parser
         self._queue = []
 
+    def parse(self):
+        def _generate():
+            try:
+                bufsize = 4 * 1024 # 4K
+                done = False
+                while 1:
+                    while not done and len(self._queue) == 0:
+                        data = self.source.read(bufsize)
+                        if data == '': # end of data
+                            if hasattr(self, 'expat'):
+                                self.expat.Parse('', True)
+                                del self.expat # get rid of circular references
+                            done = True
+                        else:
+                            self.expat.Parse(data, False)
+                    for event in self._queue:
+                        yield event
+                    self._queue = []
+                    if done:
+                        break
+            except expat.ExpatError, e:
+                msg = str(e)
+                if self.filename:
+                    msg += ', in ' + self.filename
+                raise ParseError(msg, self.filename, e.lineno, e.offset)
+        return Stream(_generate()).filter(CoalesceFilter())
+
     def __iter__(self):
-        try:
-            bufsize = 4 * 1024 # 4K
-            done = False
-            while 1:
-                while not done and len(self._queue) == 0:
-                    data = self.source.read(bufsize)
-                    if data == '': # end of data
-                        if hasattr(self, 'expat'):
-                            self.expat.Parse('', True)
-                            del self.expat # get rid of circular references
-                        done = True
-                    else:
-                        self.expat.Parse(data, False)
-                for event in self._queue:
-                    yield event
-                self._queue = []
-                if done:
-                    break
-        except expat.ExpatError, e:
-            msg = str(e)
-            if self.filename:
-                msg += ', in ' + self.filename
-            raise ParseError(msg, self.filename, e.lineno, e.offset)
+        return iter(self.parse())
 
     def _enqueue(self, kind, data=None, pos=None):
         if pos is None:
             pos = self._getpos()
-        if kind is Stream.TEXT:
+        if kind is TEXT:
             # Expat reports the *end* of the text event as current position. We
             # try to fix that up here as much as possible. Unfortunately, the
             # offset is only valid for single-line text. For multi-line text,
@@ -134,41 +144,41 @@ class XMLParser(object):
                 self.expat.CurrentColumnNumber)
 
     def _handle_start(self, tag, attrib):
-        self._enqueue(Stream.START, (QName(tag), Attributes(attrib.items())))
+        self._enqueue(START, (QName(tag), Attributes(attrib.items())))
 
     def _handle_end(self, tag):
-        self._enqueue(Stream.END, QName(tag))
+        self._enqueue(END, QName(tag))
 
     def _handle_data(self, text):
-        self._enqueue(Stream.TEXT, text)
+        self._enqueue(TEXT, text)
 
     def _handle_doctype(self, name, sysid, pubid, has_internal_subset):
-        self._enqueue(Stream.DOCTYPE, (name, pubid, sysid))
+        self._enqueue(DOCTYPE, (name, pubid, sysid))
 
     def _handle_start_ns(self, prefix, uri):
-        self._enqueue(Stream.START_NS, (prefix or '', uri))
+        self._enqueue(START_NS, (prefix or '', uri))
 
     def _handle_end_ns(self, prefix):
-        self._enqueue(Stream.END_NS, prefix or '')
+        self._enqueue(END_NS, prefix or '')
 
     def _handle_start_cdata(self):
-        self._enqueue(Stream.START_CDATA)
+        self._enqueue(START_CDATA)
 
     def _handle_end_cdata(self):
-        self._enqueue(Stream.END_CDATA)
+        self._enqueue(END_CDATA)
 
     def _handle_pi(self, target, data):
-        self._enqueue(Stream.PI, (target, data))
+        self._enqueue(PI, (target, data))
 
     def _handle_comment(self, text):
-        self._enqueue(Stream.COMMENT, text)
+        self._enqueue(COMMENT, text)
 
     def _handle_other(self, text):
         if text.startswith('&'):
             # deal with undefined entities
             try:
                 text = unichr(htmlentitydefs.name2codepoint[text[1:-1]])
-                self._enqueue(Stream.TEXT, text)
+                self._enqueue(TEXT, text)
             except KeyError:
                 lineno, offset = self._getpos()
                 raise expat.error("undefined entity %s: line %d, column %d" %
@@ -208,32 +218,37 @@ class HTMLParser(html.HTMLParser, object):
         self._queue = []
         self._open_tags = []
 
+    def parse(self):
+        def _generate():
+            try:
+                bufsize = 4 * 1024 # 4K
+                done = False
+                while 1:
+                    while not done and len(self._queue) == 0:
+                        data = self.source.read(bufsize)
+                        if data == '': # end of data
+                            self.close()
+                            done = True
+                        else:
+                            self.feed(data)
+                    for kind, data, pos in self._queue:
+                        yield kind, data, pos
+                    self._queue = []
+                    if done:
+                        open_tags = self._open_tags
+                        open_tags.reverse()
+                        for tag in open_tags:
+                            yield END, QName(tag), pos
+                        break
+            except html.HTMLParseError, e:
+                msg = '%s: line %d, column %d' % (e.msg, e.lineno, e.offset)
+                if self.filename:
+                    msg += ', in %s' % self.filename
+                raise ParseError(msg, self.filename, e.lineno, e.offset)
+        return Stream(_generate()).filter(CoalesceFilter())
+
     def __iter__(self):
-        try:
-            bufsize = 4 * 1024 # 4K
-            done = False
-            while 1:
-                while not done and len(self._queue) == 0:
-                    data = self.source.read(bufsize)
-                    if data == '': # end of data
-                        self.close()
-                        done = True
-                    else:
-                        self.feed(data)
-                for kind, data, pos in self._queue:
-                    yield kind, data, pos
-                self._queue = []
-                if done:
-                    open_tags = self._open_tags
-                    open_tags.reverse()
-                    for tag in open_tags:
-                        yield Stream.END, QName(tag), pos
-                    break
-        except html.HTMLParseError, e:
-            msg = '%s: line %d, column %d' % (e.msg, e.lineno, e.offset)
-            if self.filename:
-                msg += ', in %s' % self.filename
-            raise ParseError(msg, self.filename, e.lineno, e.offset)
+        return iter(self.parse())
 
     def _enqueue(self, kind, data, pos=None):
         if pos is None:
@@ -251,9 +266,9 @@ class HTMLParser(html.HTMLParser, object):
                 value = name
             fixed_attrib.append((name, unicode(value)))
 
-        self._enqueue(Stream.START, (QName(tag), Attributes(fixed_attrib)))
+        self._enqueue(START, (QName(tag), Attributes(fixed_attrib)))
         if tag in self._EMPTY_ELEMS:
-            self._enqueue(Stream.END, QName(tag))
+            self._enqueue(END, QName(tag))
         else:
             self._open_tags.append(tag)
 
@@ -263,26 +278,51 @@ class HTMLParser(html.HTMLParser, object):
                 open_tag = self._open_tags.pop()
                 if open_tag.lower() == tag.lower():
                     break
-                self._enqueue(Stream.END, QName(open_tag))
-            self._enqueue(Stream.END, QName(tag))
+                self._enqueue(END, QName(open_tag))
+            self._enqueue(END, QName(tag))
 
     def handle_data(self, text):
-        self._enqueue(Stream.TEXT, text)
+        self._enqueue(TEXT, text)
 
     def handle_charref(self, name):
-        self._enqueue(Stream.TEXT, Markup('&#%s;' % name))
+        text = unichr(int(name))
+        self._enqueue(TEXT, text)
 
     def handle_entityref(self, name):
-        self._enqueue(Stream.TEXT, Markup('&%s;' % name))
+        try:
+            text = unichr(htmlentitydefs.name2codepoint[name])
+        except KeyError:
+            text = '&%s;' % name
+        self._enqueue(TEXT, text)
 
     def handle_pi(self, data):
         target, data = data.split(maxsplit=1)
         data = data.rstrip('?')
-        self._enqueue(Stream.PI, (target.strip(), data.strip()))
+        self._enqueue(PI, (target.strip(), data.strip()))
 
     def handle_comment(self, text):
-        self._enqueue(Stream.COMMENT, text)
+        self._enqueue(COMMENT, text)
 
 
 def HTML(text):
     return Stream(list(HTMLParser(StringIO(text))))
+
+
+class CoalesceFilter(object):
+    """Coalesces adjacent TEXT events into a single event."""
+
+    def __call__(self, stream, ctxt=None):
+        textbuf = []
+        textpos = None
+        for kind, data, pos in chain(stream, [(None, None, None)]):
+            if kind is TEXT:
+                textbuf.append(data)
+                if textpos is None:
+                    textpos = pos
+            else:
+                if textbuf:
+                    yield TEXT, u''.join(textbuf), textpos
+                    del textbuf[:]
+                    textpos = None
+                if kind:
+                    yield kind, data, pos

@@ -16,7 +16,7 @@ import unittest
 import sys
 
 from markup.core import Stream
-from markup.input import HTML
+from markup.input import HTML, XML
 from markup.output import DocType, XMLSerializer, XHTMLSerializer, \
                           HTMLSerializer
 
@@ -85,22 +85,46 @@ class XHTMLSerializerTestCase(unittest.TestCase):
 
     def test_textarea_whitespace(self):
         content = '\nHey there.  \n\n    I am indented.\n'
-        stream = HTML('<textarea name="foo">%s</textarea>' % content)
+        stream = XML('<textarea name="foo">%s</textarea>' % content)
         output = stream.render(XHTMLSerializer)
         self.assertEqual('<textarea name="foo">%s</textarea>' % content, output)
 
     def test_xml_space(self):
         text = '<foo xml:space="preserve"> Do not mess  \n\n with me </foo>'
-        output = HTML(text).render(XHTMLSerializer)
+        output = XML(text).render(XHTMLSerializer)
         self.assertEqual(text, output)
+
+    def test_script_escaping(self):
+        text = '<script><![CDATA[if (1 < 2) { alert("Doh"); }]]></script>'
+        output = XML(text).render(XHTMLSerializer)
+        self.assertEqual('<script>if (1 &lt; 2) { alert("Doh"); }</script>',
+                         output)
+
+    def test_style_escaping(self):
+        text = '<style><![CDATA[html > body { display: none; }]]></style>'
+        output = XML(text).render(XHTMLSerializer)
+        self.assertEqual('<style>html &gt; body { display: none; }</style>',
+                         output)
 
 
 class HTMLSerializerTestCase(unittest.TestCase):
 
     def test_xml_space(self):
         text = '<foo xml:space="preserve"> Do not mess  \n\n with me </foo>'
-        output = HTML(text).render(HTMLSerializer)
+        output = XML(text).render(HTMLSerializer)
         self.assertEqual('<foo> Do not mess  \n\n with me </foo>', output)
+
+    def test_script_escaping(self):
+        text = '<script>if (1 &lt; 2) { alert("Doh"); }</script>'
+        output = XML(text).render(HTMLSerializer)
+        self.assertEqual('<script>if (1 < 2) { alert("Doh"); }</script>',
+                         output)
+
+    def test_style_escaping(self):
+        text = '<style>html &gt; body { display: none; }</style>'
+        output = XML(text).render(HTMLSerializer)
+        self.assertEqual('<style>html > body { display: none; }</style>',
+                         output)
 
 
 def suite():

@@ -69,6 +69,8 @@ class XMLParser(object):
         parser.StartDoctypeDeclHandler = self._handle_doctype
         parser.StartNamespaceDeclHandler = self._handle_start_ns
         parser.EndNamespaceDeclHandler = self._handle_end_ns
+        parser.StartCdataSectionHandler = self._handle_start_cdata
+        parser.EndCdataSectionHandler = self._handle_end_cdata
         parser.ProcessingInstructionHandler = self._handle_pi
         parser.CommentHandler = self._handle_comment
         parser.DefaultHandler = self._handle_other
@@ -105,7 +107,7 @@ class XMLParser(object):
                 msg += ', in ' + self.filename
             raise ParseError(msg, self.filename, e.lineno, e.offset)
 
-    def _enqueue(self, kind, data, pos=None):
+    def _enqueue(self, kind, data=None, pos=None):
         if pos is None:
             pos = self._getpos()
         if kind is Stream.TEXT:
@@ -148,6 +150,12 @@ class XMLParser(object):
 
     def _handle_end_ns(self, prefix):
         self._enqueue(Stream.END_NS, prefix or '')
+
+    def _handle_start_cdata(self):
+        self._enqueue(Stream.START_CDATA)
+
+    def _handle_end_cdata(self):
+        self._enqueue(Stream.END_CDATA)
 
     def _handle_pi(self, target, data):
         self._enqueue(Stream.PI, (target, data))

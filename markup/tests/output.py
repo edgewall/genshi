@@ -95,16 +95,18 @@ class XHTMLSerializerTestCase(unittest.TestCase):
         self.assertEqual(text, output)
 
     def test_script_escaping(self):
-        text = '<script><![CDATA[if (1 < 2) { alert("Doh"); }]]></script>'
+        text = """<script>/*<![CDATA[*/
+            if (1 < 2) { alert("Doh"); }
+        /*]]>*/</script>"""
         output = XML(text).render(XHTMLSerializer)
-        self.assertEqual('<script>if (1 &lt; 2) { alert("Doh"); }</script>',
-                         output)
+        self.assertEqual(text, output)
 
     def test_style_escaping(self):
-        text = '<style><![CDATA[html > body { display: none; }]]></style>'
+        text = """<style>/*<![CDATA[*/
+            html > body { display: none; }
+        /*]]>*/</style>"""
         output = XML(text).render(XHTMLSerializer)
-        self.assertEqual('<style>html &gt; body { display: none; }</style>',
-                         output)
+        self.assertEqual(text, output)
 
 
 class HTMLSerializerTestCase(unittest.TestCase):

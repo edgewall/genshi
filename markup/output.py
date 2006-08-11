@@ -23,7 +23,8 @@ except NameError:
 import re
 
 from markup.core import escape, Markup, Namespace, QName, XML_NAMESPACE
-from markup.core import DOCTYPE, START, END, START_NS, END_NS, TEXT, COMMENT, PI
+from markup.core import DOCTYPE, START, END, START_NS, END_NS, TEXT, \
+                        START_CDATA, END_CDATA, PI, COMMENT
 
 __all__ = ['Serializer', 'XMLSerializer', 'HTMLSerializer']
 
@@ -72,9 +73,10 @@ class XMLSerializer(object):
             self.filters.append(WhitespaceFilter(self._PRESERVE_SPACE))
 
     def __call__(self, stream):
-        have_doctype = False
         ns_attrib = []
         ns_mapping = {XML_NAMESPACE.uri: 'xml'}
+        have_doctype = False
+        in_cdata = False
 
         stream = chain(self.preamble, stream)
         for filter_ in self.filters:
@@ -125,7 +127,10 @@ class XMLSerializer(object):
                 yield Markup('</%s>' % tagname)
 
             elif kind is TEXT:
-                yield escape(data, quotes=False)
+                if in_cdata:
+                    yield data
+                else:
+                    yield escape(data, quotes=False)
 
             elif kind is COMMENT:
                 yield Markup('<!--%s-->' % data)
@@ -151,6 +156,14 @@ class XMLSerializer(object):
                         ns_attrib.append((QName('xmlns'), uri))
                     else:
                         ns_attrib.append((QName('xmlns:%s' % prefix), uri))
+
+            elif kind is START_CDATA:
+                yield Markup('<![CDATA[')
+                in_cdata = True
+
+            elif kind is END_CDATA:
+                yield Markup(']]>')
+                in_cdata = False
 
             elif kind is PI:
                 yield Markup('<?%s %s?>' % data)
@@ -182,6 +195,7 @@ class XHTMLSerializer(XMLSerializer):
         boolean_attrs = self._BOOLEAN_ATTRS
         empty_elems = self._EMPTY_ELEMS
         have_doctype = False
+        in_cdata = False
 
         stream = chain(self.preamble, stream)
         for filter_ in self.filters:
@@ -240,7 +254,10 @@ class XHTMLSerializer(XMLSerializer):
                 yield Markup('</%s>' % tagname)
 
             elif kind is TEXT:
-                yield escape(data, quotes=False)
+                if in_cdata:
+                    yield data
+                else:
+                    yield escape(data, quotes=False)
 
             elif kind is COMMENT:
                 yield Markup('<!--%s-->' % data)
@@ -266,6 +283,14 @@ class XHTMLSerializer(XMLSerializer):
                         ns_attrib.append((QName('xmlns'), uri))
                     else:
                         ns_attrib.append((QName('xmlns:%s' % prefix), uri))
+
+            elif kind is START_CDATA:
+                yield Markup('<![CDATA[')
+                in_cdata = True
+
+            elif kind is END_CDATA:
+                yield Markup(']]>')
+                in_cdata = False
 
             elif kind is PI:
                 yield Markup('<?%s %s?>' % data)
@@ -294,7 +319,7 @@ class HTMLSerializer(XHTMLSerializer):
         super(HTMLSerializer, self).__init__(doctype, False)
         if strip_whitespace:
             self.filters.append(WhitespaceFilter(self._PRESERVE_SPACE,
-                                                 self._NOESCAPE_ELEMS))
+                                                 self._NOESCAPE_ELEMS, True))
 
     def __call__(self, stream):
         namespace = self.NAMESPACE
@@ -382,7 +407,7 @@ class WhitespaceFilter(object):
     _LINE_COLLAPSE = re.compile('\n{2,}')
     _XML_SPACE = XML_NAMESPACE['space']
 
-    def __init__(self, preserve=None, noescape=None):
+    def __init__(self, preserve=None, noescape=None, escape_cdata=False):
         """Initialize the filter.
         
         @param preserve: a set or sequence of tag names for which white-space
@@ -399,6 +424,7 @@ class WhitespaceFilter(object):
         if noescape is None:
             noescape = []
         self.noescape = frozenset(noescape)
+        self.escape_cdata = escape_cdata
 
     def __call__(self, stream, ctxt=None):
         trim_trailing_space = self._TRAILING_SPACE.sub
@@ -409,6 +435,7 @@ class WhitespaceFilter(object):
         preserve = False
         noescape_elems = self.noescape
         noescape = False
+        escape_cdata = self.escape_cdata
 
         textbuf = []
         push_text = textbuf.append
@@ -440,6 +467,12 @@ class WhitespaceFilter(object):
 
                 elif kind is END:
                     preserve = noescape = False
+
+                elif kind is START_CDATA and not escape_cdata:
+                    noescape = True
+
+                elif kind is END_CDATA and not escape_cdata:
+                    noescape = False
 
                 if kind:
                     yield kind, data, pos

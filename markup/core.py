@@ -48,8 +48,10 @@ class Stream(object):
     END = StreamEventKind('END') # an end tag
     TEXT = StreamEventKind('TEXT') # literal text
     DOCTYPE = StreamEventKind('DOCTYPE') # doctype declaration
-    START_NS = StreamEventKind('START-NS') # start namespace mapping
-    END_NS = StreamEventKind('END-NS') # end namespace mapping
+    START_NS = StreamEventKind('START_NS') # start namespace mapping
+    END_NS = StreamEventKind('END_NS') # end namespace mapping
+    START_CDATA = StreamEventKind('START_CDATA') # start CDATA section
+    END_CDATA = StreamEventKind('END_CDATA') # end CDATA section
     PI = StreamEventKind('PI') # processing instruction
     COMMENT = StreamEventKind('COMMENT') # comment
 
@@ -135,6 +137,8 @@ TEXT = Stream.TEXT
 DOCTYPE = Stream.DOCTYPE
 START_NS = Stream.START_NS
 END_NS = Stream.END_NS
+START_CDATA = Stream.START_CDATA
+END_CDATA = Stream.END_CDATA
 PI = Stream.PI
 COMMENT = Stream.COMMENT
 

@@ -132,17 +132,16 @@ class IncludeFilter(object):
         """
         self.loader = loader
 
-    def __call__(self, stream, ctxt=None, ns_prefixes=None):
+    def __call__(self, stream, ctxt=None):
         """Filter the stream, processing any XInclude directives it may
         contain.
         
-        @param ctxt: the template context
         @param stream: the markup event stream to filter
+        @param ctxt: the template context
         """
         from markup.template import Template, TemplateError, TemplateNotFound
 
-        if ns_prefixes is None:
-            ns_prefixes = []
+        ns_prefixes = []
         in_fallback = False
         include_href, fallback_stream = None, None
         namespace = self.NAMESPACE

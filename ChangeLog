@@ -1,0 +1,23 @@
+Version 0.2
+http://svn.edgewall.org/repos/markup/tags/0.2.0/
+(?, from branches/stable/0.2.x)
+
+ * XPath syntax errors now contain position info (ticket #20)
+ * Errors in expression evaluation now contain the correct line number in the
+   template (ticket #22)
+ * <script> and <style> element contents are no longer escaped when using HTML
+   serialization (ticket #24)
+ * In some cases expressions in templates did not get interpolated (ticket #26)
+ * CDATA sections are now passed through the pipeline and serialized correctly.
+   That allows using <script> or <style> elements in XHTML output that is still
+   compatible with HTML user agents.
+ * Output can be encoded using legacy codecs such as ISO-8859-1, any character
+   not representable in the chosen encoding gets replaced by the corresponding
+   XML character reference.
+
+
+Version 0.1
+http://svn.edgewall.org/repos/markup/tags/0.1.0/
+(Aug 3 2006, from branches/stable/0.1.x)
+
+ * First public release

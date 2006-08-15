@@ -31,8 +31,8 @@ from markup.eval import Expression
 from markup.input import XMLParser
 from markup.path import Path
 
-__all__ = ['TemplateSyntaxError', 'TemplateNotFound', 'Template',
-           'TemplateLoader']
+__all__ = ['BadDirectiveError', 'TemplateError', 'TemplateSyntaxError',
+           'TemplateNotFound', 'Template', 'TemplateLoader']
 
 
 class TemplateError(Exception):

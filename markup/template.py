@@ -25,8 +25,8 @@ import posixpath
 import re
 from StringIO import StringIO
 
-from markup.core import Attributes, Namespace, Stream, StreamEventKind
-from markup.core import _ensure, START, END, START_NS, END_NS, TEXT, COMMENT
+from markup.core import Attributes, Namespace, Stream, StreamEventKind, _ensure
+from markup.core import START, END, START_NS, END_NS, TEXT, COMMENT
 from markup.eval import Expression
 from markup.input import XMLParser
 from markup.path import Path

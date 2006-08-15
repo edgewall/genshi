@@ -22,9 +22,9 @@ except NameError:
     from sets import ImmutableSet as frozenset
 import re
 
-from markup.core import escape, Markup, Namespace, QName, XML_NAMESPACE
-from markup.core import DOCTYPE, START, END, START_NS, END_NS, TEXT, \
-                        START_CDATA, END_CDATA, PI, COMMENT
+from markup.core import escape, Markup, Namespace, QName
+from markup.core import DOCTYPE, START, END, START_NS, TEXT, START_CDATA, \
+                        END_CDATA, PI, COMMENT, XML_NAMESPACE
 
 __all__ = ['Serializer', 'XMLSerializer', 'HTMLSerializer']
 

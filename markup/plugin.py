@@ -16,11 +16,10 @@
 CherryPy/Buffet.
 """
 
-import os
 from pkg_resources import resource_filename
 
+from markup import Stream, QName
 from markup.template import Context, Template, TemplateLoader
-from markup.core import Stream, QName
 
 def ET(element):
     tag_name = element.tag

@@ -13,7 +13,7 @@
 # history and logs, available at http://markup.edgewall.org/log/.
 
 try:
-    from setuptools import setup, find_packages
+    from setuptools import setup
 except ImportError:
     from distutils.core import setup
 

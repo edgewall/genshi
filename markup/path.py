@@ -33,7 +33,7 @@ structures), it only implements a subset of the full XPath 1.0 language.
 
 import re
 
-from markup.core import QName, Stream, START, END, TEXT, COMMENT, PI
+from markup.core import Stream, START, END, TEXT, COMMENT, PI
 
 __all__ = ['Path', 'PathSyntaxError']
 
@@ -281,9 +281,7 @@ class PathParser(object):
 
             axis, nodetest, predicates = self._location_step()
             if not axis:
-                # The default axis for the first step is "descendant", for other
-                # steps it's "child"
-                axis = steps and CHILD or DESCENDANT
+                axis = CHILD
             steps.append((axis, nodetest, predicates))
 
             if self.at_end or not self.cur_token.startswith('/'):

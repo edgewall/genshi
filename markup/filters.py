@@ -13,16 +13,14 @@
 
 """Implementation of a number of stream filters."""
 
-from itertools import chain
 try:
     frozenset
 except NameError:
     from sets import ImmutableSet as frozenset
 import re
 
-from markup.core import Attributes, Markup, Namespace, escape, stripentities
-from markup.core import END, END_NS, START, START_NS, TEXT
-from markup.path import Path
+from markup.core import Attributes, Namespace, stripentities
+from markup.core import END, END_NS, START, START_NS
 
 __all__ = ['HTMLSanitizer', 'IncludeFilter']
 
@@ -139,7 +137,7 @@ class IncludeFilter(object):
         @param stream: the markup event stream to filter
         @param ctxt: the template context
         """
-        from markup.template import Template, TemplateError, TemplateNotFound
+        from markup.template import TemplateError, TemplateNotFound
 
         ns_prefixes = []
         in_fallback = False

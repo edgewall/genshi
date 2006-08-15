@@ -31,7 +31,7 @@ class PathTestCase(unittest.TestCase):
         xml = XML('<root><elem/></root>')
 
         path = Path('elem')
-        self.assertEqual('<Path "descendant::elem">', repr(path))
+        self.assertEqual('<Path "child::elem">', repr(path))
         self.assertEqual('<elem/>', path.select(xml).render())
 
         path = Path('child::elem')
@@ -62,7 +62,7 @@ class PathTestCase(unittest.TestCase):
         xml = XML('<root><elem/></root>')
 
         path = Path('*')
-        self.assertEqual('<Path "descendant::*">', repr(path))
+        self.assertEqual('<Path "child::*">', repr(path))
         self.assertEqual('<elem/>', path.select(xml).render())
 
         path = Path('child::*')
@@ -94,7 +94,7 @@ class PathTestCase(unittest.TestCase):
         xml = XML('<root>Hey</root>')
 
         path = Path('text()')
-        self.assertEqual('<Path "descendant::text()">', repr(path))
+        self.assertEqual('<Path "child::text()">', repr(path))
         self.assertEqual('Hey', path.select(xml).render())
 
         path = Path('./text()')
@@ -116,30 +116,46 @@ class PathTestCase(unittest.TestCase):
         self.assertEqual('<bar/>', Path('bar').select(xml).render())
         self.assertEqual('', Path('baz').select(xml).render())
 
+    def test_2step_attribute(self):
+        xml = XML('<elem class="x"><span id="joe">Hey Joe</span></elem>')
+        #self.assertEqual('x', Path('@*').select(xml).render())
+        #self.assertEqual('x', Path('./@*').select(xml).render())
+        #self.assertEqual('xjoe', Path('//@*').select(xml).render())
+        self.assertEqual('joe', Path('*/@*').select(xml).render())
+
+        xml = XML('<elem><foo id="1"/>foo id="2"/></elem>')
+        #self.assertEqual('', Path('@*').select(xml).render())
+        #self.assertEqual('12', Path('foo/@*').select(xml).render())
+
     def test_2step_complex(self):
         xml = XML('<root><foo><bar/></foo></root>')
 
         path = Path('foo/bar')
-        self.assertEqual('<Path "descendant::foo/child::bar">', repr(path))
+        self.assertEqual('<Path "child::foo/child::bar">', repr(path))
         self.assertEqual('<bar/>', path.select(xml).render())
 
+        path = Path('./bar')
+        self.assertEqual('<Path "self::node()/child::bar">', repr(path))
+        #self.assertEqual('', path.select(xml).render())
+
         path = Path('foo/*')
-        self.assertEqual('<Path "descendant::foo/child::*">', repr(path))
+        self.assertEqual('<Path "child::foo/child::*">', repr(path))
         self.assertEqual('<bar/>', path.select(xml).render())
 
         xml = XML('<root><foo><bar id="1"/></foo><bar id="2"/></root>')
-        self.assertEqual('<bar id="1"/><bar id="2"/>',
-                         Path('bar').select(xml).render())
+        path = Path('./bar')
+        self.assertEqual('<Path "self::node()/child::bar">', repr(path))
+        #self.assertEqual('<bar id="2"/>', path.select(xml).render())
 
     def test_2step_text(self):
         xml = XML('<root><item>Foo</item></root>')
 
         path = Path('item/text()')
-        self.assertEqual('<Path "descendant::item/child::text()">', repr(path))
+        self.assertEqual('<Path "child::item/child::text()">', repr(path))
         self.assertEqual('Foo', path.select(xml).render())
 
         path = Path('*/text()')
-        self.assertEqual('<Path "descendant::*/child::text()">', repr(path))
+        self.assertEqual('<Path "child::*/child::text()">', repr(path))
         self.assertEqual('Foo', path.select(xml).render())
 
         path = Path('//text()')
@@ -147,20 +163,29 @@ class PathTestCase(unittest.TestCase):
                          repr(path))
         self.assertEqual('Foo', path.select(xml).render())
 
+        path = Path('./text()')
+        self.assertEqual('<Path "self::node()/child::text()">', repr(path))
+        #self.assertEqual('', path.select(xml).render())
+
         xml = XML('<root><item>Foo</item><item>Bar</item></root>')
-        self.assertEqual('FooBar', Path('item/text()').select(xml).render())
+        path = Path('item/text()')
+        self.assertEqual('<Path "child::item/child::text()">', repr(path))
+        self.assertEqual('FooBar', path.select(xml).render())
+
+        xml = XML('<root><item>Foo</item><item>Bar</item></root>')
+        self.assertEqual('FooBar', path.select(xml).render())
 
     def test_3step(self):
         xml = XML('<root><foo><bar/></foo></root>')
         path = Path('root/foo/*')
-        self.assertEqual('<Path "descendant::root/child::foo/child::*">',
+        self.assertEqual('<Path "child::root/child::foo/child::*">',
                          repr(path))
         self.assertEqual('<bar/>', path.select(xml).render())
 
     def test_3step_complex(self):
         xml = XML('<root><foo><bar/></foo></root>')
         path = Path('*/bar')
-        self.assertEqual('<Path "descendant::*/child::bar">', repr(path))
+        self.assertEqual('<Path "child::*/child::bar">', repr(path))
         self.assertEqual('<bar/>', path.select(xml).render())
 
         xml = XML('<root><foo><bar id="1"/></foo><bar id="2"/></root>')
@@ -173,39 +198,39 @@ class PathTestCase(unittest.TestCase):
     def test_node_type_comment(self):
         xml = XML('<root><!-- commented --></root>')
         path = Path('comment()')
-        self.assertEqual('<Path "descendant::comment()">', repr(path))
+        self.assertEqual('<Path "child::comment()">', repr(path))
         self.assertEqual('<!-- commented -->', path.select(xml).render())
 
     def test_node_type_text(self):
         xml = XML('<root>Some text <br/>in here.</root>')
         path = Path('text()')
-        self.assertEqual('<Path "descendant::text()">', repr(path))
+        self.assertEqual('<Path "child::text()">', repr(path))
         self.assertEqual('Some text in here.', path.select(xml).render())
 
     def test_node_type_node(self):
         xml = XML('<root>Some text <br/>in here.</root>')
         path = Path('node()')
-        self.assertEqual('<Path "descendant::node()">', repr(path))
+        self.assertEqual('<Path "child::node()">', repr(path))
         self.assertEqual('Some text <br/>in here.', path.select(xml).render())
 
     def test_node_type_processing_instruction(self):
         xml = XML('<?python x = 2 * 3 ?><root><?php echo("x") ?></root>')
 
         path = Path('processing-instruction()')
-        self.assertEqual('<Path "descendant::processing-instruction()">',
+        self.assertEqual('<Path "child::processing-instruction()">',
                          repr(path))
         self.assertEqual('<?python x = 2 * 3 ?><?php echo("x") ?>',
                          path.select(xml).render())
 
         path = Path('processing-instruction("php")')
-        self.assertEqual('<Path "descendant::processing-instruction(\"php\")">',
+        self.assertEqual('<Path "child::processing-instruction(\"php\")">',
                          repr(path))
         self.assertEqual('<?php echo("x") ?>', path.select(xml).render())
 
     def test_simple_union(self):
         xml = XML('<root>Oh <foo>my</foo></root>')
         path = Path('*|text()')
-        self.assertEqual('<Path "descendant::*|descendant::text()">',
+        self.assertEqual('<Path "child::*|child::text()">',
                          repr(path))
         self.assertEqual('Oh <foo>my</foo>', path.select(xml).render())
 

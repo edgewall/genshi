@@ -21,7 +21,7 @@ import HTMLParser as html
 import htmlentitydefs
 from StringIO import StringIO
 
-from markup.core import Attributes, Markup, QName, Stream
+from markup.core import Attributes, QName, Stream
 from markup.core import DOCTYPE, START, END, START_NS, END_NS, TEXT, \
                         START_CDATA, END_CDATA, PI, COMMENT
 

@@ -15,7 +15,6 @@
 
 import htmlentitydefs
 import re
-from StringIO import StringIO
 
 __all__ = ['Stream', 'Markup', 'escape', 'unescape', 'Namespace', 'QName']
 
@@ -145,11 +144,12 @@ COMMENT = Stream.COMMENT
 def _ensure(stream):
     """Ensure that every item on the stream is actually a markup event."""
     for event in stream:
-        try:
-            kind, data, pos = event
-        except ValueError:
-            kind, data, pos = event.totuple()
-        yield kind, data, pos
+        if type(event) is not tuple:
+            if hasattr(event, 'totuple'):
+                event = event.totuple()
+            else:
+                event = TEXT, unicode(event), (None, -1, -1)
+        yield event
 
 
 class Attributes(list):

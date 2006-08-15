@@ -27,16 +27,15 @@ def ET(element):
         tag_name = tag_name[1:]
     tag_name = QName(tag_name)
 
-    yield (Stream.START, (tag_name, element.items()),
-           ('<string>', 0, 0))
+    yield (Stream.START, (tag_name, element.items()), (None, -1, -1))
     if element.text:
-        yield Stream.TEXT, element.text, ('<string>', 0, 0)
+        yield Stream.TEXT, element.text, (None, -1, -1)
     for child in element.getchildren():
         for item in ET(child):
             yield item
-    yield Stream.END, tag_name, ('<string>', 0, 0)
+    yield Stream.END, tag_name, (None, -1, -1)
     if element.tail:
-        yield Stream.TEXT, element.tail, ('<string>', 0, 0)
+        yield Stream.TEXT, element.tail, (None, -1, -1)
 
 
 class TemplateEnginePlugin(object):

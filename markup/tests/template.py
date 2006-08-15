@@ -16,8 +16,7 @@ import unittest
 import sys
 
 from markup.core import Markup, Stream
-from markup.template import BadDirectiveError, Context, Template, \
-                            TemplateSyntaxError
+from markup.template import BadDirectiveError, Template, TemplateSyntaxError
 
 
 class AttrsDirectiveTestCase(unittest.TestCase):
@@ -33,7 +32,7 @@ class AttrsDirectiveTestCase(unittest.TestCase):
         items = [{'id': 1, 'class': 'foo'}, {'id': 2, 'class': 'bar'}]
         self.assertEqual("""<doc>
           <elem id="1" class="foo"/><elem id="2" class="bar"/>
-        </doc>""", str(tmpl.generate(Context(items=items))))
+        </doc>""", str(tmpl.generate(items=items)))
 
     def test_update_existing_attr(self):
         """
@@ -202,7 +201,7 @@ class ForDirectiveTestCase(unittest.TestCase):
             <b>3</b>
             <b>4</b>
             <b>5</b>
-        </doc>""", str(tmpl.generate(Context(items=range(1, 6)))))
+        </doc>""", str(tmpl.generate(items=range(1, 6))))
 
     def test_as_element(self):
         """
@@ -219,7 +218,7 @@ class ForDirectiveTestCase(unittest.TestCase):
             <b>3</b>
             <b>4</b>
             <b>5</b>
-        </doc>""", str(tmpl.generate(Context(items=range(1, 6)))))
+        </doc>""", str(tmpl.generate(items=range(1, 6))))
 
 
 class IfDirectiveTestCase(unittest.TestCase):
@@ -235,7 +234,7 @@ class IfDirectiveTestCase(unittest.TestCase):
         </doc>""")
         self.assertEqual("""<doc>
           Hello
-        </doc>""", str(tmpl.generate(Context(foo=True, bar='Hello'))))
+        </doc>""", str(tmpl.generate(foo=True, bar='Hello')))
 
     def test_as_element(self):
         """
@@ -246,7 +245,7 @@ class IfDirectiveTestCase(unittest.TestCase):
         </doc>""")
         self.assertEqual("""<doc>
           Hello
-        </doc>""", str(tmpl.generate(Context(foo=True, bar='Hello'))))
+        </doc>""", str(tmpl.generate(foo=True, bar='Hello')))
 
 
 class MatchDirectiveTestCase(unittest.TestCase):
@@ -427,7 +426,7 @@ class WithDirectiveTestCase(unittest.TestCase):
           42
           84
           42
-        </div>""", str(tmpl.generate(Context(x=42))))
+        </div>""", str(tmpl.generate(x=42)))
 
     def test_as_element(self):
         tmpl = Template("""<div xmlns:py="http://markup.edgewall.org/">
@@ -435,7 +434,7 @@ class WithDirectiveTestCase(unittest.TestCase):
         </div>""")
         self.assertEqual("""<div>
           84
-        </div>""", str(tmpl.generate(Context(x=42))))
+        </div>""", str(tmpl.generate(x=42)))
 
 
 class TemplateTestCase(unittest.TestCase):
@@ -488,9 +487,8 @@ class TemplateTestCase(unittest.TestCase):
         self.assertEqual(' baz', parts[2][1])
 
     def test_interpolate_mixed3(self):
-        ctxt = Context(var=42)
         tmpl = Template('<root> ${var} $var</root>')
-        self.assertEqual('<root> 42 42</root>', str(tmpl.generate(ctxt)))
+        self.assertEqual('<root> 42 42</root>', str(tmpl.generate(var=42)))
 
     def test_interpolate_non_string_attrs(self):
         tmpl = Template('<root attr="${1}"/>')
@@ -498,8 +496,7 @@ class TemplateTestCase(unittest.TestCase):
 
     def test_interpolate_list_result(self):
         tmpl = Template('<root>$foo</root>')
-        ctxt = Context(foo=('buzz',))
-        self.assertEqual('<root>buzz</root>', str(tmpl.generate(ctxt)))
+        self.assertEqual('<root>buzz</root>', str(tmpl.generate(foo=('buzz',))))
 
     def test_empty_attr(self):
         tmpl = Template('<root attr=""/>')
@@ -560,7 +557,7 @@ class TemplateTestCase(unittest.TestCase):
         </div>""")
         self.assertEqual("""<div>
           <b>foo</b>
-        </div>""", str(tmpl.generate(Context(myvar=Markup('<b>foo</b>')))))
+        </div>""", str(tmpl.generate(myvar=Markup('<b>foo</b>'))))
 
     def test_text_noescape_quotes(self):
         """
@@ -571,7 +568,7 @@ class TemplateTestCase(unittest.TestCase):
         </div>""")
         self.assertEqual("""<div>
           "foo"
-        </div>""", str(tmpl.generate(Context(myvar='"foo"'))))
+        </div>""", str(tmpl.generate(myvar='"foo"')))
 
     def test_attr_escape_quotes(self):
         """
@@ -582,7 +579,7 @@ class TemplateTestCase(unittest.TestCase):
         </div>""")
         self.assertEqual("""<div>
           <elem class="&#34;foo&#34;"/>
-        </div>""", str(tmpl.generate(Context(myvar='"foo"'))))
+        </div>""", str(tmpl.generate(myvar='"foo"')))
 
     def test_directive_element(self):
         tmpl = Template("""<div xmlns:py="http://markup.edgewall.org/">
@@ -590,7 +587,7 @@ class TemplateTestCase(unittest.TestCase):
         </div>""")
         self.assertEqual("""<div>
           bar
-        </div>""", str(tmpl.generate(Context(myvar='"foo"'))))
+        </div>""", str(tmpl.generate(myvar='"foo"')))
 
     def test_normal_comment(self):
         tmpl = Template("""<div xmlns:py="http://markup.edgewall.org/">

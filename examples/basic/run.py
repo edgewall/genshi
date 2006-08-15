@@ -5,7 +5,7 @@ import os
 import sys
 import time
 
-from markup.template import Context, TemplateLoader
+from markup.template import TemplateLoader
 
 def test():
     base_path = os.path.dirname(os.path.abspath(__file__))
@@ -19,12 +19,12 @@ def test():
                 items=['Number %d' % num for num in range(1, 15)],
                 prefix='#')
 
-    print tmpl.generate(Context(**data)).render(method='html')
+    print tmpl.generate(**data).render(method='html')
 
     times = []
     for i in range(1000):
         start = time.clock()
-        list(tmpl.generate(Context(**data)))
+        list(tmpl.generate(**data))
         times.append(time.clock() - start)
         sys.stdout.write('.')
         sys.stdout.flush()

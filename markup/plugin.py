@@ -75,5 +75,4 @@ class TemplateEnginePlugin(object):
             data.update(self.get_extra_vars())
         data.update(info)
 
-        ctxt = Context(**data)
-        return template.generate(ctxt)
+        return template.generate(**data)

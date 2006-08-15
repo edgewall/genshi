@@ -7,13 +7,13 @@ import timeit
 __all__ = ['clearsilver', 'django', 'kid', 'markup', 'simpletal']
 
 def markup(dirname, verbose=False):
-    from markup.template import Context, TemplateLoader
+    from markup.template import TemplateLoader
     loader = TemplateLoader([dirname], auto_reload=False)
     template = loader.load('template.html')
     def render():
-        ctxt = Context(title='Just a test', user='joe',
-                       items=['Number %d' % num for num in range(1, 15)])
-        return template.generate(ctxt).render('xhtml')
+        data = dict(title='Just a test', user='joe',
+                    items=['Number %d' % num for num in range(1, 15)])
+        return template.generate(**data).render('xhtml')
 
     if verbose:
         print render()

@@ -12,7 +12,7 @@ import timeit
 import cElementTree as cet
 from elementtree import ElementTree as et
 from markup.builder import tag
-from markup.template import Context, Template
+from markup.template import Template
 import neo_cgi
 import neo_cs
 import neo_util
@@ -66,8 +66,7 @@ if DjangoTemplate:
 
 def test_markup():
     """Markup template"""
-    ctxt = Context(table=table)
-    stream = markup_tmpl.generate(ctxt)
+    stream = markup_tmpl.generate(table=table)
     stream.render('html', strip_whitespace=False)
 
 def test_markup_builder():
@@ -76,8 +75,7 @@ def test_markup_builder():
         tag.tr([tag.td(c) for c in row.values()])
         for row in table
     ]).generate()
-    ctxt = Context(table=stream)
-    stream = markup_tmpl2.generate(ctxt)
+    stream = markup_tmpl2.generate(table=stream)
     stream.render('html', strip_whitespace=False)
 
 def test_builder():

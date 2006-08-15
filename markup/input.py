@@ -112,7 +112,7 @@ class XMLParser(object):
                 if self.filename:
                     msg += ', in ' + self.filename
                 raise ParseError(msg, self.filename, e.lineno, e.offset)
-        return Stream(_generate()).filter(CoalesceFilter())
+        return Stream(_generate()).filter(_coalesce)
 
     def __iter__(self):
         return iter(self.parse())
@@ -245,7 +245,7 @@ class HTMLParser(html.HTMLParser, object):
                 if self.filename:
                     msg += ', in %s' % self.filename
                 raise ParseError(msg, self.filename, e.lineno, e.offset)
-        return Stream(_generate()).filter(CoalesceFilter())
+        return Stream(_generate()).filter(_coalesce)
 
     def __iter__(self):
         return iter(self.parse())
@@ -307,22 +307,19 @@ class HTMLParser(html.HTMLParser, object):
 def HTML(text):
     return Stream(list(HTMLParser(StringIO(text))))
 
-
-class CoalesceFilter(object):
+def _coalesce(stream):
     """Coalesces adjacent TEXT events into a single event."""
-
-    def __call__(self, stream, ctxt=None):
-        textbuf = []
-        textpos = None
-        for kind, data, pos in chain(stream, [(None, None, None)]):
-            if kind is TEXT:
-                textbuf.append(data)
-                if textpos is None:
-                    textpos = pos
-            else:
-                if textbuf:
-                    yield TEXT, u''.join(textbuf), textpos
-                    del textbuf[:]
-                    textpos = None
-                if kind:
-                    yield kind, data, pos
+    textbuf = []
+    textpos = None
+    for kind, data, pos in chain(stream, [(None, None, None)]):
+        if kind is TEXT:
+            textbuf.append(data)
+            if textpos is None:
+                textpos = pos
+        else:
+            if textbuf:
+                yield TEXT, u''.join(textbuf), textpos
+                del textbuf[:]
+                textpos = None
+            if kind:
+                yield kind, data, pos

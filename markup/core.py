@@ -91,7 +91,7 @@ class Stream(object):
         generator = self.serialize(method=method, **kwargs)
         output = u''.join(list(generator))
         if encoding is not None:
-            return output.encode(encoding)
+            return output.encode(encoding, 'xmlcharrefreplace')
         return output
 
     def select(self, path):
@@ -113,6 +113,9 @@ class Stream(object):
         
         @param method: determines how the stream is serialized; can be either
                        "xml", "xhtml", or "html", or a custom serializer class
+
+        Any additional keyword arguments are passed to the serializer, and thus
+        depend on the `method` parameter value.
         """
         from markup import output
         cls = method
@@ -433,6 +436,7 @@ class Namespace(object):
         return self.uri
 
 
+# The namespace used by attributes such as xml:lang and xml:space
 XML_NAMESPACE = Namespace('http://www.w3.org/XML/1998/namespace')
 
 

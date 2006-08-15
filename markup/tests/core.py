@@ -15,7 +15,22 @@ import doctest
 import unittest
 
 from markup.core import *
-from markup.input import ParseError
+from markup.input import XML, ParseError
+
+
+class StreamTestCase(unittest.TestCase):
+
+    def test_render_utf8(self):
+        xml = XML('<li>Über uns</li>')
+        self.assertEqual('<li>Über uns</li>', xml.render())
+
+    def test_render_unicode(self):
+        xml = XML('<li>Über uns</li>')
+        self.assertEqual(u'<li>Über uns</li>', xml.render(encoding=None))
+
+    def test_render_ascii(self):
+        xml = XML('<li>Über uns</li>')
+        self.assertEqual('<li>&#220;ber uns</li>', xml.render(encoding='ascii'))
 
 
 class MarkupTestCase(unittest.TestCase):
@@ -98,6 +113,7 @@ class MarkupTestCase(unittest.TestCase):
 
 def suite():
     suite = unittest.TestSuite()
+    suite.addTest(unittest.makeSuite(StreamTestCase, 'test'))
     suite.addTest(unittest.makeSuite(MarkupTestCase, 'test'))
     suite.addTest(doctest.DocTestSuite(Markup.__module__))
     return suite

@@ -496,6 +496,11 @@ class TemplateTestCase(unittest.TestCase):
         tmpl = Template('<root attr="${1}"/>')
         self.assertEqual('<root attr="1"/>', str(tmpl.generate()))
 
+    def test_interpolate_list_result(self):
+        tmpl = Template('<root>$foo</root>')
+        ctxt = Context(foo=('buzz',))
+        self.assertEqual('<root>buzz</root>', str(tmpl.generate(ctxt)))
+
     def test_empty_attr(self):
         tmpl = Template('<root attr=""/>')
         self.assertEqual('<root attr=""/>', str(tmpl.generate()))

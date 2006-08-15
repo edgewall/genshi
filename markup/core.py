@@ -15,7 +15,6 @@
 
 import htmlentitydefs
 import re
-from StringIO import StringIO
 
 __all__ = ['Stream', 'Markup', 'escape', 'unescape', 'Namespace', 'QName']
 
@@ -48,8 +47,10 @@ class Stream(object):
     END = StreamEventKind('END') # an end tag
     TEXT = StreamEventKind('TEXT') # literal text
     DOCTYPE = StreamEventKind('DOCTYPE') # doctype declaration
-    START_NS = StreamEventKind('START-NS') # start namespace mapping
-    END_NS = StreamEventKind('END-NS') # end namespace mapping
+    START_NS = StreamEventKind('START_NS') # start namespace mapping
+    END_NS = StreamEventKind('END_NS') # end namespace mapping
+    START_CDATA = StreamEventKind('START_CDATA') # start CDATA section
+    END_CDATA = StreamEventKind('END_CDATA') # end CDATA section
     PI = StreamEventKind('PI') # processing instruction
     COMMENT = StreamEventKind('COMMENT') # comment
 
@@ -135,17 +136,20 @@ TEXT = Stream.TEXT
 DOCTYPE = Stream.DOCTYPE
 START_NS = Stream.START_NS
 END_NS = Stream.END_NS
+START_CDATA = Stream.START_CDATA
+END_CDATA = Stream.END_CDATA
 PI = Stream.PI
 COMMENT = Stream.COMMENT
 
 def _ensure(stream):
     """Ensure that every item on the stream is actually a markup event."""
     for event in stream:
-        try:
-            kind, data, pos = event
-        except ValueError:
-            kind, data, pos = event.totuple()
-        yield kind, data, pos
+        if type(event) is not tuple:
+            if hasattr(event, 'totuple'):
+                event = event.totuple()
+            else:
+                event = TEXT, unicode(event), (None, -1, -1)
+        yield event
 
 try:
     from markup._speedups import _ensure

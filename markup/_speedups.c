@@ -569,18 +569,44 @@ _ensure_iter(_ensure *self)
 static PyObject *
 _ensure_next(_ensure *self)
 {
-    PyObject *result, *tmp;
+    PyObject *result, *tmp, *tmp2, *pos, *module, *kind;
 
     result = PyIter_Next(self->stream);
     if (result == NULL) return NULL;
     Py_INCREF(result);
 
     if (!PyTuple_CheckExact(result)) {
-        tmp = PyObject_CallMethod(result, "totuple", NULL);
-        Py_DECREF(result);
-        if (tmp == NULL) return NULL;
-        Py_INCREF(tmp);
-        return tmp;
+        if (PyObject_HasAttrString(result, "totuple")) {
+            tmp = PyObject_CallMethod(result, "totuple", NULL);
+            Py_DECREF(result);
+            if (tmp == NULL) return NULL;
+            Py_INCREF(tmp);
+            return tmp;
+        } else {
+            tmp = PyObject_Unicode(result);
+            Py_DECREF(result);
+            if (tmp == NULL) return NULL;
+
+            pos = PyTuple_New(3);
+            if (pos == NULL) return NULL;
+            PyTuple_SET_ITEM(pos, 0, Py_None);
+            PyTuple_SET_ITEM(pos, 1, PyInt_FromLong(-1));
+            PyTuple_SET_ITEM(pos, 2, PyInt_FromLong(-1));
+
+            module = PyImport_ImportModule("markup.core");
+            if (module == NULL) return NULL;
+            kind = PyObject_GetAttrString(module, "TEXT");
+            Py_DECREF(module);
+            if (kind == NULL) return NULL;
+
+            tmp2 = PyTuple_New(3);
+            if (tmp == NULL) return NULL;
+            PyTuple_SET_ITEM(tmp2, 0, kind);
+            PyTuple_SET_ITEM(tmp2, 1, tmp);
+            PyTuple_SET_ITEM(tmp2, 2, tmp2);
+            Py_INCREF(tmp2);
+            return tmp2;
+        }
     }
 
     return result;

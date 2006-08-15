@@ -18,8 +18,6 @@ from compiler import ast, parse
 from compiler.pycodegen import ExpressionCodeGenerator
 import new
 
-from markup.core import Stream
-
 __all__ = ['Expression']
 
 

@@ -282,6 +282,93 @@ class PathTestCase(unittest.TestCase):
         path = Path('root/item[@urgent or @notso]')
         self.assertEqual('', path.select(xml).render())
 
+    def test_predicate_boolean_function(self):
+        xml = XML('<root><foo>bar</foo></root>')
+        path = Path('*[boolean("")]')
+        self.assertEqual('', path.select(xml).render())
+        path = Path('*[boolean("yo")]')
+        self.assertEqual('<foo>bar</foo>', path.select(xml).render())
+        path = Path('*[boolean(0)]')
+        self.assertEqual('', path.select(xml).render())
+        path = Path('*[boolean(42)]')
+        self.assertEqual('<foo>bar</foo>', path.select(xml).render())
+        path = Path('*[boolean(false())]')
+        self.assertEqual('', path.select(xml).render())
+        path = Path('*[boolean(true())]')
+        self.assertEqual('<foo>bar</foo>', path.select(xml).render())
+
+    def test_predicate_ceil_function(self):
+        xml = XML('<root><foo>bar</foo></root>')
+        path = Path('*[ceiling("4.5")=5]')
+        self.assertEqual('<foo>bar</foo>', path.select(xml).render())
+
+    def test_predicate_concat_function(self):
+        xml = XML('<root><foo>bar</foo></root>')
+        path = Path('*[name()=concat("f", "oo")]')
+        self.assertEqual('<foo>bar</foo>', path.select(xml).render())
+
+    def test_predicate_contains_function(self):
+        xml = XML('<root><foo>bar</foo></root>')
+        path = Path('*[contains(name(), "oo")]')
+        self.assertEqual('<foo>bar</foo>', path.select(xml).render())
+
+    def test_predicate_false_function(self):
+        xml = XML('<root><foo>bar</foo></root>')
+        path = Path('*[false()]')
+        self.assertEqual('', path.select(xml).render())
+
+    def test_predicate_floor_function(self):
+        xml = XML('<root><foo>bar</foo></root>')
+        path = Path('*[floor("4.5")=4]')
+        self.assertEqual('<foo>bar</foo>', path.select(xml).render())
+
+    def test_predicate_normalize_space_function(self):
+        xml = XML('<root><foo>bar</foo></root>')
+        path = Path('*[normalize-space(" foo   bar  ")="foo bar"]')
+        self.assertEqual('<foo>bar</foo>', path.select(xml).render())
+
+    def test_predicate_number_function(self):
+        xml = XML('<root><foo>bar</foo></root>')
+        path = Path('*[number("3.0")=3]')
+        self.assertEqual('<foo>bar</foo>', path.select(xml).render())
+
+    def test_predicate_starts_with_function(self):
+        xml = XML('<root><foo>bar</foo></root>')
+        path = Path('*[starts-with(name(), "f")]')
+        self.assertEqual('<foo>bar</foo>', path.select(xml).render())
+
+    def test_predicate_string_length_function(self):
+        xml = XML('<root><foo>bar</foo></root>')
+        path = Path('*[string-length(name())=3]')
+        self.assertEqual('<foo>bar</foo>', path.select(xml).render())
+
+    def test_predicate_substring_function(self):
+        xml = XML('<root><foo>bar</foo></root>')
+        path = Path('*[substring(name(), 1)="oo"]')
+        self.assertEqual('<foo>bar</foo>', path.select(xml).render())
+        path = Path('*[substring(name(), 1, 1)="o"]')
+        self.assertEqual('<foo>bar</foo>', path.select(xml).render())
+
+    def test_predicate_substring_after_function(self):
+        xml = XML('<root><foo>bar</foo></root>')
+        path = Path('*[substring-after(name(), "f")="oo"]')
+        self.assertEqual('<foo>bar</foo>', path.select(xml).render())
+
+    def test_predicate_substring_before_function(self):
+        xml = XML('<root><foo>bar</foo></root>')
+        path = Path('*[substring-before(name(), "oo")="f"]')
+        self.assertEqual('<foo>bar</foo>', path.select(xml).render())
+
+    def test_predicate_translate_function(self):
+        xml = XML('<root><foo>bar</foo></root>')
+        path = Path('*[translate(name(), "fo", "ba")="baa"]')
+        self.assertEqual('<foo>bar</foo>', path.select(xml).render())
+
+    def test_predicate_true_function(self):
+        xml = XML('<root><foo>bar</foo></root>')
+        path = Path('*[true()]')
+        self.assertEqual('<foo>bar</foo>', path.select(xml).render())
+
 
 def suite():
     suite = unittest.TestSuite()

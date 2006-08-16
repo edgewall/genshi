@@ -31,6 +31,7 @@ Because the XPath engine operates on markup streams (as opposed to tree
 structures), it only implements a subset of the full XPath 1.0 language.
 """
 
+from math import ceil, floor
 import re
 
 from markup.core import Stream, START, END, TEXT, COMMENT, PI
@@ -223,14 +224,15 @@ class PathParser(object):
     _QUOTES = (("'", "'"), ('"', '"'))
     _TOKENS = ('::', ':', '..', '.', '//', '/', '[', ']', '()', '(', ')', '@',
                '=', '!=', '!', '|', ',')
-    _tokenize = re.compile('(%s)|([^%s\s]+)|\s+' % (
+    _tokenize = re.compile('("[^"]*")|(\'[^\']*\')|(%s)|([^%s\s]+)|\s+' % (
                            '|'.join([re.escape(t) for t in _TOKENS]),
                            ''.join([re.escape(t[0]) for t in _TOKENS]))).findall
 
     def __init__(self, text, filename=None, lineno=-1):
         self.filename = filename
         self.lineno = lineno
-        self.tokens = filter(None, [a or b for a, b in self._tokenize(text)])
+        self.tokens = filter(None, [a or b or c or d for a, b, c, d in
+                                    self._tokenize(text)])
         self.pos = 0
 
     # Tokenizer
@@ -395,25 +397,35 @@ class PathParser(object):
             self.next_token()
             return NumberLiteral(float(token))
         elif not self.at_end and self.peek_token().startswith('('):
-            if self.next_token() == '()':
-                args = []
-            else:
-                self.next_token()
-                args = [self._or_expr()]
-                while self.cur_token not in (',', ')'):
-                    args.append(self._or_expr())
-            self.next_token()
-            cls = _function_map.get(token)
-            if not cls:
-                raise PathSyntaxError('Unsupported function "%s"' % token,
-                                      self.filename, self.lineno)
-            return cls(*args)
+            return self._function_call()
         else:
             axis = None
             if token == '@':
                 axis = ATTRIBUTE
                 self.next_token()
             return self._node_test(axis)
+
+    def _function_call(self):
+        name = self.cur_token
+        if self.next_token() == '()':
+            args = []
+        else:
+            assert self.cur_token == '('
+            self.next_token()
+            args = [self._or_expr()]
+            while self.cur_token == ',':
+                self.next_token()
+                args.append(self._or_expr())
+            if not self.cur_token == ')':
+                raise PathSyntaxError('Expected ")" to close function argument '
+                                      'list, but found "%s"' % self.cur_token,
+                                      self.filename, self.lineno)
+        self.next_token()
+        cls = _function_map.get(name)
+        if not cls:
+            raise PathSyntaxError('Unsupported function "%s"' % name,
+                                  self.filename, self.lineno)
+        return cls(*args)
 
 
 # Node tests
@@ -487,7 +499,84 @@ _nodetest_map = {'comment': CommentNodeTest, 'node': NodeTest,
 
 # Functions
 
-class LocalNameFunction(object):
+class Function(object):
+    """Base class for function nodes in XPath expressions."""
+
+class BooleanFunction(Function):
+    __slots__ = ['expr']
+    def __init__(self, expr):
+        self.expr = expr
+    def __call__(self, kind, data, pos):
+        val = self.expr(kind, data, pos)
+        if type(val) is tuple:
+            val = val[1]
+        return bool(val)
+    def __repr__(self):
+        return 'boolean(%r)' % self.expr
+
+class CeilingFunction(Function):
+    __slots__ = ['number']
+    def __init__(self, number):
+        self.number = number
+    def __call__(self, kind, data, pos):
+        number = self.number(kind, data, pos)
+        if type(number) is tuple:
+            number = number[1]
+        return ceil(float(number))
+    def __repr__(self):
+        return 'ceiling(%r)' % self.number
+
+class ConcatFunction(Function):
+    __slots__ = ['exprs']
+    def __init__(self, *exprs):
+        self.exprs = exprs
+    def __call__(self, kind, data, pos):
+        strings = []
+        for item in [expr(kind, data, pos) for expr in self.exprs]:
+            if type(item) is tuple:
+                assert item[0] is TEXT
+                item = item[1]
+            strings.append(item)
+        return u''.join(strings)
+    def __repr__(self):
+        return 'concat(%s)' % [repr(expr for expr in self.expr)]
+
+class ContainsFunction(Function):
+    __slots__ = ['string1' ,'string2']
+    def __init__(self, string1, string2):
+        self.string1 = string1
+        self.string2 = string2
+    def __call__(self, kind, data, pos):
+        string1 = self.string1(kind, data, pos)
+        if type(string1) is tuple:
+            string1 = string1[1]
+        string2 = self.string2(kind, data, pos)
+        if type(string2) is tuple:
+            string2 = string2[1]
+        return string2 in string1
+    def __repr__(self):
+        return 'contains(%r, %r)' % (self.string1, self.string2)
+
+class FalseFunction(Function):
+    __slots__ = []
+    def __call__(self, kind, data, pos):
+        return False
+    def __repr__(self):
+        return 'false()'
+
+class FloorFunction(Function):
+    __slots__ = ['number']
+    def __init__(self, number):
+        self.number = number
+    def __call__(self, kind, data, pos):
+        number = self.number(kind, data, pos)
+        if type(number) is tuple:
+            number = number[1]
+        return floor(float(number))
+    def __repr__(self):
+        return 'floor(%r)' % self.number
+
+class LocalNameFunction(Function):
     __slots__ = []
     def __call__(self, kind, data, pos):
         if kind is START:
@@ -495,7 +584,7 @@ class LocalNameFunction(object):
     def __repr__(self):
         return 'local-name()'
 
-class NameFunction(object):
+class NameFunction(Function):
     __slots__ = []
     def __call__(self, kind, data, pos):
         if kind is START:
@@ -503,7 +592,7 @@ class NameFunction(object):
     def __repr__(self):
         return 'name()'
 
-class NamespaceUriFunction(object):
+class NamespaceUriFunction(Function):
     __slots__ = []
     def __call__(self, kind, data, pos):
         if kind is START:
@@ -511,7 +600,7 @@ class NamespaceUriFunction(object):
     def __repr__(self):
         return 'namespace-uri()'
 
-class NotFunction(object):
+class NotFunction(Function):
     __slots__ = ['expr']
     def __init__(self, expr):
         self.expr = expr
@@ -520,12 +609,173 @@ class NotFunction(object):
     def __repr__(self):
         return 'not(%s)' % self.expr
 
-_function_map = {'local-name': LocalNameFunction, 'name': NameFunction,
-                 'namespace-uri': NamespaceUriFunction, 'not': NotFunction}
+class NormalizeSpaceFunction(Function):
+    __slots__ = ['expr']
+    _normalize = re.compile(r'\s{2,}').sub
+    def __init__(self, expr):
+        self.expr = expr
+    def __call__(self, kind, data, pos):
+        string = self.expr(kind, data, pos)
+        if type(string) is tuple:
+            string = string[1]
+        return self._normalize(' ', string.strip())
+    def __repr__(self):
+        return 'normalize-space(%s)' % repr(self.expr)
+
+class NumberFunction(Function):
+    __slots__ = ['expr']
+    def __init__(self, expr):
+        self.expr = expr
+    def __call__(self, kind, data, pos):
+        val = self.expr(kind, data, pos)
+        if type(val) is tuple:
+            val = val[1]
+        return float(val)
+    def __repr__(self):
+        return 'number(%r)' % self.expr
+
+class StartsWithFunction(Function):
+    __slots__ = ['string1', 'string2']
+    def __init__(self, string1, string2):
+        self.string1 = string2
+        self.string2 = string2
+    def __call__(self, kind, data, pos):
+        string1 = self.string1(kind, data, pos)
+        if type(string1) is tuple:
+            string1 = string1[1]
+        string2 = self.string2(kind, data, pos)
+        if type(string2) is tuple:
+            string2 = string2[1]
+        return string1.startswith(string2)
+    def __repr__(self):
+        return 'starts-with(%r, %r)' % (self.string1, self.string2)
+
+class StringLengthFunction(Function):
+    __slots__ = ['expr']
+    def __init__(self, expr):
+        self.expr = expr
+    def __call__(self, kind, data, pos):
+        string = self.expr(kind, data, pos)
+        if type(string) is tuple:
+            string = string[1]
+        return len(string)
+    def __repr__(self):
+        return 'string-length(%r)' % self.expr
+
+class SubstringFunction(Function):
+    __slots__ = ['string', 'start', 'length']
+    def __init__(self, string, start, length=None):
+        self.string = string
+        self.start = start
+        self.length = length
+    def __call__(self, kind, data, pos):
+        string = self.string(kind, data, pos)
+        if type(string) is tuple:
+            string = string[1]
+        start = self.start(kind, data, pos)
+        if type(start) is tuple:
+            start = start[1]
+        length = 0
+        if self.length is not None:
+            length = self.length(kind, data, pos)
+            if type(length) is tuple:
+                length = length[1]
+        return string[int(start):len(string) - int(length)]
+    def __repr__(self):
+        if self.length is not None:
+            return 'substring(%r, %r, %r)' % (self.string, self.start,
+                                              self.length)
+        else:
+            return 'substring(%r, %r)' % (self.string, self.start)
+
+class SubstringAfterFunction(Function):
+    __slots__ = ['string1', 'string2']
+    def __init__(self, string1, string2):
+        self.string1 = string1
+        self.string2 = string2
+    def __call__(self, kind, data, pos):
+        string1 = self.string1(kind, data, pos)
+        if type(string1) is tuple:
+            string1 = string1[1]
+        string2 = self.string2(kind, data, pos)
+        if type(string2) is tuple:
+            string2 = string2[1]
+        index = string1.find(string2)
+        if index >= 0:
+            return string1[index + len(string2):]
+        return u''
+    def __repr__(self):
+        return 'substring-after(%r, %r)' % (self.string1, self.string2)
+
+class SubstringBeforeFunction(Function):
+    __slots__ = ['string1', 'string2']
+    def __init__(self, string1, string2):
+        self.string1 = string1
+        self.string2 = string2
+    def __call__(self, kind, data, pos):
+        string1 = self.string1(kind, data, pos)
+        if type(string1) is tuple:
+            string1 = string1[1]
+        string2 = self.string2(kind, data, pos)
+        if type(string2) is tuple:
+            string2 = string2[1]
+        index = string1.find(string2)
+        if index >= 0:
+            return string1[:index]
+        return u''
+    def __repr__(self):
+        return 'substring-after(%r, %r)' % (self.string1, self.string2)
+
+class TranslateFunction(Function):
+    __slots__ = ['string', 'fromchars', 'tochars']
+    def __init__(self, string, fromchars, tochars):
+        self.string = string
+        self.fromchars = fromchars
+        self.tochars = tochars
+    def __call__(self, kind, data, pos):
+        string = self.string(kind, data, pos)
+        if type(string) is tuple:
+            string = string[1]
+        fromchars = self.fromchars(kind, data, pos)
+        if type(fromchars) is tuple:
+            fromchars = fromchars[1]
+        tochars = self.tochars(kind, data, pos)
+        if type(tochars) is tuple:
+            tochars = tochars[1]
+        table = dict(zip([ord(c) for c in fromchars],
+                         [ord(c) for c in tochars]))
+        return string.translate(table)
+    def __repr__(self):
+        return 'translate(%r, %r, %r)' % (self.string, self.fromchars,
+                                          self.tochars)
+
+class TrueFunction(Function):
+    __slots__ = []
+    def __call__(self, kind, data, pos):
+        return True
+    def __repr__(self):
+        return 'true()'
+
+
+_function_map = {'boolean': BooleanFunction, 'ceiling': CeilingFunction,
+                 'concat': ConcatFunction, 'contains': ContainsFunction,
+                 'false': FalseFunction, 'floor': FloorFunction,
+                 'local-name': LocalNameFunction, 'name': NameFunction,
+                 'namespace-uri': NamespaceUriFunction,
+                 'normalize-space': NormalizeSpaceFunction, 'not': NotFunction,
+                 'number': NumberFunction, 'starts-with': StartsWithFunction,
+                 'string-length': StringLengthFunction,
+                 'substring': SubstringFunction,
+                 'substring-after': SubstringAfterFunction,
+                 'substring-before': SubstringBeforeFunction,
+                 'translate': TranslateFunction, 'true': TrueFunction}
 
 # Literals
 
-class StringLiteral(object):
+class Literal(object):
+    """Abstract base class for literal nodes."""
+
+class StringLiteral(Literal):
     __slots__ = ['text']
     def __init__(self, text):
         self.text = text
@@ -534,12 +784,12 @@ class StringLiteral(object):
     def __repr__(self):
         return '"%s"' % self.text
 
-class NumberLiteral(object):
+class NumberLiteral(Literal):
     __slots__ = ['number']
     def __init__(self, number):
         self.number = number
     def __call__(self, kind, data, pos):
-        return TEXT, unicode(self.number), (None, -1, -1)
+        return TEXT, self.number, (None, -1, -1)
     def __repr__(self):
         return str(self.number)
 

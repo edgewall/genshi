@@ -12,11 +12,15 @@
 # history and logs, available at http://markup.edgewall.org/log/.
 
 import doctest
+import os
 import unittest
+import shutil
 import sys
+import tempfile
 
 from markup.core import Markup, Stream
-from markup.template import BadDirectiveError, Template, TemplateSyntaxError
+from markup.template import BadDirectiveError, Template, TemplateLoader, \
+                            TemplateSyntaxError
 
 
 class AttrsDirectiveTestCase(unittest.TestCase):
@@ -606,10 +610,84 @@ class TemplateTestCase(unittest.TestCase):
         </div>""", str(tmpl.generate()))
 
 
+class TemplateLoaderTestCase(unittest.TestCase):
+    """Tests for the template loader."""
+
+    def setUp(self):
+        self.dirname = tempfile.mkdtemp(suffix='markup_test')
+
+    def tearDown(self):
+        shutil.rmtree(self.dirname)
+
+    def test_relative_include_samedir(self):
+        file1 = open(os.path.join(self.dirname, 'tmpl1.html'), 'w')
+        try:
+            file1.write("""<div>Included</div>""")
+        finally:
+            file1.close()
+
+        file2 = open(os.path.join(self.dirname, 'tmpl2.html'), 'w')
+        try:
+            file2.write("""<html xmlns:xi="http://www.w3.org/2001/XInclude">
+  <xi:include href="tmpl1.html" />
+</html>""")
+        finally:
+            file2.close()
+
+        loader = TemplateLoader([self.dirname])
+        tmpl = loader.load('tmpl2.html')
+        self.assertEqual("""<html>
+  <div>Included</div>
+</html>""", tmpl.generate().render())
+
+    def test_relative_include_subdir(self):
+        os.mkdir(os.path.join(self.dirname, 'sub'))
+        file1 = open(os.path.join(self.dirname, 'sub', 'tmpl1.html'), 'w')
+        try:
+            file1.write("""<div>Included</div>""")
+        finally:
+            file1.close()
+
+        file2 = open(os.path.join(self.dirname, 'tmpl2.html'), 'w')
+        try:
+            file2.write("""<html xmlns:xi="http://www.w3.org/2001/XInclude">
+  <xi:include href="sub/tmpl1.html" />
+</html>""")
+        finally:
+            file2.close()
+
+        loader = TemplateLoader([self.dirname])
+        tmpl = loader.load('tmpl2.html')
+        self.assertEqual("""<html>
+  <div>Included</div>
+</html>""", tmpl.generate().render())
+
+    def test_relative_include_parentdir(self):
+        file1 = open(os.path.join(self.dirname, 'tmpl1.html'), 'w')
+        try:
+            file1.write("""<div>Included</div>""")
+        finally:
+            file1.close()
+
+        os.mkdir(os.path.join(self.dirname, 'sub'))
+        file2 = open(os.path.join(self.dirname, 'sub', 'tmpl2.html'), 'w')
+        try:
+            file2.write("""<html xmlns:xi="http://www.w3.org/2001/XInclude">
+  <xi:include href="../tmpl1.html" />
+</html>""")
+        finally:
+            file2.close()
+
+        loader = TemplateLoader([self.dirname])
+        tmpl = loader.load('sub/tmpl2.html')
+        self.assertEqual("""<html>
+  <div>Included</div>
+</html>""", tmpl.generate().render())
+
+
 def suite():
     suite = unittest.TestSuite()
     suite.addTest(doctest.DocTestSuite(Template.__module__))
-    suite.addTest(unittest.makeSuite(TemplateTestCase, 'test'))
     suite.addTest(unittest.makeSuite(AttrsDirectiveTestCase, 'test'))
     suite.addTest(unittest.makeSuite(ChooseDirectiveTestCase, 'test'))
     suite.addTest(unittest.makeSuite(DefDirectiveTestCase, 'test'))
@@ -618,6 +696,8 @@ def suite():
     suite.addTest(unittest.makeSuite(MatchDirectiveTestCase, 'test'))
     suite.addTest(unittest.makeSuite(StripDirectiveTestCase, 'test'))
     suite.addTest(unittest.makeSuite(WithDirectiveTestCase, 'test'))
+    suite.addTest(unittest.makeSuite(TemplateTestCase, 'test'))
+    suite.addTest(unittest.makeSuite(TemplateLoaderTestCase, 'test'))
     return suite
 
 if __name__ == '__main__':

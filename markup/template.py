@@ -1006,6 +1006,8 @@ class TemplateLoader(object):
     
     >>> loader.load(os.path.basename(path)) is template
     True
+    
+    >>> os.remove(path)
     """
     def __init__(self, search_path=None, auto_reload=False):
         """Create the template laoder.

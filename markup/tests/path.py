@@ -27,6 +27,9 @@ class PathTestCase(unittest.TestCase):
         self.assertRaises(PathSyntaxError, Path, '..')
         self.assertRaises(PathSyntaxError, Path, 'parent::ma')
 
+    def test_error_position_predicate(self):
+        self.assertRaises(PathSyntaxError, Path, 'item[0]')
+
     def test_1step(self):
         xml = XML('<root><elem/></root>')
 
@@ -344,6 +347,10 @@ class PathTestCase(unittest.TestCase):
     def test_predicate_number_function(self):
         xml = XML('<root><foo>bar</foo></root>')
         path = Path('*[number("3.0")=3]')
+        self.assertEqual('<foo>bar</foo>', path.select(xml).render())
+        path = Path('*[number("3.0")=3.0]')
+        self.assertEqual('<foo>bar</foo>', path.select(xml).render())
+        path = Path('*[number("0.1")=.1]')
         self.assertEqual('<foo>bar</foo>', path.select(xml).render())
 
     def test_predicate_round_function(self):

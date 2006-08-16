@@ -185,6 +185,24 @@ class DefDirectiveTestCase(unittest.TestCase):
             <b>foo</b>
         </doc>""", str(tmpl.generate()))
 
+    def test_nested_defs(self):
+        """
+        Verify that a template function defined inside a conditional block can
+        be called from outside that block.
+        """
+        tmpl = Template("""<doc xmlns:py="http://markup.edgewall.org/">
+          <py:if test="semantic">
+            <strong py:def="echo(what)">${what}</strong>
+          </py:if>
+          <py:if test="not semantic">
+            <b py:def="echo(what)">${what}</b>
+          </py:if>
+          ${echo('foo')}
+        </doc>""")
+        self.assertEqual("""<doc>
+          <strong>foo</strong>
+        </doc>""", str(tmpl.generate(semantic=True)))
+
 
 class ForDirectiveTestCase(unittest.TestCase):
     """Tests for the `py:for` template directive."""

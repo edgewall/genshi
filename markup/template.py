@@ -290,7 +290,7 @@ class DefDirective(Directive):
       </p>
     </div>
     """
-    __slots__ = ['name', 'args', 'defaults', 'stream', 'directives']
+    __slots__ = ['name', 'args', 'defaults']
 
     ATTRIBUTE = 'function'
 
@@ -309,27 +309,33 @@ class DefDirective(Directive):
                     self.args.append(arg.name)
         else:
             self.name = ast.name
-        self.stream, self.directives = [], []
 
     def __call__(self, stream, ctxt, directives):
-        self.stream = list(stream)
-        self.directives = directives
-        ctxt[self.name] = lambda *args, **kwargs: self._exec(ctxt, *args,
-                                                             **kwargs)
-        return []
+        stream = list(stream)
 
-    def _exec(self, ctxt, *args, **kwargs):
-        scope = {}
-        args = list(args) # make mutable
-        for name in self.args:
-            if args:
-                scope[name] = args.pop(0)
-            else:
-                scope[name] = kwargs.pop(name, self.defaults.get(name))
-        ctxt.push(scope)
-        for event in _apply_directives(self.stream, ctxt, self.directives):
-            yield event
-        ctxt.pop()
+        def function(*args, **kwargs):
+            scope = {}
+            args = list(args) # make mutable
+            for name in self.args:
+                if args:
+                    scope[name] = args.pop(0)
+                else:
+                    scope[name] = kwargs.pop(name, self.defaults.get(name))
+            ctxt.push(scope)
+            for event in _apply_directives(stream, ctxt, directives):
+                yield event
+            ctxt.pop()
+        try:
+            function.__name__ = self.name
+        except TypeError:
+            # Function name can't be set in Python 2.3 
+            pass
+
+        # Store the function reference in the bottom context frame so that it
+        # doesn't get popped off before processing the template has finished
+        ctxt.frames[-1][self.name] = function
+
+        return []
 
 
 class ForDirective(Directive):

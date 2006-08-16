@@ -41,6 +41,17 @@ bar</elem>'''
         if sys.version_info[:2] >= (2, 4):
             self.assertEqual((None, 1, -1), pos)
 
+    def test_element_attribute_order(self):
+        text = '<elem title="baz" id="foo" class="bar" />'
+        events = list(XMLParser(StringIO(text)))
+        kind, data, pos = events[0]
+        self.assertEqual(Stream.START, kind)
+        tag, attrib = data
+        self.assertEqual(u'elem', tag)
+        self.assertEqual((u'title', u'baz'), attrib[0])
+        self.assertEqual((u'id', u'foo'), attrib[1])
+        self.assertEqual((u'class', u'bar'), attrib[2])
+
 
 class HTMLParserTestCase(unittest.TestCase):
 

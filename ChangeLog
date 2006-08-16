@@ -15,7 +15,7 @@ http://svn.edgewall.org/repos/markup/tags/0.2.0/
  * The XHTML serializer now correctly handles elements in foreign namespaces
    (such as SVG or MathML).
  * Fixed relative includes in templates on Windows (ticket #27).
- * Output can be encoded using legacy codecs such as ISO-8859-1, any character
+ * Output can be encoded using legacy codecs such as ISO-8859-1. Any character
    not representable in the chosen encoding gets replaced by the corresponding
    XML character reference.
  * String literals in XPath expressions that contain spaces are now parsed

@@ -113,7 +113,7 @@ class XHTMLSerializerTestCase(unittest.TestCase):
           <body>
             <button>
               <svg:svg width="600px" height="400px">
-                <svg:polygon points="50,50 50,300 300,300" />
+                <svg:polygon id="triangle" points="50,50 50,300 300,300" />
               </svg:svg>
             </button>
           </body>

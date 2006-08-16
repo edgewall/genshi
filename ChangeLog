@@ -12,6 +12,8 @@ http://svn.edgewall.org/repos/markup/tags/0.2.0/
  * CDATA sections are now passed through the pipeline and serialized correctly.
    That allows using <script> or <style> elements in XHTML output that is still
    compatible with HTML user agents.
+ * The XHTML serializer now correctly handles elements in foreign namespaces
+   (such as SVG or MathML).
  * Fixed relative includes in templates on Windows (ticket #27).
  * Output can be encoded using legacy codecs such as ISO-8859-1, any character
    not representable in the chosen encoding gets replaced by the corresponding

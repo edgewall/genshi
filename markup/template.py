@@ -103,6 +103,7 @@ class Context(object):
         self.frames = deque([data])
         self.pop = self.frames.popleft
         self.push = self.frames.appendleft
+        self._match_templates = []
 
     def __repr__(self):
         return repr(self.frames)
@@ -852,7 +853,6 @@ class Template(object):
             assert isinstance(ctxt, Context)
         else:
             ctxt = Context(**kwargs)
-            ctxt._match_templates = []
 
         stream = self.stream
         for filter_ in [self._eval, self._match, self._flatten] + self.filters:

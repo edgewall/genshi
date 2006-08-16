@@ -18,20 +18,22 @@ CherryPy/Buffet.
 
 from pkg_resources import resource_filename
 
-from markup import Stream, QName
+from markup.core import Attributes, Stream, QName
 from markup.template import Context, Template, TemplateLoader
 
-def ET(element):
+def et_to_stream(element):
+    """Converts the given ElementTree element to a markup stream."""
     tag_name = element.tag
     if tag_name.startswith('{'):
         tag_name = tag_name[1:]
     tag_name = QName(tag_name)
+    attrib = Attributes(element.items())
 
-    yield (Stream.START, (tag_name, element.items()), (None, -1, -1))
+    yield (Stream.START, (tag_name, attrib), (None, -1, -1))
     if element.text:
         yield Stream.TEXT, element.text, (None, -1, -1)
     for child in element.getchildren():
-        for item in ET(child):
+        for item in et_to_stream(child):
             yield item
     yield Stream.END, tag_name, (None, -1, -1)
     if element.tail:
@@ -69,7 +71,7 @@ class TemplateEnginePlugin(object):
         if not isinstance(template, Template):
             template = self.load_template(template)
 
-        data = {'ET': ET}
+        data = {'ET': et_to_stream}
         if self.get_extra_vars:
             data.update(self.get_extra_vars())
         data.update(info)

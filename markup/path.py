@@ -431,6 +431,7 @@ class PathParser(object):
 # Node tests
 
 class PrincipalTypeTest(object):
+    """Node test that matches any event with the given principal type."""
     __slots__ = ['principal_type']
     def __init__(self, principal_type):
         self.principal_type = principal_type
@@ -444,6 +445,9 @@ class PrincipalTypeTest(object):
         return '*'
 
 class LocalNameTest(object):
+    """Node test that matches any event with the given prinipal type and
+    local name.
+    """
     __slots__ = ['principal_type', 'name']
     def __init__(self, principal_type, name):
         self.principal_type = principal_type
@@ -458,6 +462,7 @@ class LocalNameTest(object):
         return self.name
 
 class CommentNodeTest(object):
+    """Node test that matches any comment events."""
     __slots__ = []
     def __call__(self, kind, data, pos):
         return kind is COMMENT and (kind, data, pos)
@@ -465,6 +470,7 @@ class CommentNodeTest(object):
         return 'comment()'
 
 class NodeTest(object):
+    """Node test that matches any node."""
     __slots__ = []
     def __call__(self, kind, data, pos):
         if kind is START:
@@ -474,6 +480,7 @@ class NodeTest(object):
         return 'node()'
 
 class ProcessingInstructionNodeTest(object):
+    """Node test that matches any processing instruction event."""
     __slots__ = ['target']
     def __init__(self, target=None):
         self.target = target
@@ -487,6 +494,7 @@ class ProcessingInstructionNodeTest(object):
         return 'processing-instruction(%s)' % arg
 
 class TextNodeTest(object):
+    """Node test that matches any text event."""
     __slots__ = []
     def __call__(self, kind, data, pos):
         return kind is TEXT and (kind, data, pos)
@@ -503,6 +511,9 @@ class Function(object):
     """Base class for function nodes in XPath expressions."""
 
 class BooleanFunction(Function):
+    """The `boolean` function, which converts its argument to a boolean
+    value.
+    """
     __slots__ = ['expr']
     def __init__(self, expr):
         self.expr = expr
@@ -515,6 +526,9 @@ class BooleanFunction(Function):
         return 'boolean(%r)' % self.expr
 
 class CeilingFunction(Function):
+    """The `ceiling` function, which returns the nearest lower integer number
+    for the given number.
+    """
     __slots__ = ['number']
     def __init__(self, number):
         self.number = number
@@ -527,6 +541,9 @@ class CeilingFunction(Function):
         return 'ceiling(%r)' % self.number
 
 class ConcatFunction(Function):
+    """The `concat` function, which concatenates (joins) the variable number of
+    strings it gets as arguments.
+    """
     __slots__ = ['exprs']
     def __init__(self, *exprs):
         self.exprs = exprs
@@ -539,10 +556,13 @@ class ConcatFunction(Function):
             strings.append(item)
         return u''.join(strings)
     def __repr__(self):
-        return 'concat(%s)' % [repr(expr for expr in self.expr)]
+        return 'concat(%s)' % [repr(expr for expr in self.exprs)]
 
 class ContainsFunction(Function):
-    __slots__ = ['string1' ,'string2']
+    """The `contains` function, which returns whether a string contains a given
+    substring.
+    """
+    __slots__ = ['string1', 'string2']
     def __init__(self, string1, string2):
         self.string1 = string1
         self.string2 = string2
@@ -558,6 +578,7 @@ class ContainsFunction(Function):
         return 'contains(%r, %r)' % (self.string1, self.string2)
 
 class FalseFunction(Function):
+    """The `false` function, which always returns the boolean `false` value."""
     __slots__ = []
     def __call__(self, kind, data, pos):
         return False
@@ -565,6 +586,9 @@ class FalseFunction(Function):
         return 'false()'
 
 class FloorFunction(Function):
+    """The `ceiling` function, which returns the nearest higher integer number
+    for the given number.
+    """
     __slots__ = ['number']
     def __init__(self, number):
         self.number = number
@@ -577,6 +601,9 @@ class FloorFunction(Function):
         return 'floor(%r)' % self.number
 
 class LocalNameFunction(Function):
+    """The `local-name` function, which returns the local name of the current
+    element.
+    """
     __slots__ = []
     def __call__(self, kind, data, pos):
         if kind is START:
@@ -585,6 +612,9 @@ class LocalNameFunction(Function):
         return 'local-name()'
 
 class NameFunction(Function):
+    """The `name` function, which returns the qualified name of the current
+    element.
+    """
     __slots__ = []
     def __call__(self, kind, data, pos):
         if kind is START:
@@ -593,6 +623,9 @@ class NameFunction(Function):
         return 'name()'
 
 class NamespaceUriFunction(Function):
+    """The `namespace-uri` function, which returns the namespace URI of the
+    current element.
+    """
     __slots__ = []
     def __call__(self, kind, data, pos):
         if kind is START:
@@ -601,6 +634,9 @@ class NamespaceUriFunction(Function):
         return 'namespace-uri()'
 
 class NotFunction(Function):
+    """The `not` function, which returns the negated boolean value of its
+    argument.
+    """
     __slots__ = ['expr']
     def __init__(self, expr):
         self.expr = expr
@@ -610,6 +646,10 @@ class NotFunction(Function):
         return 'not(%s)' % self.expr
 
 class NormalizeSpaceFunction(Function):
+    """The `normalize-space` function, which removes leading and trailing
+    whitespace in the given string, and replaces multiple adjacent whitespace
+    characters inside the string with a single space.
+    """
     __slots__ = ['expr']
     _normalize = re.compile(r'\s{2,}').sub
     def __init__(self, expr):
@@ -623,6 +663,7 @@ class NormalizeSpaceFunction(Function):
         return 'normalize-space(%s)' % repr(self.expr)
 
 class NumberFunction(Function):
+    """The `number` function that converts its argument to a number."""
     __slots__ = ['expr']
     def __init__(self, expr):
         self.expr = expr
@@ -635,6 +676,9 @@ class NumberFunction(Function):
         return 'number(%r)' % self.expr
 
 class StartsWithFunction(Function):
+    """The `starts-with` function that returns whether one string starts with
+    a given substring.
+    """
     __slots__ = ['string1', 'string2']
     def __init__(self, string1, string2):
         self.string1 = string2
@@ -651,6 +695,9 @@ class StartsWithFunction(Function):
         return 'starts-with(%r, %r)' % (self.string1, self.string2)
 
 class StringLengthFunction(Function):
+    """The `string-length` function that returns the length of the given
+    string.
+    """
     __slots__ = ['expr']
     def __init__(self, expr):
         self.expr = expr
@@ -663,6 +710,9 @@ class StringLengthFunction(Function):
         return 'string-length(%r)' % self.expr
 
 class SubstringFunction(Function):
+    """The `substring` function that returns the part of a string that starts
+    at the given offset, and optionally limited to the given length.
+    """
     __slots__ = ['string', 'start', 'length']
     def __init__(self, string, start, length=None):
         self.string = string
@@ -689,6 +739,9 @@ class SubstringFunction(Function):
             return 'substring(%r, %r)' % (self.string, self.start)
 
 class SubstringAfterFunction(Function):
+    """The `substring-after` function that returns the part of a string that
+    is found after the given substring.
+    """
     __slots__ = ['string1', 'string2']
     def __init__(self, string1, string2):
         self.string1 = string1
@@ -708,6 +761,9 @@ class SubstringAfterFunction(Function):
         return 'substring-after(%r, %r)' % (self.string1, self.string2)
 
 class SubstringBeforeFunction(Function):
+    """The `substring-before` function that returns the part of a string that
+    is found before the given substring.
+    """
     __slots__ = ['string1', 'string2']
     def __init__(self, string1, string2):
         self.string1 = string1
@@ -727,6 +783,9 @@ class SubstringBeforeFunction(Function):
         return 'substring-after(%r, %r)' % (self.string1, self.string2)
 
 class TranslateFunction(Function):
+    """The `translate` function that translates a set of characters in a
+    string to target set of characters.
+    """
     __slots__ = ['string', 'fromchars', 'tochars']
     def __init__(self, string, fromchars, tochars):
         self.string = string
@@ -750,6 +809,7 @@ class TranslateFunction(Function):
                                           self.tochars)
 
 class TrueFunction(Function):
+    """The `true` function, which always returns the boolean `true` value."""
     __slots__ = []
     def __call__(self, kind, data, pos):
         return True
@@ -775,6 +835,7 @@ class Literal(object):
     """Abstract base class for literal nodes."""
 
 class StringLiteral(Literal):
+    """A string literal node."""
     __slots__ = ['text']
     def __init__(self, text):
         self.text = text
@@ -784,6 +845,7 @@ class StringLiteral(Literal):
         return '"%s"' % self.text
 
 class NumberLiteral(Literal):
+    """A number literal node."""
     __slots__ = ['number']
     def __init__(self, number):
         self.number = number
@@ -795,70 +857,74 @@ class NumberLiteral(Literal):
 # Operators
 
 class AndOperator(object):
+    """The boolean operator `and`."""
     __slots__ = ['lval', 'rval']
     def __init__(self, lval, rval):
         self.lval = lval
         self.rval = rval
     def __call__(self, kind, data, pos):
-        lv = self.lval(kind, data, pos)
-        if type(lv) is tuple:
-            lv = lv[1]
-        if not lv:
+        lval = self.lval(kind, data, pos)
+        if type(lval) is tuple:
+            lval = lval[1]
+        if not lval:
             return False
-        rv = self.rval(kind, data, pos)
-        if type(rv) is tuple:
-            rv = rv[1]
-        return bool(rv)
+        rval = self.rval(kind, data, pos)
+        if type(rval) is tuple:
+            rval = rval[1]
+        return bool(rval)
     def __repr__(self):
         return '%s and %s' % (self.lval, self.rval)
 
 class EqualsOperator(object):
+    """The equality operator `=`."""
     __slots__ = ['lval', 'rval']
     def __init__(self, lval, rval):
         self.lval = lval
         self.rval = rval
     def __call__(self, kind, data, pos):
-        lv = self.lval(kind, data, pos)
-        if type(lv) is tuple:
-            lv = lv[1]
-        rv = self.rval(kind, data, pos)
-        if type(rv) is tuple:
-            rv = rv[1]
-        return lv == rv
+        lval = self.lval(kind, data, pos)
+        if type(lval) is tuple:
+            lval = lval[1]
+        rval = self.rval(kind, data, pos)
+        if type(rval) is tuple:
+            rval = rval[1]
+        return lval == rval
     def __repr__(self):
         return '%s=%s' % (self.lval, self.rval)
 
 class NotEqualsOperator(object):
+    """The equality operator `!=`."""
     __slots__ = ['lval', 'rval']
     def __init__(self, lval, rval):
         self.lval = lval
         self.rval = rval
     def __call__(self, kind, data, pos):
-        lv = self.lval(kind, data, pos)
-        if type(lv) is tuple:
-            lv = lv[1]
-        rv = self.rval(kind, data, pos)
-        if type(rv) is tuple:
-            rv = rv[1]
-        return lv != rv
+        lval = self.lval(kind, data, pos)
+        if type(lval) is tuple:
+            lval = lval[1]
+        rval = self.rval(kind, data, pos)
+        if type(rval) is tuple:
+            rval = rval[1]
+        return lval != rval
     def __repr__(self):
         return '%s!=%s' % (self.lval, self.rval)
 
 class OrOperator(object):
+    """The boolean operator `or`."""
     __slots__ = ['lval', 'rval']
     def __init__(self, lval, rval):
         self.lval = lval
         self.rval = rval
     def __call__(self, kind, data, pos):
-        lv = self.lval(kind, data, pos)
-        if type(lv) is tuple:
-            lv = lv[1]
-        if lv:
+        lval = self.lval(kind, data, pos)
+        if type(lval) is tuple:
+            lval = lval[1]
+        if lval:
             return True
-        rv = self.rval(kind, data, pos)
-        if type(rv) is tuple:
-            rv = rv[1]
-        return bool(rv)
+        rval = self.rval(kind, data, pos)
+        if type(rval) is tuple:
+            rval = rval[1]
+        return bool(rval)
     def __repr__(self):
         return '%s or %s' % (self.lval, self.rval)
 

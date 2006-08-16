@@ -166,6 +166,7 @@ class Directive(object):
 
 
 def _apply_directives(stream, ctxt, directives):
+    """Apply the given directives to the stream."""
     if directives:
         stream = directives[0](iter(stream), ctxt, directives[1:])
     return stream

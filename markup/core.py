@@ -216,7 +216,7 @@ class Attributes(list):
         return default
 
     def remove(self, name):
-        """Removes the attribute with the specified name.
+        """Remove the attribute with the specified name.
         
         If no such attribute is found, this method does nothing.
         """
@@ -226,7 +226,7 @@ class Attributes(list):
                 break
 
     def set(self, name, value):
-        """Sets the specified attribute to the given value.
+        """Set the specified attribute to the given value.
         
         If an attribute with the specified name is already in the list, the
         value of the existing entry is updated. Otherwise, a new attribute is
@@ -240,6 +240,11 @@ class Attributes(list):
             self.append((QName(name), value))
 
     def totuple(self):
+        """Return the attributes as a markup event.
+        
+        The returned event is a TEXT event, the data is the value of all
+        attributes joined together.
+        """
         return TEXT, u''.join([x[1] for x in self]), (None, -1, -1)
 
 

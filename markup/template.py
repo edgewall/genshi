@@ -21,7 +21,6 @@ except ImportError:
         def popleft(self): return self.pop(0)
 import compiler
 import os
-import posixpath
 import re
 from StringIO import StringIO
 
@@ -31,9 +30,8 @@ from markup.eval import Expression
 from markup.input import XMLParser
 from markup.path import Path
 
-__all__ = ['Context', 'BadDirectiveError', 'TemplateError',
-           'TemplateSyntaxError', 'TemplateNotFound', 'Template',
-           'TemplateLoader']
+__all__ = ['BadDirectiveError', 'TemplateError', 'TemplateSyntaxError',
+           'TemplateNotFound', 'Template', 'TemplateLoader']
 
 
 class TemplateError(Exception):
@@ -105,6 +103,7 @@ class Context(object):
         self.frames = deque([data])
         self.pop = self.frames.popleft
         self.push = self.frames.appendleft
+        self._match_templates = []
 
     def __repr__(self):
         return repr(self.frames)
@@ -167,6 +166,7 @@ class Directive(object):
 
 
 def _apply_directives(stream, ctxt, directives):
+    """Apply the given directives to the stream."""
     if directives:
         stream = directives[0](iter(stream), ctxt, directives[1:])
     return stream
@@ -178,11 +178,10 @@ class AttrsDirective(Directive):
     The value of the `py:attrs` attribute should be a dictionary. The keys and
     values of that dictionary will be added as attributes to the element:
     
-    >>> ctxt = Context(foo={'class': 'collapse'})
     >>> tmpl = Template('''<ul xmlns:py="http://markup.edgewall.org/">
     ...   <li py:attrs="foo">Bar</li>
     ... </ul>''')
-    >>> print tmpl.generate(ctxt)
+    >>> print tmpl.generate(foo={'class': 'collapse'})
     <ul>
       <li class="collapse">Bar</li>
     </ul>
@@ -190,8 +189,7 @@ class AttrsDirective(Directive):
     If the value evaluates to `None` (or any other non-truth value), no
     attributes are added:
     
-    >>> ctxt = Context(foo=None)
-    >>> print tmpl.generate(ctxt)
+    >>> print tmpl.generate(foo=None)
     <ul>
       <li>Bar</li>
     </ul>
@@ -229,11 +227,10 @@ class ContentDirective(Directive):
     This directive replaces the content of the element with the result of
     evaluating the value of the `py:content` attribute:
     
-    >>> ctxt = Context(bar='Bye')
     >>> tmpl = Template('''<ul xmlns:py="http://markup.edgewall.org/">
     ...   <li py:content="bar">Hello</li>
     ... </ul>''')
-    >>> print tmpl.generate(ctxt)
+    >>> print tmpl.generate(bar='Bye')
     <ul>
       <li>Bye</li>
     </ul>
@@ -266,14 +263,13 @@ class DefDirective(Directive):
     A named template function can be used just like a normal Python function
     from template expressions:
     
-    >>> ctxt = Context(bar='Bye')
     >>> tmpl = Template('''<div xmlns:py="http://markup.edgewall.org/">
     ...   <p py:def="echo(greeting, name='world')" class="message">
     ...     ${greeting}, ${name}!
     ...   </p>
     ...   ${echo('Hi', name='you')}
     ... </div>''')
-    >>> print tmpl.generate(ctxt)
+    >>> print tmpl.generate(bar='Bye')
     <div>
       <p class="message">
         Hi, you!
@@ -283,21 +279,20 @@ class DefDirective(Directive):
     If a function does not require parameters, the parenthesis can be omitted
     both when defining and when calling it:
     
-    >>> ctxt = Context(bar='Bye')
     >>> tmpl = Template('''<div xmlns:py="http://markup.edgewall.org/">
     ...   <p py:def="helloworld" class="message">
     ...     Hello, world!
     ...   </p>
     ...   ${helloworld}
     ... </div>''')
-    >>> print tmpl.generate(ctxt)
+    >>> print tmpl.generate(bar='Bye')
     <div>
       <p class="message">
         Hello, world!
       </p>
     </div>
     """
-    __slots__ = ['name', 'args', 'defaults', 'stream', 'directives']
+    __slots__ = ['name', 'args', 'defaults']
 
     ATTRIBUTE = 'function'
 
@@ -316,38 +311,43 @@ class DefDirective(Directive):
                     self.args.append(arg.name)
         else:
             self.name = ast.name
-        self.stream, self.directives = [], []
 
     def __call__(self, stream, ctxt, directives):
-        self.stream = list(stream)
-        self.directives = directives
-        ctxt[self.name] = lambda *args, **kwargs: self._exec(ctxt, *args,
-                                                             **kwargs)
-        return []
+        stream = list(stream)
 
-    def _exec(self, ctxt, *args, **kwargs):
-        scope = {}
-        args = list(args) # make mutable
-        for name in self.args:
-            if args:
-                scope[name] = args.pop(0)
-            else:
-                scope[name] = kwargs.pop(name, self.defaults.get(name))
-        ctxt.push(scope)
-        for event in _apply_directives(self.stream, ctxt, self.directives):
-            yield event
-        ctxt.pop()
+        def function(*args, **kwargs):
+            scope = {}
+            args = list(args) # make mutable
+            for name in self.args:
+                if args:
+                    scope[name] = args.pop(0)
+                else:
+                    scope[name] = kwargs.pop(name, self.defaults.get(name))
+            ctxt.push(scope)
+            for event in _apply_directives(stream, ctxt, directives):
+                yield event
+            ctxt.pop()
+        try:
+            function.__name__ = self.name
+        except TypeError:
+            # Function name can't be set in Python 2.3 
+            pass
+
+        # Store the function reference in the bottom context frame so that it
+        # doesn't get popped off before processing the template has finished
+        ctxt.frames[-1][self.name] = function
+
+        return []
 
 
 class ForDirective(Directive):
     """Implementation of the `py:for` template directive for repeating an
     element based on an iterable in the context data.
     
-    >>> ctxt = Context(items=[1, 2, 3])
     >>> tmpl = Template('''<ul xmlns:py="http://markup.edgewall.org/">
     ...   <li py:for="item in items">${item}</li>
     ... </ul>''')
-    >>> print tmpl.generate(ctxt)
+    >>> print tmpl.generate(items=[1, 2, 3])
     <ul>
       <li>1</li><li>2</li><li>3</li>
     </ul>
@@ -390,11 +390,10 @@ class IfDirective(Directive):
     """Implementation of the `py:if` template directive for conditionally
     excluding elements from being output.
     
-    >>> ctxt = Context(foo=True, bar='Hello')
     >>> tmpl = Template('''<div xmlns:py="http://markup.edgewall.org/">
     ...   <b py:if="foo">${bar}</b>
     ... </div>''')
-    >>> print tmpl.generate(ctxt)
+    >>> print tmpl.generate(foo=True, bar='Hello')
     <div>
       <b>Hello</b>
     </div>
@@ -450,11 +449,10 @@ class ReplaceDirective(Directive):
     This directive replaces the element with the result of evaluating the
     value of the `py:replace` attribute:
     
-    >>> ctxt = Context(bar='Bye')
     >>> tmpl = Template('''<div xmlns:py="http://markup.edgewall.org/">
     ...   <span py:replace="bar">Hello</span>
     ... </div>''')
-    >>> print tmpl.generate(ctxt)
+    >>> print tmpl.generate(bar='Bye')
     <div>
       Bye
     </div>
@@ -462,11 +460,10 @@ class ReplaceDirective(Directive):
     This directive is equivalent to `py:content` combined with `py:strip`,
     providing a less verbose way to achieve the same effect:
     
-    >>> ctxt = Context(bar='Bye')
     >>> tmpl = Template('''<div xmlns:py="http://markup.edgewall.org/">
     ...   <span py:content="bar" py:strip="">Hello</span>
     ... </div>''')
-    >>> print tmpl.generate(ctxt)
+    >>> print tmpl.generate(bar='Bye')
     <div>
       Bye
     </div>
@@ -538,14 +535,13 @@ class ChooseDirective(Directive):
     If no `py:when` directive is matched then the fallback directive
     `py:otherwise` will be used.
     
-    >>> ctxt = Context()
     >>> tmpl = Template('''<div xmlns:py="http://markup.edgewall.org/"
     ...   py:choose="">
     ...   <span py:when="0 == 1">0</span>
     ...   <span py:when="1 == 1">1</span>
     ...   <span py:otherwise="">2</span>
     ... </div>''')
-    >>> print tmpl.generate(ctxt)
+    >>> print tmpl.generate()
     <div>
       <span>1</span>
     </div>
@@ -558,7 +554,7 @@ class ChooseDirective(Directive):
     ...   <span py:when="1">1</span>
     ...   <span py:when="2">2</span>
     ... </div>''')
-    >>> print tmpl.generate(ctxt)
+    >>> print tmpl.generate()
     <div>
       <span>2</span>
     </div>
@@ -627,7 +623,7 @@ class WithDirective(Directive):
     >>> tmpl = Template('''<div xmlns:py="http://markup.edgewall.org/">
     ...   <span py:with="y=7; z=x+10">$x $y $z</span>
     ... </div>''')
-    >>> print tmpl.generate(Context(x=42))
+    >>> print tmpl.generate(x=42)
     <div>
       <span>42 7 52</span>
     </div>
@@ -839,17 +835,25 @@ class Template(object):
         return _interpolate(text, [cls._FULL_EXPR_RE, cls._SHORT_EXPR_RE])
     _interpolate = classmethod(_interpolate)
 
-    def generate(self, ctxt=None):
+    def generate(self, *args, **kwargs):
         """Apply the template to the given context data.
         
-        @param ctxt: a `Context` instance containing the data for the template
+        Any keyword arguments are made available to the template as context
+        data.
+        
+        Only one positional argument is accepted: if it is provided, it must be
+        an instance of the `Context` class, and keyword arguments are ignored.
+        This calling style is used for internal processing.
+        
         @return: a markup event stream representing the result of applying
             the template to the context data.
         """
-        if ctxt is None:
-            ctxt = Context()
-        if not hasattr(ctxt, '_match_templates'):
-            ctxt._match_templates = []
+        if args:
+            assert len(args) == 1
+            ctxt = args[0]
+            assert isinstance(ctxt, Context)
+        else:
+            ctxt = Context(**kwargs)
 
         stream = self.stream
         for filter_ in [self._eval, self._match, self._flatten] + self.filters:
@@ -1008,6 +1012,8 @@ class TemplateLoader(object):
     
     >>> loader.load(os.path.basename(path)) is template
     True
+    
+    >>> os.remove(path)
     """
     def __init__(self, search_path=None, auto_reload=False):
         """Create the template laoder.
@@ -1052,7 +1058,7 @@ class TemplateLoader(object):
         from markup.filters import IncludeFilter
 
         if relative_to:
-            filename = posixpath.join(posixpath.dirname(relative_to), filename)
+            filename = os.path.join(os.path.dirname(relative_to), filename)
         filename = os.path.normpath(filename)
 
         # First check the cache to avoid reparsing the same file

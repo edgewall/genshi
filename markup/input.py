@@ -68,6 +68,8 @@ class XMLParser(object):
         parser = expat.ParserCreate('utf-8', '}')
         parser.buffer_text = True
         parser.returns_unicode = True
+        parser.ordered_attributes = True
+
         parser.StartElementHandler = self._handle_start
         parser.EndElementHandler = self._handle_end
         parser.CharacterDataHandler = self._handle_data
@@ -144,7 +146,7 @@ class XMLParser(object):
                 self.expat.CurrentColumnNumber)
 
     def _handle_start(self, tag, attrib):
-        self._enqueue(START, (QName(tag), Attributes(attrib.items())))
+        self._enqueue(START, (QName(tag), Attributes(zip(*[iter(attrib)] * 2))))
 
     def _handle_end(self, tag):
         self._enqueue(END, QName(tag))

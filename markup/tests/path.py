@@ -177,8 +177,8 @@ class PathTestCase(unittest.TestCase):
 
     def test_3step(self):
         xml = XML('<root><foo><bar/></foo></root>')
-        path = Path('root/foo/*')
-        self.assertEqual('<Path "child::root/child::foo/child::*">',
+        path = Path('foo/*')
+        self.assertEqual('<Path "child::foo/child::*">',
                          repr(path))
         self.assertEqual('<bar/>', path.select(xml).render())
 
@@ -257,30 +257,138 @@ class PathTestCase(unittest.TestCase):
     def test_predicate_attr(self):
         xml = XML('<root><item/><item important="very"/></root>')
         self.assertEqual('<item important="very"/>',
-                         Path('root/item[@important]').select(xml).render())
+                         Path('item[@important]').select(xml).render())
         self.assertEqual('<item important="very"/>',
-                         Path('root/item[@important="very"]').select(xml).render())
+                         Path('item[@important="very"]').select(xml).render())
 
     def test_predicate_attr_equality(self):
         xml = XML('<root><item/><item important="notso"/></root>')
         self.assertEqual('',
-                         Path('root/item[@important="very"]').select(xml).render())
+                         Path('item[@important="very"]').select(xml).render())
         self.assertEqual('<item/><item important="notso"/>',
-                         Path('root/item[@important!="very"]').select(xml).render())
+                         Path('item[@important!="very"]').select(xml).render())
+
+    def test_predicate_attr_greater_than(self):
+        xml = XML('<root><item priority="3"/></root>')
+        self.assertEqual('',
+                         Path('item[@priority>3]').select(xml).render())
+        self.assertEqual('<item priority="3"/>',
+                         Path('item[@priority>2]').select(xml).render())
+
+    def test_predicate_attr_less_than(self):
+        xml = XML('<root><item priority="3"/></root>')
+        self.assertEqual('',
+                         Path('item[@priority<3]').select(xml).render())
+        self.assertEqual('<item priority="3"/>',
+                         Path('item[@priority<4]').select(xml).render())
 
     def test_predicate_attr_and(self):
         xml = XML('<root><item/><item important="very"/></root>')
-        path = Path('root/item[@important and @important="very"]')
+        path = Path('item[@important and @important="very"]')
         self.assertEqual('<item important="very"/>', path.select(xml).render())
-        path = Path('root/item[@important and @important="notso"]')
+        path = Path('item[@important and @important="notso"]')
         self.assertEqual('', path.select(xml).render())
 
     def test_predicate_attr_or(self):
         xml = XML('<root><item/><item important="very"/></root>')
-        path = Path('root/item[@urgent or @important]')
+        path = Path('item[@urgent or @important]')
         self.assertEqual('<item important="very"/>', path.select(xml).render())
-        path = Path('root/item[@urgent or @notso]')
+        path = Path('item[@urgent or @notso]')
         self.assertEqual('', path.select(xml).render())
+
+    def test_predicate_boolean_function(self):
+        xml = XML('<root><foo>bar</foo></root>')
+        path = Path('*[boolean("")]')
+        self.assertEqual('', path.select(xml).render())
+        path = Path('*[boolean("yo")]')
+        self.assertEqual('<foo>bar</foo>', path.select(xml).render())
+        path = Path('*[boolean(0)]')
+        self.assertEqual('', path.select(xml).render())
+        path = Path('*[boolean(42)]')
+        self.assertEqual('<foo>bar</foo>', path.select(xml).render())
+        path = Path('*[boolean(false())]')
+        self.assertEqual('', path.select(xml).render())
+        path = Path('*[boolean(true())]')
+        self.assertEqual('<foo>bar</foo>', path.select(xml).render())
+
+    def test_predicate_ceil_function(self):
+        xml = XML('<root><foo>bar</foo></root>')
+        path = Path('*[ceiling("4.5")=5]')
+        self.assertEqual('<foo>bar</foo>', path.select(xml).render())
+
+    def test_predicate_concat_function(self):
+        xml = XML('<root><foo>bar</foo></root>')
+        path = Path('*[name()=concat("f", "oo")]')
+        self.assertEqual('<foo>bar</foo>', path.select(xml).render())
+
+    def test_predicate_contains_function(self):
+        xml = XML('<root><foo>bar</foo></root>')
+        path = Path('*[contains(name(), "oo")]')
+        self.assertEqual('<foo>bar</foo>', path.select(xml).render())
+
+    def test_predicate_false_function(self):
+        xml = XML('<root><foo>bar</foo></root>')
+        path = Path('*[false()]')
+        self.assertEqual('', path.select(xml).render())
+
+    def test_predicate_floor_function(self):
+        xml = XML('<root><foo>bar</foo></root>')
+        path = Path('*[floor("4.5")=4]')
+        self.assertEqual('<foo>bar</foo>', path.select(xml).render())
+
+    def test_predicate_normalize_space_function(self):
+        xml = XML('<root><foo>bar</foo></root>')
+        path = Path('*[normalize-space(" foo   bar  ")="foo bar"]')
+        self.assertEqual('<foo>bar</foo>', path.select(xml).render())
+
+    def test_predicate_number_function(self):
+        xml = XML('<root><foo>bar</foo></root>')
+        path = Path('*[number("3.0")=3]')
+        self.assertEqual('<foo>bar</foo>', path.select(xml).render())
+
+    def test_predicate_round_function(self):
+        xml = XML('<root><foo>bar</foo></root>')
+        path = Path('*[round("4.4")=4]')
+        self.assertEqual('<foo>bar</foo>', path.select(xml).render())
+        path = Path('*[round("4.6")=5]')
+        self.assertEqual('<foo>bar</foo>', path.select(xml).render())
+
+    def test_predicate_starts_with_function(self):
+        xml = XML('<root><foo>bar</foo></root>')
+        path = Path('*[starts-with(name(), "f")]')
+        self.assertEqual('<foo>bar</foo>', path.select(xml).render())
+
+    def test_predicate_string_length_function(self):
+        xml = XML('<root><foo>bar</foo></root>')
+        path = Path('*[string-length(name())=3]')
+        self.assertEqual('<foo>bar</foo>', path.select(xml).render())
+
+    def test_predicate_substring_function(self):
+        xml = XML('<root><foo>bar</foo></root>')
+        path = Path('*[substring(name(), 1)="oo"]')
+        self.assertEqual('<foo>bar</foo>', path.select(xml).render())
+        path = Path('*[substring(name(), 1, 1)="o"]')
+        self.assertEqual('<foo>bar</foo>', path.select(xml).render())
+
+    def test_predicate_substring_after_function(self):
+        xml = XML('<root><foo>bar</foo></root>')
+        path = Path('*[substring-after(name(), "f")="oo"]')
+        self.assertEqual('<foo>bar</foo>', path.select(xml).render())
+
+    def test_predicate_substring_before_function(self):
+        xml = XML('<root><foo>bar</foo></root>')
+        path = Path('*[substring-before(name(), "oo")="f"]')
+        self.assertEqual('<foo>bar</foo>', path.select(xml).render())
+
+    def test_predicate_translate_function(self):
+        xml = XML('<root><foo>bar</foo></root>')
+        path = Path('*[translate(name(), "fo", "ba")="baa"]')
+        self.assertEqual('<foo>bar</foo>', path.select(xml).render())
+
+    def test_predicate_true_function(self):
+        xml = XML('<root><foo>bar</foo></root>')
+        path = Path('*[true()]')
+        self.assertEqual('<foo>bar</foo>', path.select(xml).render())
 
 
 def suite():

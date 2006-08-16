@@ -12,11 +12,14 @@
 # history and logs, available at http://markup.edgewall.org/log/.
 
 import doctest
+import os
 import unittest
+import shutil
 import sys
+import tempfile
 
 from markup.core import Markup, Stream
-from markup.template import BadDirectiveError, Context, Template, \
+from markup.template import BadDirectiveError, Template, TemplateLoader, \
                             TemplateSyntaxError
 
 
@@ -33,7 +36,7 @@ class AttrsDirectiveTestCase(unittest.TestCase):
         items = [{'id': 1, 'class': 'foo'}, {'id': 2, 'class': 'bar'}]
         self.assertEqual("""<doc>
           <elem id="1" class="foo"/><elem id="2" class="bar"/>
-        </doc>""", str(tmpl.generate(Context(items=items))))
+        </doc>""", str(tmpl.generate(items=items)))
 
     def test_update_existing_attr(self):
         """
@@ -182,6 +185,24 @@ class DefDirectiveTestCase(unittest.TestCase):
             <b>foo</b>
         </doc>""", str(tmpl.generate()))
 
+    def test_nested_defs(self):
+        """
+        Verify that a template function defined inside a conditional block can
+        be called from outside that block.
+        """
+        tmpl = Template("""<doc xmlns:py="http://markup.edgewall.org/">
+          <py:if test="semantic">
+            <strong py:def="echo(what)">${what}</strong>
+          </py:if>
+          <py:if test="not semantic">
+            <b py:def="echo(what)">${what}</b>
+          </py:if>
+          ${echo('foo')}
+        </doc>""")
+        self.assertEqual("""<doc>
+          <strong>foo</strong>
+        </doc>""", str(tmpl.generate(semantic=True)))
+
 
 class ForDirectiveTestCase(unittest.TestCase):
     """Tests for the `py:for` template directive."""
@@ -202,7 +223,7 @@ class ForDirectiveTestCase(unittest.TestCase):
             <b>3</b>
             <b>4</b>
             <b>5</b>
-        </doc>""", str(tmpl.generate(Context(items=range(1, 6)))))
+        </doc>""", str(tmpl.generate(items=range(1, 6))))
 
     def test_as_element(self):
         """
@@ -219,7 +240,7 @@ class ForDirectiveTestCase(unittest.TestCase):
             <b>3</b>
             <b>4</b>
             <b>5</b>
-        </doc>""", str(tmpl.generate(Context(items=range(1, 6)))))
+        </doc>""", str(tmpl.generate(items=range(1, 6))))
 
 
 class IfDirectiveTestCase(unittest.TestCase):
@@ -235,7 +256,7 @@ class IfDirectiveTestCase(unittest.TestCase):
         </doc>""")
         self.assertEqual("""<doc>
           Hello
-        </doc>""", str(tmpl.generate(Context(foo=True, bar='Hello'))))
+        </doc>""", str(tmpl.generate(foo=True, bar='Hello')))
 
     def test_as_element(self):
         """
@@ -246,7 +267,7 @@ class IfDirectiveTestCase(unittest.TestCase):
         </doc>""")
         self.assertEqual("""<doc>
           Hello
-        </doc>""", str(tmpl.generate(Context(foo=True, bar='Hello'))))
+        </doc>""", str(tmpl.generate(foo=True, bar='Hello')))
 
 
 class MatchDirectiveTestCase(unittest.TestCase):
@@ -427,7 +448,7 @@ class WithDirectiveTestCase(unittest.TestCase):
           42
           84
           42
-        </div>""", str(tmpl.generate(Context(x=42))))
+        </div>""", str(tmpl.generate(x=42)))
 
     def test_as_element(self):
         tmpl = Template("""<div xmlns:py="http://markup.edgewall.org/">
@@ -435,7 +456,7 @@ class WithDirectiveTestCase(unittest.TestCase):
         </div>""")
         self.assertEqual("""<div>
           84
-        </div>""", str(tmpl.generate(Context(x=42))))
+        </div>""", str(tmpl.generate(x=42)))
 
 
 class TemplateTestCase(unittest.TestCase):
@@ -488,9 +509,8 @@ class TemplateTestCase(unittest.TestCase):
         self.assertEqual(' baz', parts[2][1])
 
     def test_interpolate_mixed3(self):
-        ctxt = Context(var=42)
         tmpl = Template('<root> ${var} $var</root>')
-        self.assertEqual('<root> 42 42</root>', str(tmpl.generate(ctxt)))
+        self.assertEqual('<root> 42 42</root>', str(tmpl.generate(var=42)))
 
     def test_interpolate_non_string_attrs(self):
         tmpl = Template('<root attr="${1}"/>')
@@ -498,8 +518,7 @@ class TemplateTestCase(unittest.TestCase):
 
     def test_interpolate_list_result(self):
         tmpl = Template('<root>$foo</root>')
-        ctxt = Context(foo=('buzz',))
-        self.assertEqual('<root>buzz</root>', str(tmpl.generate(ctxt)))
+        self.assertEqual('<root>buzz</root>', str(tmpl.generate(foo=('buzz',))))
 
     def test_empty_attr(self):
         tmpl = Template('<root attr=""/>')
@@ -560,7 +579,7 @@ class TemplateTestCase(unittest.TestCase):
         </div>""")
         self.assertEqual("""<div>
           <b>foo</b>
-        </div>""", str(tmpl.generate(Context(myvar=Markup('<b>foo</b>')))))
+        </div>""", str(tmpl.generate(myvar=Markup('<b>foo</b>'))))
 
     def test_text_noescape_quotes(self):
         """
@@ -571,7 +590,7 @@ class TemplateTestCase(unittest.TestCase):
         </div>""")
         self.assertEqual("""<div>
           "foo"
-        </div>""", str(tmpl.generate(Context(myvar='"foo"'))))
+        </div>""", str(tmpl.generate(myvar='"foo"')))
 
     def test_attr_escape_quotes(self):
         """
@@ -582,7 +601,7 @@ class TemplateTestCase(unittest.TestCase):
         </div>""")
         self.assertEqual("""<div>
           <elem class="&#34;foo&#34;"/>
-        </div>""", str(tmpl.generate(Context(myvar='"foo"'))))
+        </div>""", str(tmpl.generate(myvar='"foo"')))
 
     def test_directive_element(self):
         tmpl = Template("""<div xmlns:py="http://markup.edgewall.org/">
@@ -590,7 +609,7 @@ class TemplateTestCase(unittest.TestCase):
         </div>""")
         self.assertEqual("""<div>
           bar
-        </div>""", str(tmpl.generate(Context(myvar='"foo"'))))
+        </div>""", str(tmpl.generate(myvar='"foo"')))
 
     def test_normal_comment(self):
         tmpl = Template("""<div xmlns:py="http://markup.edgewall.org/">
@@ -609,10 +628,84 @@ class TemplateTestCase(unittest.TestCase):
         </div>""", str(tmpl.generate()))
 
 
+class TemplateLoaderTestCase(unittest.TestCase):
+    """Tests for the template loader."""
+
+    def setUp(self):
+        self.dirname = tempfile.mkdtemp(suffix='markup_test')
+
+    def tearDown(self):
+        shutil.rmtree(self.dirname)
+
+    def test_relative_include_samedir(self):
+        file1 = open(os.path.join(self.dirname, 'tmpl1.html'), 'w')
+        try:
+            file1.write("""<div>Included</div>""")
+        finally:
+            file1.close()
+
+        file2 = open(os.path.join(self.dirname, 'tmpl2.html'), 'w')
+        try:
+            file2.write("""<html xmlns:xi="http://www.w3.org/2001/XInclude">
+              <xi:include href="tmpl1.html" />
+            </html>""")
+        finally:
+            file2.close()
+
+        loader = TemplateLoader([self.dirname])
+        tmpl = loader.load('tmpl2.html')
+        self.assertEqual("""<html>
+              <div>Included</div>
+            </html>""", tmpl.generate().render())
+
+    def test_relative_include_subdir(self):
+        os.mkdir(os.path.join(self.dirname, 'sub'))
+        file1 = open(os.path.join(self.dirname, 'sub', 'tmpl1.html'), 'w')
+        try:
+            file1.write("""<div>Included</div>""")
+        finally:
+            file1.close()
+
+        file2 = open(os.path.join(self.dirname, 'tmpl2.html'), 'w')
+        try:
+            file2.write("""<html xmlns:xi="http://www.w3.org/2001/XInclude">
+              <xi:include href="sub/tmpl1.html" />
+            </html>""")
+        finally:
+            file2.close()
+
+        loader = TemplateLoader([self.dirname])
+        tmpl = loader.load('tmpl2.html')
+        self.assertEqual("""<html>
+              <div>Included</div>
+            </html>""", tmpl.generate().render())
+
+    def test_relative_include_parentdir(self):
+        file1 = open(os.path.join(self.dirname, 'tmpl1.html'), 'w')
+        try:
+            file1.write("""<div>Included</div>""")
+        finally:
+            file1.close()
+
+        os.mkdir(os.path.join(self.dirname, 'sub'))
+        file2 = open(os.path.join(self.dirname, 'sub', 'tmpl2.html'), 'w')
+        try:
+            file2.write("""<html xmlns:xi="http://www.w3.org/2001/XInclude">
+              <xi:include href="../tmpl1.html" />
+            </html>""")
+        finally:
+            file2.close()
+
+        loader = TemplateLoader([self.dirname])
+        tmpl = loader.load('sub/tmpl2.html')
+        self.assertEqual("""<html>
+              <div>Included</div>
+            </html>""", tmpl.generate().render())
+
+
 def suite():
     suite = unittest.TestSuite()
     suite.addTest(doctest.DocTestSuite(Template.__module__))
-    suite.addTest(unittest.makeSuite(TemplateTestCase, 'test'))
     suite.addTest(unittest.makeSuite(AttrsDirectiveTestCase, 'test'))
     suite.addTest(unittest.makeSuite(ChooseDirectiveTestCase, 'test'))
     suite.addTest(unittest.makeSuite(DefDirectiveTestCase, 'test'))
@@ -621,6 +714,8 @@ def suite():
     suite.addTest(unittest.makeSuite(MatchDirectiveTestCase, 'test'))
     suite.addTest(unittest.makeSuite(StripDirectiveTestCase, 'test'))
     suite.addTest(unittest.makeSuite(WithDirectiveTestCase, 'test'))
+    suite.addTest(unittest.makeSuite(TemplateTestCase, 'test'))
+    suite.addTest(unittest.makeSuite(TemplateLoaderTestCase, 'test'))
     return suite
 
 if __name__ == '__main__':

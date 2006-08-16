@@ -91,7 +91,7 @@ class Stream(object):
         generator = self.serialize(method=method, **kwargs)
         output = u''.join(list(generator))
         if encoding is not None:
-            return output.encode(encoding)
+            return output.encode(encoding, 'xmlcharrefreplace')
         return output
 
     def select(self, path):
@@ -113,6 +113,9 @@ class Stream(object):
         
         @param method: determines how the stream is serialized; can be either
                        "xml", "xhtml", or "html", or a custom serializer class
+
+        Any additional keyword arguments are passed to the serializer, and thus
+        depend on the `method` parameter value.
         """
         from markup import output
         cls = method
@@ -218,7 +221,7 @@ class Attributes(list):
         return default
 
     def remove(self, name):
-        """Removes the attribute with the specified name.
+        """Remove the attribute with the specified name.
         
         If no such attribute is found, this method does nothing.
         """
@@ -228,7 +231,7 @@ class Attributes(list):
                 break
 
     def set(self, name, value):
-        """Sets the specified attribute to the given value.
+        """Set the specified attribute to the given value.
         
         If an attribute with the specified name is already in the list, the
         value of the existing entry is updated. Otherwise, a new attribute is
@@ -242,6 +245,11 @@ class Attributes(list):
             self.append((QName(name), value))
 
     def totuple(self):
+        """Return the attributes as a markup event.
+        
+        The returned event is a TEXT event, the data is the value of all
+        attributes joined together.
+        """
         return TEXT, u''.join([x[1] for x in self]), (None, -1, -1)
 
 
@@ -443,6 +451,7 @@ class Namespace(object):
         return self.uri
 
 
+# The namespace used by attributes such as xml:lang and xml:space
 XML_NAMESPACE = Namespace('http://www.w3.org/XML/1998/namespace')
 
 

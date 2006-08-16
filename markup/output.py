@@ -231,7 +231,7 @@ class XHTMLSerializer(XMLSerializer):
                         buf += [' ', attrname, '="', escape(value), '"']
                 ns_attrib = []
 
-                if (not tag.namespace or tag in namespace) and \
+                if (tag.namespace and tag not in namespace) or \
                         tagname in empty_elems:
                     kind, data, pos = stream.next()
                     if kind is END:

@@ -345,6 +345,10 @@ class PathTestCase(unittest.TestCase):
         xml = XML('<root><foo>bar</foo></root>')
         path = Path('*[number("3.0")=3]')
         self.assertEqual('<foo>bar</foo>', path.select(xml).render())
+        path = Path('*[number("3.0")=3.0]')
+        self.assertEqual('<foo>bar</foo>', path.select(xml).render())
+        path = Path('*[number("0.1")=.1]')
+        self.assertEqual('<foo>bar</foo>', path.select(xml).render())
 
     def test_predicate_round_function(self):
         xml = XML('<root><foo>bar</foo></root>')

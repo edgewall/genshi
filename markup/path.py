@@ -224,14 +224,15 @@ class PathParser(object):
     _QUOTES = (("'", "'"), ('"', '"'))
     _TOKENS = ('::', ':', '..', '.', '//', '/', '[', ']', '()', '(', ')', '@',
                '=', '!=', '!', '|', ',', '>=', '>', '<=', '<')
-    _tokenize = re.compile('("[^"]*")|(\'[^\']*\')|(%s)|([^%s\s]+)|\s+' % (
+    _tokenize = re.compile('("[^"]*")|(\'[^\']*\')|((?:\d+)?\.\d+)|(%s)|([^%s\s]+)|\s+' % (
                            '|'.join([re.escape(t) for t in _TOKENS]),
                            ''.join([re.escape(t[0]) for t in _TOKENS]))).findall
 
     def __init__(self, text, filename=None, lineno=-1):
         self.filename = filename
         self.lineno = lineno
-        self.tokens = filter(None, [a or b or c or d for a, b, c, d in
+        self.tokens = filter(None, [dqstr or sqstr or number or token or name
+                                    for dqstr, sqstr, number, token, name in
                                     self._tokenize(text)])
         self.pos = 0
 
@@ -401,7 +402,7 @@ class PathParser(object):
         if len(token) > 1 and (token[0], token[-1]) in self._QUOTES:
             self.next_token()
             return StringLiteral(token[1:-1])
-        elif token[0].isdigit():
+        elif token[0].isdigit() or token[0] == '.':
             self.next_token()
             return NumberLiteral(float(token))
         elif not self.at_end and self.peek_token().startswith('('):

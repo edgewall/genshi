@@ -16,6 +16,12 @@ http://svn.edgewall.org/repos/markup/tags/0.2.0/
  * Output can be encoded using legacy codecs such as ISO-8859-1, any character
    not representable in the chosen encoding gets replaced by the corresponding
    XML character reference.
+ * String literals in XPath expressions that contain spaces are now parsed
+   as expected.
+ * Added support for the XPath functions boolean(), ceiling(), concat(),
+   contains(), false(), floor(), normalize-space(), number(), starts-with(),
+   string-length(), substring(), substring-after(), substring-before(),
+   translate(), and true().
 
 
 Version 0.1

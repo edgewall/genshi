@@ -756,7 +756,6 @@ class TrueFunction(Function):
     def __repr__(self):
         return 'true()'
 
-
 _function_map = {'boolean': BooleanFunction, 'ceiling': CeilingFunction,
                  'concat': ConcatFunction, 'contains': ContainsFunction,
                  'false': FalseFunction, 'floor': FloorFunction,

@@ -21,7 +21,6 @@ except ImportError:
         def popleft(self): return self.pop(0)
 import compiler
 import os
-import posixpath
 import re
 from StringIO import StringIO
 
@@ -1052,7 +1051,7 @@ class TemplateLoader(object):
         from markup.filters import IncludeFilter
 
         if relative_to:
-            filename = posixpath.join(posixpath.dirname(relative_to), filename)
+            filename = os.path.join(os.path.dirname(relative_to), filename)
         filename = os.path.normpath(filename)
 
         # First check the cache to avoid reparsing the same file

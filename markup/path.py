@@ -223,7 +223,7 @@ class PathParser(object):
 
     _QUOTES = (("'", "'"), ('"', '"'))
     _TOKENS = ('::', ':', '..', '.', '//', '/', '[', ']', '()', '(', ')', '@',
-               '=', '!=', '!', '|', ',')
+               '=', '!=', '!', '|', ',', '>=', '>', '<=', '<')
     _tokenize = re.compile('("[^"]*")|(\'[^\']*\')|(%s)|([^%s\s]+)|\s+' % (
                            '|'.join([re.escape(t) for t in _TOKENS]),
                            ''.join([re.escape(t[0]) for t in _TOKENS]))).findall
@@ -381,9 +381,17 @@ class PathParser(object):
         return expr
 
     def _equality_expr(self):
-        expr = self._primary_expr()
+        expr = self._relational_expr()
         while self.cur_token in ('=', '!='):
-            op = _operator_map.get(self.cur_token)
+            op = _operator_map[self.cur_token]
+            self.next_token()
+            expr = op(expr, self._relational_expr())
+        return expr
+
+    def _relational_expr(self):
+        expr = self._primary_expr()
+        while self.cur_token in ('>', '>=', '<', '>='):
+            op = _operator_map[self.cur_token]
             self.next_token()
             expr = op(expr, self._primary_expr())
         return expr
@@ -675,6 +683,21 @@ class NumberFunction(Function):
     def __repr__(self):
         return 'number(%r)' % self.expr
 
+class RoundFunction(Function):
+    """The `round` function, which returns the nearest integer number for the
+    given number.
+    """
+    __slots__ = ['number']
+    def __init__(self, number):
+        self.number = number
+    def __call__(self, kind, data, pos):
+        number = self.number(kind, data, pos)
+        if type(number) is tuple:
+            number = number[1]
+        return round(float(number))
+    def __repr__(self):
+        return 'round(%r)' % self.number
+
 class StartsWithFunction(Function):
     """The `starts-with` function that returns whether one string starts with
     a given substring.
@@ -822,7 +845,8 @@ _function_map = {'boolean': BooleanFunction, 'ceiling': CeilingFunction,
                  'local-name': LocalNameFunction, 'name': NameFunction,
                  'namespace-uri': NamespaceUriFunction,
                  'normalize-space': NormalizeSpaceFunction, 'not': NotFunction,
-                 'number': NumberFunction, 'starts-with': StartsWithFunction,
+                 'number': NumberFunction, 'round': RoundFunction,
+                 'starts-with': StartsWithFunction,
                  'string-length': StringLengthFunction,
                  'substring': SubstringFunction,
                  'substring-after': SubstringAfterFunction,
@@ -928,4 +952,91 @@ class OrOperator(object):
     def __repr__(self):
         return '%s or %s' % (self.lval, self.rval)
 
-_operator_map = {'=': EqualsOperator, '!=': NotEqualsOperator}
+class GreaterThanOperator(object):
+    """The relational operator `>` (greater than)."""
+    __slots__ = ['lval', 'rval']
+    def __init__(self, lval, rval):
+        self.lval = lval
+        self.rval = rval
+    def __call__(self, kind, data, pos):
+        lval = self.lval(kind, data, pos)
+        if type(lval) is tuple:
+            lval = lval[1]
+        rval = self.rval(kind, data, pos)
+        if type(rval) is tuple:
+            rval = rval[1]
+        return float(lval) > float(rval)
+    def __repr__(self):
+        return '%s>%s' % (self.lval, self.rval)
+
+class GreaterThanOperator(object):
+    """The relational operator `>` (greater than)."""
+    __slots__ = ['lval', 'rval']
+    def __init__(self, lval, rval):
+        self.lval = lval
+        self.rval = rval
+    def __call__(self, kind, data, pos):
+        lval = self.lval(kind, data, pos)
+        if type(lval) is tuple:
+            lval = lval[1]
+        rval = self.rval(kind, data, pos)
+        if type(rval) is tuple:
+            rval = rval[1]
+        return float(lval) > float(rval)
+    def __repr__(self):
+        return '%s>%s' % (self.lval, self.rval)
+
+class GreaterThanOrEqualOperator(object):
+    """The relational operator `>=` (greater than or equal)."""
+    __slots__ = ['lval', 'rval']
+    def __init__(self, lval, rval):
+        self.lval = lval
+        self.rval = rval
+    def __call__(self, kind, data, pos):
+        lval = self.lval(kind, data, pos)
+        if type(lval) is tuple:
+            lval = lval[1]
+        rval = self.rval(kind, data, pos)
+        if type(rval) is tuple:
+            rval = rval[1]
+        return float(lval) >= float(rval)
+    def __repr__(self):
+        return '%s>=%s' % (self.lval, self.rval)
+
+class LessThanOperator(object):
+    """The relational operator `<` (less than)."""
+    __slots__ = ['lval', 'rval']
+    def __init__(self, lval, rval):
+        self.lval = lval
+        self.rval = rval
+    def __call__(self, kind, data, pos):
+        lval = self.lval(kind, data, pos)
+        if type(lval) is tuple:
+            lval = lval[1]
+        rval = self.rval(kind, data, pos)
+        if type(rval) is tuple:
+            rval = rval[1]
+        return float(lval) < float(rval)
+    def __repr__(self):
+        return '%s<%s' % (self.lval, self.rval)
+
+class LessThanOrEqualOperator(object):
+    """The relational operator `<=` (less than or equal)."""
+    __slots__ = ['lval', 'rval']
+    def __init__(self, lval, rval):
+        self.lval = lval
+        self.rval = rval
+    def __call__(self, kind, data, pos):
+        lval = self.lval(kind, data, pos)
+        if type(lval) is tuple:
+            lval = lval[1]
+        rval = self.rval(kind, data, pos)
+        if type(rval) is tuple:
+            rval = rval[1]
+        return float(lval) <= float(rval)
+    def __repr__(self):
+        return '%s<=%s' % (self.lval, self.rval)
+
+_operator_map = {'=': EqualsOperator, '!=': NotEqualsOperator,
+                 '>': GreaterThanOperator, '>=': GreaterThanOrEqualOperator,
+                 '<': LessThanOperator, '>=': LessThanOrEqualOperator}

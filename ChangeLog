@@ -21,9 +21,9 @@ http://svn.edgewall.org/repos/markup/tags/0.2.0/
  * String literals in XPath expressions that contain spaces are now parsed
    as expected.
  * Added support for the XPath functions boolean(), ceiling(), concat(),
-   contains(), false(), floor(), normalize-space(), number(), starts-with(),
-   string-length(), substring(), substring-after(), substring-before(),
-   translate(), and true().
+   contains(), false(), floor(), normalize-space(), number(), round(),
+   starts-with(), string-length(), substring(), substring-after(),
+   substring-before(), translate(), and true().
 
 
 Version 0.1

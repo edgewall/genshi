@@ -647,16 +647,16 @@ class TemplateLoaderTestCase(unittest.TestCase):
         file2 = open(os.path.join(self.dirname, 'tmpl2.html'), 'w')
         try:
             file2.write("""<html xmlns:xi="http://www.w3.org/2001/XInclude">
-  <xi:include href="tmpl1.html" />
-</html>""")
+              <xi:include href="tmpl1.html" />
+            </html>""")
         finally:
             file2.close()
 
         loader = TemplateLoader([self.dirname])
         tmpl = loader.load('tmpl2.html')
         self.assertEqual("""<html>
-  <div>Included</div>
-</html>""", tmpl.generate().render())
+              <div>Included</div>
+            </html>""", tmpl.generate().render())
 
     def test_relative_include_subdir(self):
         os.mkdir(os.path.join(self.dirname, 'sub'))
@@ -669,16 +669,16 @@ class TemplateLoaderTestCase(unittest.TestCase):
         file2 = open(os.path.join(self.dirname, 'tmpl2.html'), 'w')
         try:
             file2.write("""<html xmlns:xi="http://www.w3.org/2001/XInclude">
-  <xi:include href="sub/tmpl1.html" />
-</html>""")
+              <xi:include href="sub/tmpl1.html" />
+            </html>""")
         finally:
             file2.close()
 
         loader = TemplateLoader([self.dirname])
         tmpl = loader.load('tmpl2.html')
         self.assertEqual("""<html>
-  <div>Included</div>
-</html>""", tmpl.generate().render())
+              <div>Included</div>
+            </html>""", tmpl.generate().render())
 
     def test_relative_include_parentdir(self):
         file1 = open(os.path.join(self.dirname, 'tmpl1.html'), 'w')
@@ -691,16 +691,16 @@ class TemplateLoaderTestCase(unittest.TestCase):
         file2 = open(os.path.join(self.dirname, 'sub', 'tmpl2.html'), 'w')
         try:
             file2.write("""<html xmlns:xi="http://www.w3.org/2001/XInclude">
-  <xi:include href="../tmpl1.html" />
-</html>""")
+              <xi:include href="../tmpl1.html" />
+            </html>""")
         finally:
             file2.close()
 
         loader = TemplateLoader([self.dirname])
         tmpl = loader.load('sub/tmpl2.html')
         self.assertEqual("""<html>
-  <div>Included</div>
-</html>""", tmpl.generate().render())
+              <div>Included</div>
+            </html>""", tmpl.generate().render())
 
 
 def suite():

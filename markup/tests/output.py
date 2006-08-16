@@ -108,6 +108,19 @@ class XHTMLSerializerTestCase(unittest.TestCase):
         output = XML(text).render(XHTMLSerializer)
         self.assertEqual(text, output)
 
+    def test_embedded_svg(self):
+        text = """<html xmlns="http://www.w3.org/1999/xhtml" xmlns:svg="http://www.w3.org/2000/svg">
+          <body>
+            <button>
+              <svg:svg width="600px" height="400px">
+                <svg:polygon points="50,50 50,300 300,300" />
+              </svg:svg>
+            </button>
+          </body>
+        </html>"""
+        output = XML(text).render(XHTMLSerializer)
+        self.assertEqual(text, output)
+
 
 class HTMLSerializerTestCase(unittest.TestCase):
 

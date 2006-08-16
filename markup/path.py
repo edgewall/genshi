@@ -359,6 +359,8 @@ class PathParser(object):
         assert self.cur_token == '['
         self.next_token()
         expr = self._or_expr()
+        if isinstance(expr, NumberLiteral):
+            raise PathSyntaxError('Position predicates not yet supported')
         if self.cur_token != ']':
             raise PathSyntaxError('Expected "]" to close predicate, '
                                   'but found "%s"' % self.cur_token,

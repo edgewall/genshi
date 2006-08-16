@@ -27,6 +27,9 @@ class PathTestCase(unittest.TestCase):
         self.assertRaises(PathSyntaxError, Path, '..')
         self.assertRaises(PathSyntaxError, Path, 'parent::ma')
 
+    def test_error_position_predicate(self):
+        self.assertRaises(PathSyntaxError, Path, 'item[0]')
+
     def test_1step(self):
         xml = XML('<root><elem/></root>')
 

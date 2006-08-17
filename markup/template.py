@@ -306,7 +306,8 @@ class DefDirective(Directive):
             for arg in ast.args:
                 if isinstance(arg, compiler.ast.Keyword):
                     self.args.append(arg.name)
-                    self.defaults[arg.name] = arg.expr.value
+                    self.defaults[arg.name] = Expression(arg.expr, filename,
+                                                         lineno)
                 else:
                     self.args.append(arg.name)
         else:
@@ -322,7 +323,11 @@ class DefDirective(Directive):
                 if args:
                     scope[name] = args.pop(0)
                 else:
-                    scope[name] = kwargs.pop(name, self.defaults.get(name))
+                    if name in kwargs:
+                        val = kwargs.pop(name)
+                    else:
+                        val = self.defaults.get(name).evaluate(ctxt)
+                    scope[name] = val
             ctxt.push(scope)
             for event in _apply_directives(stream, ctxt, directives):
                 yield event

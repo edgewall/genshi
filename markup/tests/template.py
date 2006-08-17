@@ -203,6 +203,18 @@ class DefDirectiveTestCase(unittest.TestCase):
           <strong>foo</strong>
         </doc>""", str(tmpl.generate(semantic=True)))
 
+    def test_function_with_default_arg(self):
+        """
+        Verify that keyword arguments work with `py:def` directives.
+        """
+        tmpl = Template("""<doc xmlns:py="http://markup.edgewall.org/">
+          <b py:def="echo(what, bold=False)" py:strip="not bold">${what}</b>
+          ${echo('foo')}
+        </doc>""")
+        self.assertEqual("""<doc>
+          foo
+        </doc>""", str(tmpl.generate()))
+
 
 class ForDirectiveTestCase(unittest.TestCase):
     """Tests for the `py:for` template directive."""

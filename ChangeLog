@@ -24,7 +24,11 @@ http://svn.edgewall.org/repos/markup/tags/0.2.0/
    contains(), false(), floor(), normalize-space(), number(), round(),
    starts-with(), string-length(), substring(), substring-after(),
    substring-before(), translate(), and true().
-
+ * Non-ASCII characters in expressions should now be handled correctly (ticket
+   #29).
+ * Default values for arguments of template functions now also work with
+   constants and complex expressions (they only worked for string or number
+   literals before).
 
 Version 0.1
 http://svn.edgewall.org/repos/markup/tags/0.1.0/

@@ -28,6 +28,12 @@ class ExpressionTestCase(unittest.TestCase):
         self.assertEqual('foo', Expression("u'foo'").evaluate({}))
         self.assertEqual('foo', Expression("r'foo'").evaluate({}))
 
+    def test_str_literal_non_ascii(self):
+        expr = Expression(u"u'\xfe'")
+        self.assertEqual(u'þ', expr.evaluate({}))
+        expr = Expression("u'\xfe'")
+        self.assertEqual(u'þ', expr.evaluate({}))
+
     def test_num_literal(self):
         self.assertEqual(42, Expression("42").evaluate({}))
         self.assertEqual(42L, Expression("42L").evaluate({}))

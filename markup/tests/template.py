@@ -124,6 +124,26 @@ class ChooseDirectiveTestCase(unittest.TestCase):
             <span>foo</span>
         </doc>""", str(tmpl.generate()))
 
+    def test_when_outside_choose(self):
+        """
+        Verify that a `when` directive outside of a `choose` directive is
+        reported as an error.
+        """
+        tmpl = Template("""<doc xmlns:py="http://markup.edgewall.org/">
+          <div py:when="xy" />
+        </doc>""")
+        self.assertRaises(TemplateSyntaxError, str, tmpl.generate())
+
+    def test_when_outside_choose(self):
+        """
+        Verify that an `otherwise` directive outside of a `choose` directive is
+        reported as an error.
+        """
+        tmpl = Template("""<doc xmlns:py="http://markup.edgewall.org/">
+          <div py:otherwise="" />
+        </doc>""")
+        self.assertRaises(TemplateSyntaxError, str, tmpl.generate())
+
     def test_as_element(self):
         """
         Verify that the directive can also be used as an element.

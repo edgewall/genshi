@@ -152,6 +152,8 @@ class Directive(object):
         try:
             self.expr = value and Expression(value, filename, lineno) or None
         except SyntaxError, err:
+            err.msg += ' in expression "%s" of "%s" directive' % (value,
+                                                                  self.name)
             raise TemplateSyntaxError(err, filename, lineno,
                                       offset + (err.offset or 0))
 
@@ -163,6 +165,11 @@ class Directive(object):
         if self.expr is not None:
             expr = ' "%s"' % self.expr.source
         return '<%s%s>' % (self.__class__.__name__, expr)
+
+    def name(self):
+        """Return the local name of the directive as it is used in templates."""
+        return self.__class__.__name__.lower().replace('directive', '')
+    name = property(name)
 
 
 def _apply_directives(stream, ctxt, directives):
@@ -593,6 +600,9 @@ class WhenDirective(Directive):
 
     def __call__(self, stream, ctxt, directives):
         choose = ctxt['_choose']
+        if not choose:
+            raise TemplateSyntaxError('when directives can only be used inside '
+                                      'a choose directive', *stream.next()[2])
         if choose.matched:
             return []
         value = self.expr.evaluate(ctxt)
@@ -615,6 +625,10 @@ class OtherwiseDirective(Directive):
     """
     def __call__(self, stream, ctxt, directives):
         choose = ctxt['_choose']
+        if not choose:
+            raise TemplateSyntaxError('an otherwise directive can only be used '
+                                      'inside a choose directive',
+                                      *stream.next()[2])
         if choose.matched:
             return []
         choose.matched = True

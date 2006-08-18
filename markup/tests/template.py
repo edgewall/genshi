@@ -446,6 +446,16 @@ class MatchDirectiveTestCase(unittest.TestCase):
           </div>
         </doc>""", str(tmpl.generate()))
 
+    def test_def_in_match(self):
+        tmpl = Template("""<doc xmlns:py="http://markup.edgewall.org/">
+          <py:def function="maketitle(test)"><b py:replace="test" /></py:def>
+          <head py:match="head">${select('*')}</head>
+          <head><title>${maketitle(True)}</title></head>
+        </doc>""")
+        self.assertEqual("""<doc>
+          <head><title>True</title></head>
+        </doc>""", str(tmpl.generate()))
+
 
 class StripDirectiveTestCase(unittest.TestCase):
     """Tests for the `py:strip` template directive."""

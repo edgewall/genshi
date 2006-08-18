@@ -153,7 +153,7 @@ class Directive(object):
             self.expr = value and Expression(value, filename, lineno) or None
         except SyntaxError, err:
             err.msg += ' in expression "%s" of "%s" directive' % (value,
-                                                                  self.name)
+                                                                  self.tagname)
             raise TemplateSyntaxError(err, filename, lineno,
                                       offset + (err.offset or 0))
 
@@ -166,10 +166,12 @@ class Directive(object):
             expr = ' "%s"' % self.expr.source
         return '<%s%s>' % (self.__class__.__name__, expr)
 
-    def name(self):
-        """Return the local name of the directive as it is used in templates."""
+    def tagname(self):
+        """Return the local tag name of the directive as it is used in
+        templates.
+        """
         return self.__class__.__name__.lower().replace('directive', '')
-    name = property(name)
+    tagname = property(tagname)
 
 
 def _apply_directives(stream, ctxt, directives):
@@ -350,6 +352,9 @@ class DefDirective(Directive):
         ctxt.frames[-1][self.name] = function
 
         return []
+
+    def __repr__(self):
+        return '<%s "%s">' % (self.__class__.__name__, self.name)
 
 
 class ForDirective(Directive):
@@ -707,11 +712,11 @@ class Template(object):
         else:
             self.source = source
         self.basedir = basedir
-        self.filename = filename or '<string>'
+        self.filename = filename
         if basedir and filename:
             self.filepath = os.path.join(basedir, filename)
         else:
-            self.filepath = '<string>'
+            self.filepath = None
 
         self.filters = []
         self.parse()
@@ -883,7 +888,7 @@ class Template(object):
         """Internal stream filter that evaluates any expressions in `START` and
         `TEXT` events.
         """
-        filters = (self._eval, self._match)
+        filters = (self._eval, self._match, self._flatten)
 
         for kind, data, pos in stream:
 

@@ -38,8 +38,9 @@ class Stream(object):
       (kind, data, position)
 
     where `kind` is the event kind (such as `START`, `END`, `TEXT`, etc), `data`
-    depends on the kind of event, and `position` is a `(line, offset)` tuple
-    that contains the location of the original element or text in the input.
+    depends on the kind of event, and `position` is a `(filename, line, offset)`
+    tuple that contains the location of the original element or text in the
+    input. If the original location is unknown, `position` is `(None, -1, -1)`.
     """
     __slots__ = ['events']
 

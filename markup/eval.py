@@ -65,12 +65,17 @@ class Expression(object):
     __slots__ = ['source', 'code']
 
     def __init__(self, source, filename=None, lineno=-1):
-        """Create the expression.
-        
-        @param source: the expression as string
-        """
-        self.source = source
-        self.code = _compile(self, filename, lineno)
+        if isinstance(source, basestring):
+            self.source = source
+            if isinstance(source, unicode):
+                source = '\xef\xbb\xbf' + source.encode('utf-8')
+            self.code = _compile(parse(source, 'eval'), self.source,
+                                 filename=filename, lineno=lineno)
+        else:
+            assert isinstance(source, ast.Node)
+            self.source = '?'
+            self.code = _compile(ast.Expression(source), filename=filename,
+                                 lineno=lineno)
 
     def __repr__(self):
         return '<Expression "%s">' % self.source
@@ -92,8 +97,8 @@ class Expression(object):
         return retval
 
 
-def _compile(expr, filename=None, lineno=-1):
-    tree = ExpressionASTTransformer().visit(parse(expr.source, 'eval'))
+def _compile(node, source=None, filename=None, lineno=-1):
+    tree = ExpressionASTTransformer().visit(node)
     if isinstance(filename, unicode):
         # unicode file names not allowed for code objects
         filename = filename.encode('utf-8', 'replace')
@@ -111,7 +116,8 @@ def _compile(expr, filename=None, lineno=-1):
     # clone the code object while adjusting the line number
     return new.code(0, code.co_nlocals, code.co_stacksize,
                     code.co_flags | 0x0040, code.co_code, code.co_consts,
-                    code.co_names, code.co_varnames, filename, repr(expr),
+                    code.co_names, code.co_varnames, filename,
+                    '<Expression %s>' % (repr(source).replace("'", '"') or '?'),
                     lineno, code.co_lnotab, (), ())
 
 def _lookup_name(data, name, locals_=None):

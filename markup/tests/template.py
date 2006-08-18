@@ -124,6 +124,26 @@ class ChooseDirectiveTestCase(unittest.TestCase):
             <span>foo</span>
         </doc>""", str(tmpl.generate()))
 
+    def test_when_outside_choose(self):
+        """
+        Verify that a `when` directive outside of a `choose` directive is
+        reported as an error.
+        """
+        tmpl = Template("""<doc xmlns:py="http://markup.edgewall.org/">
+          <div py:when="xy" />
+        </doc>""")
+        self.assertRaises(TemplateSyntaxError, str, tmpl.generate())
+
+    def test_when_outside_choose(self):
+        """
+        Verify that an `otherwise` directive outside of a `choose` directive is
+        reported as an error.
+        """
+        tmpl = Template("""<doc xmlns:py="http://markup.edgewall.org/">
+          <div py:otherwise="" />
+        </doc>""")
+        self.assertRaises(TemplateSyntaxError, str, tmpl.generate())
+
     def test_as_element(self):
         """
         Verify that the directive can also be used as an element.
@@ -202,6 +222,18 @@ class DefDirectiveTestCase(unittest.TestCase):
         self.assertEqual("""<doc>
           <strong>foo</strong>
         </doc>""", str(tmpl.generate(semantic=True)))
+
+    def test_function_with_default_arg(self):
+        """
+        Verify that keyword arguments work with `py:def` directives.
+        """
+        tmpl = Template("""<doc xmlns:py="http://markup.edgewall.org/">
+          <b py:def="echo(what, bold=False)" py:strip="not bold">${what}</b>
+          ${echo('foo')}
+        </doc>""")
+        self.assertEqual("""<doc>
+          foo
+        </doc>""", str(tmpl.generate()))
 
 
 class ForDirectiveTestCase(unittest.TestCase):
@@ -412,6 +444,16 @@ class MatchDirectiveTestCase(unittest.TestCase):
           <div>
             Hey Joe Cool
           </div>
+        </doc>""", str(tmpl.generate()))
+
+    def test_def_in_match(self):
+        tmpl = Template("""<doc xmlns:py="http://markup.edgewall.org/">
+          <py:def function="maketitle(test)"><b py:replace="test" /></py:def>
+          <head py:match="head">${select('*')}</head>
+          <head><title>${maketitle(True)}</title></head>
+        </doc>""")
+        self.assertEqual("""<doc>
+          <head><title>True</title></head>
         </doc>""", str(tmpl.generate()))
 
 

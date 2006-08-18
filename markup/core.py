@@ -38,8 +38,9 @@ class Stream(object):
       (kind, data, position)
 
     where `kind` is the event kind (such as `START`, `END`, `TEXT`, etc), `data`
-    depends on the kind of event, and `position` is a `(line, offset)` tuple
-    that contains the location of the original element or text in the input.
+    depends on the kind of event, and `position` is a `(filename, line, offset)`
+    tuple that contains the location of the original element or text in the
+    input. If the original location is unknown, `position` is `(None, -1, -1)`.
     """
     __slots__ = ['events']
 
@@ -190,10 +191,32 @@ class Attributes(list):
     >>> attrs.set(u'accesskey', 'k')
     >>> attrs
     [(u'href', '#'), (u'accesskey', 'k')]
+    
+    An `Attributes` instance can also be initialized with keyword arguments.
+    
+    >>> attrs = Attributes(class_='bar', href='#', title='Foo')
+    >>> attrs.get('class')
+    'bar'
+    >>> attrs.get('href')
+    '#'
+    >>> attrs.get('title')
+    'Foo'
+    
+    Reserved words can be used by appending a trailing underscore to the name,
+    and any other underscore is replaced by a dash:
+    
+    >>> attrs = Attributes(class_='bar', accept_charset='utf-8')
+    >>> attrs.get('class')
+    'bar'
+    >>> attrs.get('accept-charset')
+    'utf-8'
+    
+    Thus this shorthand can not be used if attribute names should contain
+    actual underscore characters.
     """
     __slots__ = []
 
-    def __init__(self, attrib=None):
+    def __init__(self, attrib=None, **kwargs):
         """Create the `Attributes` instance.
         
         If the `attrib` parameter is provided, it is expected to be a sequence
@@ -202,6 +225,8 @@ class Attributes(list):
         if attrib is None:
             attrib = []
         list.__init__(self, [(QName(name), value) for name, value in attrib])
+        for name, value in kwargs.items():
+            self.set(name.rstrip('_').replace('_', '-'), value)
 
     def __contains__(self, name):
         """Return whether the list includes an attribute with the specified
@@ -239,7 +264,7 @@ class Attributes(list):
         """
         for idx, (attr, _) in enumerate(self):
             if attr == name:
-                self[idx] = (attr, value)
+                self[idx] = (QName(attr), value)
                 break
         else:
             self.append((QName(name), value))

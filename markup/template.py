@@ -152,6 +152,8 @@ class Directive(object):
         try:
             self.expr = value and Expression(value, filename, lineno) or None
         except SyntaxError, err:
+            err.msg += ' in expression "%s" of "%s" directive' % (value,
+                                                                  self.tagname)
             raise TemplateSyntaxError(err, filename, lineno,
                                       offset + (err.offset or 0))
 
@@ -163,6 +165,13 @@ class Directive(object):
         if self.expr is not None:
             expr = ' "%s"' % self.expr.source
         return '<%s%s>' % (self.__class__.__name__, expr)
+
+    def tagname(self):
+        """Return the local tag name of the directive as it is used in
+        templates.
+        """
+        return self.__class__.__name__.lower().replace('directive', '')
+    tagname = property(tagname)
 
 
 def _apply_directives(stream, ctxt, directives):
@@ -306,7 +315,8 @@ class DefDirective(Directive):
             for arg in ast.args:
                 if isinstance(arg, compiler.ast.Keyword):
                     self.args.append(arg.name)
-                    self.defaults[arg.name] = arg.expr.value
+                    self.defaults[arg.name] = Expression(arg.expr, filename,
+                                                         lineno)
                 else:
                     self.args.append(arg.name)
         else:
@@ -322,7 +332,11 @@ class DefDirective(Directive):
                 if args:
                     scope[name] = args.pop(0)
                 else:
-                    scope[name] = kwargs.pop(name, self.defaults.get(name))
+                    if name in kwargs:
+                        val = kwargs.pop(name)
+                    else:
+                        val = self.defaults.get(name).evaluate(ctxt)
+                    scope[name] = val
             ctxt.push(scope)
             for event in _apply_directives(stream, ctxt, directives):
                 yield event
@@ -338,6 +352,9 @@ class DefDirective(Directive):
         ctxt.frames[-1][self.name] = function
 
         return []
+
+    def __repr__(self):
+        return '<%s "%s">' % (self.__class__.__name__, self.name)
 
 
 class ForDirective(Directive):
@@ -588,6 +605,9 @@ class WhenDirective(Directive):
 
     def __call__(self, stream, ctxt, directives):
         choose = ctxt['_choose']
+        if not choose:
+            raise TemplateSyntaxError('when directives can only be used inside '
+                                      'a choose directive', *stream.next()[2])
         if choose.matched:
             return []
         value = self.expr.evaluate(ctxt)
@@ -610,6 +630,10 @@ class OtherwiseDirective(Directive):
     """
     def __call__(self, stream, ctxt, directives):
         choose = ctxt['_choose']
+        if not choose:
+            raise TemplateSyntaxError('an otherwise directive can only be used '
+                                      'inside a choose directive',
+                                      *stream.next()[2])
         if choose.matched:
             return []
         choose.matched = True
@@ -688,11 +712,11 @@ class Template(object):
         else:
             self.source = source
         self.basedir = basedir
-        self.filename = filename or '<string>'
+        self.filename = filename
         if basedir and filename:
             self.filepath = os.path.join(basedir, filename)
         else:
-            self.filepath = '<string>'
+            self.filepath = None
 
         self.filters = []
         self.parse()
@@ -864,7 +888,7 @@ class Template(object):
         """Internal stream filter that evaluates any expressions in `START` and
         `TEXT` events.
         """
-        filters = (self._eval, self._match)
+        filters = (self._eval, self._match, self._flatten)
 
         for kind, data, pos in stream:
 

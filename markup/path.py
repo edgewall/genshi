@@ -567,7 +567,7 @@ class ConcatFunction(Function):
             strings.append(item)
         return u''.join(strings)
     def __repr__(self):
-        return 'concat(%s)' % [repr(expr for expr in self.exprs)]
+        return 'concat(%s)' % ', '.join([repr(expr) for expr in self.exprs])
 
 class ContainsFunction(Function):
     """The `contains` function, which returns whether a string contains a given

@@ -186,13 +186,27 @@ class Attributes(list):
     >>> attrs
     [(u'href', '#'), (u'accesskey', 'k')]
     
-    An `Attributes` instance can also be initialized with keyword arguments:
+    An `Attributes` instance can also be initialized with keyword arguments.
     
-    >>> attrs = Attributes(href='#', title='Foo')
+    >>> attrs = Attributes(class_='bar', href='#', title='Foo')
+    >>> attrs.get('class')
+    'bar'
     >>> attrs.get('href')
     '#'
     >>> attrs.get('title')
     'Foo'
+    
+    Reserved words can be used by appending a trailing underscore to the name,
+    and any other underscore is replaced by a dash:
+    
+    >>> attrs = Attributes(class_='bar', accept_charset='utf-8')
+    >>> attrs.get('class')
+    'bar'
+    >>> attrs.get('accept-charset')
+    'utf-8'
+    
+    Thus this shorthand can not be used if attribute names should contain
+    actual underscore characters.
     """
     __slots__ = []
 
@@ -206,7 +220,7 @@ class Attributes(list):
             attrib = []
         list.__init__(self, [(QName(name), value) for name, value in attrib])
         for name, value in kwargs.items():
-            self.set(name, value)
+            self.set(name.rstrip('_').replace('_', '-'), value)
 
     def __contains__(self, name):
         """Return whether the list includes an attribute with the specified

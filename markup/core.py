@@ -185,10 +185,18 @@ class Attributes(list):
     >>> attrs.set(u'accesskey', 'k')
     >>> attrs
     [(u'href', '#'), (u'accesskey', 'k')]
+    
+    An `Attributes` instance can also be initialized with keyword arguments:
+    
+    >>> attrs = Attributes(href='#', title='Foo')
+    >>> attrs.get('href')
+    '#'
+    >>> attrs.get('title')
+    'Foo'
     """
     __slots__ = []
 
-    def __init__(self, attrib=None):
+    def __init__(self, attrib=None, **kwargs):
         """Create the `Attributes` instance.
         
         If the `attrib` parameter is provided, it is expected to be a sequence
@@ -197,6 +205,8 @@ class Attributes(list):
         if attrib is None:
             attrib = []
         list.__init__(self, [(QName(name), value) for name, value in attrib])
+        for name, value in kwargs.items():
+            self.set(name, value)
 
     def __contains__(self, name):
         """Return whether the list includes an attribute with the specified
@@ -234,7 +244,7 @@ class Attributes(list):
         """
         for idx, (attr, _) in enumerate(self):
             if attr == name:
-                self[idx] = (attr, value)
+                self[idx] = (QName(attr), value)
                 break
         else:
             self.append((QName(name), value))

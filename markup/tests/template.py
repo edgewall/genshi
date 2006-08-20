@@ -760,8 +760,7 @@ class TemplateLoaderTestCase(unittest.TestCase):
             file2.close()
 
         loader = TemplateLoader()
-        tmpl = loader.load(os.path.abspath(os.path.join(self.dirname,
-                                                        'tmpl2.html')))
+        tmpl = loader.load(os.path.join(self.dirname, 'tmpl2.html'))
         self.assertEqual("""<html>
               <div>Included</div>
             </html>""", tmpl.generate().render())

@@ -1115,4 +1115,7 @@ class TemplateLoader(object):
                 return tmpl
             except IOError:
                 continue
+        else:
+            raise TemplateError('Search path for templates not configured')
+
         raise TemplateNotFound(filename, self.search_path)

@@ -875,6 +875,8 @@ class Template(object):
         if args:
             assert len(args) == 1
             ctxt = args[0]
+            if ctxt is None:
+                ctxt = Context(**kwargs)
             assert isinstance(ctxt, Context)
         else:
             ctxt = Context(**kwargs)

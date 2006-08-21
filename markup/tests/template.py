@@ -134,7 +134,7 @@ class ChooseDirectiveTestCase(unittest.TestCase):
         </doc>""")
         self.assertRaises(TemplateSyntaxError, str, tmpl.generate())
 
-    def test_when_outside_choose(self):
+    def test_otherwise_outside_choose(self):
         """
         Verify that an `otherwise` directive outside of a `choose` directive is
         reported as an error.
@@ -143,6 +143,32 @@ class ChooseDirectiveTestCase(unittest.TestCase):
           <div py:otherwise="" />
         </doc>""")
         self.assertRaises(TemplateSyntaxError, str, tmpl.generate())
+
+    def test_when_without_test(self):
+        """
+        Verify that an `when` directive that doesn't have a `test` attribute
+        is reported as an error.
+        """
+        tmpl = Template("""<doc xmlns:py="http://markup.edgewall.org/">
+          <div py:choose="" py:strip="">
+            <py:when>foo</py:when>
+          </div>
+        </doc>""")
+        self.assertRaises(TemplateSyntaxError, str, tmpl.generate())
+
+    def test_otherwise_without_test(self):
+        """
+        Verify that an `otherwise` directive can be used without a `test`
+        attribute.
+        """
+        tmpl = Template("""<doc xmlns:py="http://markup.edgewall.org/">
+          <div py:choose="" py:strip="">
+            <py:otherwise>foo</py:otherwise>
+          </div>
+        </doc>""")
+        self.assertEqual("""<doc>
+            foo
+        </doc>""", str(tmpl.generate()))
 
     def test_as_element(self):
         """
@@ -456,6 +482,22 @@ class MatchDirectiveTestCase(unittest.TestCase):
           <head><title>True</title></head>
         </doc>""", str(tmpl.generate()))
 
+    def test_match_with_xpath_variable(self):
+        tmpl = Template("""<div xmlns:py="http://markup.edgewall.org/">
+          <span py:match="*[name()=$tagname]">
+            Hello ${select('@name')}
+          </span>
+          <greeting name="Dude"/>
+        </div>""")
+        self.assertEqual("""<div>
+          <span>
+            Hello Dude
+          </span>
+        </div>""", str(tmpl.generate(tagname='greeting')))
+        self.assertEqual("""<div>
+          <greeting name="Dude"/>
+        </div>""", str(tmpl.generate(tagname='sayhello')))
+
 
 class StripDirectiveTestCase(unittest.TestCase):
     """Tests for the `py:strip` template directive."""
@@ -740,6 +782,27 @@ class TemplateLoaderTestCase(unittest.TestCase):
 
         loader = TemplateLoader([self.dirname])
         tmpl = loader.load('sub/tmpl2.html')
+        self.assertEqual("""<html>
+              <div>Included</div>
+            </html>""", tmpl.generate().render())
+
+    def test_relative_include_without_search_path(self):
+        file1 = open(os.path.join(self.dirname, 'tmpl1.html'), 'w')
+        try:
+            file1.write("""<div>Included</div>""")
+        finally:
+            file1.close()
+
+        file2 = open(os.path.join(self.dirname, 'tmpl2.html'), 'w')
+        try:
+            file2.write("""<html xmlns:xi="http://www.w3.org/2001/XInclude">
+              <xi:include href="tmpl1.html" />
+            </html>""")
+        finally:
+            file2.close()
+
+        loader = TemplateLoader()
+        tmpl = loader.load(os.path.join(self.dirname, 'tmpl2.html'))
         self.assertEqual("""<html>
               <div>Included</div>
             </html>""", tmpl.generate().render())

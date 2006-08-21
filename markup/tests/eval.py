@@ -33,6 +33,8 @@ class ExpressionTestCase(unittest.TestCase):
         self.assertEqual(u'þ', expr.evaluate({}))
         expr = Expression("u'\xfe'")
         self.assertEqual(u'þ', expr.evaluate({}))
+        expr = Expression("'\xc3\xbe'")
+        self.assertEqual(u'þ', expr.evaluate({}))
 
     def test_num_literal(self):
         self.assertEqual(42, Expression("42").evaluate({}))

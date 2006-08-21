@@ -24,7 +24,7 @@ import os
 import re
 from StringIO import StringIO
 
-from markup.core import Attributes, Namespace, Stream, StreamEventKind, _ensure
+from markup.core import Attrs, Namespace, Stream, StreamEventKind, _ensure
 from markup.core import START, END, START_NS, END_NS, TEXT, COMMENT
 from markup.eval import Expression
 from markup.input import XMLParser
@@ -61,8 +61,7 @@ class BadDirectiveError(TemplateSyntaxError):
     """
 
     def __init__(self, name, filename='<string>', lineno=-1):
-        msg = 'bad directive "%s" (%s, line %d)' % (name.localname, filename,
-                                                    lineno)
+        msg = 'bad directive "%s"' % name.localname
         TemplateSyntaxError.__init__(self, msg, filename, lineno)
 
 
@@ -210,7 +209,7 @@ class AttrsDirective(Directive):
             kind, (tag, attrib), pos  = stream.next()
             attrs = self.expr.evaluate(ctxt)
             if attrs:
-                attrib = Attributes(attrib[:])
+                attrib = Attrs(attrib[:])
                 if isinstance(attrs, Stream):
                     try:
                         attrs = iter(attrs).next()
@@ -374,6 +373,9 @@ class ForDirective(Directive):
     ATTRIBUTE = 'each'
 
     def __init__(self, value, filename=None, lineno=-1, offset=-1):
+        if ' in ' not in value:
+            raise TemplateSyntaxError('"in" keyword missing in "for" directive',
+                                      filename, lineno, offset)
         targets, value = value.split(' in ', 1)
         self.targets = [str(name.strip()) for name in targets.split(',')]
         Directive.__init__(self, value.strip(), filename, lineno, offset)
@@ -606,10 +608,14 @@ class WhenDirective(Directive):
     def __call__(self, stream, ctxt, directives):
         choose = ctxt['_choose']
         if not choose:
-            raise TemplateSyntaxError('when directives can only be used inside '
-                                      'a choose directive', *stream.next()[2])
+            raise TemplateSyntaxError('"when" directives can only be used '
+                                      'inside a "choose" directive',
+                                      *stream.next()[2])
         if choose.matched:
             return []
+        if not self.expr:
+            raise TemplateSyntaxError('"when" directive has no test condition',
+                                      *stream.next()[2])
         value = self.expr.evaluate(ctxt)
         try:
             if value == choose.value:
@@ -631,8 +637,8 @@ class OtherwiseDirective(Directive):
     def __call__(self, stream, ctxt, directives):
         choose = ctxt['_choose']
         if not choose:
-            raise TemplateSyntaxError('an otherwise directive can only be used '
-                                      'inside a choose directive',
+            raise TemplateSyntaxError('an "otherwise" directive can only be '
+                                      'used inside a "choose" directive',
                                       *stream.next()[2])
         if choose.matched:
             return []
@@ -789,7 +795,7 @@ class Template(object):
                                                      self._dir_order.index(b.__class__)))
                     dirmap[(depth, tag)] = (directives, len(stream), strip)
 
-                stream.append((kind, (tag, Attributes(new_attrib)), pos))
+                stream.append((kind, (tag, Attrs(new_attrib)), pos))
                 depth += 1
 
             elif kind is END:
@@ -875,6 +881,8 @@ class Template(object):
         if args:
             assert len(args) == 1
             ctxt = args[0]
+            if ctxt is None:
+                ctxt = Context(**kwargs)
             assert isinstance(ctxt, Context)
         else:
             ctxt = Context(**kwargs)
@@ -911,7 +919,7 @@ class Template(object):
                         if not value:
                             continue
                     new_attrib.append((name, u''.join(value)))
-                yield kind, (tag, Attributes(new_attrib)), pos
+                yield kind, (tag, Attrs(new_attrib)), pos
 
             elif kind is EXPR:
                 result = data.evaluate(ctxt)
@@ -973,7 +981,7 @@ class Template(object):
             for idx, (test, path, template, directives) in \
                     enumerate(match_templates):
 
-                if test(kind, data, pos) is True:
+                if test(kind, data, pos, ctxt) is True:
                     # Consume and store all events until an end event
                     # corresponding to this start event is encountered
                     content = [(kind, data, pos)]
@@ -985,7 +993,7 @@ class Template(object):
                         elif kind is END:
                             depth -= 1
                         content.append((kind, data, pos))
-                        test(kind, data, pos)
+                        test(kind, data, pos, ctxt)
 
                     content = list(self._flatten(content, ctxt))
                     select = lambda path: Stream(content).select(path)
@@ -1099,6 +1107,9 @@ class TemplateLoader(object):
         if os.path.isabs(filename):
             search_path = [os.path.dirname(filename)]
 
+        if not search_path:
+            raise TemplateError('Search path for templates not configured')
+
         for dirname in search_path:
             filepath = os.path.join(dirname, filename)
             try:
@@ -1113,4 +1124,5 @@ class TemplateLoader(object):
                 return tmpl
             except IOError:
                 continue
+
         raise TemplateNotFound(filename, self.search_path)

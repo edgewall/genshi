@@ -27,7 +27,7 @@ def et_to_stream(element):
     if tag_name.startswith('{'):
         tag_name = tag_name[1:]
     tag_name = QName(tag_name)
-    attrib = Attributes(element.items())
+    attrib = Attrs(element.items())
 
     yield (Stream.START, (tag_name, attrib), (None, -1, -1))
     if element.text:

@@ -270,6 +270,11 @@ class ExpressionASTTransformer(ASTTransformer):
     for template expressions.
     """
 
+    def visitConst(self, node, locals_=False):
+        if isinstance(node.value, str):
+            return ast.Const(node.value.decode('utf-8'))
+        return node
+
     def visitGetattr(self, node, locals_=False):
         return ast.CallFunc(ast.Name('_lookup_attr'), [
             ast.Name('data'), self.visit(node.expr, locals_=locals_),

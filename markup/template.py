@@ -1101,6 +1101,9 @@ class TemplateLoader(object):
         if os.path.isabs(filename):
             search_path = [os.path.dirname(filename)]
 
+        if not search_path:
+            raise TemplateError('Search path for templates not configured')
+
         for dirname in search_path:
             filepath = os.path.join(dirname, filename)
             try:
@@ -1115,7 +1118,5 @@ class TemplateLoader(object):
                 return tmpl
             except IOError:
                 continue
-        else:
-            raise TemplateError('Search path for templates not configured')
 
         raise TemplateNotFound(filename, self.search_path)

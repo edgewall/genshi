@@ -94,6 +94,11 @@ class XHTMLSerializerTestCase(unittest.TestCase):
         output = XML(text).render(XHTMLSerializer)
         self.assertEqual(text, output)
 
+    def test_empty_script(self):
+        text = '<script src="foo.js" />'
+        output = XML(text).render(XHTMLSerializer)
+        self.assertEqual('<script src="foo.js"></script>', output)
+
     def test_script_escaping(self):
         text = """<script>/*<![CDATA[*/
             if (1 < 2) { alert("Doh"); }
@@ -121,6 +126,13 @@ class XHTMLSerializerTestCase(unittest.TestCase):
         output = XML(text).render(XHTMLSerializer)
         self.assertEqual(text, output)
 
+    def test_xhtml_namespace_prefix(self):
+        text = """<html:div xmlns:html="http://www.w3.org/1999/xhtml">
+            <html:strong>Hello</html:strong>
+        </html:div>"""
+        output = XML(text).render(XHTMLSerializer)
+        self.assertEqual(text, output)
+
 
 class HTMLSerializerTestCase(unittest.TestCase):
 
@@ -128,6 +140,11 @@ class HTMLSerializerTestCase(unittest.TestCase):
         text = '<foo xml:space="preserve"> Do not mess  \n\n with me </foo>'
         output = XML(text).render(HTMLSerializer)
         self.assertEqual('<foo> Do not mess  \n\n with me </foo>', output)
+
+    def test_empty_script(self):
+        text = '<script src="foo.js" />'
+        output = XML(text).render(XHTMLSerializer)
+        self.assertEqual('<script src="foo.js"></script>', output)
 
     def test_script_escaping(self):
         text = '<script>if (1 &lt; 2) { alert("Doh"); }</script>'

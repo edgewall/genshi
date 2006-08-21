@@ -208,14 +208,14 @@ class XHTMLSerializer(XMLSerializer):
                 tag, attrib = data
 
                 tagname = tag.localname
-                namespace = tag.namespace
-                if namespace:
-                    if namespace in ns_mapping:
-                        prefix = ns_mapping[namespace]
+                tagns = tag.namespace
+                if tagns:
+                    if tagns in ns_mapping:
+                        prefix = ns_mapping[tagns]
                         if prefix:
                             tagname = '%s:%s' % (prefix, tagname)
                     else:
-                        ns_attrib.append((QName('xmlns'), namespace))
+                        ns_attrib.append((QName('xmlns'), tagns))
                 buf = ['<', tagname]
 
                 for attr, value in attrib + ns_attrib:
@@ -231,8 +231,7 @@ class XHTMLSerializer(XMLSerializer):
                         buf += [' ', attrname, '="', escape(value), '"']
                 ns_attrib = []
 
-                if (tag.namespace and tag not in namespace) or \
-                        tagname in empty_elems:
+                if (tagns and tagns != namespace) or tagname in empty_elems:
                     kind, data, pos = stream.next()
                     if kind is END:
                         buf += [' />']
@@ -250,7 +249,7 @@ class XHTMLSerializer(XMLSerializer):
                 if tag.namespace:
                     prefix = ns_mapping.get(tag.namespace)
                     if prefix:
-                        tagname = '%s:%s' % (prefix, tag.localname)
+                        tagname = '%s:%s' % (prefix, tagname)
                 yield Markup('</%s>' % tagname)
 
             elif kind is TEXT:

@@ -95,9 +95,13 @@ class XHTMLSerializerTestCase(unittest.TestCase):
         self.assertEqual(text, output)
 
     def test_empty_script(self):
-        text = '<script src="foo.js" />'
+        text = """<html xmlns="http://www.w3.org/1999/xhtml">
+            <script src="foo.js" />
+        </html>"""
         output = XML(text).render(XHTMLSerializer)
-        self.assertEqual('<script src="foo.js"></script>', output)
+        self.assertEqual("""<html xmlns="http://www.w3.org/1999/xhtml">
+            <script src="foo.js"></script>
+        </html>""", output)
 
     def test_script_escaping(self):
         text = """<script>/*<![CDATA[*/

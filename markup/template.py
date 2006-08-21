@@ -975,7 +975,7 @@ class Template(object):
             for idx, (test, path, template, directives) in \
                     enumerate(match_templates):
 
-                if test(kind, data, pos) is True:
+                if test(kind, data, pos, ctxt) is True:
                     # Consume and store all events until an end event
                     # corresponding to this start event is encountered
                     content = [(kind, data, pos)]
@@ -987,7 +987,7 @@ class Template(object):
                         elif kind is END:
                             depth -= 1
                         content.append((kind, data, pos))
-                        test(kind, data, pos)
+                        test(kind, data, pos, ctxt)
 
                     content = list(self._flatten(content, ctxt))
                     select = lambda path: Stream(content).select(path)

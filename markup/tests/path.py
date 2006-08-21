@@ -397,6 +397,12 @@ class PathTestCase(unittest.TestCase):
         path = Path('*[true()]')
         self.assertEqual('<foo>bar</foo>', path.select(xml).render())
 
+    def test_predicate_variable(self):
+        xml = XML('<root><foo>bar</foo></root>')
+        path = Path('*[name()=$bar]')
+        variables = {'bar': 'foo'}
+        self.assertEqual('<foo>bar</foo>', path.select(xml, variables).render())
+
 
 def suite():
     suite = unittest.TestSuite()

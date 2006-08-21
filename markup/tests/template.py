@@ -456,6 +456,22 @@ class MatchDirectiveTestCase(unittest.TestCase):
           <head><title>True</title></head>
         </doc>""", str(tmpl.generate()))
 
+    def test_match_with_xpath_variable(self):
+        tmpl = Template("""<div xmlns:py="http://markup.edgewall.org/">
+          <span py:match="*[name()=$tagname]">
+            Hello ${select('@name')}
+          </span>
+          <greeting name="Dude"/>
+        </div>""")
+        self.assertEqual("""<div>
+          <span>
+            Hello Dude
+          </span>
+        </div>""", str(tmpl.generate(tagname='greeting')))
+        self.assertEqual("""<div>
+          <greeting name="Dude"/>
+        </div>""", str(tmpl.generate(tagname='sayhello')))
+
 
 class StripDirectiveTestCase(unittest.TestCase):
     """Tests for the `py:strip` template directive."""

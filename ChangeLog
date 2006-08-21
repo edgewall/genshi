@@ -29,6 +29,8 @@ http://svn.edgewall.org/repos/markup/tags/0.2.0/
  * Default values for arguments of template functions now also work with
    constants and complex expressions (they only worked for string or number
    literals before).
+ * XPath expressions in now support XPath variables ($var) in predicates
+   (ticket #31).
 
 
 Version 0.1

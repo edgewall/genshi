@@ -61,8 +61,7 @@ class BadDirectiveError(TemplateSyntaxError):
     """
 
     def __init__(self, name, filename='<string>', lineno=-1):
-        msg = 'bad directive "%s" (%s, line %d)' % (name.localname, filename,
-                                                    lineno)
+        msg = 'bad directive "%s"' % name.localname
         TemplateSyntaxError.__init__(self, msg, filename, lineno)
 
 
@@ -374,6 +373,9 @@ class ForDirective(Directive):
     ATTRIBUTE = 'each'
 
     def __init__(self, value, filename=None, lineno=-1, offset=-1):
+        if ' in ' not in value:
+            raise TemplateSyntaxError('"in" keyword missing in "for" directive',
+                                      filename, lineno, offset)
         targets, value = value.split(' in ', 1)
         self.targets = [str(name.strip()) for name in targets.split(',')]
         Directive.__init__(self, value.strip(), filename, lineno, offset)
@@ -606,10 +608,14 @@ class WhenDirective(Directive):
     def __call__(self, stream, ctxt, directives):
         choose = ctxt['_choose']
         if not choose:
-            raise TemplateSyntaxError('when directives can only be used inside '
-                                      'a choose directive', *stream.next()[2])
+            raise TemplateSyntaxError('"when" directives can only be used '
+                                      'inside a "choose" directive',
+                                      *stream.next()[2])
         if choose.matched:
             return []
+        if not self.expr:
+            raise TemplateSyntaxError('"when" directive has no test condition',
+                                      *stream.next()[2])
         value = self.expr.evaluate(ctxt)
         try:
             if value == choose.value:
@@ -631,8 +637,8 @@ class OtherwiseDirective(Directive):
     def __call__(self, stream, ctxt, directives):
         choose = ctxt['_choose']
         if not choose:
-            raise TemplateSyntaxError('an otherwise directive can only be used '
-                                      'inside a choose directive',
+            raise TemplateSyntaxError('an "otherwise" directive can only be '
+                                      'used inside a "choose" directive',
                                       *stream.next()[2])
         if choose.matched:
             return []

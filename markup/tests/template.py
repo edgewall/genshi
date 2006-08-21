@@ -134,7 +134,7 @@ class ChooseDirectiveTestCase(unittest.TestCase):
         </doc>""")
         self.assertRaises(TemplateSyntaxError, str, tmpl.generate())
 
-    def test_when_outside_choose(self):
+    def test_otherwise_outside_choose(self):
         """
         Verify that an `otherwise` directive outside of a `choose` directive is
         reported as an error.
@@ -143,6 +143,32 @@ class ChooseDirectiveTestCase(unittest.TestCase):
           <div py:otherwise="" />
         </doc>""")
         self.assertRaises(TemplateSyntaxError, str, tmpl.generate())
+
+    def test_when_without_test(self):
+        """
+        Verify that an `when` directive that doesn't have a `test` attribute
+        is reported as an error.
+        """
+        tmpl = Template("""<doc xmlns:py="http://markup.edgewall.org/">
+          <div py:choose="" py:strip="">
+            <py:when>foo</py:when>
+          </div>
+        </doc>""")
+        self.assertRaises(TemplateSyntaxError, str, tmpl.generate())
+
+    def test_otherwise_without_test(self):
+        """
+        Verify that an `otherwise` directive can be used without a `test`
+        attribute.
+        """
+        tmpl = Template("""<doc xmlns:py="http://markup.edgewall.org/">
+          <div py:choose="" py:strip="">
+            <py:otherwise>foo</py:otherwise>
+          </div>
+        </doc>""")
+        self.assertEqual("""<doc>
+            foo
+        </doc>""", str(tmpl.generate()))
 
     def test_as_element(self):
         """

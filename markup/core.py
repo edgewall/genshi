@@ -156,13 +156,13 @@ def _ensure(stream):
         yield event
 
 
-class Attributes(list):
+class Attrs(list):
     """Sequence type that stores the attributes of an element.
     
     The order of the attributes is preserved, while accessing and manipulating
     attributes by name is also supported.
     
-    >>> attrs = Attributes([('href', '#'), ('title', 'Foo')])
+    >>> attrs = Attrs([('href', '#'), ('title', 'Foo')])
     >>> attrs
     [(u'href', '#'), (u'title', 'Foo')]
     
@@ -187,9 +187,9 @@ class Attributes(list):
     >>> attrs
     [(u'href', '#'), (u'accesskey', 'k')]
     
-    An `Attributes` instance can also be initialized with keyword arguments.
+    An `Attrs` instance can also be initialized with keyword arguments.
     
-    >>> attrs = Attributes(class_='bar', href='#', title='Foo')
+    >>> attrs = Attrs(class_='bar', href='#', title='Foo')
     >>> attrs.get('class')
     'bar'
     >>> attrs.get('href')
@@ -200,7 +200,7 @@ class Attributes(list):
     Reserved words can be used by appending a trailing underscore to the name,
     and any other underscore is replaced by a dash:
     
-    >>> attrs = Attributes(class_='bar', accept_charset='utf-8')
+    >>> attrs = Attrs(class_='bar', accept_charset='utf-8')
     >>> attrs.get('class')
     'bar'
     >>> attrs.get('accept-charset')
@@ -212,7 +212,7 @@ class Attributes(list):
     __slots__ = []
 
     def __init__(self, attrib=None, **kwargs):
-        """Create the `Attributes` instance.
+        """Create the `Attrs` instance.
         
         If the `attrib` parameter is provided, it is expected to be a sequence
         of `(name, value)` tuples.

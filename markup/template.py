@@ -24,7 +24,7 @@ import os
 import re
 from StringIO import StringIO
 
-from markup.core import Attributes, Namespace, Stream, StreamEventKind, _ensure
+from markup.core import Attrs, Namespace, Stream, StreamEventKind, _ensure
 from markup.core import START, END, START_NS, END_NS, TEXT, COMMENT
 from markup.eval import Expression
 from markup.input import XMLParser
@@ -209,7 +209,7 @@ class AttrsDirective(Directive):
             kind, (tag, attrib), pos  = stream.next()
             attrs = self.expr.evaluate(ctxt)
             if attrs:
-                attrib = Attributes(attrib[:])
+                attrib = Attrs(attrib[:])
                 if isinstance(attrs, Stream):
                     try:
                         attrs = iter(attrs).next()
@@ -795,7 +795,7 @@ class Template(object):
                                                      self._dir_order.index(b.__class__)))
                     dirmap[(depth, tag)] = (directives, len(stream), strip)
 
-                stream.append((kind, (tag, Attributes(new_attrib)), pos))
+                stream.append((kind, (tag, Attrs(new_attrib)), pos))
                 depth += 1
 
             elif kind is END:
@@ -919,7 +919,7 @@ class Template(object):
                         if not value:
                             continue
                     new_attrib.append((name, u''.join(value)))
-                yield kind, (tag, Attributes(new_attrib)), pos
+                yield kind, (tag, Attrs(new_attrib)), pos
 
             elif kind is EXPR:
                 result = data.evaluate(ctxt)

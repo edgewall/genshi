@@ -18,7 +18,7 @@ CherryPy/Buffet.
 
 from pkg_resources import resource_filename
 
-from markup.core import Attributes, Stream, QName
+from markup.core import Attrs, Stream, QName
 from markup.template import Context, Template, TemplateLoader
 
 def et_to_stream(element):

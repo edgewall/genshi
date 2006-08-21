@@ -11,7 +11,7 @@
 # individuals. For the exact contribution history, see the revision
 # history and logs, available at http://markup.edgewall.org/log/.
 
-from markup.core import Attributes, Namespace, QName, Stream, START, END, TEXT
+from markup.core import Attrs, Namespace, QName, Stream, START, END, TEXT
 
 __all__ = ['Fragment', 'Element', 'tag']
 
@@ -157,7 +157,7 @@ class Element(Fragment):
     def __init__(self, tag_, **attrib):
         Fragment.__init__(self)
         self.tag = QName(tag_)
-        self.attrib = Attributes()
+        self.attrib = Attrs()
         for attr, value in attrib.items():
             if value is not None:
                 if not isinstance(value, basestring):

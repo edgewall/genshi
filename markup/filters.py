@@ -19,7 +19,7 @@ except NameError:
     from sets import ImmutableSet as frozenset
 import re
 
-from markup.core import Attributes, Namespace, stripentities
+from markup.core import Attrs, Namespace, stripentities
 from markup.core import END, END_NS, START, START_NS
 
 __all__ = ['HTMLSanitizer', 'IncludeFilter']
@@ -67,7 +67,7 @@ class HTMLSanitizer(object):
                     waiting_for = tag
                     continue
 
-                new_attrib = Attributes()
+                new_attrib = Attrs()
                 for attr, value in attrib:
                     value = stripentities(value)
                     if attr not in self._SAFE_ATTRS:

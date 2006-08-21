@@ -21,7 +21,7 @@ import HTMLParser as html
 import htmlentitydefs
 from StringIO import StringIO
 
-from markup.core import Attributes, QName, Stream
+from markup.core import Attrs, QName, Stream
 from markup.core import DOCTYPE, START, END, START_NS, END_NS, TEXT, \
                         START_CDATA, END_CDATA, PI, COMMENT
 
@@ -146,7 +146,7 @@ class XMLParser(object):
                 self.expat.CurrentColumnNumber)
 
     def _handle_start(self, tag, attrib):
-        self._enqueue(START, (QName(tag), Attributes(zip(*[iter(attrib)] * 2))))
+        self._enqueue(START, (QName(tag), Attrs(zip(*[iter(attrib)] * 2))))
 
     def _handle_end(self, tag):
         self._enqueue(END, QName(tag))
@@ -268,7 +268,7 @@ class HTMLParser(html.HTMLParser, object):
                 value = name
             fixed_attrib.append((name, unicode(value)))
 
-        self._enqueue(START, (QName(tag), Attributes(fixed_attrib)))
+        self._enqueue(START, (QName(tag), Attrs(fixed_attrib)))
         if tag in self._EMPTY_ELEMS:
             self._enqueue(END, QName(tag))
         else:

@@ -910,12 +910,11 @@ class Template(object):
                         value = substream
                     else:
                         values = []
-                        for subkind, subdata, subpos in substream:
-                            if subkind is EXPR:
-                                values.append(subdata.evaluate(ctxt))
-                            else:
+                        for subkind, subdata, subpos in self._eval(substream,
+                                                                   ctxt):
+                            if subkind is TEXT:
                                 values.append(subdata)
-                        value = [unicode(x) for x in values if x is not None]
+                        value = [x for x in values if x is not None]
                         if not value:
                             continue
                     new_attrib.append((name, u''.join(value)))

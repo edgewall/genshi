@@ -33,6 +33,8 @@ http://svn.edgewall.org/repos/markup/tags/0.2.0/
    (ticket #31).
  * Expressions in templates can now span multiple lines if they are enclosed
    in curly braces.
+ * py:def macros can now be invoked from within expressions inside attribute
+   values (ticket #34).
 
 
 Version 0.1

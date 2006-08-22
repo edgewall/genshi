@@ -261,6 +261,24 @@ class DefDirectiveTestCase(unittest.TestCase):
           foo
         </doc>""", str(tmpl.generate()))
 
+    def test_invocation_in_attribute(self):
+        tmpl = Template("""<doc xmlns:py="http://markup.edgewall.org/">
+          <py:def function="echo(what)">${what or 'something'}</py:def>
+          <p class="${echo('foo')}">bar</p>
+        </doc>""")
+        self.assertEqual("""<doc>
+          <p class="foo">bar</p>
+        </doc>""", str(tmpl.generate()))
+
+    def test_invocation_in_attribute_none(self):
+        tmpl = Template("""<doc xmlns:py="http://markup.edgewall.org/">
+          <py:def function="echo()">${None}</py:def>
+          <p class="${echo()}">bar</p>
+        </doc>""")
+        self.assertEqual("""<doc>
+          <p>bar</p>
+        </doc>""", str(tmpl.generate()))
+
 
 class ForDirectiveTestCase(unittest.TestCase):
     """Tests for the `py:for` template directive."""

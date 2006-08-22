@@ -825,7 +825,7 @@ class Template(object):
 
         self.stream = stream
 
-    _FULL_EXPR_RE = re.compile(r'(?<!\$)\$\{(.+?)\}')
+    _FULL_EXPR_RE = re.compile(r'(?<!\$)\$\{(.+?)\}', re.DOTALL)
     _SHORT_EXPR_RE = re.compile(r'(?<!\$)\$([a-zA-Z][a-zA-Z0-9_\.]*)')
 
     def _interpolate(cls, text, filename=None, lineno=-1, offset=-1):

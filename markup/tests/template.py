@@ -498,6 +498,20 @@ class MatchDirectiveTestCase(unittest.TestCase):
           <greeting name="Dude"/>
         </div>""", str(tmpl.generate(tagname='sayhello')))
 
+    # FIXME
+    #def test_match_after_step(self):
+    #    tmpl = Template("""<div xmlns:py="http://markup.edgewall.org/">
+    #      <span py:match="div/greeting">
+    #        Hello ${select('@name')}
+    #      </span>
+    #      <greeting name="Dude" />
+    #    </div>""")
+    #    self.assertEqual("""<div>
+    #      <span>
+    #        Hello Dude
+    #      </span>
+    #    </div>""", str(tmpl.generate()))
+
 
 class StripDirectiveTestCase(unittest.TestCase):
     """Tests for the `py:strip` template directive."""
@@ -595,6 +609,12 @@ class TemplateTestCase(unittest.TestCase):
     def test_interpolate_mixed3(self):
         tmpl = Template('<root> ${var} $var</root>')
         self.assertEqual('<root> 42 42</root>', str(tmpl.generate(var=42)))
+
+    def test_interpolate_multiline(self):
+        tmpl = Template("""<root>${dict(
+          bar = 'baz'
+        )[foo]}</root>""")
+        self.assertEqual('<root>baz</root>', str(tmpl.generate(foo='bar')))
 
     def test_interpolate_non_string_attrs(self):
         tmpl = Template('<root attr="${1}"/>')

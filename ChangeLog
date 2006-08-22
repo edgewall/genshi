@@ -1,6 +1,6 @@
 Version 0.2
 http://svn.edgewall.org/repos/markup/tags/0.2.0/
-(?, from branches/stable/0.2.x)
+(Aug 22 2006, from branches/stable/0.2.x)
 
  * XPath syntax errors now contain position info (ticket #20).
  * Errors in expression evaluation now contain the correct line number in the
@@ -31,6 +31,8 @@ http://svn.edgewall.org/repos/markup/tags/0.2.0/
    literals before).
  * XPath expressions in now support XPath variables ($var) in predicates
    (ticket #31).
+ * Expressions in templates can now span multiple lines if they are enclosed
+   in curly braces.
 
 
 Version 0.1

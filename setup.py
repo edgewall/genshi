@@ -19,7 +19,7 @@ except ImportError:
 
 setup(
     name = 'Markup',
-    version = '0.2',
+    version = '0.3',
     description = 'Toolkit for stream-based generation of markup for the web',
     long_description = \
 '''Markup is a Python library that provides an integrated set of components for

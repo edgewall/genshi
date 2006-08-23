@@ -111,13 +111,14 @@ class Context(object):
         """Set a variable in the current scope."""
         self.frames[0][key] = value
 
-    def get(self, key):
+    def get(self, key, default=None):
         """Get a variable's value, starting at the current scope and going
         upward.
         """
         for frame in self.frames:
             if key in frame:
                 return frame[key]
+        return default
     __getitem__ = get
 
     def push(self, data):

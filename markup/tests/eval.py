@@ -20,6 +20,13 @@ from markup.eval import Expression
 
 class ExpressionTestCase(unittest.TestCase):
 
+    def test_name_lookup(self):
+        self.assertEqual('bar', Expression('foo').evaluate({'foo': 'bar'}))
+        self.assertEqual(id, Expression('id').evaluate({}, nocall=True))
+        self.assertEqual('bar', Expression('id').evaluate({'id': 'bar'}))
+        self.assertEqual(None, Expression('id').evaluate({'id': None},
+                                                         nocall=True))
+
     def test_str_literal(self):
         self.assertEqual('foo', Expression('"foo"').evaluate({}))
         self.assertEqual('foo', Expression('"""foo"""').evaluate({}))
@@ -233,20 +240,41 @@ class ExpressionTestCase(unittest.TestCase):
         expr = Expression("[i['name'] for i in items if i['value'] > 1]")
         self.assertEqual(['b'], expr.evaluate({'items': items}))
 
-    def test_error_position(self):
+    def test_error_call_undefined(self):
         expr = Expression("nothing()", filename='index.html', lineno=50)
         try:
             expr.evaluate({})
-            self.fail('Expected TypeError')
-        except TypeError, e:
+            self.fail('Expected NameError')
+        except NameError, e:
             exc_type, exc_value, exc_traceback = sys.exc_info()
             frame = exc_traceback.tb_next
+            frames = []
             while frame.tb_next:
                 frame = frame.tb_next
+                frames.append(frame)
             self.assertEqual('<Expression "nothing()">',
-                             frame.tb_frame.f_code.co_name)
-            self.assertEqual('index.html', frame.tb_frame.f_code.co_filename)
-            self.assertEqual(50, frame.tb_lineno)
+                             frames[-3].tb_frame.f_code.co_name)
+            self.assertEqual('index.html',
+                             frames[-3].tb_frame.f_code.co_filename)
+            self.assertEqual(50, frames[-3].tb_lineno)
+
+    def test_error_getattr_undefined(self):
+        expr = Expression("nothing.nil", filename='index.html', lineno=50)
+        try:
+            expr.evaluate({})
+            self.fail('Expected NameError')
+        except NameError, e:
+            exc_type, exc_value, exc_traceback = sys.exc_info()
+            frame = exc_traceback.tb_next
+            frames = []
+            while frame.tb_next:
+                frame = frame.tb_next
+                frames.append(frame)
+            self.assertEqual('<Expression "nothing.nil">',
+                             frames[-3].tb_frame.f_code.co_name)
+            self.assertEqual('index.html',
+                             frames[-3].tb_frame.f_code.co_filename)
+            self.assertEqual(50, frames[-3].tb_lineno)
 
 
 def suite():

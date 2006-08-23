@@ -18,7 +18,7 @@ from compiler import ast, parse
 from compiler.pycodegen import ExpressionCodeGenerator
 import new
 
-__all__ = ['Expression']
+__all__ = ['Expression', 'Undefined']
 
 
 class Expression(object):
@@ -97,6 +97,60 @@ class Expression(object):
         return retval
 
 
+class Undefined(object):
+    """Represents a reference to an undefined variable.
+    
+    Unlike the Python runtime, template expressions can refer to an undefined
+    variable without causing a `NameError` to be raised. The result will be an
+    instance of the `Undefined´ class, which is treated the same as `False` in
+    conditions, and acts as an empty collection in iterations:
+    
+    >>> foo = Undefined('foo')
+    >>> bool(foo)
+    False
+    >>> list(foo)
+    []
+    >>> print foo
+    undefined
+    
+    However, calling an undefined variable, or trying to access an attribute
+    of that variable, will raise an exception that includes the name used to
+    reference that undefined variable.
+    
+    >>> foo('bar')
+    Traceback (most recent call last):
+        ...
+    NameError: Variable "foo" is not defined
+
+    >>> foo.bar
+    Traceback (most recent call last):
+        ...
+    NameError: Variable "foo" is not defined
+    """
+    __slots__ = ['name']
+
+    def __init__(self, name):
+        self.name = name
+
+    def __call__(self, *args, **kwargs):
+        self.throw()
+
+    def __getattr__(self, name):
+        self.throw()
+
+    def __iter__(self):
+        return iter([])
+
+    def __nonzero__(self):
+        return False
+
+    def __repr__(self):
+        return 'undefined'
+
+    def throw(self):
+        raise NameError('Variable "%s" is not defined' % self.name)
+
+
 def _compile(node, source=None, filename=None, lineno=-1):
     tree = ExpressionASTTransformer().visit(node)
     if isinstance(filename, unicode):
@@ -120,17 +174,28 @@ def _compile(node, source=None, filename=None, lineno=-1):
                     '<Expression %s>' % (repr(source).replace("'", '"') or '?'),
                     lineno, code.co_lnotab, (), ())
 
+BUILTINS = __builtin__.__dict__.copy()
+BUILTINS['Undefined'] = Undefined
+
 def _lookup_name(data, name, locals_=None):
-    val = None
+    val = Undefined
     if locals_:
-        val = locals_.get(name)
-    if val is None:
-        val = data.get(name)
-    if val is None:
-        val = getattr(__builtin__, name, None)
-    return val
+        val = locals_.get(name, val)
+    if val is Undefined:
+        val = data.get(name, val)
+        if val is Undefined:
+            val = BUILTINS.get(name, val)
+            if val is not Undefined or name == 'Undefined':
+                return val
+        else:
+            return val
+    else:
+        return val
+    return val(name)
 
 def _lookup_attr(data, obj, key):
+    if type(obj) is Undefined:
+        obj.throw()
     if hasattr(obj, key):
         return getattr(obj, key)
     try:
@@ -139,6 +204,8 @@ def _lookup_attr(data, obj, key):
         return None
 
 def _lookup_item(data, obj, key):
+    if type(obj) is Undefined:
+        obj.throw()
     if len(key) == 1:
         key = key[0]
     try:

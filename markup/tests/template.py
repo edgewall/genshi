@@ -669,6 +669,10 @@ class TemplateTestCase(unittest.TestCase):
         tmpl = Template('<root> ${var} $var</root>')
         self.assertEqual('<root> 42 42</root>', str(tmpl.generate(var=42)))
 
+    def test_interpolate_leading_trailing_space(self):
+        tmpl = Template('<root>${    foo    }</root>')
+        self.assertEqual('<root>bar</root>', str(tmpl.generate(foo='bar')))
+
     def test_interpolate_multiline(self):
         tmpl = Template("""<root>${dict(
           bar = 'baz'

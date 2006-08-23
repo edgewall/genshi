@@ -853,27 +853,27 @@ class Template(object):
         """
         def _interpolate(text, patterns, filename=filename, lineno=lineno,
                          offset=offset):
-            for idx, group in enumerate(patterns.pop(0).split(text)):
+            for idx, grp in enumerate(patterns.pop(0).split(text)):
                 if idx % 2:
                     try:
-                        yield EXPR, Expression(group, filename, lineno), \
+                        yield EXPR, Expression(grp.strip(), filename, lineno), \
                               (filename, lineno, offset)
                     except SyntaxError, err:
                         raise TemplateSyntaxError(err, filename, lineno,
                                                   offset + (err.offset or 0))
-                elif group:
+                elif grp:
                     if patterns:
-                        for result in _interpolate(group, patterns[:]):
+                        for result in _interpolate(grp, patterns[:]):
                             yield result
                     else:
-                        yield TEXT, group.replace('$$', '$'), \
+                        yield TEXT, grp.replace('$$', '$'), \
                               (filename, lineno, offset)
-                if '\n' in group:
-                    lines = group.splitlines()
+                if '\n' in grp:
+                    lines = grp.splitlines()
                     lineno += len(lines) - 1
                     offset += len(lines[-1])
                 else:
-                    offset += len(group)
+                    offset += len(grp)
         return _interpolate(text, [cls._FULL_EXPR_RE, cls._SHORT_EXPR_RE])
     _interpolate = classmethod(_interpolate)
 

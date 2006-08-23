@@ -574,6 +574,47 @@ class WithDirectiveTestCase(unittest.TestCase):
           84
         </div>""", str(tmpl.generate(x=42)))
 
+    def test_multiple_vars_same_name(self):
+        tmpl = Template("""<div xmlns:py="http://markup.edgewall.org/">
+          <py:with vars="
+            foo = 'bar';
+            foo = foo.replace('r', 'z')
+          ">
+            $foo
+          </py:with>
+        </div>""")
+        self.assertEqual("""<div>
+            baz
+        </div>""", str(tmpl.generate(x=42)))
+
+    def test_multiple_vars_single_assignment(self):
+        tmpl = Template("""<div xmlns:py="http://markup.edgewall.org/">
+          <py:with vars="x = y = z = 1">${x} ${y} ${z}</py:with>
+        </div>""")
+        self.assertEqual("""<div>
+          1 1 1
+        </div>""", str(tmpl.generate(x=42)))
+
+    def test_multiple_vars_trailing_semicolon(self):
+        tmpl = Template("""<div xmlns:py="http://markup.edgewall.org/">
+          <py:with vars="x = x * 2; y = x / 2;">${x} ${y}</py:with>
+        </div>""")
+        self.assertEqual("""<div>
+          84 42
+        </div>""", str(tmpl.generate(x=42)))
+
+    def test_semicolon_escape(self):
+        tmpl = Template("""<div xmlns:py="http://markup.edgewall.org/">
+          <py:with vars="x = 'here is a semicolon: ;'; y = 'here are two semicolons: ;;' ;">
+            ${x}
+            ${y}
+          </py:with>
+        </div>""")
+        self.assertEqual("""<div>
+            here is a semicolon: ;
+            here are two semicolons: ;;
+        </div>""", str(tmpl.generate()))
+
 
 class TemplateTestCase(unittest.TestCase):
     """Tests for basic template processing, expression evaluation and error

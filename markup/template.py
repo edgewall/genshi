@@ -665,18 +665,30 @@ class WithDirective(Directive):
     def __init__(self, value, filename=None, lineno=-1, offset=-1):
         Directive.__init__(self, None, filename, lineno, offset)
         self.vars = []
+        value = value.strip()
         try:
-            for stmt in value.split(';'):
-                name, value = stmt.split('=', 1)
-                self.vars.append((name.strip(),
-                                  Expression(value.strip(), filename, lineno)))
+            ast = compiler.parse(value, 'exec').node
+            for node in ast.nodes:
+                if isinstance(node, compiler.ast.Discard):
+                    continue
+                elif not isinstance(node, compiler.ast.Assign):
+                    raise TemplateSyntaxError('only assignment allowed in '
+                                              'value of the "with" directive',
+                                              filename, lineno, offset)
+                self.vars.append(([n.name for n in node.nodes],
+                                  Expression(node.expr, filename, lineno)))
         except SyntaxError, err:
+            err.msg += ' in expression "%s" of "%s" directive' % (value,
+                                                                  self.tagname)
             raise TemplateSyntaxError(err, filename, lineno,
                                       offset + (err.offset or 0))
 
     def __call__(self, stream, ctxt, directives):
-        ctxt.push(dict([(name, expr.evaluate(ctxt, nocall=True))
-                        for name, expr in self.vars]))
+        frame = {}
+        ctxt.push(frame)
+        for names, expr in self.vars:
+            value = expr.evaluate(ctxt, nocall=True)
+            frame.update(dict((name, value) for name in names))
         for event in _apply_directives(stream, ctxt, directives):
             yield event
         ctxt.pop()

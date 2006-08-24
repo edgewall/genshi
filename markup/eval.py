@@ -331,6 +331,26 @@ class ASTTransformer(object):
         node.test = self.visit(node.test, *args, **kwargs)
         return node
 
+    def visitGenExpr(self, node, *args, **kwargs):
+        node.code = self.visit(node.code, *args, **kwargs)
+        node.filename = '<string>' # workaround for bug in pycodegen
+        return node
+
+    def visitGenExprFor(self, node, *args, **kwargs):
+        node.assign = self.visit(node.assign, *args, **kwargs)
+        node.iter = self.visit(node.iter, *args, **kwargs)
+        node.ifs = map(lambda x: self.visit(x, *args, **kwargs), node.ifs)
+        return node
+
+    def visitGenExprIf(self, node, *args, **kwargs):
+        node.test = self.visit(node.test, locals_=True, *args, **kwargs)
+        return node
+
+    def visitGenExprInner(self, node, *args, **kwargs):
+        node.expr = self.visit(node.expr, locals_=True, *args, **kwargs)
+        node.quals = map(lambda x: self.visit(x, *args, **kwargs), node.quals)
+        return node
+
 
 class ExpressionASTTransformer(ASTTransformer):
     """Concrete AST transformer that implements the AST transformations needed

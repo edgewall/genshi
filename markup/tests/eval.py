@@ -240,6 +240,30 @@ class ExpressionTestCase(unittest.TestCase):
         expr = Expression("[i['name'] for i in items if i['value'] > 1]")
         self.assertEqual(['b'], expr.evaluate({'items': items}))
 
+    # generator expressions only supported in Python 2.4 and up
+    if sys.version_info >= (2, 4):
+        def test_generator_expression(self):
+            expr = Expression("list(n for n in numbers if n < 2)")
+            self.assertEqual([0, 1], expr.evaluate({'numbers': range(5)}))
+
+            expr = Expression("list((i, n + 1) for i, n in enumerate(numbers))")
+            self.assertEqual([(0, 1), (1, 2), (2, 3), (3, 4), (4, 5)],
+                             expr.evaluate({'numbers': range(5)}))
+
+            expr = Expression("list(offset + n for n in numbers)")
+            self.assertEqual([2, 3, 4, 5, 6],
+                             expr.evaluate({'numbers': range(5), 'offset': 2}))
+
+        def test_generator_expression_with_getattr(self):
+            items = [{'name': 'a', 'value': 1}, {'name': 'b', 'value': 2}]
+            expr = Expression("list(i.name for i in items if i.value > 1)")
+            self.assertEqual(['b'], expr.evaluate({'items': items}))
+
+        def test_generator_expression_with_getitem(self):
+            items = [{'name': 'a', 'value': 1}, {'name': 'b', 'value': 2}]
+            expr = Expression("list(i['name'] for i in items if i['value'] > 1)")
+            self.assertEqual(['b'], expr.evaluate({'items': items}))
+
     def test_error_access_undefined(self):
         expr = Expression("nothing", filename='index.html', lineno=50)
         self.assertEqual(Undefined, type(expr.evaluate({})))

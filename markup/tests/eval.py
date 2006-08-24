@@ -15,7 +15,7 @@ import doctest
 import sys
 import unittest
 
-from markup.eval import Expression
+from markup.eval import Expression, Undefined
 
 
 class ExpressionTestCase(unittest.TestCase):

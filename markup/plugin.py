@@ -35,7 +35,7 @@ def ET(element):
     if element.text:
         yield Stream.TEXT, element.text, (None, -1, -1)
     for child in element.getchildren():
-        for item in et_to_stream(child):
+        for item in ET(child):
             yield item
     yield Stream.END, tag_name, (None, -1, -1)
     if element.tail:

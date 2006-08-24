@@ -240,6 +240,10 @@ class ExpressionTestCase(unittest.TestCase):
         expr = Expression("[i['name'] for i in items if i['value'] > 1]")
         self.assertEqual(['b'], expr.evaluate({'items': items}))
 
+    def test_error_access_undefined(self):
+        expr = Expression("nothing", filename='index.html', lineno=50)
+        self.assertEqual(Undefined, type(expr.evaluate({})))
+
     def test_error_call_undefined(self):
         expr = Expression("nothing()", filename='index.html', lineno=50)
         try:

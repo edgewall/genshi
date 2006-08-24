@@ -92,7 +92,7 @@ class Expression(object):
                                   '_lookup_name': _lookup_name,
                                   '_lookup_attr': _lookup_attr,
                                   '_lookup_item': _lookup_item})
-        if not nocall and callable(retval):
+        if not nocall and type(retval) is not Undefined and callable(retval):
             retval = retval()
         return retval
 

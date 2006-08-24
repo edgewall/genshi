@@ -689,7 +689,7 @@ class WithDirective(Directive):
         ctxt.push(frame)
         for names, expr in self.vars:
             value = expr.evaluate(ctxt, nocall=True)
-            frame.update(dict((name, value) for name in names))
+            frame.update(dict([(name, value) for name in names]))
         for event in _apply_directives(stream, ctxt, directives):
             yield event
         ctxt.pop()

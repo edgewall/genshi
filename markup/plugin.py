@@ -84,10 +84,7 @@ class TemplateEnginePlugin(object):
             return ctxt.get(name, Undefined) is not Undefined
         ctxt['defined'] = defined
         def value_of(name, default=None):
-            val = ctxt.get(name, Undefined)
-            if val is not Undefined:
-                return val
-            return default
+            return ctxt.get(name, default)
         ctxt['value_of'] = value_of
 
         return template.generate(ctxt)

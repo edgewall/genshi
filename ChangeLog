@@ -6,9 +6,13 @@ http://svn.edgewall.org/repos/markup/tags/0.3.0/
    variables that are defined but set to `None`. This also means that local
    variables can override built-ins even if the local variable are set to
    `None` (ticket #36).
+ * The plugin implementation now makes more functions available for use inside
+   templates: XML(), HTML(), defined(), and value-of(). These are mostly for
+   migration from Kid.
  * The parsing of `py:with` directives has been improved: you can now assign
    to multiple names, and semicolons inside string literals are treated as
    expected.
+ * Generator expressions can now be used in template expressions (ticket #16).
 
 
 Version 0.2

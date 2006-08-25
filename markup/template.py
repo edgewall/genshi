@@ -444,19 +444,17 @@ class MatchDirective(Directive):
       </span>
     </div>
     """
-    __slots__ = ['path', 'stream']
+    __slots__ = ['path']
 
     ATTRIBUTE = 'path'
 
     def __init__(self, value, filename=None, lineno=-1, offset=-1):
         Directive.__init__(self, None, filename, lineno, offset)
         self.path = Path(value, filename, lineno)
-        self.stream = []
 
     def __call__(self, stream, ctxt, directives):
-        self.stream = list(stream)
         ctxt._match_templates.append((self.path.test(ignore_context=True),
-                                      self.path, self.stream, directives))
+                                      self.path, list(stream), directives))
         return []
 
     def __repr__(self):

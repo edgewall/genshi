@@ -26,7 +26,8 @@ from markup.core import escape, Markup, Namespace, QName
 from markup.core import DOCTYPE, START, END, START_NS, TEXT, START_CDATA, \
                         END_CDATA, PI, COMMENT, XML_NAMESPACE
 
-__all__ = ['Serializer', 'XMLSerializer', 'HTMLSerializer']
+__all__ = ['DocType', 'XMLSerializer', 'XHTMLSerializer', 'HTMLSerializer',
+           'TextSerializer']
 
 
 class DocType(object):
@@ -396,6 +397,37 @@ class HTMLSerializer(XHTMLSerializer):
 
             elif kind is PI:
                 yield Markup('<?%s %s?>' % data)
+
+
+class TextSerializer(object):
+    """Produces plain text from an event stream.
+    
+    Only text events are included in the output. Unlike the other serializer,
+    special XML characters are not escaped:
+    
+    >>> from markup.builder import tag
+    >>> elem = tag.div(tag.a('<Hello!>', href='foo'), tag.br)
+    >>> print elem
+    <div><a href="foo">&lt;Hello!&gt;</a><br/></div>
+    >>> print ''.join(TextSerializer()(elem.generate()))
+    <Hello!>
+
+    If text events contain literal markup (instances of the `Markup` class),
+    tags or entities are stripped from the output:
+    
+    >>> elem = tag.div(Markup('<a href="foo">Hello!</a><br/>'))
+    >>> print elem
+    <div><a href="foo">Hello!</a><br/></div>
+    >>> print ''.join(TextSerializer()(elem.generate()))
+    Hello!
+    """
+
+    def __call__(self, stream):
+        for kind, data, pos in stream:
+            if kind is TEXT:
+                if type(data) is Markup:
+                    data = data.striptags().stripentities()
+                yield data
 
 
 class WhitespaceFilter(object):

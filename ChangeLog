@@ -13,6 +13,7 @@ http://svn.edgewall.org/repos/markup/tags/0.3.0/
    to multiple names, and semicolons inside string literals are treated as
    expected.
  * Generator expressions can now be used in template expressions (ticket #16).
+ * Added serialization to plain text (ticket #41).
 
 
 Version 0.2

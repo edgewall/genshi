@@ -81,8 +81,8 @@ class Stream(object):
         """Return a string representation of the stream.
         
         @param method: determines how the stream is serialized; can be either
-                       "xml", "xhtml", or "html", or a custom `Serializer`
-                       subclass
+                       "xml", "xhtml", "html", "text", or a custom serializer
+                       class
         @param encoding: how the output string should be encoded; if set to
                          `None`, this method returns a `unicode` object
 
@@ -92,7 +92,10 @@ class Stream(object):
         generator = self.serialize(method=method, **kwargs)
         output = u''.join(list(generator))
         if encoding is not None:
-            return output.encode(encoding, 'xmlcharrefreplace')
+            errors = 'replace'
+            if method != 'text':
+                errors = 'xmlcharrefreplace'
+            return output.encode(encoding, errors)
         return output
 
     def select(self, path):
@@ -113,7 +116,8 @@ class Stream(object):
         string.
         
         @param method: determines how the stream is serialized; can be either
-                       "xml", "xhtml", or "html", or a custom serializer class
+                       "xml", "xhtml", "html", "text", or a custom serializer
+                       class
 
         Any additional keyword arguments are passed to the serializer, and thus
         depend on the `method` parameter value.
@@ -123,7 +127,8 @@ class Stream(object):
         if isinstance(method, basestring):
             cls = {'xml':   output.XMLSerializer,
                    'xhtml': output.XHTMLSerializer,
-                   'html':  output.HTMLSerializer}[method]
+                   'html':  output.HTMLSerializer,
+                   'text':  output.TextSerializer}[method]
         serialize = cls(**kwargs)
         return serialize(_ensure(self))
 
@@ -300,8 +305,7 @@ def stripentities(text, keepxmlentities=False):
             return unichr(ref)
         else: # character entity
             ref = match.group(2)
-            if keepxmlentities and ref in ('amp', 'apos', 'gt', 'lt',
-                                           'quot'):
+            if keepxmlentities and ref in ('amp', 'apos', 'gt', 'lt', 'quot'):
                 return '&%s;' % ref
             try:
                 codepoint = htmlentitydefs.name2codepoint[ref]

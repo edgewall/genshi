@@ -66,9 +66,9 @@ class MarkupTestCase(unittest.TestCase):
         self.assertEquals('<b>foo</b><br/>', markup)
 
     def test_add_reverse(self):
-        markup = 'foo' + Markup('<b>bar</b>')
-        assert isinstance(markup, unicode)
-        self.assertEquals('foo<b>bar</b>', markup)
+        markup = '<br/>' + Markup('<b>bar</b>')
+        assert isinstance(markup, Markup)
+        self.assertEquals('&lt;br/&gt;<b>bar</b>', markup)
 
     def test_mod(self):
         markup = Markup('<b>%s</b>') % '&'
@@ -82,6 +82,11 @@ class MarkupTestCase(unittest.TestCase):
 
     def test_mul(self):
         markup = Markup('<b>foo</b>') * 2
+        assert isinstance(markup, Markup)
+        self.assertEquals('<b>foo</b><b>foo</b>', markup)
+
+    def test_mul_reverse(self):
+        markup = 2 * Markup('<b>foo</b>')
         assert isinstance(markup, Markup)
         self.assertEquals('<b>foo</b><b>foo</b>', markup)
 

@@ -110,6 +110,46 @@ class ChooseDirectiveTestCase(unittest.TestCase):
           </div>
         </doc>""", str(tmpl.generate()))
 
+    def test_complex_nesting(self):
+        """
+        Verify more complex nesting.
+        """
+        tmpl = Template("""<doc xmlns:py="http://markup.edgewall.org/">
+          <div py:choose="1">
+            <div py:when="1" py:choose="">
+              <span py:when="2">OK</span>
+              <span py:when="1">FAIL</span>
+            </div>
+          </div>
+        </doc>""")
+        self.assertEqual("""<doc>
+          <div>
+            <div>
+              <span>OK</span>
+            </div>
+          </div>
+        </doc>""", str(tmpl.generate()))
+
+    def test_complex_nesting_otherwise(self):
+        """
+        Verify more complex nesting using otherwise.
+        """
+        tmpl = Template("""<doc xmlns:py="http://markup.edgewall.org/">
+          <div py:choose="1">
+            <div py:when="1" py:choose="2">
+              <span py:when="1">FAIL</span>
+              <span py:otherwise="">OK</span>
+            </div>
+          </div>
+        </doc>""")
+        self.assertEqual("""<doc>
+          <div>
+            <div>
+              <span>OK</span>
+            </div>
+          </div>
+        </doc>""", str(tmpl.generate()))
+
     def test_when_with_strip(self):
         """
         Verify that a when directive with a strip directive actually strips of

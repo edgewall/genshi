@@ -111,6 +111,16 @@ class Context(object):
         """Set a variable in the current scope."""
         self.frames[0][key] = value
 
+    def _find(self, key, default=None):
+        """Retrieve a given variable's value and frame it was found in.
+
+        Intented for internal use by directives.
+        """
+        for frame in self.frames:
+            if key in frame:
+                return frame[key], frame
+        return default, None
+
     def get(self, key, default=None):
         """Get a variable's value, starting at the current scope and going
         upward.
@@ -586,10 +596,10 @@ class ChooseDirective(Directive):
     ATTRIBUTE = 'test'
 
     def __call__(self, stream, ctxt, directives):
+        frame = dict({'_choose.matched': False})
         if self.expr:
-            self.value = self.expr.evaluate(ctxt)
-        self.matched = False
-        ctxt.push(dict(_choose=self))
+            frame['_choose.value'] = self.expr.evaluate(ctxt)
+        ctxt.push(frame)
         for event in _apply_directives(stream, ctxt, directives):
             yield event
         ctxt.pop()
@@ -605,26 +615,26 @@ class WhenDirective(Directive):
     ATTRIBUTE = 'test'
 
     def __call__(self, stream, ctxt, directives):
-        choose = ctxt['_choose']
-        if not choose:
+        matched, frame = ctxt._find('_choose.matched')
+        if not frame:
             raise TemplateSyntaxError('"when" directives can only be used '
                                       'inside a "choose" directive',
                                       *stream.next()[2])
-        if choose.matched:
+        if matched:
             return []
         if not self.expr:
             raise TemplateSyntaxError('"when" directive has no test condition',
                                       *stream.next()[2])
         value = self.expr.evaluate(ctxt)
-        try:
-            if value == choose.value:
-                choose.matched = True
-                return _apply_directives(stream, ctxt, directives)
-        except AttributeError:
-            if value:
-                choose.matched = True
-                return _apply_directives(stream, ctxt, directives)
-        return []
+        if '_choose.value' in frame:
+            matched = (value == frame['_choose.value'])
+        else:
+            matched = bool(value)
+        frame['_choose.matched'] = matched
+        if not matched:
+            return []
+
+        return _apply_directives(stream, ctxt, directives)
 
 
 class OtherwiseDirective(Directive):
@@ -634,14 +644,15 @@ class OtherwiseDirective(Directive):
     See the documentation of `py:choose` for usage.
     """
     def __call__(self, stream, ctxt, directives):
-        choose = ctxt['_choose']
-        if not choose:
+        matched, frame = ctxt._find('_choose.matched')
+        if not frame:
             raise TemplateSyntaxError('an "otherwise" directive can only be '
                                       'used inside a "choose" directive',
                                       *stream.next()[2])
-        if choose.matched:
+        if matched:
             return []
-        choose.matched = True
+        frame['_choose.matched'] = True
+
         return _apply_directives(stream, ctxt, directives)
 
 

@@ -243,11 +243,9 @@ class ASTTransformer(object):
         node.node = self.visit(node.node, *args, **kwargs)
         node.args = map(lambda x: self.visit(x, *args, **kwargs), node.args)
         if node.star_args:
-            node.star_args = map(lambda x: self.visit(x, *args, **kwargs),
-                                 node.star_args)
+            node.star_args = self.visit(node.star_args, *args, **kwargs)
         if node.dstar_args:
-            node.dstart_args = map(lambda x: self.visit(x, *args, **kwargs),
-                                   node.dstar_args)
+            node.dstar_args = self.visit(node.dstar_args, *args, **kwargs)
         return node
 
     def visitLambda(self, node, *args, **kwargs):

@@ -200,6 +200,16 @@ class ExpressionTestCase(unittest.TestCase):
         self.assertEqual(42, Expression("foo(x=bar)").evaluate({'foo': lambda x: x,
                                                                 'bar': 42}))
 
+    def test_call_star_args(self):
+        self.assertEqual(42, Expression("foo(*bar)").evaluate({'foo': lambda x: x,
+                                                               'bar': [42]}))
+
+    def test_call_dstar_args(self):
+        def foo(x):
+            return x
+        self.assertEqual(42, Expression("foo(**bar)").evaluate({'foo': foo,
+                                                                'bar': {"x": 42}}))
+
     def test_call_function_without_params(self):
         self.assertEqual(42, Expression("foo").evaluate({'foo': lambda: 42}))
         data = {'foo': 'bar'}

@@ -427,7 +427,7 @@ class TextSerializer(object):
             if kind is TEXT:
                 if type(data) is Markup:
                     data = data.striptags().stripentities()
-                yield data
+                yield unicode(data)
 
 
 class WhitespaceFilter(object):

@@ -194,13 +194,18 @@ def _apply_directives(stream, ctxt, directives):
 class AttrsDirective(Directive):
     """Implementation of the `py:attrs` template directive.
     
-    The value of the `py:attrs` attribute should be a dictionary. The keys and
-    values of that dictionary will be added as attributes to the element:
+    The value of the `py:attrs` attribute should be a dictionary or a sequence
+    of `(name, value)` tuples. The items in that dictionary or sequence are
+    added as attributes to the element:
     
     >>> tmpl = Template('''<ul xmlns:py="http://markup.edgewall.org/">
     ...   <li py:attrs="foo">Bar</li>
     ... </ul>''')
     >>> print tmpl.generate(foo={'class': 'collapse'})
+    <ul>
+      <li class="collapse">Bar</li>
+    </ul>
+    >>> print tmpl.generate(foo=[('class', 'collapse')])
     <ul>
       <li class="collapse">Bar</li>
     </ul>

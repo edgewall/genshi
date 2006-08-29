@@ -319,6 +319,17 @@ class DefDirectiveTestCase(unittest.TestCase):
           <p>bar</p>
         </doc>""", str(tmpl.generate()))
 
+    def test_function_raising_typeerror(self):
+        def badfunc():
+            raise TypeError
+        tmpl = Template("""<html xmlns:py="http://markup.edgewall.org/">
+          <div py:def="dobadfunc()">
+            ${badfunc()}
+          </div>
+          <div py:content="dobadfunc()"/>
+        </html>""")
+        self.assertRaises(TypeError, list, tmpl.generate(badfunc=badfunc))
+
 
 class ForDirectiveTestCase(unittest.TestCase):
     """Tests for the `py:for` template directive."""

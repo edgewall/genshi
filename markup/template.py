@@ -961,15 +961,16 @@ class Template(object):
                     # Test if the expression evaluated to an iterable, in which
                     # case we yield the individual items
                     try:
-                        substream = _ensure(result)
-                        for filter_ in filters:
-                            substream = filter_(substream, ctxt)
-                        for event in substream:
-                            yield event
+                        substream = _ensure(iter(result))
                     except TypeError:
                         # Neither a string nor an iterable, so just pass it
                         # through
                         yield TEXT, unicode(result), pos
+                    else:
+                        for filter_ in filters:
+                            substream = filter_(substream, ctxt)
+                        for event in substream:
+                            yield event
 
             else:
                 yield kind, data, pos

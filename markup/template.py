@@ -915,7 +915,7 @@ class Template(object):
             ctxt = Context(**kwargs)
 
         stream = self.stream
-        for filter_ in [self._eval, self._match, self._flatten] + self.filters:
+        for filter_ in [self._flatten, self._eval, self._match] + self.filters:
             stream = filter_(iter(stream), ctxt)
         return Stream(stream)
 
@@ -923,7 +923,7 @@ class Template(object):
         """Internal stream filter that evaluates any expressions in `START` and
         `TEXT` events.
         """
-        filters = (self._eval, self._match, self._flatten)
+        filters = (self._flatten, self._eval)
 
         for kind, data, pos in stream:
 
@@ -983,9 +983,7 @@ class Template(object):
                 # events to which those directives should be applied
                 directives, substream = data
                 substream = _apply_directives(substream, ctxt, directives)
-                for filter_ in (self._eval, self._match, self._flatten):
-                    substream = filter_(substream, ctxt)
-                for event in substream:
+                for event in self._flatten(substream, ctxt):
                     yield event
             else:
                 yield kind, data, pos
@@ -1009,10 +1007,17 @@ class Template(object):
                     enumerate(match_templates):
 
                 if test(kind, data, pos, ctxt) is True:
+
+                    # Let the remaining match templates know about the event so
+                    # they get a chance to update their internal state
+                    for test in [mt[0] for mt in match_templates[idx + 1:]]:
+                        test(kind, data, pos, ctxt)
+
                     # Consume and store all events until an end event
                     # corresponding to this start event is encountered
                     content = [(kind, data, pos)]
                     depth = 1
+                    stream = self._match(stream, ctxt)
                     while depth > 0:
                         kind, data, pos = stream.next()
                         if kind is START:
@@ -1020,12 +1025,14 @@ class Template(object):
                         elif kind is END:
                             depth -= 1
                         content.append((kind, data, pos))
-                        test(kind, data, pos, ctxt)
 
-                    content = list(self._flatten(content, ctxt))
-                    select = lambda path: Stream(content).select(path)
+                    # Make the select() function available in the body of the
+                    # match template
+                    def select(path):
+                        return Stream(content).select(path)
                     ctxt.push(dict(select=select))
 
+                    # Recursively process the output
                     template = _apply_directives(template, ctxt, directives)
                     for event in self._match(self._eval(template, ctxt),
                                              ctxt, match_templates[:idx] +

@@ -330,6 +330,18 @@ class DefDirectiveTestCase(unittest.TestCase):
         </html>""")
         self.assertRaises(TypeError, list, tmpl.generate(badfunc=badfunc))
 
+    def test_def_in_matched(self):
+        tmpl = Template("""<doc xmlns:py="http://markup.edgewall.org/">
+          <head py:match="head">${select('*')}</head>
+          <head>
+            <py:def function="maketitle(test)"><b py:replace="test" /></py:def>
+            <title>${maketitle(True)}</title>
+          </head>
+        </doc>""")
+        self.assertEqual("""<doc>
+          <head><title>True</title></head>
+        </doc>""", str(tmpl.generate()))
+
 
 class ForDirectiveTestCase(unittest.TestCase):
     """Tests for the `py:for` template directive."""

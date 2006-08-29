@@ -80,7 +80,11 @@ class XMLParser(object):
         parser.EndCdataSectionHandler = self._handle_end_cdata
         parser.ProcessingInstructionHandler = self._handle_pi
         parser.CommentHandler = self._handle_comment
+
+        # Tell Expat that we'll handle non-XML entities ourselves
+        # (in _handle_other)
         parser.DefaultHandler = self._handle_other
+        parser.UseForeignDTD()
 
         # Location reporting is only support in Python >= 2.4
         if not hasattr(parser, 'CurrentLineNumber'):
@@ -103,6 +107,8 @@ class XMLParser(object):
                                 del self.expat # get rid of circular references
                             done = True
                         else:
+                            if isinstance(data, unicode):
+                                data = data.encode('utf-8')
                             self.expat.Parse(data, False)
                     for event in self._queue:
                         yield event
@@ -182,9 +188,13 @@ class XMLParser(object):
                 text = unichr(htmlentitydefs.name2codepoint[text[1:-1]])
                 self._enqueue(TEXT, text)
             except KeyError:
-                lineno, offset = self._getpos()
-                raise expat.error("undefined entity %s: line %d, column %d" %
-                                  (text, lineno, offset))
+                filename, lineno, offset = self._getpos()
+                error = expat.error('undefined entity "%s": line %d, column %d'
+                                    % (text, lineno, offset))
+                error.code = expat.errors.XML_ERROR_UNDEFINED_ENTITY
+                error.lineno = lineno
+                error.offset = offset
+                raise error
 
 
 def XML(text):

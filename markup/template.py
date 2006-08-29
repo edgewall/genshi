@@ -111,13 +111,24 @@ class Context(object):
         """Set a variable in the current scope."""
         self.frames[0][key] = value
 
-    def get(self, key):
+    def _find(self, key, default=None):
+        """Retrieve a given variable's value and frame it was found in.
+
+        Intented for internal use by directives.
+        """
+        for frame in self.frames:
+            if key in frame:
+                return frame[key], frame
+        return default, None
+
+    def get(self, key, default=None):
         """Get a variable's value, starting at the current scope and going
         upward.
         """
         for frame in self.frames:
             if key in frame:
                 return frame[key]
+        return default
     __getitem__ = get
 
     def push(self, data):
@@ -183,13 +194,18 @@ def _apply_directives(stream, ctxt, directives):
 class AttrsDirective(Directive):
     """Implementation of the `py:attrs` template directive.
     
-    The value of the `py:attrs` attribute should be a dictionary. The keys and
-    values of that dictionary will be added as attributes to the element:
+    The value of the `py:attrs` attribute should be a dictionary or a sequence
+    of `(name, value)` tuples. The items in that dictionary or sequence are
+    added as attributes to the element:
     
     >>> tmpl = Template('''<ul xmlns:py="http://markup.edgewall.org/">
     ...   <li py:attrs="foo">Bar</li>
     ... </ul>''')
     >>> print tmpl.generate(foo={'class': 'collapse'})
+    <ul>
+      <li class="collapse">Bar</li>
+    </ul>
+    >>> print tmpl.generate(foo=[('class', 'collapse')])
     <ul>
       <li class="collapse">Bar</li>
     </ul>
@@ -443,19 +459,17 @@ class MatchDirective(Directive):
       </span>
     </div>
     """
-    __slots__ = ['path', 'stream']
+    __slots__ = ['path']
 
     ATTRIBUTE = 'path'
 
     def __init__(self, value, filename=None, lineno=-1, offset=-1):
         Directive.__init__(self, None, filename, lineno, offset)
         self.path = Path(value, filename, lineno)
-        self.stream = []
 
     def __call__(self, stream, ctxt, directives):
-        self.stream = list(stream)
         ctxt._match_templates.append((self.path.test(ignore_context=True),
-                                      self.path, self.stream, directives))
+                                      self.path, list(stream), directives))
         return []
 
     def __repr__(self):
@@ -587,10 +601,10 @@ class ChooseDirective(Directive):
     ATTRIBUTE = 'test'
 
     def __call__(self, stream, ctxt, directives):
+        frame = dict({'_choose.matched': False})
         if self.expr:
-            self.value = self.expr.evaluate(ctxt)
-        self.matched = False
-        ctxt.push(dict(_choose=self))
+            frame['_choose.value'] = self.expr.evaluate(ctxt)
+        ctxt.push(frame)
         for event in _apply_directives(stream, ctxt, directives):
             yield event
         ctxt.pop()
@@ -606,26 +620,26 @@ class WhenDirective(Directive):
     ATTRIBUTE = 'test'
 
     def __call__(self, stream, ctxt, directives):
-        choose = ctxt['_choose']
-        if not choose:
+        matched, frame = ctxt._find('_choose.matched')
+        if not frame:
             raise TemplateSyntaxError('"when" directives can only be used '
                                       'inside a "choose" directive',
                                       *stream.next()[2])
-        if choose.matched:
+        if matched:
             return []
         if not self.expr:
             raise TemplateSyntaxError('"when" directive has no test condition',
                                       *stream.next()[2])
         value = self.expr.evaluate(ctxt)
-        try:
-            if value == choose.value:
-                choose.matched = True
-                return _apply_directives(stream, ctxt, directives)
-        except AttributeError:
-            if value:
-                choose.matched = True
-                return _apply_directives(stream, ctxt, directives)
-        return []
+        if '_choose.value' in frame:
+            matched = (value == frame['_choose.value'])
+        else:
+            matched = bool(value)
+        frame['_choose.matched'] = matched
+        if not matched:
+            return []
+
+        return _apply_directives(stream, ctxt, directives)
 
 
 class OtherwiseDirective(Directive):
@@ -635,14 +649,15 @@ class OtherwiseDirective(Directive):
     See the documentation of `py:choose` for usage.
     """
     def __call__(self, stream, ctxt, directives):
-        choose = ctxt['_choose']
-        if not choose:
+        matched, frame = ctxt._find('_choose.matched')
+        if not frame:
             raise TemplateSyntaxError('an "otherwise" directive can only be '
                                       'used inside a "choose" directive',
                                       *stream.next()[2])
-        if choose.matched:
+        if matched:
             return []
-        choose.matched = True
+        frame['_choose.matched'] = True
+
         return _apply_directives(stream, ctxt, directives)
 
 
@@ -665,18 +680,30 @@ class WithDirective(Directive):
     def __init__(self, value, filename=None, lineno=-1, offset=-1):
         Directive.__init__(self, None, filename, lineno, offset)
         self.vars = []
+        value = value.strip()
         try:
-            for stmt in value.split(';'):
-                name, value = stmt.split('=', 1)
-                self.vars.append((name.strip(),
-                                  Expression(value.strip(), filename, lineno)))
+            ast = compiler.parse(value, 'exec').node
+            for node in ast.nodes:
+                if isinstance(node, compiler.ast.Discard):
+                    continue
+                elif not isinstance(node, compiler.ast.Assign):
+                    raise TemplateSyntaxError('only assignment allowed in '
+                                              'value of the "with" directive',
+                                              filename, lineno, offset)
+                self.vars.append(([n.name for n in node.nodes],
+                                  Expression(node.expr, filename, lineno)))
         except SyntaxError, err:
+            err.msg += ' in expression "%s" of "%s" directive' % (value,
+                                                                  self.tagname)
             raise TemplateSyntaxError(err, filename, lineno,
                                       offset + (err.offset or 0))
 
     def __call__(self, stream, ctxt, directives):
-        ctxt.push(dict([(name, expr.evaluate(ctxt, nocall=True))
-                        for name, expr in self.vars]))
+        frame = {}
+        ctxt.push(frame)
+        for names, expr in self.vars:
+            value = expr.evaluate(ctxt, nocall=True)
+            frame.update(dict([(name, value) for name in names]))
         for event in _apply_directives(stream, ctxt, directives):
             yield event
         ctxt.pop()
@@ -825,7 +852,7 @@ class Template(object):
 
         self.stream = stream
 
-    _FULL_EXPR_RE = re.compile(r'(?<!\$)\$\{(.+?)\}')
+    _FULL_EXPR_RE = re.compile(r'(?<!\$)\$\{(.+?)\}', re.DOTALL)
     _SHORT_EXPR_RE = re.compile(r'(?<!\$)\$([a-zA-Z][a-zA-Z0-9_\.]*)')
 
     def _interpolate(cls, text, filename=None, lineno=-1, offset=-1):
@@ -841,27 +868,27 @@ class Template(object):
         """
         def _interpolate(text, patterns, filename=filename, lineno=lineno,
                          offset=offset):
-            for idx, group in enumerate(patterns.pop(0).split(text)):
+            for idx, grp in enumerate(patterns.pop(0).split(text)):
                 if idx % 2:
                     try:
-                        yield EXPR, Expression(group, filename, lineno), \
+                        yield EXPR, Expression(grp.strip(), filename, lineno), \
                               (filename, lineno, offset)
                     except SyntaxError, err:
                         raise TemplateSyntaxError(err, filename, lineno,
                                                   offset + (err.offset or 0))
-                elif group:
+                elif grp:
                     if patterns:
-                        for result in _interpolate(group, patterns[:]):
+                        for result in _interpolate(grp, patterns[:]):
                             yield result
                     else:
-                        yield TEXT, group.replace('$$', '$'), \
+                        yield TEXT, grp.replace('$$', '$'), \
                               (filename, lineno, offset)
-                if '\n' in group:
-                    lines = group.splitlines()
+                if '\n' in grp:
+                    lines = grp.splitlines()
                     lineno += len(lines) - 1
                     offset += len(lines[-1])
                 else:
-                    offset += len(group)
+                    offset += len(grp)
         return _interpolate(text, [cls._FULL_EXPR_RE, cls._SHORT_EXPR_RE])
     _interpolate = classmethod(_interpolate)
 
@@ -888,7 +915,7 @@ class Template(object):
             ctxt = Context(**kwargs)
 
         stream = self.stream
-        for filter_ in [self._eval, self._match, self._flatten] + self.filters:
+        for filter_ in [self._flatten, self._eval, self._match] + self.filters:
             stream = filter_(iter(stream), ctxt)
         return Stream(stream)
 
@@ -896,7 +923,7 @@ class Template(object):
         """Internal stream filter that evaluates any expressions in `START` and
         `TEXT` events.
         """
-        filters = (self._eval, self._match, self._flatten)
+        filters = (self._flatten, self._eval)
 
         for kind, data, pos in stream:
 
@@ -910,12 +937,11 @@ class Template(object):
                         value = substream
                     else:
                         values = []
-                        for subkind, subdata, subpos in substream:
-                            if subkind is EXPR:
-                                values.append(subdata.evaluate(ctxt))
-                            else:
+                        for subkind, subdata, subpos in self._eval(substream,
+                                                                   ctxt):
+                            if subkind is TEXT:
                                 values.append(subdata)
-                        value = [unicode(x) for x in values if x is not None]
+                        value = [x for x in values if x is not None]
                         if not value:
                             continue
                     new_attrib.append((name, u''.join(value)))
@@ -935,15 +961,16 @@ class Template(object):
                     # Test if the expression evaluated to an iterable, in which
                     # case we yield the individual items
                     try:
-                        substream = _ensure(result)
-                        for filter_ in filters:
-                            substream = filter_(substream, ctxt)
-                        for event in substream:
-                            yield event
+                        substream = _ensure(iter(result))
                     except TypeError:
                         # Neither a string nor an iterable, so just pass it
                         # through
                         yield TEXT, unicode(result), pos
+                    else:
+                        for filter_ in filters:
+                            substream = filter_(substream, ctxt)
+                        for event in substream:
+                            yield event
 
             else:
                 yield kind, data, pos
@@ -956,9 +983,7 @@ class Template(object):
                 # events to which those directives should be applied
                 directives, substream = data
                 substream = _apply_directives(substream, ctxt, directives)
-                for filter_ in (self._eval, self._match, self._flatten):
-                    substream = filter_(substream, ctxt)
-                for event in substream:
+                for event in self._flatten(substream, ctxt):
                     yield event
             else:
                 yield kind, data, pos
@@ -982,10 +1007,17 @@ class Template(object):
                     enumerate(match_templates):
 
                 if test(kind, data, pos, ctxt) is True:
+
+                    # Let the remaining match templates know about the event so
+                    # they get a chance to update their internal state
+                    for test in [mt[0] for mt in match_templates[idx + 1:]]:
+                        test(kind, data, pos, ctxt)
+
                     # Consume and store all events until an end event
                     # corresponding to this start event is encountered
                     content = [(kind, data, pos)]
                     depth = 1
+                    stream = self._match(stream, ctxt)
                     while depth > 0:
                         kind, data, pos = stream.next()
                         if kind is START:
@@ -993,15 +1025,19 @@ class Template(object):
                         elif kind is END:
                             depth -= 1
                         content.append((kind, data, pos))
-                        test(kind, data, pos, ctxt)
 
-                    content = list(self._flatten(content, ctxt))
-                    select = lambda path: Stream(content).select(path)
+                    # Make the select() function available in the body of the
+                    # match template
+                    def select(path):
+                        return Stream(content).select(path)
                     ctxt.push(dict(select=select))
 
+                    # Recursively process the output
                     template = _apply_directives(template, ctxt, directives)
-                    for event in self._match(self._eval(template, ctxt),
-                                             ctxt, match_templates[:idx] +
+                    for event in self._match(self._eval(self._flatten(template,
+                                                                      ctxt),
+                                                        ctxt), ctxt,
+                                             match_templates[:idx] +
                                              match_templates[idx + 1:]):
                         yield event
 

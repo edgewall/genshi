@@ -110,6 +110,46 @@ class ChooseDirectiveTestCase(unittest.TestCase):
           </div>
         </doc>""", str(tmpl.generate()))
 
+    def test_complex_nesting(self):
+        """
+        Verify more complex nesting.
+        """
+        tmpl = Template("""<doc xmlns:py="http://markup.edgewall.org/">
+          <div py:choose="1">
+            <div py:when="1" py:choose="">
+              <span py:when="2">OK</span>
+              <span py:when="1">FAIL</span>
+            </div>
+          </div>
+        </doc>""")
+        self.assertEqual("""<doc>
+          <div>
+            <div>
+              <span>OK</span>
+            </div>
+          </div>
+        </doc>""", str(tmpl.generate()))
+
+    def test_complex_nesting_otherwise(self):
+        """
+        Verify more complex nesting using otherwise.
+        """
+        tmpl = Template("""<doc xmlns:py="http://markup.edgewall.org/">
+          <div py:choose="1">
+            <div py:when="1" py:choose="2">
+              <span py:when="1">FAIL</span>
+              <span py:otherwise="">OK</span>
+            </div>
+          </div>
+        </doc>""")
+        self.assertEqual("""<doc>
+          <div>
+            <div>
+              <span>OK</span>
+            </div>
+          </div>
+        </doc>""", str(tmpl.generate()))
+
     def test_when_with_strip(self):
         """
         Verify that a when directive with a strip directive actually strips of
@@ -259,6 +299,47 @@ class DefDirectiveTestCase(unittest.TestCase):
         </doc>""")
         self.assertEqual("""<doc>
           foo
+        </doc>""", str(tmpl.generate()))
+
+    def test_invocation_in_attribute(self):
+        tmpl = Template("""<doc xmlns:py="http://markup.edgewall.org/">
+          <py:def function="echo(what)">${what or 'something'}</py:def>
+          <p class="${echo('foo')}">bar</p>
+        </doc>""")
+        self.assertEqual("""<doc>
+          <p class="foo">bar</p>
+        </doc>""", str(tmpl.generate()))
+
+    def test_invocation_in_attribute_none(self):
+        tmpl = Template("""<doc xmlns:py="http://markup.edgewall.org/">
+          <py:def function="echo()">${None}</py:def>
+          <p class="${echo()}">bar</p>
+        </doc>""")
+        self.assertEqual("""<doc>
+          <p>bar</p>
+        </doc>""", str(tmpl.generate()))
+
+    def test_function_raising_typeerror(self):
+        def badfunc():
+            raise TypeError
+        tmpl = Template("""<html xmlns:py="http://markup.edgewall.org/">
+          <div py:def="dobadfunc()">
+            ${badfunc()}
+          </div>
+          <div py:content="dobadfunc()"/>
+        </html>""")
+        self.assertRaises(TypeError, list, tmpl.generate(badfunc=badfunc))
+
+    def test_def_in_matched(self):
+        tmpl = Template("""<doc xmlns:py="http://markup.edgewall.org/">
+          <head py:match="head">${select('*')}</head>
+          <head>
+            <py:def function="maketitle(test)"><b py:replace="test" /></py:def>
+            <title>${maketitle(True)}</title>
+          </head>
+        </doc>""")
+        self.assertEqual("""<doc>
+          <head><title>True</title></head>
         </doc>""", str(tmpl.generate()))
 
 
@@ -498,6 +579,42 @@ class MatchDirectiveTestCase(unittest.TestCase):
           <greeting name="Dude"/>
         </div>""", str(tmpl.generate(tagname='sayhello')))
 
+    def test_content_directive_in_match(self):
+        tmpl = Template("""<html xmlns:py="http://markup.edgewall.org/">
+          <div py:match="foo">I said <q py:content="select('text()')">something</q>.</div>
+          <foo>bar</foo>
+        </html>""")
+        self.assertEqual("""<html>
+          <div>I said <q>bar</q>.</div>
+        </html>""", str(tmpl.generate()))
+
+    def test_cascaded_matches(self):
+        tmpl = Template("""<html xmlns:py="http://markup.edgewall.org/">
+          <body py:match="body">${select('*')}</body>
+          <head py:match="head">${select('title')}</head>
+          <body py:match="body">${select('*')}<hr /></body>
+          <head><title>Welcome to Markup</title></head>
+          <body><h2>Are you ready to mark up?</h2></body>
+        </html>""")
+        self.assertEqual("""<html>
+          <head><title>Welcome to Markup</title></head>
+          <body><h2>Are you ready to mark up?</h2><hr/></body>
+        </html>""", str(tmpl.generate()))
+
+    # FIXME
+    #def test_match_after_step(self):
+    #    tmpl = Template("""<div xmlns:py="http://markup.edgewall.org/">
+    #      <span py:match="div/greeting">
+    #        Hello ${select('@name')}
+    #      </span>
+    #      <greeting name="Dude" />
+    #    </div>""")
+    #    self.assertEqual("""<div>
+    #      <span>
+    #        Hello Dude
+    #      </span>
+    #    </div>""", str(tmpl.generate()))
+
 
 class StripDirectiveTestCase(unittest.TestCase):
     """Tests for the `py:strip` template directive."""
@@ -541,6 +658,47 @@ class WithDirectiveTestCase(unittest.TestCase):
         self.assertEqual("""<div>
           84
         </div>""", str(tmpl.generate(x=42)))
+
+    def test_multiple_vars_same_name(self):
+        tmpl = Template("""<div xmlns:py="http://markup.edgewall.org/">
+          <py:with vars="
+            foo = 'bar';
+            foo = foo.replace('r', 'z')
+          ">
+            $foo
+          </py:with>
+        </div>""")
+        self.assertEqual("""<div>
+            baz
+        </div>""", str(tmpl.generate(x=42)))
+
+    def test_multiple_vars_single_assignment(self):
+        tmpl = Template("""<div xmlns:py="http://markup.edgewall.org/">
+          <py:with vars="x = y = z = 1">${x} ${y} ${z}</py:with>
+        </div>""")
+        self.assertEqual("""<div>
+          1 1 1
+        </div>""", str(tmpl.generate(x=42)))
+
+    def test_multiple_vars_trailing_semicolon(self):
+        tmpl = Template("""<div xmlns:py="http://markup.edgewall.org/">
+          <py:with vars="x = x * 2; y = x / 2;">${x} ${y}</py:with>
+        </div>""")
+        self.assertEqual("""<div>
+          84 42
+        </div>""", str(tmpl.generate(x=42)))
+
+    def test_semicolon_escape(self):
+        tmpl = Template("""<div xmlns:py="http://markup.edgewall.org/">
+          <py:with vars="x = 'here is a semicolon: ;'; y = 'here are two semicolons: ;;' ;">
+            ${x}
+            ${y}
+          </py:with>
+        </div>""")
+        self.assertEqual("""<div>
+            here is a semicolon: ;
+            here are two semicolons: ;;
+        </div>""", str(tmpl.generate()))
 
 
 class TemplateTestCase(unittest.TestCase):
@@ -595,6 +753,16 @@ class TemplateTestCase(unittest.TestCase):
     def test_interpolate_mixed3(self):
         tmpl = Template('<root> ${var} $var</root>')
         self.assertEqual('<root> 42 42</root>', str(tmpl.generate(var=42)))
+
+    def test_interpolate_leading_trailing_space(self):
+        tmpl = Template('<root>${    foo    }</root>')
+        self.assertEqual('<root>bar</root>', str(tmpl.generate(foo='bar')))
+
+    def test_interpolate_multiline(self):
+        tmpl = Template("""<root>${dict(
+          bar = 'baz'
+        )[foo]}</root>""")
+        self.assertEqual('<root>baz</root>', str(tmpl.generate(foo='bar')))
 
     def test_interpolate_non_string_attrs(self):
         tmpl = Template('<root attr="${1}"/>')

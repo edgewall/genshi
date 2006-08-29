@@ -14,6 +14,7 @@
 """Core classes for markup processing."""
 
 import htmlentitydefs
+import operator
 import re
 
 __all__ = ['Stream', 'Markup', 'escape', 'unescape', 'Namespace', 'QName']
@@ -65,24 +66,71 @@ class Stream(object):
     def __iter__(self):
         return iter(self.events)
 
+    def __or__(self, function):
+        """Override the "bitwise or" operator to apply filters or serializers
+        to the stream, providing a syntax similar to pipes on Unix shells.
+        
+        Assume the following stream produced by the `HTML` function:
+        
+        >>> from markup.input import HTML
+        >>> html = HTML('''<p onclick="alert('Whoa')">Hello, world!</p>''')
+        >>> print html
+        <p onclick="alert('Whoa')">Hello, world!</p>
+        
+        A filter such as the HTML sanitizer can be applied to that stream using
+        the pipe notation as follows:
+        
+        >>> from markup.filters import HTMLSanitizer
+        >>> sanitizer = HTMLSanitizer()
+        >>> print html | sanitizer
+        <p>Hello, world!</p>
+        
+        Filters can be any function that accepts and produces a stream (where
+        a stream is anything that iterators over events):
+        
+        >>> def uppercase(stream):
+        ...     for kind, data, pos in stream:
+        ...         if kind is TEXT:
+        ...             data = data.upper()
+        ...         yield kind, data, pos
+        >>> print html | sanitizer | uppercase
+        <p>HELLO, WORLD!</p>
+        
+        Serializers can also be used with this notation:
+        
+        >>> from markup.output import TextSerializer
+        >>> output = TextSerializer()
+        >>> print html | sanitizer | uppercase | output
+        HELLO, WORLD!
+        
+        Commonly, serializers should be used at the end of the "pipeline";
+        using them somewhere in the middle may produce unexpected results.
+        """
+        return Stream(_ensure(function(self)))
+
     def filter(self, *filters):
         """Apply filters to the stream.
         
         This method returns a new stream with the given filters applied. The
         filters must be callables that accept the stream object as parameter,
         and return the filtered stream.
+        
+        The call:
+        
+            stream.filter(filter1, filter2)
+        
+        is equivalent to:
+        
+            stream | filter1 | filter2
         """
-        stream = self
-        for filter_ in filters:
-            stream = filter_(iter(stream))
-        return Stream(stream)
+        return reduce(operator.or_, (self,) + filters)
 
     def render(self, method='xml', encoding='utf-8', **kwargs):
         """Return a string representation of the stream.
         
         @param method: determines how the stream is serialized; can be either
-                       "xml", "xhtml", or "html", or a custom `Serializer`
-                       subclass
+                       "xml", "xhtml", "html", "text", or a custom serializer
+                       class
         @param encoding: how the output string should be encoded; if set to
                          `None`, this method returns a `unicode` object
 
@@ -92,7 +140,10 @@ class Stream(object):
         generator = self.serialize(method=method, **kwargs)
         output = u''.join(list(generator))
         if encoding is not None:
-            return output.encode(encoding, 'xmlcharrefreplace')
+            errors = 'replace'
+            if method != 'text':
+                errors = 'xmlcharrefreplace'
+            return output.encode(encoding, errors)
         return output
 
     def select(self, path):
@@ -113,7 +164,8 @@ class Stream(object):
         string.
         
         @param method: determines how the stream is serialized; can be either
-                       "xml", "xhtml", or "html", or a custom serializer class
+                       "xml", "xhtml", "html", "text", or a custom serializer
+                       class
 
         Any additional keyword arguments are passed to the serializer, and thus
         depend on the `method` parameter value.
@@ -123,9 +175,9 @@ class Stream(object):
         if isinstance(method, basestring):
             cls = {'xml':   output.XMLSerializer,
                    'xhtml': output.XHTMLSerializer,
-                   'html':  output.HTMLSerializer}[method]
-        serialize = cls(**kwargs)
-        return serialize(_ensure(self))
+                   'html':  output.HTMLSerializer,
+                   'text':  output.TextSerializer}[method]
+        return cls(**kwargs)(_ensure(self))
 
     def __str__(self):
         return self.render()
@@ -305,8 +357,7 @@ def stripentities(text, keepxmlentities=False):
             return unichr(ref)
         else: # character entity
             ref = match.group(2)
-            if keepxmlentities and ref in ('amp', 'apos', 'gt', 'lt',
-                                           'quot'):
+            if keepxmlentities and ref in ('amp', 'apos', 'gt', 'lt', 'quot'):
                 return '&%s;' % ref
             try:
                 codepoint = htmlentitydefs.name2codepoint[ref]
@@ -336,7 +387,10 @@ class Markup(unicode):
         return unicode.__new__(cls, text)
 
     def __add__(self, other):
-        return Markup(unicode(self) + escape(other))
+        return Markup(unicode(self) + unicode(escape(other)))
+
+    def __radd__(self, other):
+        return Markup(unicode(escape(other)) + unicode(self))
 
     def __mod__(self, args):
         if not isinstance(args, (list, tuple)):
@@ -345,6 +399,9 @@ class Markup(unicode):
 
     def __mul__(self, num):
         return Markup(unicode(self) * num)
+
+    def __rmul__(self, num):
+        return Markup(num * unicode(self))
 
     def __repr__(self):
         return '<%s "%s">' % (self.__class__.__name__, self)

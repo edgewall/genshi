@@ -1034,8 +1034,10 @@ class Template(object):
 
                     # Recursively process the output
                     template = _apply_directives(template, ctxt, directives)
-                    for event in self._match(self._eval(template, ctxt),
-                                             ctxt, match_templates[:idx] +
+                    for event in self._match(self._eval(self._flatten(template,
+                                                                      ctxt),
+                                                        ctxt), ctxt,
+                                             match_templates[:idx] +
                                              match_templates[idx + 1:]):
                         yield event
 

@@ -579,6 +579,15 @@ class MatchDirectiveTestCase(unittest.TestCase):
           <greeting name="Dude"/>
         </div>""", str(tmpl.generate(tagname='sayhello')))
 
+    def test_content_directive_in_match(self):
+        tmpl = Template("""<html xmlns:py="http://markup.edgewall.org/">
+          <div py:match="foo">I said <q py:content="select('text()')">something</q>.</div>
+          <foo>bar</foo>
+        </html>""")
+        self.assertEqual("""<html>
+          <div>I said <q>bar</q>.</div>
+        </html>""", str(tmpl.generate()))
+
     # FIXME
     #def test_match_after_step(self):
     #    tmpl = Template("""<div xmlns:py="http://markup.edgewall.org/">

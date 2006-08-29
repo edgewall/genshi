@@ -17,7 +17,7 @@ import sys
 import unittest
 
 from markup.core import Stream
-from markup.input import XMLParser, HTMLParser
+from markup.input import XMLParser, HTMLParser, ParseError
 
 
 class XMLParserTestCase(unittest.TestCase):
@@ -58,6 +58,36 @@ bar</elem>'''
         kind, data, pos = events[1]
         self.assertEqual(Stream.TEXT, kind)
         self.assertEqual(u'\u2013', data)
+
+    def test_html_entity_with_dtd(self):
+        text = """<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+        "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+        <html>&nbsp;</html>
+        """
+        events = list(XMLParser(StringIO(text)))
+        kind, data, pos = events[2]
+        self.assertEqual(Stream.TEXT, kind)
+        self.assertEqual(u'\xa0', data)
+
+    def test_html_entity_without_dtd(self):
+        text = '<html>&nbsp;</html>'
+        events = list(XMLParser(StringIO(text)))
+        kind, data, pos = events[1]
+        self.assertEqual(Stream.TEXT, kind)
+        self.assertEqual(u'\xa0', data)
+
+    def test_undefined_entity_with_dtd(self):
+        text = """<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+        "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+        <html>&junk;</html>
+        """
+        events = XMLParser(StringIO(text))
+        self.assertRaises(ParseError, list, events)
+
+    def test_undefined_entity_without_dtd(self):
+        text = '<html>&junk;</html>'
+        events = XMLParser(StringIO(text))
+        self.assertRaises(ParseError, list, events)
 
 
 class HTMLParserTestCase(unittest.TestCase):

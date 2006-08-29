@@ -151,15 +151,16 @@ class Path(object):
 
         def _test(kind, data, pos, variables):
             for steps, size, stack in paths:
+                if kind is END:
+                    if stack:
+                        stack.pop()
+                    continue
+                elif kind is START:
+                    stack.append(stack and stack[-1] or 0)
+
                 if not stack:
                     continue
                 cursor = stack[-1]
-
-                if kind is END:
-                    stack.pop()
-                    continue
-                elif kind is START:
-                    stack.append(cursor)
 
                 while 1:
                     axis, nodetest, predicates = steps[cursor]

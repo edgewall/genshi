@@ -588,6 +588,19 @@ class MatchDirectiveTestCase(unittest.TestCase):
           <div>I said <q>bar</q>.</div>
         </html>""", str(tmpl.generate()))
 
+    def test_cascaded_matches(self):
+        tmpl = Template("""<html xmlns:py="http://markup.edgewall.org/">
+          <body py:match="body">${select('*')}</body>
+          <head py:match="head">${select('title')}</head>
+          <body py:match="body">${select('*')}<hr /></body>
+          <head><title>Welcome to Markup</title></head>
+          <body><h2>Are you ready to mark up?</h2></body>
+        </html>""")
+        self.assertEqual("""<html>
+          <head><title>Welcome to Markup</title></head>
+          <body><h2>Are you ready to mark up?</h2><hr/></body>
+        </html>""", str(tmpl.generate()))
+
     # FIXME
     #def test_match_after_step(self):
     #    tmpl = Template("""<div xmlns:py="http://markup.edgewall.org/">

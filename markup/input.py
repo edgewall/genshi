@@ -103,6 +103,8 @@ class XMLParser(object):
                                 del self.expat # get rid of circular references
                             done = True
                         else:
+                            if isinstance(data, unicode):
+                                data = data.encode('utf-8')
                             self.expat.Parse(data, False)
                     for event in self._queue:
                         yield event

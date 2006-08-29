@@ -52,6 +52,13 @@ bar</elem>'''
         self.assertEqual((u'id', u'foo'), attrib[1])
         self.assertEqual((u'class', u'bar'), attrib[2])
 
+    def test_unicode_input(self):
+        text = u'<div>\u2013</div>'
+        events = list(XMLParser(StringIO(text)))
+        kind, data, pos = events[1]
+        self.assertEqual(Stream.TEXT, kind)
+        self.assertEqual(u'\u2013', data)
+
 
 class HTMLParserTestCase(unittest.TestCase):
 
@@ -73,6 +80,13 @@ bar</elem>'''
         self.assertEqual(u'foo\nbar', data)
         if sys.version_info[:2] >= (2, 4):
             self.assertEqual((None, 1, 6), pos)
+
+    def test_unicode_input(self):
+        text = u'<div>\u2013</div>'
+        events = list(HTMLParser(StringIO(text)))
+        kind, data, pos = events[1]
+        self.assertEqual(Stream.TEXT, kind)
+        self.assertEqual(u'\u2013', data)
 
 
 def suite():

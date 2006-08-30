@@ -22,7 +22,7 @@ except NameError:
     from sets import ImmutableSet as frozenset
 import re
 
-from markup.core import escape, Markup, Namespace, QName
+from markup.core import escape, Markup, Namespace, QName, StreamEventKind
 from markup.core import DOCTYPE, START, END, START_NS, TEXT, START_CDATA, \
                         END_CDATA, PI, COMMENT, XML_NAMESPACE
 
@@ -69,7 +69,7 @@ class XMLSerializer(object):
         self.preamble = []
         if doctype:
             self.preamble.append((DOCTYPE, doctype, (None, -1, -1)))
-        self.filters = []
+        self.filters = [EmptyTagFilter()]
         if strip_whitespace:
             self.filters.append(WhitespaceFilter(self._PRESERVE_SPACE))
 
@@ -82,11 +82,9 @@ class XMLSerializer(object):
         stream = chain(self.preamble, stream)
         for filter_ in self.filters:
             stream = filter_(stream)
-        stream = _PushbackIterator(stream)
-        pushback = stream.pushback
         for kind, data, pos in stream:
 
-            if kind is START:
+            if kind is START or kind is EMPTY:
                 tag, attrib = data
 
                 tagname = tag.localname
@@ -109,12 +107,10 @@ class XMLSerializer(object):
                     buf += [' ', attrname, '="', escape(value), '"']
                 ns_attrib = []
 
-                kind, data, pos = stream.next()
-                if kind is END:
+                if kind is EMPTY:
                     buf += ['/>']
                 else:
                     buf += ['>']
-                    pushback((kind, data, pos))
 
                 yield Markup(''.join(buf))
 
@@ -201,11 +197,9 @@ class XHTMLSerializer(XMLSerializer):
         stream = chain(self.preamble, stream)
         for filter_ in self.filters:
             stream = filter_(stream)
-        stream = _PushbackIterator(stream)
-        pushback = stream.pushback
         for kind, data, pos in stream:
 
-            if kind is START:
+            if kind is START or kind is EMPTY:
                 tag, attrib = data
 
                 tagname = tag.localname
@@ -232,13 +226,12 @@ class XHTMLSerializer(XMLSerializer):
                         buf += [' ', attrname, '="', escape(value), '"']
                 ns_attrib = []
 
-                if (tagns and tagns != namespace.uri) or tagname in empty_elems:
-                    kind, data, pos = stream.next()
-                    if kind is END:
+                if kind is EMPTY:
+                    if (tagns and tagns != namespace.uri) \
+                            or tag.localname in empty_elems:
                         buf += [' />']
                     else:
-                        buf += ['>']
-                        pushback((kind, data, pos))
+                        buf += ['></%s>' % tagname]
                 else:
                     buf += ['>']
 
@@ -333,11 +326,9 @@ class HTMLSerializer(XHTMLSerializer):
         stream = chain(self.preamble, stream)
         for filter_ in self.filters:
             stream = filter_(stream)
-        stream = _PushbackIterator(stream)
-        pushback = stream.pushback
         for kind, data, pos in stream:
 
-            if kind is START:
+            if kind is START or kind is EMPTY:
                 tag, attrib = data
                 if not tag.namespace or tag in namespace:
                     tagname = tag.localname
@@ -352,12 +343,12 @@ class HTMLSerializer(XHTMLSerializer):
                             else:
                                 buf += [' ', attrname, '="', escape(value), '"']
 
-                    if tagname in empty_elems:
-                        kind, data, pos = stream.next()
-                        if kind is not END:
-                            pushback((kind, data, pos))
-
                     buf += ['>']
+
+                    if kind is EMPTY:
+                        if tagname not in empty_elems:
+                            buf.append('</%s>' % tagname)
+
                     yield Markup(''.join(buf))
 
                     if tagname in noescape_elems:
@@ -428,6 +419,31 @@ class TextSerializer(object):
                 if type(data) is Markup:
                     data = data.striptags().stripentities()
                 yield unicode(data)
+
+
+class EmptyTagFilter(object):
+    """Combines `START` and `STOP` events into `EMPTY` events for elements that
+    have no contents.
+    """
+
+    EMPTY = StreamEventKind('EMPTY')
+
+    def __call__(self, stream):
+        prev = (None, None, None)
+        for kind, data, pos in stream:
+            if prev[0] is START:
+                if kind is END:
+                    prev = EMPTY, prev[1], prev[2]
+                    yield prev
+                    continue
+                else:
+                    yield prev
+            if kind is not START:
+                yield kind, data, pos
+            prev = kind, data, pos
+
+
+EMPTY = EmptyTagFilter.EMPTY
 
 
 class WhitespaceFilter(object):
@@ -507,26 +523,3 @@ class WhitespaceFilter(object):
 
                 if kind:
                     yield kind, data, pos
-
-
-class _PushbackIterator(object):
-    """A simple wrapper for iterators that allows pushing items back on the
-    queue via the `pushback()` method.
-    
-    That can effectively be used to peek at the next item."""
-    __slots__ = ['iterable', 'buf']
-
-    def __init__(self, iterable):
-        self.iterable = iter(iterable)
-        self.buf = []
-
-    def __iter__(self):
-        return self
-
-    def next(self):
-        if self.buf:
-            return self.buf.pop(0)
-        return self.iterable.next()
-
-    def pushback(self, item):
-        self.buf.append(item)

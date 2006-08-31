@@ -753,7 +753,7 @@ class Template(object):
             self.filepath = None
 
         self.filters = []
-        self.parse()
+        self.stream = self.parse()
 
     def __repr__(self):
         return '<%s "%s">' % (self.__class__.__name__, self.filename)
@@ -851,7 +851,7 @@ class Template(object):
             else:
                 stream.append((kind, data, pos))
 
-        self.stream = stream
+        return stream
 
     _FULL_EXPR_RE = re.compile(r'(?<!\$)\$\{(.+?)\}', re.DOTALL)
     _SHORT_EXPR_RE = re.compile(r'(?<!\$)\$([a-zA-Z][a-zA-Z0-9_\.]*)')

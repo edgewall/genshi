@@ -347,7 +347,7 @@ class HTMLSerializer(XHTMLSerializer):
 
                     if kind is EMPTY:
                         if tagname not in empty_elems:
-                            buf.append('</%s>' % tagname)
+                            buf += ['</%s>' % tagname]
 
                     yield Markup(''.join(buf))
 

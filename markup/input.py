@@ -34,6 +34,7 @@ class ParseError(Exception):
 
     def __init__(self, message, filename='<string>', lineno=-1, offset=-1):
         Exception.__init__(self, message)
+        self.msg = message
         self.filename = filename
         self.lineno = lineno
         self.offset = offset

@@ -110,7 +110,8 @@ class PathTestCase(unittest.TestCase):
         self.assertEqual('Hey', path.select(xml).render())
 
         path = Path('.//text()')
-        self.assertEqual('<Path "self::node()/child::text()">', repr(path))
+        self.assertEqual('<Path "self::node()/descendant-or-self::node()/child::text()">',
+                         repr(path))
         self.assertEqual('Hey', path.select(xml).render())
 
     def test_2step(self):
@@ -123,10 +124,10 @@ class PathTestCase(unittest.TestCase):
         xml = XML('<elem class="x"><span id="joe">Hey Joe</span></elem>')
         #self.assertEqual('x', Path('@*').select(xml).render())
         #self.assertEqual('x', Path('./@*').select(xml).render())
-        #self.assertEqual('xjoe', Path('//@*').select(xml).render())
+        #self.assertEqual('xjoe', Path('.//@*').select(xml).render())
         self.assertEqual('joe', Path('*/@*').select(xml).render())
 
-        xml = XML('<elem><foo id="1"/>foo id="2"/></elem>')
+        xml = XML('<elem><foo id="1"/><foo id="2"/></elem>')
         #self.assertEqual('', Path('@*').select(xml).render())
         #self.assertEqual('12', Path('foo/@*').select(xml).render())
 

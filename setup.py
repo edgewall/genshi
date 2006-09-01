@@ -22,9 +22,9 @@ setup(
     version = '0.3',
     description = 'Toolkit for stream-based generation of markup for the web',
     long_description = \
-'''Markup is a Python library that provides an integrated set of components for
+"""Markup is a Python library that provides an integrated set of components for
 parsing, generating, and processing HTML or XML content in a uniform manner.
-The major feature is a template language that is heavily inspired by Kid.''',
+The major feature is a template language that is heavily inspired by Kid.""",
     author = 'Edgewall Software',
     author_email = 'info@edgewall.org',
     license = 'BSD',
@@ -44,7 +44,8 @@ The major feature is a template language that is heavily inspired by Kid.''',
         'Topic :: Text Processing :: Markup :: HTML',
         'Topic :: Text Processing :: Markup :: XML'
     ],
-    packages=['markup'],
+    keywords = ['python.templating.engines'],
+    packages = ['markup'],
     test_suite = 'markup.tests.suite',
 
     extras_require = {'plugin': ['setuptools>=0.6a2']},

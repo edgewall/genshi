@@ -46,7 +46,6 @@ class Axis(object):
     CHILD = 'child'
     DESCENDANT = 'descendant'
     DESCENDANT_OR_SELF = 'descendant-or-self'
-    NAMESPACE = 'namespace'
     SELF = 'self'
 
     def forname(cls, name):
@@ -61,7 +60,6 @@ ATTRIBUTE = Axis.ATTRIBUTE
 CHILD = Axis.CHILD
 DESCENDANT = Axis.DESCENDANT
 DESCENDANT_OR_SELF = Axis.DESCENDANT_OR_SELF
-NAMESPACE = Axis.NAMESPACE
 SELF = Axis.SELF
 
 
@@ -174,10 +172,9 @@ class Path(object):
 
                     if matched:
                         if cursor + 1 == size: # the last location step
-                            if ignore_context or \
-                                    kind is not START or \
-                                    axis in (ATTRIBUTE, NAMESPACE, SELF) or \
-                                    len(stack) > 2:
+                            if ignore_context or kind is not START \
+                                    or axis is ATTRIBUTE or axis is SELF \
+                                    or len(stack) > 2:
                                 return matched
                         else:
                             cursor += 1
@@ -192,8 +189,8 @@ class Path(object):
                     # the current element is closed... so we need to move the
                     # cursor back to the previous closure and retest that
                     # against the current element
-                    backsteps = [step for step in steps[:cursor]
-                                 if step[0] in (DESCENDANT, DESCENDANT_OR_SELF)]
+                    backsteps = [(k, d, p) for k, d, p in steps[:cursor]
+                                 if k is DESCENDANT or k is DESCENDANT_OR_SELF]
                     backsteps.reverse()
                     for axis, nodetest, predicates in backsteps:
                         matched = nodetest(kind, data, pos, variables)
@@ -276,12 +273,14 @@ class PathParser(object):
     def _location_path(self):
         steps = []
         while True:
-            if self.cur_token == '//':
-                steps.append((DESCENDANT_OR_SELF, NodeTest(), []))
+            if self.cur_token.startswith('/'):
+                if self.cur_token == '//':
+                    steps.append((DESCENDANT_OR_SELF, NodeTest(), []))
+                elif not steps:
+                    raise PathSyntaxError('Absolute location paths not '
+                                          'supported', self.filename,
+                                          self.lineno)
                 self.next_token()
-            elif self.cur_token == '/' and not steps:
-                raise PathSyntaxError('Absolute location paths not supported',
-                                      self.filename, self.lineno)
 
             axis, nodetest, predicates = self._location_step()
             if not axis:
@@ -290,7 +289,6 @@ class PathParser(object):
 
             if self.at_end or not self.cur_token.startswith('/'):
                 break
-            self.next_token()
 
         return steps
 
@@ -894,7 +892,7 @@ class VariableReference(Literal):
     def __call__(self, kind, data, pos, variables):
         return TEXT, variables.get(self.name), (None, -1, -1)
     def __repr__(self):
-        return str(self.number)
+        return str(self.name)
 
 # Operators
 

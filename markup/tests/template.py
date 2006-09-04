@@ -419,7 +419,7 @@ class MatchDirectiveTestCase(unittest.TestCase):
         """
         tmpl = Template("""<doc xmlns:py="http://markup.edgewall.org/">
           <elem py:match="elem" py:strip="">
-            <div class="elem">${select('*/text()')}</div>
+            <div class="elem">${select('text()')}</div>
           </elem>
           <elem>Hey Joe</elem>
         </doc>""")
@@ -434,7 +434,7 @@ class MatchDirectiveTestCase(unittest.TestCase):
         """
         tmpl = Template("""<doc xmlns:py="http://markup.edgewall.org/">
           <elem py:match="elem">
-            <div class="elem">${select('*/text()')}</div>
+            <div class="elem">${select('text()')}</div>
           </elem>
           <elem>Hey Joe</elem>
         </doc>""")
@@ -450,7 +450,7 @@ class MatchDirectiveTestCase(unittest.TestCase):
         """
         tmpl = Template("""<doc xmlns:py="http://markup.edgewall.org/">
           <py:match path="elem">
-            <div class="elem">${select('*/text()')}</div>
+            <div class="elem">${select('text()')}</div>
           </py:match>
           <elem>Hey Joe</elem>
         </doc>""")
@@ -466,7 +466,7 @@ class MatchDirectiveTestCase(unittest.TestCase):
         tmpl = Template("""<doc xmlns:py="http://markup.edgewall.org/">
           <elem py:match="elem">
             <div class="elem">
-              ${select('*/*')}
+              ${select('*')}
             </div>
           </elem>
           <elem>
@@ -497,10 +497,10 @@ class MatchDirectiveTestCase(unittest.TestCase):
         tmpl = Template("""<html xmlns:py="http://markup.edgewall.org/">
           <body py:match="body">
             <div id="header"/>
-            ${select('*/*')}
+            ${select('*')}
           </body>
           <body py:match="body">
-            ${select('*/*')}
+            ${select('*')}
             <div id="footer"/>
           </body>
           <body>
@@ -517,7 +517,7 @@ class MatchDirectiveTestCase(unittest.TestCase):
     def test_select_all_attrs(self):
         tmpl = Template("""<doc xmlns:py="http://markup.edgewall.org/">
           <div py:match="elem" py:attrs="select('@*')">
-            ${select('*/text()')}
+            ${select('text()')}
           </div>
           <elem id="joe">Hey Joe</elem>
         </doc>""")
@@ -530,7 +530,7 @@ class MatchDirectiveTestCase(unittest.TestCase):
     def test_select_all_attrs_empty(self):
         tmpl = Template("""<doc xmlns:py="http://markup.edgewall.org/">
           <div py:match="elem" py:attrs="select('@*')">
-            ${select('*/text()')}
+            ${select('text()')}
           </div>
           <elem>Hey Joe</elem>
         </doc>""")

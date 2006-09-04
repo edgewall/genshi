@@ -98,10 +98,10 @@ class Path(object):
         >>> from markup.input import XML
         >>> xml = XML('<root><elem><child>Text</child></elem></root>')
         
-        >>> print Path('child').select(xml)
+        >>> print Path('.//child').select(xml)
         <child>Text</child>
         
-        >>> print Path('child/text()').select(xml)
+        >>> print Path('.//child/text()').select(xml)
         Text
         
         @param stream: the stream to select from
@@ -142,49 +142,90 @@ class Path(object):
         >>> for kind, data, pos in xml:
         ...     if test(kind, data, pos, {}):
         ...         print kind, data
-        START (u'child', [(u'id', u'1')])
         START (u'child', [(u'id', u'2')])
         """
-        paths = [(steps, len(steps), [0]) for steps in self.paths]
+        paths = [(steps, len(steps), [0], []) for steps in self.paths]
 
         def _test(kind, data, pos, variables):
-            for steps, size, stack in paths:
+            for steps, size, stack, cutoff in paths:
+                # Manage the stack that tells us "where we are" in the stream
                 if kind is END:
-                    if stack:
-                        stack.pop()
+                    if stack: stack.pop()
                     continue
-                elif kind is START:
+                elif kind in START:
                     stack.append(stack and stack[-1] or 0)
-
-                if not stack:
+                elif not stack:
                     continue
                 cursor = stack[-1]
 
+                if cutoff and len(stack) + int(kind is not START) > cutoff[0]:
+                    continue
+
+                ctxtnode = not ignore_context and kind is START \
+                                              and len(stack) == 2
+                matched = retval = None
                 while 1:
+                    # Fetch the next location step
                     axis, nodetest, predicates = steps[cursor]
 
-                    matched = nodetest(kind, data, pos, variables)
-                    if matched and predicates:
-                        for predicate in predicates:
-                            if not predicate(kind, data, pos, variables):
-                                matched = None
-                                break
-
-                    if matched:
-                        if cursor + 1 == size: # the last location step
-                            if ignore_context or kind is not START \
-                                    or axis is ATTRIBUTE or axis is SELF \
-                                    or len(stack) > 2:
-                                return matched
-                        else:
-                            cursor += 1
-                            stack[-1] = cursor
-
-                    if axis is not SELF:
+                    # If this is the start event for the context node, and the
+                    # axis of the location step doesn't include the current
+                    # element, skip the test
+                    if ctxtnode and (axis is CHILD or axis is DESCENDANT):
                         break
 
-                if not matched and kind is START \
-                               and axis not in (DESCENDANT, DESCENDANT_OR_SELF):
+                    # Is this the last step of the location path?
+                    last_step = cursor + 1 == size
+
+                    # Perform the actual node test
+                    matched = nodetest(kind, data, pos, variables)
+
+                    # The node test matched
+                    if matched:
+
+                        # Check all the predicates for this step
+                        if predicates:
+                            for predicate in predicates:
+                                if not predicate(kind, data, pos, variables):
+                                    matched = None
+                                    break
+
+                        # Both the node test and the predicates matched
+                        if matched:
+                            if last_step:
+                                if ignore_context or kind is not START \
+                                        or axis is ATTRIBUTE or axis is SELF \
+                                        or len(stack) > 2:
+                                    retval = matched
+                            elif not ctxtnode or axis is SELF \
+                                              or axis is DESCENDANT_OR_SELF:
+                                cursor += 1
+                                stack[-1] = cursor
+                            cutoff[:] = []
+                    elif not ignore_context and kind is START:
+                        cutoff[:] = [len(stack)]
+
+                    if last_step and not ignore_context and kind is START:
+                        if (axis is not DESCENDANT and
+                            axis is not DESCENDANT_OR_SELF):
+                            cutoff[:] = [len(stack)]
+
+                    if kind is START and not last_step:
+                        next_axis = steps[cursor][0]
+                        if next_axis is ATTRIBUTE:
+                            # If the axis of the next location step is the
+                            # attribute axis, we need to move on to processing
+                            # that step without waiting for the next markup
+                            # event
+                            continue
+
+                    # We're done with this step if it's the last step or the
+                    # axis isn't "self"
+                    if last_step or axis is not SELF:
+                        break
+
+                if kind is START and axis is not DESCENDANT \
+                                 and axis is not DESCENDANT_OR_SELF:
                     # If this step is not a closure, it cannot be matched until
                     # the current element is closed... so we need to move the
                     # cursor back to the previous closure and retest that
@@ -196,10 +237,12 @@ class Path(object):
                         matched = nodetest(kind, data, pos, variables)
                         if not matched:
                             cursor -= 1
+                        cutoff[:] = []
                         break
                     stack[-1] = cursor
 
-            return None
+                if retval:
+                    return retval
 
         return _test
 

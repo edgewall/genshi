@@ -601,6 +601,36 @@ class MatchDirectiveTestCase(unittest.TestCase):
           <body><h2>Are you ready to mark up?</h2><hr/></body>
         </html>""", str(tmpl.generate()))
 
+    def test_multiple_matches(self):
+        tmpl = Template("""<html xmlns:py="http://markup.edgewall.org/">
+          <input py:match="form//input" py:attrs="select('@*')"
+                 value="${values[str(select('@name'))]}" />
+          <form><p py:for="field in fields">
+            <label>${field.capitalize()}</label>
+            <input type="text" name="${field}" />
+          </p></form>
+        </html>""")
+        fields = ['hello_%s' % i for i in range(5)]
+        values = dict([('hello_%s' % i, i) for i in range(5)])
+        self.assertEqual("""<html>
+          <form><p>
+            <label>Hello_0</label>
+            <input value="0" type="text" name="hello_0"/>
+          </p><p>
+            <label>Hello_1</label>
+            <input value="1" type="text" name="hello_1"/>
+          </p><p>
+            <label>Hello_2</label>
+            <input value="2" type="text" name="hello_2"/>
+          </p><p>
+            <label>Hello_3</label>
+            <input value="3" type="text" name="hello_3"/>
+          </p><p>
+            <label>Hello_4</label>
+            <input value="4" type="text" name="hello_4"/>
+          </p></form>
+        </html>""", str(tmpl.generate(fields=fields, values=values)))
+
     # FIXME
     #def test_match_after_step(self):
     #    tmpl = Template("""<div xmlns:py="http://markup.edgewall.org/">

@@ -193,9 +193,8 @@ class Path(object):
                         # Both the node test and the predicates matched
                         if matched:
                             if last_step:
-                                if ignore_context or kind is not START \
-                                        or axis is ATTRIBUTE or axis is SELF \
-                                        or len(stack) > 2:
+                                if not ctxtnode or kind is not START \
+                                        or axis is ATTRIBUTE or axis is SELF:
                                     retval = matched
                             elif not ctxtnode or axis is SELF \
                                               or axis is DESCENDANT_OR_SELF:
@@ -221,7 +220,8 @@ class Path(object):
 
                     # We're done with this step if it's the last step or the
                     # axis isn't "self"
-                    if last_step or axis is not SELF:
+                    if last_step or (axis is not SELF and
+                                     axis is not DESCENDANT_OR_SELF):
                         break
 
                 if kind is START and axis is not DESCENDANT \

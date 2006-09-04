@@ -996,6 +996,21 @@ class Template(object):
         if match_templates is None:
             match_templates = ctxt._match_templates
 
+        tail = []
+        def _strip(stream):
+            depth = 1
+            while 1:
+                kind, data, pos = stream.next()
+                if kind is START:
+                    depth += 1
+                elif kind is END:
+                    depth -= 1
+                if depth > 0:
+                    yield kind, data, pos
+                else:
+                    tail[:] = [(kind, data, pos)]
+                    break
+
         for kind, data, pos in stream:
 
             # We (currently) only care about start and end events for matching
@@ -1017,15 +1032,11 @@ class Template(object):
                     # Consume and store all events until an end event
                     # corresponding to this start event is encountered
                     content = [(kind, data, pos)]
-                    depth = 1
-                    stream = self._match(stream, ctxt)
-                    while depth > 0:
-                        kind, data, pos = stream.next()
-                        if kind is START:
-                            depth += 1
-                        elif kind is END:
-                            depth -= 1
-                        content.append((kind, data, pos))
+                    content += list(self._match(_strip(stream), ctxt)) + tail
+
+                    kind, data, pos = tail[0]
+                    for test in [mt[0] for mt in match_templates]:
+                        test(kind, data, pos, ctxt)
 
                     # Make the select() function available in the body of the
                     # match template

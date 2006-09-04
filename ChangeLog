@@ -14,6 +14,24 @@ http://svn.edgewall.org/repos/markup/tags/0.3.0/
    expected.
  * Generator expressions can now be used in template expressions (ticket #16).
  * Added serialization to plain text (ticket #41).
+ * Calling functions from template expressions with *args and/or **kwargs
+   now works correctly (ticket #42).
+ * The `TemplateLoader` class and the `Template` instances that it manages are
+   now thread-safe, as they no longer keep any state related to the current
+   processing context.
+ * Stream filters and serializers can now be applied using the "pipe" (bitwise
+   or) operator "|".
+ * The execution of named template functions (`py:def`) no longer silently
+   swallows TypeError exceptions (ticket #44).
+ * The XML Parser now correctly handles unicode input (ticket #43).
+ * HTML entities can now be used in templates without having to declare an HTML
+   document type.
+ * Error reporting on undefined entities has been fixed.
+ * Fix traversal of substreams by XPath expressions. For example, the path
+   '*/*' no longer matches non-immediate child elements, and '@*' no longer
+   matches the attributes of descendants.
+ * Fixes for `py:match` which would get confused when it should be applied
+   to multiple elements (ticket #49).
 
 
 Version 0.2

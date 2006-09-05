@@ -197,7 +197,7 @@ def _assignment(ast):
     """
     def _names(node):
         if isinstance(node, (compiler.ast.AssTuple, compiler.ast.Tuple)):
-            return tuple([_names(child) for child in node])
+            return tuple([_names(child) for child in node.nodes])
         elif isinstance(node, (compiler.ast.AssName, compiler.ast.Name)):
             return node.name
     def _assign(data, value, names=_names(ast)):

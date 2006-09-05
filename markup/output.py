@@ -450,10 +450,6 @@ class WhitespaceFilter(object):
     """A filter that removes extraneous ignorable white space from the
     stream."""
 
-    _TRAILING_SPACE = re.compile('[ \t]+(?=\n)')
-    _LINE_COLLAPSE = re.compile('\n{2,}')
-    _XML_SPACE = XML_NAMESPACE['space']
-
     def __init__(self, preserve=None, noescape=None, escape_cdata=False):
         """Initialize the filter.
         
@@ -473,10 +469,9 @@ class WhitespaceFilter(object):
         self.noescape = frozenset(noescape)
         self.escape_cdata = escape_cdata
 
-    def __call__(self, stream, ctxt=None):
-        trim_trailing_space = self._TRAILING_SPACE.sub
-        collapse_lines = self._LINE_COLLAPSE.sub
-        xml_space = self._XML_SPACE
+    def __call__(self, stream, ctxt=None, space=XML_NAMESPACE['space'],
+                 trim_trailing_space=re.compile('[ \t]+(?=\n)').sub,
+                 collapse_lines=re.compile('\n{2,}').sub):
         mjoin = Markup('').join
         preserve_elems = self.preserve
         preserve = False
@@ -505,11 +500,10 @@ class WhitespaceFilter(object):
 
                 if kind is START:
                     tag, attrib = data
-                    if tag.localname in preserve_elems or \
-                            data[1].get(xml_space) == 'preserve':
+                    if not preserve and (tag in preserve_elems or
+                                         attrib.get(space) == 'preserve'):
                         preserve = True
-
-                    if tag.localname in noescape_elems:
+                    if not noescape and tag in noescape_elems:
                         noescape = True
 
                 elif kind is END:

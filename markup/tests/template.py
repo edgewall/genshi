@@ -381,6 +381,34 @@ class ForDirectiveTestCase(unittest.TestCase):
             <b>5</b>
         </doc>""", str(tmpl.generate(items=range(1, 6))))
 
+    def test_multi_assignment(self):
+        """
+        Verify that assignment to tuples works correctly.
+        """
+        tmpl = Template("""<doc xmlns:py="http://markup.edgewall.org/">
+          <py:for each="k, v in items">
+            <p>key=$k, value=$v</p>
+          </py:for>
+        </doc>""")
+        self.assertEqual("""<doc>
+            <p>key=a, value=1</p>
+            <p>key=b, value=2</p>
+        </doc>""", str(tmpl.generate(items=dict(a=1, b=2).items())))
+
+    def test_nested_assignment(self):
+        """
+        Verify that assignment to nested tuples works correctly.
+        """
+        tmpl = Template("""<doc xmlns:py="http://markup.edgewall.org/">
+          <py:for each="idx, (k, v) in items">
+            <p>$idx: key=$k, value=$v</p>
+          </py:for>
+        </doc>""")
+        self.assertEqual("""<doc>
+            <p>0: key=a, value=1</p>
+            <p>1: key=b, value=2</p>
+        </doc>""", str(tmpl.generate(items=enumerate(dict(a=1, b=2).items()))))
+
 
 class IfDirectiveTestCase(unittest.TestCase):
     """Tests for the `py:if` template directive."""
@@ -708,6 +736,14 @@ class WithDirectiveTestCase(unittest.TestCase):
         </div>""")
         self.assertEqual("""<div>
           1 1 1
+        </div>""", str(tmpl.generate(x=42)))
+
+    def test_nested_vars_single_assignment(self):
+        tmpl = Template("""<div xmlns:py="http://markup.edgewall.org/">
+          <py:with vars="x, (y, z) = (1, (2, 3))">${x} ${y} ${z}</py:with>
+        </div>""")
+        self.assertEqual("""<div>
+          1 2 3
         </div>""", str(tmpl.generate(x=42)))
 
     def test_multiple_vars_trailing_semicolon(self):

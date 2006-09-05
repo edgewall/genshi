@@ -113,7 +113,7 @@ class Context(object):
         self.frames[0][key] = value
 
     def _find(self, key, default=None):
-        """Retrieve a given variable's value and frame it was found in.
+        """Retrieve a given variable's value and the frame it was found in.
 
         Intented for internal use by directives.
         """
@@ -190,6 +190,23 @@ def _apply_directives(stream, ctxt, directives):
     if directives:
         stream = directives[0](iter(stream), ctxt, directives[1:])
     return stream
+
+def _assignment(ast):
+    """Takes the AST representation of an assignment, and returns a function
+    that applies the assignment of a given value to a dictionary.
+    """
+    def _names(node):
+        if isinstance(node, (compiler.ast.AssTuple, compiler.ast.Tuple)):
+            return tuple([_names(child) for child in node])
+        elif isinstance(node, (compiler.ast.AssName, compiler.ast.Name)):
+            return node.name
+    def _assign(data, value, names=_names(ast)):
+        if type(names) is tuple:
+            for idx in range(len(names)):
+                _assign(data, value[idx], names[idx])
+        else:
+            data[names] = value
+    return _assign
 
 
 class AttrsDirective(Directive):
@@ -385,7 +402,7 @@ class ForDirective(Directive):
       <li>1</li><li>2</li><li>3</li>
     </ul>
     """
-    __slots__ = ['targets']
+    __slots__ = ['assign']
 
     ATTRIBUTE = 'each'
 
@@ -393,8 +410,9 @@ class ForDirective(Directive):
         if ' in ' not in value:
             raise TemplateSyntaxError('"in" keyword missing in "for" directive',
                                       filename, lineno, offset)
-        targets, value = value.split(' in ', 1)
-        self.targets = [str(name.strip()) for name in targets.split(',')]
+        assign, value = value.split(' in ', 1)
+        ast = compiler.parse(assign, 'exec')
+        self.assign = _assignment(ast.node.nodes[0].expr)
         Directive.__init__(self, value.strip(), filename, lineno, offset)
 
     def __call__(self, stream, ctxt, directives):
@@ -402,16 +420,11 @@ class ForDirective(Directive):
         if iterable is None:
             return
 
+        assign = self.assign
         scope = {}
         stream = list(stream)
-        targets = self.targets
-        single = len(targets) == 1
         for item in iter(iterable):
-            if single:
-                scope[targets[0]] = item
-            else:
-                for idx, name in enumerate(targets):
-                    scope[name] = item[idx]
+            assign(scope, item)
             ctxt.push(scope)
             for event in _apply_directives(stream, ctxt, directives):
                 yield event
@@ -691,7 +704,7 @@ class WithDirective(Directive):
                     raise TemplateSyntaxError('only assignment allowed in '
                                               'value of the "with" directive',
                                               filename, lineno, offset)
-                self.vars.append(([n.name for n in node.nodes],
+                self.vars.append(([_assignment(n) for n in node.nodes],
                                   Expression(node.expr, filename, lineno)))
         except SyntaxError, err:
             err.msg += ' in expression "%s" of "%s" directive' % (value,
@@ -702,9 +715,10 @@ class WithDirective(Directive):
     def __call__(self, stream, ctxt, directives):
         frame = {}
         ctxt.push(frame)
-        for names, expr in self.vars:
+        for targets, expr in self.vars:
             value = expr.evaluate(ctxt, nocall=True)
-            frame.update(dict([(name, value) for name in names]))
+            for assign in targets:
+                assign(frame, value)
         for event in _apply_directives(stream, ctxt, directives):
             yield event
         ctxt.pop()

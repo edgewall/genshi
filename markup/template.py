@@ -62,7 +62,7 @@ class BadDirectiveError(TemplateSyntaxError):
     """
 
     def __init__(self, name, filename='<string>', lineno=-1):
-        message = 'bad directive "%s"' % name.localname
+        message = 'bad directive "%s"' % name
         TemplateSyntaxError.__init__(self, message, filename, lineno)
 
 
@@ -811,7 +811,7 @@ class Template(object):
                 if tag in self.NAMESPACE:
                     cls = self._dir_by_name.get(tag.localname)
                     if cls is None:
-                        raise BadDirectiveError(tag, pos[0], pos[1])
+                        raise BadDirectiveError(tag.localname, pos[0], pos[1])
                     value = attrib.get(getattr(cls, 'ATTRIBUTE', None), '')
                     directives.append(cls(value, *pos))
                     strip = True
@@ -821,7 +821,8 @@ class Template(object):
                     if name in self.NAMESPACE:
                         cls = self._dir_by_name.get(name.localname)
                         if cls is None:
-                            raise BadDirectiveError(name, pos[0], pos[1])
+                            raise BadDirectiveError(name.localname, pos[0],
+                                                    pos[1])
                         directives.append(cls(value, *pos))
                     else:
                         if value:

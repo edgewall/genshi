@@ -152,7 +152,7 @@ class Path(object):
                 if kind is END:
                     if stack: stack.pop()
                     continue
-                elif kind in START:
+                elif kind is START:
                     stack.append(stack and stack[-1] or 0)
                 elif not stack:
                     continue

@@ -498,6 +498,11 @@ class Namespace(object):
     >>> qname in Namespace('http://www.w3.org/2002/06/xhtml2')
     False
     """
+    def __new__(cls, uri):
+        if type(uri) is cls:
+            return uri
+        return object.__new__(cls, uri)
+
     def __init__(self, uri):
         self.uri = unicode(uri)
 

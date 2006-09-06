@@ -404,7 +404,44 @@ class PathTestCase(unittest.TestCase):
         xml = XML('<root><foo>bar</foo></root>')
         path = Path('*[name()=$bar]')
         variables = {'bar': 'foo'}
-        self.assertEqual('<foo>bar</foo>', path.select(xml, variables).render())
+        self.assertEqual('<foo>bar</foo>',
+                         path.select(xml, variables=variables).render())
+
+    def test_name_with_namespace(self):
+        xml = XML('<root xmlns:f="FOO"><f:foo>bar</f:foo></root>')
+        path = Path('f:foo')
+        self.assertEqual('<Path "child::f:foo">', repr(path))
+        namespaces = {'f': 'FOO'}
+        self.assertEqual('<foo xmlns="FOO">bar</foo>',
+                         path.select(xml, namespaces=namespaces).render())
+
+    def test_wildcard_with_namespace(self):
+        xml = XML('<root xmlns:f="FOO"><f:foo>bar</f:foo></root>')
+        path = Path('f:*')
+        self.assertEqual('<Path "child::f:*">', repr(path))
+        namespaces = {'f': 'FOO'}
+        self.assertEqual('<foo xmlns="FOO">bar</foo>',
+                         path.select(xml, namespaces=namespaces).render())
+
+    # FIXME: the following two don't work due to a problem in XML serialization:
+    #        attributes that would need a namespace prefix that isn't in the
+    #        prefix map would need to get an artificial prefix, but currently
+    #        don't
+    #
+    #def test_attrname_with_namespace(self):
+    #    xml = XML('<root xmlns:f="FOO"><foo f:bar="baz"/></root>')
+    #    path = Path('foo[@f:bar]')
+    #    print path
+    #    namespaces = {'f': 'FOO'}
+    #    self.assertEqual('<foo f:bar="baz" xmlns="FOO"/>',
+    #                     path.select(xml, namespaces=namespaces).render())
+    #
+    #def test_attrwildcard_with_namespace(self):
+    #    xml = XML('<root xmlns:f="FOO"><foo f:bar="baz"/></root>')
+    #    path = Path('foo[@f:*]')
+    #    namespaces = {'f': 'FOO'}
+    #    self.assertEqual('<foo f:bar="baz" xmlns="FOO"/>',
+    #                     path.select(xml, namespaces=namespaces).render())
 
 
 def suite():

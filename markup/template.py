@@ -1010,6 +1010,7 @@ class Template(object):
         """
         if match_templates is None:
             match_templates = ctxt._match_templates
+        nsprefix = {} # mapping of namespace prefixes to URIs
 
         tail = []
         def _strip(stream):
@@ -1037,12 +1038,12 @@ class Template(object):
             for idx, (test, path, template, directives) in \
                     enumerate(match_templates):
 
-                if test(kind, data, pos, ctxt) is True:
+                if test(kind, data, pos, nsprefix, ctxt) is True:
 
                     # Let the remaining match templates know about the event so
                     # they get a chance to update their internal state
                     for test in [mt[0] for mt in match_templates[idx + 1:]]:
-                        test(kind, data, pos, ctxt)
+                        test(kind, data, pos, nsprefix, ctxt)
 
                     # Consume and store all events until an end event
                     # corresponding to this start event is encountered
@@ -1051,7 +1052,7 @@ class Template(object):
 
                     kind, data, pos = tail[0]
                     for test in [mt[0] for mt in match_templates]:
-                        test(kind, data, pos, ctxt)
+                        test(kind, data, pos, nsprefix, ctxt)
 
                     # Make the select() function available in the body of the
                     # match template

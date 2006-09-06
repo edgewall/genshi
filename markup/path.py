@@ -34,7 +34,8 @@ structures), it only implements a subset of the full XPath 1.0 language.
 from math import ceil, floor
 import re
 
-from markup.core import Stream, START, END, TEXT, COMMENT, PI
+from markup.core import Stream, Attrs, Namespace, QName
+from markup.core import START, END, TEXT, COMMENT, PI
 
 __all__ = ['Path', 'PathSyntaxError']
 
@@ -86,11 +87,11 @@ class Path(object):
             for axis, nodetest, predicates in path:
                 steps.append('%s::%s' % (axis, nodetest))
                 for predicate in predicates:
-                    steps.append('[%s]' % predicate)
+                    steps[-1] += '[%s]' % predicate
             paths.append('/'.join(steps))
         return '<%s "%s">' % (self.__class__.__name__, '|'.join(paths))
 
-    def select(self, stream, variables=None):
+    def select(self, stream, namespaces=None, variables=None):
         """Returns a substream of the given stream that matches the path.
         
         If there are no matches, this method returns an empty stream.
@@ -105,13 +106,19 @@ class Path(object):
         Text
         
         @param stream: the stream to select from
+        @param namespaces: (optional) a mapping of namespace prefixes to URIs
+        @param variables: (optional) a mapping of variable names to values
         @return: the substream matching the path, or an empty stream
         """
+        if namespaces is None:
+            namespaces = {}
+        if variables is None:
+            variables = {}
         stream = iter(stream)
         def _generate():
             test = self.test()
             for kind, data, pos in stream:
-                result = test(kind, data, pos, variables)
+                result = test(kind, data, pos, namespaces, variables)
                 if result is True:
                     yield kind, data, pos
                     depth = 1
@@ -122,7 +129,7 @@ class Path(object):
                         elif subkind is END:
                             depth -= 1
                         yield subkind, subdata, subpos
-                        test(subkind, subdata, subpos, variables)
+                        test(subkind, subdata, subpos, namespaces, variables)
                 elif result:
                     yield result
         return Stream(_generate())
@@ -132,21 +139,24 @@ class Path(object):
         a specific stream event.
         
         The function returned expects the positional arguments `kind`, `data`,
-        and `pos`, i.e. basically an unpacked stream event. If the path matches
-        the event, the function returns the match (for example, a `START` or
-        `TEXT` event.) Otherwise, it returns `None`.
+        `pos` (basically an unpacked stream event), as well as `namespaces`
+        and `variables`. The latter two are a mapping of namespace prefixes to
+        URIs, and a mapping of variable names to values, respectively.
+        
+        If the path matches the event, the function returns the match (for
+        example, a `START` or `TEXT` event.) Otherwise, it returns `None`.
         
         >>> from markup.input import XML
         >>> xml = XML('<root><elem><child id="1"/></elem><child id="2"/></root>')
         >>> test = Path('child').test()
         >>> for kind, data, pos in xml:
-        ...     if test(kind, data, pos, {}):
+        ...     if test(kind, data, pos, {}, {}):
         ...         print kind, data
         START (u'child', [(u'id', u'2')])
         """
         paths = [(steps, len(steps), [0], []) for steps in self.paths]
 
-        def _test(kind, data, pos, variables):
+        def _test(kind, data, pos, namespaces, variables):
             for steps, size, stack, cutoff in paths:
                 # Manage the stack that tells us "where we are" in the stream
                 if kind is END:
@@ -178,7 +188,7 @@ class Path(object):
                     last_step = cursor + 1 == size
 
                     # Perform the actual node test
-                    matched = nodetest(kind, data, pos, variables)
+                    matched = nodetest(kind, data, pos, namespaces, variables)
 
                     # The node test matched
                     if matched:
@@ -186,7 +196,8 @@ class Path(object):
                         # Check all the predicates for this step
                         if predicates:
                             for predicate in predicates:
-                                if not predicate(kind, data, pos, variables):
+                                if not predicate(kind, data, pos, namespaces,
+                                                 variables):
                                     matched = None
                                     break
 
@@ -234,7 +245,8 @@ class Path(object):
                                  if k is DESCENDANT or k is DESCENDANT_OR_SELF]
                     backsteps.reverse()
                     for axis, nodetest, predicates in backsteps:
-                        matched = nodetest(kind, data, pos, variables)
+                        matched = nodetest(kind, data, pos, namespaces,
+                                           variables)
                         if not matched:
                             cursor -= 1
                         cutoff[:] = []
@@ -360,9 +372,19 @@ class PathParser(object):
         return axis, nodetest, predicates
 
     def _node_test(self, axis=None):
-        test = None
-        if self.peek_token() in ('(', '()'): # Node type test
+        test = prefix = None
+        next_token = self.peek_token()
+        if next_token in ('(', '()'): # Node type test
             test = self._node_type()
+
+        elif next_token == ':': # Namespace prefix
+            prefix = self.cur_token
+            self.next_token()
+            localname = self.next_token()
+            if localname == '*':
+                test = QualifiedPrincipalTypeTest(axis, prefix)
+            else:
+                test = QualifiedNameTest(axis, prefix, localname)
 
         else: # Name test
             if self.cur_token == '*':
@@ -492,7 +514,7 @@ class PrincipalTypeTest(object):
     __slots__ = ['principal_type']
     def __init__(self, principal_type):
         self.principal_type = principal_type
-    def __call__(self, kind, data, pos, variables):
+    def __call__(self, kind, data, pos, namespaces, variables):
         if kind is START:
             if self.principal_type is ATTRIBUTE:
                 return data[1] or None
@@ -500,6 +522,24 @@ class PrincipalTypeTest(object):
                 return True
     def __repr__(self):
         return '*'
+
+class QualifiedPrincipalTypeTest(object):
+    """Node test that matches any event with the given principal type in a
+    specific namespace."""
+    __slots__ = ['principal_type', 'prefix']
+    def __init__(self, principal_type, prefix):
+        self.principal_type = principal_type
+        self.prefix = prefix
+    def __call__(self, kind, data, pos, namespaces, variables):
+        namespace = Namespace(namespaces.get(self.prefix))
+        if kind is START:
+            if self.principal_type is ATTRIBUTE and data[1]:
+                return Attrs([(name, value) for name, value in data[1]
+                              if name in namespace]) or None
+            else:
+                return data[0] in namespace
+    def __repr__(self):
+        return '%s:*' % self.prefix
 
 class LocalNameTest(object):
     """Node test that matches any event with the given prinipal type and
@@ -509,7 +549,7 @@ class LocalNameTest(object):
     def __init__(self, principal_type, name):
         self.principal_type = principal_type
         self.name = name
-    def __call__(self, kind, data, pos, variables):
+    def __call__(self, kind, data, pos, namespaces, variables):
         if kind is START:
             if self.principal_type is ATTRIBUTE and self.name in data[1]:
                 return TEXT, data[1].get(self.name), pos
@@ -518,10 +558,29 @@ class LocalNameTest(object):
     def __repr__(self):
         return self.name
 
+class QualifiedNameTest(object):
+    """Node test that matches any event with the given prinipal type and
+    qualified name.
+    """
+    __slots__ = ['principal_type', 'prefix', 'name']
+    def __init__(self, principal_type, prefix, name):
+        self.principal_type = principal_type
+        self.prefix = prefix
+        self.name = name
+    def __call__(self, kind, data, pos, namespaces, variables):
+        qname = QName('%s}%s' % (namespaces.get(self.prefix), self.name))
+        if kind is START:
+            if self.principal_type is ATTRIBUTE and qname in data[1]:
+                return TEXT, data[1].get(qname), pos
+            else:
+                return data[0] == qname
+    def __repr__(self):
+        return '%s:%s' % (self.prefix, self.name)
+
 class CommentNodeTest(object):
     """Node test that matches any comment events."""
     __slots__ = []
-    def __call__(self, kind, data, pos, variables):
+    def __call__(self, kind, data, pos, namespaces, variables):
         return kind is COMMENT and (kind, data, pos)
     def __repr__(self):
         return 'comment()'
@@ -529,7 +588,7 @@ class CommentNodeTest(object):
 class NodeTest(object):
     """Node test that matches any node."""
     __slots__ = []
-    def __call__(self, kind, data, pos, variables):
+    def __call__(self, kind, data, pos, namespaces, variables):
         if kind is START:
             return True
         return kind, data, pos
@@ -541,7 +600,7 @@ class ProcessingInstructionNodeTest(object):
     __slots__ = ['target']
     def __init__(self, target=None):
         self.target = target
-    def __call__(self, kind, data, pos, variables):
+    def __call__(self, kind, data, pos, namespaces, variables):
         if kind is PI and (not self.target or data[0] == self.target):
             return (kind, data, pos)
     def __repr__(self):
@@ -553,7 +612,7 @@ class ProcessingInstructionNodeTest(object):
 class TextNodeTest(object):
     """Node test that matches any text event."""
     __slots__ = []
-    def __call__(self, kind, data, pos, variables):
+    def __call__(self, kind, data, pos, namespaces, variables):
         return kind is TEXT and (kind, data, pos)
     def __repr__(self):
         return 'text()'
@@ -574,8 +633,8 @@ class BooleanFunction(Function):
     __slots__ = ['expr']
     def __init__(self, expr):
         self.expr = expr
-    def __call__(self, kind, data, pos, variables):
-        val = self.expr(kind, data, pos, variables)
+    def __call__(self, kind, data, pos, namespaces, variables):
+        val = self.expr(kind, data, pos, namespaces, variables)
         if type(val) is tuple:
             val = val[1]
         return bool(val)
@@ -589,8 +648,8 @@ class CeilingFunction(Function):
     __slots__ = ['number']
     def __init__(self, number):
         self.number = number
-    def __call__(self, kind, data, pos, variables):
-        number = self.number(kind, data, pos, variables)
+    def __call__(self, kind, data, pos, namespaces, variables):
+        number = self.number(kind, data, pos, namespaces, variables)
         if type(number) is tuple:
             number = number[1]
         return ceil(float(number))
@@ -604,9 +663,10 @@ class ConcatFunction(Function):
     __slots__ = ['exprs']
     def __init__(self, *exprs):
         self.exprs = exprs
-    def __call__(self, kind, data, pos, variables):
+    def __call__(self, kind, data, pos, namespaces, variables):
         strings = []
-        for item in [expr(kind, data, pos, variables) for expr in self.exprs]:
+        for item in [expr(kind, data, pos, namespaces, variables)
+                     for expr in self.exprs]:
             if type(item) is tuple:
                 assert item[0] is TEXT
                 item = item[1]
@@ -623,11 +683,11 @@ class ContainsFunction(Function):
     def __init__(self, string1, string2):
         self.string1 = string1
         self.string2 = string2
-    def __call__(self, kind, data, pos, variables):
-        string1 = self.string1(kind, data, pos, variables)
+    def __call__(self, kind, data, pos, namespaces, variables):
+        string1 = self.string1(kind, data, pos, namespaces, variables)
         if type(string1) is tuple:
             string1 = string1[1]
-        string2 = self.string2(kind, data, pos, variables)
+        string2 = self.string2(kind, data, pos, namespaces, variables)
         if type(string2) is tuple:
             string2 = string2[1]
         return string2 in string1
@@ -637,7 +697,7 @@ class ContainsFunction(Function):
 class FalseFunction(Function):
     """The `false` function, which always returns the boolean `false` value."""
     __slots__ = []
-    def __call__(self, kind, data, pos, variables):
+    def __call__(self, kind, data, pos, namespaces, variables):
         return False
     def __repr__(self):
         return 'false()'
@@ -649,8 +709,8 @@ class FloorFunction(Function):
     __slots__ = ['number']
     def __init__(self, number):
         self.number = number
-    def __call__(self, kind, data, pos, variables):
-        number = self.number(kind, data, pos, variables)
+    def __call__(self, kind, data, pos, namespaces, variables):
+        number = self.number(kind, data, pos, namespaces, variables)
         if type(number) is tuple:
             number = number[1]
         return floor(float(number))
@@ -662,7 +722,7 @@ class LocalNameFunction(Function):
     element.
     """
     __slots__ = []
-    def __call__(self, kind, data, pos, variables):
+    def __call__(self, kind, data, pos, namespaces, variables):
         if kind is START:
             return TEXT, data[0].localname, pos
     def __repr__(self):
@@ -673,7 +733,7 @@ class NameFunction(Function):
     element.
     """
     __slots__ = []
-    def __call__(self, kind, data, pos, variables):
+    def __call__(self, kind, data, pos, namespaces, variables):
         if kind is START:
             return TEXT, data[0], pos
     def __repr__(self):
@@ -684,7 +744,7 @@ class NamespaceUriFunction(Function):
     current element.
     """
     __slots__ = []
-    def __call__(self, kind, data, pos, variables):
+    def __call__(self, kind, data, pos, namespaces, variables):
         if kind is START:
             return TEXT, data[0].namespace, pos
     def __repr__(self):
@@ -697,8 +757,8 @@ class NotFunction(Function):
     __slots__ = ['expr']
     def __init__(self, expr):
         self.expr = expr
-    def __call__(self, kind, data, pos, variables):
-        return not self.expr(kind, data, pos, variables)
+    def __call__(self, kind, data, pos, namespaces, variables):
+        return not self.expr(kind, data, pos, namespaces, variables)
     def __repr__(self):
         return 'not(%s)' % self.expr
 
@@ -711,8 +771,8 @@ class NormalizeSpaceFunction(Function):
     _normalize = re.compile(r'\s{2,}').sub
     def __init__(self, expr):
         self.expr = expr
-    def __call__(self, kind, data, pos, variables):
-        string = self.expr(kind, data, pos, variables)
+    def __call__(self, kind, data, pos, namespaces, variables):
+        string = self.expr(kind, data, pos, namespaces, variables)
         if type(string) is tuple:
             string = string[1]
         return self._normalize(' ', string.strip())
@@ -724,8 +784,8 @@ class NumberFunction(Function):
     __slots__ = ['expr']
     def __init__(self, expr):
         self.expr = expr
-    def __call__(self, kind, data, pos, variables):
-        val = self.expr(kind, data, pos, variables)
+    def __call__(self, kind, data, pos, namespaces, variables):
+        val = self.expr(kind, data, pos, namespaces, variables)
         if type(val) is tuple:
             val = val[1]
         return float(val)
@@ -739,8 +799,8 @@ class RoundFunction(Function):
     __slots__ = ['number']
     def __init__(self, number):
         self.number = number
-    def __call__(self, kind, data, pos, variables):
-        number = self.number(kind, data, pos, variables)
+    def __call__(self, kind, data, pos, namespaces, variables):
+        number = self.number(kind, data, pos, namespaces, variables)
         if type(number) is tuple:
             number = number[1]
         return round(float(number))
@@ -755,11 +815,11 @@ class StartsWithFunction(Function):
     def __init__(self, string1, string2):
         self.string1 = string2
         self.string2 = string2
-    def __call__(self, kind, data, pos, variables):
-        string1 = self.string1(kind, data, pos, variables)
+    def __call__(self, kind, data, pos, namespaces, variables):
+        string1 = self.string1(kind, data, pos, namespaces, variables)
         if type(string1) is tuple:
             string1 = string1[1]
-        string2 = self.string2(kind, data, pos, variables)
+        string2 = self.string2(kind, data, pos, namespaces, variables)
         if type(string2) is tuple:
             string2 = string2[1]
         return string1.startswith(string2)
@@ -773,8 +833,8 @@ class StringLengthFunction(Function):
     __slots__ = ['expr']
     def __init__(self, expr):
         self.expr = expr
-    def __call__(self, kind, data, pos, variables):
-        string = self.expr(kind, data, pos, variables)
+    def __call__(self, kind, data, pos, namespaces, variables):
+        string = self.expr(kind, data, pos, namespaces, variables)
         if type(string) is tuple:
             string = string[1]
         return len(string)
@@ -790,16 +850,16 @@ class SubstringFunction(Function):
         self.string = string
         self.start = start
         self.length = length
-    def __call__(self, kind, data, pos, variables):
-        string = self.string(kind, data, pos, variables)
+    def __call__(self, kind, data, pos, namespaces, variables):
+        string = self.string(kind, data, pos, namespaces, variables)
         if type(string) is tuple:
             string = string[1]
-        start = self.start(kind, data, pos, variables)
+        start = self.start(kind, data, pos, namespaces, variables)
         if type(start) is tuple:
             start = start[1]
         length = 0
         if self.length is not None:
-            length = self.length(kind, data, pos, variables)
+            length = self.length(kind, data, pos, namespaces, variables)
             if type(length) is tuple:
                 length = length[1]
         return string[int(start):len(string) - int(length)]
@@ -818,11 +878,11 @@ class SubstringAfterFunction(Function):
     def __init__(self, string1, string2):
         self.string1 = string1
         self.string2 = string2
-    def __call__(self, kind, data, pos, variables):
-        string1 = self.string1(kind, data, pos, variables)
+    def __call__(self, kind, data, pos, namespaces, variables):
+        string1 = self.string1(kind, data, pos, namespaces, variables)
         if type(string1) is tuple:
             string1 = string1[1]
-        string2 = self.string2(kind, data, pos, variables)
+        string2 = self.string2(kind, data, pos, namespaces, variables)
         if type(string2) is tuple:
             string2 = string2[1]
         index = string1.find(string2)
@@ -840,11 +900,11 @@ class SubstringBeforeFunction(Function):
     def __init__(self, string1, string2):
         self.string1 = string1
         self.string2 = string2
-    def __call__(self, kind, data, pos, variables):
-        string1 = self.string1(kind, data, pos, variables)
+    def __call__(self, kind, data, pos, namespaces, variables):
+        string1 = self.string1(kind, data, pos, namespaces, variables)
         if type(string1) is tuple:
             string1 = string1[1]
-        string2 = self.string2(kind, data, pos, variables)
+        string2 = self.string2(kind, data, pos, namespaces, variables)
         if type(string2) is tuple:
             string2 = string2[1]
         index = string1.find(string2)
@@ -863,14 +923,14 @@ class TranslateFunction(Function):
         self.string = string
         self.fromchars = fromchars
         self.tochars = tochars
-    def __call__(self, kind, data, pos, variables):
-        string = self.string(kind, data, pos, variables)
+    def __call__(self, kind, data, pos, namespaces, variables):
+        string = self.string(kind, data, pos, namespaces, variables)
         if type(string) is tuple:
             string = string[1]
-        fromchars = self.fromchars(kind, data, pos, variables)
+        fromchars = self.fromchars(kind, data, pos, namespaces, variables)
         if type(fromchars) is tuple:
             fromchars = fromchars[1]
-        tochars = self.tochars(kind, data, pos, variables)
+        tochars = self.tochars(kind, data, pos, namespaces, variables)
         if type(tochars) is tuple:
             tochars = tochars[1]
         table = dict(zip([ord(c) for c in fromchars],
@@ -883,7 +943,7 @@ class TranslateFunction(Function):
 class TrueFunction(Function):
     """The `true` function, which always returns the boolean `true` value."""
     __slots__ = []
-    def __call__(self, kind, data, pos, variables):
+    def __call__(self, kind, data, pos, namespaces, variables):
         return True
     def __repr__(self):
         return 'true()'
@@ -912,7 +972,7 @@ class StringLiteral(Literal):
     __slots__ = ['text']
     def __init__(self, text):
         self.text = text
-    def __call__(self, kind, data, pos, variables):
+    def __call__(self, kind, data, pos, namespaces, variables):
         return TEXT, self.text, (None, -1, -1)
     def __repr__(self):
         return '"%s"' % self.text
@@ -922,7 +982,7 @@ class NumberLiteral(Literal):
     __slots__ = ['number']
     def __init__(self, number):
         self.number = number
-    def __call__(self, kind, data, pos, variables):
+    def __call__(self, kind, data, pos, namespaces, variables):
         return TEXT, self.number, (None, -1, -1)
     def __repr__(self):
         return str(self.number)
@@ -932,7 +992,7 @@ class VariableReference(Literal):
     __slots__ = ['name']
     def __init__(self, name):
         self.name = name
-    def __call__(self, kind, data, pos, variables):
+    def __call__(self, kind, data, pos, namespaces, variables):
         return TEXT, variables.get(self.name), (None, -1, -1)
     def __repr__(self):
         return str(self.name)
@@ -945,13 +1005,13 @@ class AndOperator(object):
     def __init__(self, lval, rval):
         self.lval = lval
         self.rval = rval
-    def __call__(self, kind, data, pos, variables):
-        lval = self.lval(kind, data, pos, variables)
+    def __call__(self, kind, data, pos, namespaces, variables):
+        lval = self.lval(kind, data, pos, namespaces, variables)
         if type(lval) is tuple:
             lval = lval[1]
         if not lval:
             return False
-        rval = self.rval(kind, data, pos, variables)
+        rval = self.rval(kind, data, pos, namespaces, variables)
         if type(rval) is tuple:
             rval = rval[1]
         return bool(rval)
@@ -964,11 +1024,11 @@ class EqualsOperator(object):
     def __init__(self, lval, rval):
         self.lval = lval
         self.rval = rval
-    def __call__(self, kind, data, pos, variables):
-        lval = self.lval(kind, data, pos, variables)
+    def __call__(self, kind, data, pos, namespaces, variables):
+        lval = self.lval(kind, data, pos, namespaces, variables)
         if type(lval) is tuple:
             lval = lval[1]
-        rval = self.rval(kind, data, pos, variables)
+        rval = self.rval(kind, data, pos, namespaces, variables)
         if type(rval) is tuple:
             rval = rval[1]
         return lval == rval
@@ -981,11 +1041,11 @@ class NotEqualsOperator(object):
     def __init__(self, lval, rval):
         self.lval = lval
         self.rval = rval
-    def __call__(self, kind, data, pos, variables):
-        lval = self.lval(kind, data, pos, variables)
+    def __call__(self, kind, data, pos, namespaces, variables):
+        lval = self.lval(kind, data, pos, namespaces, variables)
         if type(lval) is tuple:
             lval = lval[1]
-        rval = self.rval(kind, data, pos, variables)
+        rval = self.rval(kind, data, pos, namespaces, variables)
         if type(rval) is tuple:
             rval = rval[1]
         return lval != rval
@@ -998,13 +1058,13 @@ class OrOperator(object):
     def __init__(self, lval, rval):
         self.lval = lval
         self.rval = rval
-    def __call__(self, kind, data, pos, variables):
-        lval = self.lval(kind, data, pos, variables)
+    def __call__(self, kind, data, pos, namespaces, variables):
+        lval = self.lval(kind, data, pos, namespaces, variables)
         if type(lval) is tuple:
             lval = lval[1]
         if lval:
             return True
-        rval = self.rval(kind, data, pos, variables)
+        rval = self.rval(kind, data, pos, namespaces, variables)
         if type(rval) is tuple:
             rval = rval[1]
         return bool(rval)
@@ -1017,11 +1077,11 @@ class GreaterThanOperator(object):
     def __init__(self, lval, rval):
         self.lval = lval
         self.rval = rval
-    def __call__(self, kind, data, pos, variables):
-        lval = self.lval(kind, data, pos, variables)
+    def __call__(self, kind, data, pos, namespaces, variables):
+        lval = self.lval(kind, data, pos, namespaces, variables)
         if type(lval) is tuple:
             lval = lval[1]
-        rval = self.rval(kind, data, pos, variables)
+        rval = self.rval(kind, data, pos, namespaces, variables)
         if type(rval) is tuple:
             rval = rval[1]
         return float(lval) > float(rval)
@@ -1034,11 +1094,11 @@ class GreaterThanOperator(object):
     def __init__(self, lval, rval):
         self.lval = lval
         self.rval = rval
-    def __call__(self, kind, data, pos, variables):
-        lval = self.lval(kind, data, pos, variables)
+    def __call__(self, kind, data, pos, namespaces, variables):
+        lval = self.lval(kind, data, pos, namespaces, variables)
         if type(lval) is tuple:
             lval = lval[1]
-        rval = self.rval(kind, data, pos, variables)
+        rval = self.rval(kind, data, pos, namespaces, variables)
         if type(rval) is tuple:
             rval = rval[1]
         return float(lval) > float(rval)
@@ -1051,11 +1111,11 @@ class GreaterThanOrEqualOperator(object):
     def __init__(self, lval, rval):
         self.lval = lval
         self.rval = rval
-    def __call__(self, kind, data, pos, variables):
-        lval = self.lval(kind, data, pos, variables)
+    def __call__(self, kind, data, pos, namespaces, variables):
+        lval = self.lval(kind, data, pos, namespaces, variables)
         if type(lval) is tuple:
             lval = lval[1]
-        rval = self.rval(kind, data, pos, variables)
+        rval = self.rval(kind, data, pos, namespaces, variables)
         if type(rval) is tuple:
             rval = rval[1]
         return float(lval) >= float(rval)
@@ -1068,11 +1128,11 @@ class LessThanOperator(object):
     def __init__(self, lval, rval):
         self.lval = lval
         self.rval = rval
-    def __call__(self, kind, data, pos, variables):
-        lval = self.lval(kind, data, pos, variables)
+    def __call__(self, kind, data, pos, namespaces, variables):
+        lval = self.lval(kind, data, pos, namespaces, variables)
         if type(lval) is tuple:
             lval = lval[1]
-        rval = self.rval(kind, data, pos, variables)
+        rval = self.rval(kind, data, pos, namespaces, variables)
         if type(rval) is tuple:
             rval = rval[1]
         return float(lval) < float(rval)
@@ -1085,11 +1145,11 @@ class LessThanOrEqualOperator(object):
     def __init__(self, lval, rval):
         self.lval = lval
         self.rval = rval
-    def __call__(self, kind, data, pos, variables):
-        lval = self.lval(kind, data, pos, variables)
+    def __call__(self, kind, data, pos, namespaces, variables):
+        lval = self.lval(kind, data, pos, namespaces, variables)
         if type(lval) is tuple:
             lval = lval[1]
-        rval = self.rval(kind, data, pos, variables)
+        rval = self.rval(kind, data, pos, namespaces, variables)
         if type(rval) is tuple:
             rval = rval[1]
         return float(lval) <= float(rval)

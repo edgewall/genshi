@@ -32,6 +32,7 @@ http://svn.edgewall.org/repos/markup/tags/0.3.0/
    matches the attributes of descendants.
  * Fixes for `py:match` which would get confused when it should be applied
    to multiple elements (ticket #49).
+ * Using namespace prefixes in XPath expressions is now supported.
 
 
 Version 0.2

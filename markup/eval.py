@@ -349,6 +349,18 @@ class ASTTransformer(object):
         node.quals = map(lambda x: self.visit(x, *args, **kwargs), node.quals)
         return node
 
+    def visitSlice(self, node, *args, **kwargs):
+        node.expr = self.visit(node.expr, locals_=True, *args, **kwargs)
+        if node.lower is not None:
+            node.lower = self.visit(node.lower, *args, **kwargs)
+        if node.upper is not None:
+            node.upper = self.visit(node.upper, *args, **kwargs)
+        return node
+
+    def visitSliceobj(self, node, *args, **kwargs):
+        node.nodes = map(lambda x: self.visit(x, *args, **kwargs), node.nodes)
+        return node
+
 
 class ExpressionASTTransformer(ASTTransformer):
     """Concrete AST transformer that implements the AST transformations needed

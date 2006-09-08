@@ -1,0 +1,186 @@
+.. -*- mode: rst; encoding: utf-8 -*-
+
+==============
+Markup Streams
+==============
+
+A stream is the common representation of markup as a *stream of events*.
+
+
+.. contents:: Contents
+   :depth: 2
+.. sectnum::
+
+
+Basics
+======
+
+A stream can be attained in a number of ways. It can be:
+
+* the result of parsing XML or HTML text, or
+* programmatically generated, or
+* the result of selecting a subset of another stream filtered by an XPath
+  expression.
+
+For example, the functions ``XML()`` and ``HTML()`` can be used to convert
+literal XML or HTML text to a markup stream::
+
+  >>> from markup import XML
+  >>> stream = XML('<p class="intro">Some text and '
+  ...              '<a href="http://example.org/">a link</a>.'
+  ...              '<br/></p>')
+  >>> stream
+  <markup.core.Stream object at 0x6bef0>
+
+The stream is the result of parsing the text into events. Each event is a tuple
+of the form ``(kind, data, pos)``, where:
+
+* ``kind`` defines what kind of event it is (such as the start of an element,
+  text, a comment, etc).
+* ``data`` is the actual data associated with the event. How this looks depends
+  on the event kind.
+* ``pos`` is a ``(filename, lineno, column)`` tuple that describes where the
+  event “comes from”.
+
+::
+
+  >>> for kind, data, pos in stream:
+  ...     print kind, `data`, pos
+  ... 
+  START (u'p', [(u'class', u'intro')]) ('<string>', 1, 0)
+  TEXT u'Some text and ' ('<string>', 1, 31)
+  START (u'a', [(u'href', u'http://example.org/')]) ('<string>', 1, 31)
+  TEXT u'a link' ('<string>', 1, 67)
+  END u'a' ('<string>', 1, 67)
+  TEXT u'.' ('<string>', 1, 72)
+  START (u'br', []) ('<string>', 1, 72)
+  END u'br' ('<string>', 1, 77)
+  END u'p' ('<string>', 1, 77)
+
+
+Filtering
+=========
+
+One important feature of markup streams is that you can apply *filters* to the
+stream, either filters that come with Markup, or your own custom filters.
+
+A filter is simply a callable that accepts the stream as parameter, and returns
+the filtered stream::
+
+  def noop(stream):
+      """A filter that doesn't actually do anything with the stream."""
+      for kind, data, pos in stream:
+          yield kind, data, pos
+
+Filters can be applied in a number of ways. The simplest is to just call the
+filter directly::
+
+  stream = noop(stream)
+
+The ``Stream`` class also provides a ``filter()`` method, which takes an
+arbitrary number of filter callables and applies them all::
+
+  stream = stream.filter(noop)
+
+Finally, filters can also be applied using the *bitwise or* operator (``|``),
+which allows a syntax similar to pipes on Unix shells::
+
+  stream = stream | noop
+
+One example of a filter included with Markup is the ``HTMLSanitizer`` in
+``markup.filters``. It processes a stream of HTML markup, and strips out any
+potentially dangerous constructs, such as Javascript event handlers.
+``HTMLSanitizer`` is not a function, but rather a class that implements
+``__call__``, which means instances of the class are callable.
+
+Both the ``filter()`` method and the pipe operator allow easy chaining of
+filters::
+
+  from markup.filters import HTMLSanitizer
+  stream = stream.filter(noop, HTMLSanitizer())
+
+That is equivalent to::
+
+  stream = stream | noop | HTMLSanitizer()
+
+
+Serialization
+=============
+
+The ``Stream`` class provides two methods for serializing this list of events:
+``serialize()`` and ``render()``. The former is a generator that yields chunks
+of ``Markup`` objects (which are basically unicode strings). The latter returns
+a single string, by default UTF-8 encoded.
+
+Here's the output from ``serialize()``::
+
+  >>> for output in stream.serialize():
+  ...     print `output`
+  ... 
+  <Markup u'<p class="intro">'>
+  <Markup u'Some text and '>
+  <Markup u'<a href="http://example.org/">'>
+  <Markup u'a link'>
+  <Markup u'</a>'>
+  <Markup u'.'>
+  <Markup u'<br/>'>
+  <Markup u'</p>'>
+
+And here's the output from ``render()``::
+
+  >>> print stream.render()
+  <p class="intro">Some text and <a href="http://example.org/">a link</a>.<br/></p>
+
+Both methods can be passed a ``method`` parameter that determines how exactly
+the events are serialzed to text. This parameter can be either “xml” (the
+default), “xhtml”, “html”, “text”, or a custom serializer class::
+
+  >>> print stream.render('html')
+  <p class="intro">Some text and <a href="http://example.org/">a link</a>.<br></p>
+
+Note how the `<br>` element isn't closed, which is the right thing to do for
+HTML.
+
+In addition, the ``render()`` method takes an ``encoding`` parameter, which
+defaults to “UTF-8”. If set to ``None``, the result will be a unicode string.
+
+The different serializer classes in ``markup.output`` can also be used
+directly::
+
+  >>> from markup.filters import HTMLSanitizer
+  >>> from markup.output import TextSerializer
+  >>> print TextSerializer()(HTMLSanitizer()(stream))
+  Some text and a link.
+
+The pipe operator allows a nicer syntax::
+
+  >>> print stream | HTMLSanitizer() | TextSerializer()
+  Some text and a link.
+
+Using XPath
+===========
+
+XPath can be used to extract a specific subset of the stream via the
+``select()`` method::
+
+  >>> substream = stream.select('a')
+  >>> substream
+  <markup.core.Stream object at 0x7118b0>
+  >>> print substream
+  <a href="http://example.org/">a link</a>
+
+Often, streams cannot be reused: in the above example, the sub-stream is based
+on a generator. Once it has been serialized, it will have been fully consumed,
+and cannot be rendered again. To work around this, you can wrap such a stream
+in a ``list``::
+
+  >>> from markup import Stream
+  >>> substream = Stream(list(stream.select('a')))
+  >>> substream
+  <markup.core.Stream object at 0x7118b0>
+  >>> print substream
+  <a href="http://example.org/">a link</a>
+  >>> print substream.select('@href')
+  http://example.org/
+  >>> print substream.select('text()')
+  a link

@@ -1,0 +1,574 @@
+.. -*- mode: rst; encoding: utf-8 -*-
+
+============================
+Markup XML Template Language
+============================
+
+Markup provides a simple XML-based template language that is heavily inspired
+by Kid_, which in turn was inspired by a number of existing template languages,
+namely XSLT_, TAL_, and PHP_.
+
+.. _kid: http://kid-templating.org/
+.. _python: http://www.python.org/
+.. _xslt: http://www.w3.org/TR/xslt
+.. _tal: http://www.zope.org/Wikis/DevSite/Projects/ZPT/TAL
+.. _php: http://www.php.net/
+
+This document describes the template language and will be most useful as
+reference to those developing Markup templates. Templates are XML files of some
+kind (such as XHTML) that include processing directives_ (elements or
+attributes identified by a separate namespace) that affect how the template is
+rendered, and template expressions_ that are dynamically substituted by
+variable data.
+
+
+.. contents:: Contents
+   :depth: 3
+.. sectnum::
+
+----------
+Python API
+----------
+
+The Python code required for templating with Markup is generally based on the
+following pattern:
+
+* Attain a ``Template`` object from a string or file object containing the
+  template XML source. This can either be done directly, or through a
+  ``TemplateLoader`` instance.
+* Call the ``generate()`` method of the template, passing any data that should
+  be made available to the template as keyword arguments.
+* Serialize the resulting stream using its ``render()`` method.
+
+For example::
+
+  from markup.template import Template
+
+  tmpl = Template('<h1>$title</h1>')
+  stream = tmpl.generate(title='Hello, world!')
+  print stream.render('xhtml')
+
+That code would produce the following output::
+
+  <h1>Hello, world!</h1>
+
+However, if you want includes_ to work, you should attain the template instance
+through a ``TemplateLoader``, and load the template from a file::
+
+  from markup.template import TemplateLoader
+
+  loader = TemplateLoader([templates_dir])
+  tmpl = loader.load('test.html')
+  stream = tmpl.generate(title='Hello, world!')
+  print stream.render('xhtml')
+
+
+.. _`expressions`:
+
+--------------------
+Template Expressions
+--------------------
+
+Python_ expressions can be used in text and attribute values. An expression is
+substituted with the result of its evaluation against the template data.
+Expressions need to prefixed with a dollar sign (``$``) and usually enclosed in
+curly braces (``{…}``).
+
+If the expression starts with a letter and contains only letters and digits,
+the curly braces may be omitted. In all other cases, the braces are required so
+that the template processors knows where the expression ends::
+
+  >>> from markup.template import Context, Template
+  >>> tmpl = Template('<em>${items[0].capitalize()} item</em>')
+  >>> print tmpl.generate(Context(items=['first', 'second']))
+  <em>First item</em>
+
+Expressions support the full power of Python. In addition, it is possible to
+access items in a dictionary using “dotted notation” (i.e. as if they were
+attributes), and vice-versa (i.e. access attributes as if they were items in a
+dictionary)::
+
+  >>> from markup.template import Context, Template
+  >>> tmpl = Template('<em>${dict.foo}</em>')
+  >>> print tmpl.generate(Context(dict={'foo': 'bar'}))
+  <em>bar</em>
+
+
+.. _`directives`:
+
+-------------------
+Template Directives
+-------------------
+
+Directives are elements and/or attributes in the template that are identified
+by the namespace ``http://markup.edgewall.org/``. They can affect how the
+template is rendered in a number of ways: Markup provides directives for
+conditionals and looping, among others.
+
+To use directives in a template, the namespace should be declared, which is
+usually done on the root element::
+
+  <html xmlns="http://www.w3.org/1999/xhtml"
+        xmlns:py="http://markup.edgewall.org/"
+        lang="en">
+    ...
+  </html>
+
+In this example, the default namespace is set to the XHTML namespace, and the
+namespace for Markup directives is bound to the prefix “py”.
+
+All directives can be applied as attributes, and some can also be used as
+elements. The ``if`` directives for conditionals, for example, can be used in
+both ways::
+
+  <html xmlns="http://www.w3.org/1999/xhtml"
+        xmlns:py="http://markup.edgewall.org/"
+        lang="en">
+    ...
+    <div py:if="foo">
+      <p>Bar</p>
+    </div>
+    ...
+  </html>
+
+This is basically equivalent to the following::
+
+  <html xmlns="http://www.w3.org/1999/xhtml"
+        xmlns:py="http://markup.edgewall.org/"
+        lang="en">
+    ...
+    <py:if test="foo">
+      <div>
+        <p>Bar</p>
+      </div>
+    </py:if>
+    ...
+  </html>
+
+The rationale behind the second form is that directives do not always map
+naturally to elements in the template. In such cases, the ``py:strip``
+directive can be used to strip off the unwanted element, or the directive can
+simply be used as an element.
+
+
+Available Directives
+====================
+
+
+.. _`py:attrs`:
+
+``py:attrs``
+------------
+
+This directive adds, modifies or removes attributes from the element::
+
+  <ul>
+    <li py:attrs="foo">Bar</li>
+  </ul>
+
+Given ``foo={'class': 'collapse'}`` in the template context, this would
+produce::
+
+  <ul>
+    <li class="collapse">Bar</li>
+  </ul>
+
+Attributes with the value ``None`` are omitted, so given ``foo={'class': None}``
+in the context for the same template this would produce::
+
+  <ul>
+    <li>Bar</li>
+  </ul>
+
+This directive can only be used as an attribute.
+
+
+.. _`py:choose`:
+.. _`py:when`:
+.. _`py:otherwise`:
+
+``py:choose`` / ``py:when`` / ``py:otherwise``
+----------------------------------------------
+
+This set of directives provides advanced contional processing for rendering one
+of several alternatives. The first matching ``py:when`` branch is rendered, or,
+if no ``py:when`` branch matches, the ``py:otherwise`` branch is be rendered.
+
+If the ``py:choose`` directive is empty the nested ``py:when`` directives will
+be tested for truth::
+
+  <div py:choose="">
+    <span py:when="0 == 1">0</span>
+    <span py:when="1 == 1">1</span>
+    <span py:otherwise="">2</span>
+  </div>
+
+This would produce the following output::
+
+  <div>
+    <span>1</span>
+  </div>
+
+If the ``py:choose`` directive contains an expression the nested ``py:when``
+directives will be tested for equality to the parent ``py:choose`` value::
+
+  <div py:choose="1">
+    <span py:when="0">0</span>
+    <span py:when="1">1</span>
+    <span py:otherwise="">2</span>
+  </div>
+
+This would produce the following output::
+
+  <div>
+    <span>1</span>
+  </div>
+
+
+.. _`py:content`:
+
+``py:content``
+--------------
+
+This directive replaces any nested content with the result of evaluating the
+expression::
+
+  <ul>
+    <li py:content="bar">Hello</li>
+  </ul>
+
+Given ``bar='Bye'`` in the context data, this would produce::
+
+  <ul>
+    <li>Bye</li>
+  </ul>
+
+This directive can only be used as an attribute.
+
+
+.. _`py:def`:
+.. _`macros`:
+
+``py:def``
+----------
+
+The ``py:def`` directive can be used to create macros, i.e. snippets of
+template code that have a name and optionally some parameters, and that can be
+inserted in other places::
+
+  <div>
+    <p py:def="greeting(name)" class="greeting">
+      Hello, ${name}!
+    </p>
+    ${greeting('world')}
+    ${greeting('everyone else')}
+  </div>
+
+The above would be rendered to::
+
+  <div>
+    <p class="greeting">
+      Hello, world!
+    </p>
+    <p class="greeting">
+      Hello, everyone else!
+    </p>
+  </div>
+
+If a macro doesn't require parameters, it can be defined as well as called
+without the parenthesis. For example::
+
+  <div>
+    <p py:def="greeting" class="greeting">
+      Hello, world!
+    </p>
+    ${greeting}
+  </div>
+
+The above would be rendered to::
+
+  <div>
+    <p class="greeting">
+      Hello, world!
+    </p>
+  </div>
+
+This directive can also be used as an element::
+
+  <div>
+    <py:def function="greeting(name)">
+      <p class="greeting">Hello, ${name}!</p>
+    </py:def>
+  </div>
+
+
+.. _`py:for`:
+
+``py:for``
+----------
+
+The element is repeated for every item in an iterable::
+
+  <ul>
+    <li py:for="item in items">${item}</li>
+  </ul>
+
+Given ``items=[1, 2, 3]`` in the context data, this would produce::
+
+  <ul>
+    <li>1</li><li>2</li><li>3</li>
+  </ul>
+
+This directive can also be used as an element::
+
+  <ul>
+    <py:for each="item in items">
+      <li>${item}</li>
+    </py:for>
+  </ul>
+
+
+.. _`py:if`:
+
+``py:if``
+------------
+
+The element is only rendered if the expression evaluates to a truth value::
+
+  <div>
+    <b py:if="foo">${bar}</b>
+  </div>
+
+Given the data ``foo=True`` and ``bar='Hello'`` in the template context, this
+would produce::
+
+  <div>
+    <b>Hello</b>
+  </div>
+
+This directive can also be used as an element::
+
+  <div>
+    <py:if test="foo">
+      <b>${bar}</b>
+    </py:if>
+  </div>
+
+
+.. _`py:match`:
+.. _Match Templates:
+
+``py:match``
+------------
+
+This directive defines a *match template*: given an XPath expression, it
+replaces any element in the template that matches the expression with its own
+content.
+
+For example, the match template defined in the following template matches any
+element with the tag name “greeting”::
+
+  <div>
+    <span py:match="greeting">
+      Hello ${select('@name')}
+    </span>
+    <greeting name="Dude" />
+  </div>
+
+This would result in the following output::
+
+  <div>
+    <span>
+      Hello Dude
+    </span>
+  </div>
+
+Inside the body of a ``py:match`` directive, the ``select(path)`` function is
+made available so that parts or all of the original element can be incorporated
+in the output of the match template. See [wiki:MarkupStream#UsingXPath] for
+more information about this function.
+
+This directive can also be used as an element::
+
+  <div>
+    <py:match path="greeting">
+      <span>Hello ${select('@name')}</span>
+    </py:match>
+    <greeting name="Dude" />
+  </div>
+
+
+.. _`py:replace`:
+
+``py:replace``
+--------------
+
+This directive replaces the element itself with the result of evaluating the
+expression::
+
+  <div>
+    <span py:replace="bar">Hello</span>
+  </div>
+
+Given ``bar='Bye'`` in the context data, this would produce::
+
+  <div>
+    Bye
+  </div>
+
+This directive can only be used as an attribute.
+
+
+.. _`py:strip`:
+
+``py:strip``
+------------
+
+This directive conditionally strips the top-level element from the output. When
+the value of the ``py:strip`` attribute evaluates to ``True``, the element is
+stripped from the output::
+
+  <div>
+    <div py:strip="True"><b>foo</b></div>
+  </div>
+
+This would be rendered as::
+
+  <div>
+    <b>foo</b>
+  </div>
+
+As a shorthand, if the value of the ``py:strip`` attribute is empty, that has
+the same effect as using a truth value (i.e. the element is stripped).
+
+
+.. _`with`:
+
+``py:with``
+-----------
+
+The ``py:with`` directive lets you assign expressions to variables, which can
+be used to make expressions inside the directive less verbose and more
+efficient. For example, if you need use the expression ``author.posts`` more
+than once, and that actually results in a database query, assigning the results
+to a variable using this directive would probably help.
+
+For example::
+
+  <div>
+    <span py:with="y=7; z=x+10">$x $y $z</span>
+  </div>
+
+Given ``x=42`` in the context data, this would produce::
+
+  <div>
+    <span>42 7 52</span>
+  </div>
+
+This directive can also be used as an element::
+
+  <div>
+    <py:with vars="y=7; z=x+10">$x $y $z</py:with>
+  </div>
+
+Note that if a variable of the same name already existed outside of the scope
+of the ``py:with`` directive, it will **not** be overwritten. Instead, it
+will have the same value it had prior to the ``py:with`` assignment.
+Effectively, this means that variables are immutable in Markup.
+
+
+.. _order:
+
+Processing Order
+================
+
+It is possible to attach multiple directives to a single element, although not
+all combinations make sense. When multiple directives are encountered, they are
+processed in the following order:
+
+#. `py:def`_
+#. `py:match`_
+#. `py:when`_
+#. `py:otherwise`_
+#. `py:for`_
+#. `py:if`_
+#. `py:choose`_
+#. `py:with`_
+#. `py:replace`_
+#. `py:content`_
+#. `py:attrs`_
+#. `py:strip`_
+
+
+.. _includes:
+
+--------
+Includes
+--------
+
+To reuse common snippets of template code, you can include other files using
+XInclude_.
+
+.. _xinclude: http://www.w3.org/TR/xinclude/
+
+For this, you need to declare the XInclude namespace (commonly bound to the
+prefix “xi”) and use the ``<xi:include>`` element where you want the external
+file to be pulled in::
+
+  <html xmlns="http://www.w3.org/1999/xhtml"
+        xmlns:py="http://markup.edgewall.org/"
+        xmlns:xi="http://www.w3.org/2001/XInclude">
+    <xi:include href="base.html" />
+    ...
+  </html>
+
+Include paths are relative to the filename of the template currently being
+processed. So if the example above was in the file "``myapp/index.html``"
+(relative to the template search path), the XInclude processor would look for
+the included file at "``myapp/base.html``". You can also use Unix-style
+relative paths, for example "``../base.html``" to look in the parent directory.
+
+Any content included this way is inserted into the generated output instead of
+the ``<xi:include>`` element. The included template sees the same context data.
+`Match templates`_ and `macros`_ in the included template are also available to
+the including template after the point it was included.
+
+By default, an error will be raised if an included file is not found. If that's
+not what you want, you can specify fallback content that should be used if the
+include fails. For example, to to make the include above fail silently, you'd
+write:
+
+  <xi:include href="base.html"><xi:fallback /></xi:include>
+
+See the XInclude_ for more about fallback content. Note though that Markup
+currently only supports a small subset of XInclude.
+
+Incudes in Markup are fully dynamic: Just like normal attributes, the `href`
+attribute accepts expressions_, and directives_ can be used on the
+``<xi:include />`` element just as on any other element, meaning you can do
+things like conditional includes::
+
+  <xi:include href="${name}.html" py:if="not in_popup"
+              py:for="name in ('foo', 'bar', 'baz')" />
+
+
+.. _comments:
+
+--------
+Comments
+--------
+
+Normal XML/HTML comment syntax can be used in templates::
+
+  <!-- this is a comment -->
+
+However, such comments get passed through the processing pipeline and are by
+default included in the final output. If that's not desired, prefix the comment
+text with an exclamation mark::
+
+  <!-- !this is a comment too, but one that will be stripped from the output -->
+
+Note that it does not matter whether there's whitespace before or after the
+exclamation mark, so the above could also be written as follows::
+
+  <!--! this is a comment too, but one that will be stripped from the output -->

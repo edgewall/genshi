@@ -241,7 +241,7 @@ class ASTTransformer(object):
 
     def visitCallFunc(self, node, *args, **kwargs):
         node.node = self.visit(node.node, *args, **kwargs)
-        node.args = map(lambda x: self.visit(x, *args, **kwargs), node.args)
+        node.args = [self.visit(x, *args, **kwargs) for x in node.args]
         if node.star_args:
             node.star_args = self.visit(node.star_args, *args, **kwargs)
         if node.dstar_args:
@@ -259,13 +259,13 @@ class ASTTransformer(object):
 
     def visitSubscript(self, node, *args, **kwargs):
         node.expr = self.visit(node.expr, *args, **kwargs)
-        node.subs = map(lambda x: self.visit(x, *args, **kwargs), node.subs)
+        node.subs = [self.visit(x, *args, **kwargs) for x in node.subs]
         return node
 
     # Operators
 
     def _visitBoolOp(self, node, *args, **kwargs):
-        node.nodes = map(lambda x: self.visit(x, *args, **kwargs), node.nodes)
+        node.nodes = [self.visit(x, *args, **kwargs) for x in node.nodes]
         return node
     visitAnd = visitOr = visitBitand = visitBitor = _visitBoolOp
 
@@ -279,8 +279,7 @@ class ASTTransformer(object):
 
     def visitCompare(self, node, *args, **kwargs):
         node.expr = self.visit(node.expr, *args, **kwargs)
-        node.ops = map(lambda (op, n): (op, self.visit(n, *args, **kwargs)),
-                       node.ops)
+        node.ops = [(op, self.visit(n, *args, **kwargs)) for op, n in  node.ops]
         return node
 
     def _visitUnaryOp(self, node, *args, **kwargs):
@@ -301,28 +300,27 @@ class ASTTransformer(object):
         return node
 
     def visitDict(self, node, *args, **kwargs):
-        node.items = map(lambda (k, v): (self.visit(k, *args, **kwargs),
-                                         self.visit(v, *args, **kwargs)),
-                         node.items)
+        node.items = [(self.visit(k, *args, **kwargs),
+                       self.visit(v, *args, **kwargs)) for k, v in node.items]
         return node
 
     def visitTuple(self, node, *args, **kwargs):
-        node.nodes = map(lambda n: self.visit(n, *args, **kwargs), node.nodes)
+        node.nodes = [self.visit(n, *args, **kwargs) for n in node.nodes]
         return node
 
     def visitList(self, node, *args, **kwargs):
-        node.nodes = map(lambda n: self.visit(n, *args, **kwargs), node.nodes)
+        node.nodes = [self.visit(n, *args, **kwargs) for n in node.nodes]
         return node
 
     def visitListComp(self, node, *args, **kwargs):
         node.expr = self.visit(node.expr, *args, **kwargs)
-        node.quals = map(lambda x: self.visit(x, *args, **kwargs), node.quals)
+        node.quals = [self.visit(x, *args, **kwargs) for x in node.quals]
         return node
 
     def visitListCompFor(self, node, *args, **kwargs):
         node.assign = self.visit(node.assign, *args, **kwargs)
         node.list = self.visit(node.list, *args, **kwargs)
-        node.ifs = map(lambda x: self.visit(x, *args, **kwargs), node.ifs)
+        node.ifs = [self.visit(x, *args, **kwargs) for x in node.ifs]
         return node
 
     def visitListCompIf(self, node, *args, **kwargs):
@@ -337,7 +335,7 @@ class ASTTransformer(object):
     def visitGenExprFor(self, node, *args, **kwargs):
         node.assign = self.visit(node.assign, *args, **kwargs)
         node.iter = self.visit(node.iter, *args, **kwargs)
-        node.ifs = map(lambda x: self.visit(x, *args, **kwargs), node.ifs)
+        node.ifs = [self.visit(x, *args, **kwargs) for x in node.ifs]
         return node
 
     def visitGenExprIf(self, node, *args, **kwargs):
@@ -346,7 +344,7 @@ class ASTTransformer(object):
 
     def visitGenExprInner(self, node, *args, **kwargs):
         node.expr = self.visit(node.expr, locals_=True, *args, **kwargs)
-        node.quals = map(lambda x: self.visit(x, *args, **kwargs), node.quals)
+        node.quals = [self.visit(x, *args, **kwargs) for x in node.quals]
         return node
 
     def visitSlice(self, node, *args, **kwargs):
@@ -358,7 +356,7 @@ class ASTTransformer(object):
         return node
 
     def visitSliceobj(self, node, *args, **kwargs):
-        node.nodes = map(lambda x: self.visit(x, *args, **kwargs), node.nodes)
+        node.nodes = [self.visit(x, *args, **kwargs) for x in node.nodes]
         return node
 
 
@@ -385,7 +383,7 @@ class ExpressionASTTransformer(ASTTransformer):
 
     def visitListComp(self, node, locals_=False):
         node.expr = self.visit(node.expr, locals_=True)
-        node.quals = map(lambda x: self.visit(x, locals_=True), node.quals)
+        node.quals = [self.visit(qual, locals_=True) for qual in node.quals]
         return node
 
     def visitName(self, node, locals_=False):
@@ -397,5 +395,5 @@ class ExpressionASTTransformer(ASTTransformer):
     def visitSubscript(self, node, locals_=False):
         return ast.CallFunc(ast.Name('_lookup_item'), [
             ast.Name('data'), self.visit(node.expr, locals_=locals_),
-            ast.Tuple(map(lambda x: self.visit(x, locals_=locals_), node.subs))
+            ast.Tuple([self.visit(sub, locals_=locals_) for sub in node.subs])
         ])

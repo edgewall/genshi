@@ -250,8 +250,9 @@ class ExpressionTestCase(unittest.TestCase):
         expr = Expression("[i['name'] for i in items if i['value'] > 1]")
         self.assertEqual(['b'], expr.evaluate({'items': items}))
 
-    # generator expressions only supported in Python 2.4 and up
     if sys.version_info >= (2, 4):
+        # Generator expressions only supported in Python 2.4 and up
+
         def test_generator_expression(self):
             expr = Expression("list(n for n in numbers if n < 2)")
             self.assertEqual([0, 1], expr.evaluate({'numbers': range(5)}))

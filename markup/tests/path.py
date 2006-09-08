@@ -27,9 +27,6 @@ class PathTestCase(unittest.TestCase):
         self.assertRaises(PathSyntaxError, Path, '..')
         self.assertRaises(PathSyntaxError, Path, 'parent::ma')
 
-    def test_error_position_predicate(self):
-        self.assertRaises(PathSyntaxError, Path, 'item[0]')
-
     def test_1step(self):
         xml = XML('<root><elem/></root>')
 
@@ -406,6 +403,23 @@ class PathTestCase(unittest.TestCase):
         variables = {'bar': 'foo'}
         self.assertEqual('<foo>bar</foo>',
                          path.select(xml, variables=variables).render())
+
+    def test_predicate_position(self):
+        xml = XML('<root><foo id="a1"/><foo id="a2"/><foo id="a3"/></root>')
+        path = Path('*[2]')
+        self.assertEqual('<foo id="a2"/>', path.select(xml).render())
+
+    def test_predicate_attr_and_position(self):
+        xml = XML('<root><foo/><foo id="a1"/><foo id="a2"/></root>')
+        path = Path('*[@id][2]')
+        self.assertEqual('<foo id="a2"/>', path.select(xml).render())
+
+    def test_predicate_position_and_attr(self):
+        xml = XML('<root><foo/><foo id="a1"/><foo id="a2"/></root>')
+        path = Path('*[1][@id]')
+        self.assertEqual('', path.select(xml).render())
+        path = Path('*[2][@id]')
+        self.assertEqual('<foo id="a1"/>', path.select(xml).render())
 
     def test_name_with_namespace(self):
         xml = XML('<root xmlns:f="FOO"><f:foo>bar</f:foo></root>')

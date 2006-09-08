@@ -154,25 +154,28 @@ class Path(object):
         ...         print kind, data
         START (u'child', [(u'id', u'2')])
         """
-        paths = [(steps, len(steps), [0], []) for steps in self.paths]
+        paths = [(p, len(p), [0], [], [0] * len(p)) for p in self.paths]
 
         def _test(kind, data, pos, namespaces, variables):
-            for steps, size, stack, cutoff in paths:
+            for steps, size, cursors, cutoff, counter in paths:
+
                 # Manage the stack that tells us "where we are" in the stream
                 if kind is END:
-                    if stack: stack.pop()
+                    if cursors:
+                        cursors.pop()
                     continue
                 elif kind is START:
-                    stack.append(stack and stack[-1] or 0)
-                elif not stack:
+                    cursors.append(cursors and cursors[-1] or 0)
+                elif not cursors:
                     continue
-                cursor = stack[-1]
+                cursor = cursors[-1]
+                depth = len(cursors)
 
-                if cutoff and len(stack) + int(kind is not START) > cutoff[0]:
+                if cutoff and depth + int(kind is not START) > cutoff[0]:
                     continue
 
                 ctxtnode = not ignore_context and kind is START \
-                                              and len(stack) == 2
+                                              and depth == 2
                 matched = retval = None
                 while 1:
                     # Fetch the next location step
@@ -196,8 +199,13 @@ class Path(object):
                         # Check all the predicates for this step
                         if predicates:
                             for predicate in predicates:
-                                if not predicate(kind, data, pos, namespaces,
-                                                 variables):
+                                pretval = predicate(kind, data, pos, namespaces,
+                                                    variables)
+                                if type(pretval) is float:
+                                    counter[cursor] += 1
+                                    if counter[cursor] != int(pretval):
+                                        pretval = False
+                                if not pretval:
                                     matched = None
                                     break
 
@@ -210,15 +218,16 @@ class Path(object):
                             elif not ctxtnode or axis is SELF \
                                               or axis is DESCENDANT_OR_SELF:
                                 cursor += 1
-                                stack[-1] = cursor
+                                cursors[-1] = cursor
                             cutoff[:] = []
+
                     elif not ignore_context and kind is START:
-                        cutoff[:] = [len(stack)]
+                        cutoff[:] = [depth]
 
                     if last_step and not ignore_context and kind is START:
                         if (axis is not DESCENDANT and
                             axis is not DESCENDANT_OR_SELF):
-                            cutoff[:] = [len(stack)]
+                            cutoff[:] = [depth]
 
                     if kind is START and not last_step:
                         next_axis = steps[cursor][0]
@@ -251,7 +260,7 @@ class Path(object):
                             cursor -= 1
                         cutoff[:] = []
                         break
-                    stack[-1] = cursor
+                    cursors[-1] = cursor
 
                 if retval:
                     return retval
@@ -423,8 +432,6 @@ class PathParser(object):
         assert self.cur_token == '['
         self.next_token()
         expr = self._or_expr()
-        if isinstance(expr, NumberLiteral):
-            raise PathSyntaxError('Position predicates not yet supported')
         if self.cur_token != ']':
             raise PathSyntaxError('Expected "]" to close predicate, '
                                   'but found "%s"' % self.cur_token,
@@ -973,7 +980,7 @@ class StringLiteral(Literal):
     def __init__(self, text):
         self.text = text
     def __call__(self, kind, data, pos, namespaces, variables):
-        return TEXT, self.text, (None, -1, -1)
+        return self.text
     def __repr__(self):
         return '"%s"' % self.text
 
@@ -983,7 +990,7 @@ class NumberLiteral(Literal):
     def __init__(self, number):
         self.number = number
     def __call__(self, kind, data, pos, namespaces, variables):
-        return TEXT, self.number, (None, -1, -1)
+        return self.number
     def __repr__(self):
         return str(self.number)
 
@@ -993,7 +1000,7 @@ class VariableReference(Literal):
     def __init__(self, name):
         self.name = name
     def __call__(self, kind, data, pos, namespaces, variables):
-        return TEXT, variables.get(self.name), (None, -1, -1)
+        return variables.get(self.name)
     def __repr__(self):
         return str(self.name)
 

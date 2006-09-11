@@ -54,8 +54,13 @@ class TemplateEnginePlugin(object):
         self.options = options
         self.get_extra_vars = extra_vars_func
 
-    def load_template(self, templatename):
-        """Find a template specified in python 'dot' notation."""
+    def load_template(self, templatename, template_string=None):
+        """Find a template specified in python 'dot' notation, or load one from
+        a string.
+        """
+        if template_string is not None:
+            return Template(template_string)
+
         divider = templatename.rfind('.')
         if divider >= 0:
             package = templatename[:divider]

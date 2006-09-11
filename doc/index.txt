@@ -1,23 +1,24 @@
 .. -*- mode: rst; encoding: utf-8 -*-
 
 ======
-Markup
+Genshi
 ======
 
----------------------------------------------------------
-Toolkit for stream-based generation of markup for the web
----------------------------------------------------------
+-----------------------------------------------------------
+A toolkit for stream-based generation of output for the web
+-----------------------------------------------------------
 
-Markup is a Python library that provides an integrated set of components for
-parsing, generating, and processing HTML or XML content in a uniform manner.
-The major feature is a template language that is heavily inspired by Kid.
+Genshi is a Python library that provides an integrated set of components
+for parsing, generating, and processing HTML, XML or other textual content
+for output generation on the web. The major feature is a template language,
+which is heavily inspired by Kid.
 
 * `Markup Streams`_
 * `Generating Markup Programmatically`_
-* `Markup XML Template Language`_
-* `Using XPath in Markup`_
+* `Genshi XML Template Language`_
+* `Using XPath in Genshi`_
 
 .. _`Markup Streams`: streams.html
 .. _`Generating Markup Programmatically`: builder.html
-.. _`Markup XML Template Language`: xml-templates.html
-.. _`Using XPath in Markup`: xpath.html
+.. _`Genshi XML Template Language`: xml-templates.html
+.. _`Using XPath in Genshi`: xpath.html

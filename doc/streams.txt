@@ -25,12 +25,12 @@ A stream can be attained in a number of ways. It can be:
 For example, the functions ``XML()`` and ``HTML()`` can be used to convert
 literal XML or HTML text to a markup stream::
 
-  >>> from markup import XML
+  >>> from genshi import XML
   >>> stream = XML('<p class="intro">Some text and '
   ...              '<a href="http://example.org/">a link</a>.'
   ...              '<br/></p>')
   >>> stream
-  <markup.core.Stream object at 0x6bef0>
+  <genshi.core.Stream object at 0x6bef0>
 
 The stream is the result of parsing the text into events. Each event is a tuple
 of the form ``(kind, data, pos)``, where:
@@ -62,7 +62,7 @@ Filtering
 =========
 
 One important feature of markup streams is that you can apply *filters* to the
-stream, either filters that come with Markup, or your own custom filters.
+stream, either filters that come with Genshi, or your own custom filters.
 
 A filter is simply a callable that accepts the stream as parameter, and returns
 the filtered stream::
@@ -87,8 +87,8 @@ which allows a syntax similar to pipes on Unix shells::
 
   stream = stream | noop
 
-One example of a filter included with Markup is the ``HTMLSanitizer`` in
-``markup.filters``. It processes a stream of HTML markup, and strips out any
+One example of a filter included with Genshi is the ``HTMLSanitizer`` in
+``genshi.filters``. It processes a stream of HTML markup, and strips out any
 potentially dangerous constructs, such as Javascript event handlers.
 ``HTMLSanitizer`` is not a function, but rather a class that implements
 ``__call__``, which means instances of the class are callable.
@@ -96,7 +96,7 @@ potentially dangerous constructs, such as Javascript event handlers.
 Both the ``filter()`` method and the pipe operator allow easy chaining of
 filters::
 
-  from markup.filters import HTMLSanitizer
+  from genshi.filters import HTMLSanitizer
   stream = stream.filter(noop, HTMLSanitizer())
 
 That is equivalent to::
@@ -109,8 +109,9 @@ Serialization
 
 The ``Stream`` class provides two methods for serializing this list of events:
 ``serialize()`` and ``render()``. The former is a generator that yields chunks
-of ``Markup`` objects (which are basically unicode strings). The latter returns
-a single string, by default UTF-8 encoded.
+of ``Markup`` objects (which are basically unicode strings that are considered
+safe for output on the web). The latter returns a single string, by default
+UTF-8 encoded.
 
 Here's the output from ``serialize()``::
 
@@ -144,11 +145,11 @@ HTML.
 In addition, the ``render()`` method takes an ``encoding`` parameter, which
 defaults to “UTF-8”. If set to ``None``, the result will be a unicode string.
 
-The different serializer classes in ``markup.output`` can also be used
+The different serializer classes in ``genshi.output`` can also be used
 directly::
 
-  >>> from markup.filters import HTMLSanitizer
-  >>> from markup.output import TextSerializer
+  >>> from genshi.filters import HTMLSanitizer
+  >>> from genshi.output import TextSerializer
   >>> print TextSerializer()(HTMLSanitizer()(stream))
   Some text and a link.
 
@@ -165,7 +166,7 @@ XPath can be used to extract a specific subset of the stream via the
 
   >>> substream = stream.select('a')
   >>> substream
-  <markup.core.Stream object at 0x7118b0>
+  <genshi.core.Stream object at 0x7118b0>
   >>> print substream
   <a href="http://example.org/">a link</a>
 
@@ -174,10 +175,10 @@ on a generator. Once it has been serialized, it will have been fully consumed,
 and cannot be rendered again. To work around this, you can wrap such a stream
 in a ``list``::
 
-  >>> from markup import Stream
+  >>> from genshi import Stream
   >>> substream = Stream(list(stream.select('a')))
   >>> substream
-  <markup.core.Stream object at 0x7118b0>
+  <genshi.core.Stream object at 0x7118b0>
   >>> print substream
   <a href="http://example.org/">a link</a>
   >>> print substream.select('@href')

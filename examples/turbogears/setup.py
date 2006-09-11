@@ -2,10 +2,10 @@ from setuptools import setup, find_packages
 from turbogears.finddata import find_package_data
 
 import os
-execfile(os.path.join("markuptest", "release.py"))
+execfile(os.path.join("genshitest", "release.py"))
 
 setup(
-    name="MarkupTest",
+    name="GenshiTest",
     version=version,
     
     # uncomment the following lines if you fill them out in release.py
@@ -19,11 +19,11 @@ setup(
     install_requires = [
         "TurboGears >= 0.9a9dev-r1686",
     ],
-    scripts = ["start-markuptest.py"],
+    scripts = ["start-genshitest.py"],
     zip_safe=False,
     packages=find_packages(),
-    package_data = find_package_data(where='markuptest',
-                                     package='markuptest'),
+    package_data = find_package_data(where='genshitest',
+                                     package='genshitest'),
     keywords = [
         # Use keywords if you'll be adding your package to the
         # Python Cheeseshop

@@ -4,8 +4,8 @@
 import os
 import sys
 
-from markup.input import HTMLParser
-from markup.template import Context, Template
+from genshi.input import HTMLParser
+from genshi.template import Context, Template
 
 def transform(html_filename, tmpl_filename):
     tmpl_fileobj = open(tmpl_filename)

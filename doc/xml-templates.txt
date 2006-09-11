@@ -1,10 +1,10 @@
 .. -*- mode: rst; encoding: utf-8 -*-
 
 ============================
-Markup XML Template Language
+Genshi XML Template Language
 ============================
 
-Markup provides a simple XML-based template language that is heavily inspired
+Genshi provides a simple XML-based template language that is heavily inspired
 by Kid_, which in turn was inspired by a number of existing template languages,
 namely XSLT_, TAL_, and PHP_.
 
@@ -15,7 +15,7 @@ namely XSLT_, TAL_, and PHP_.
 .. _php: http://www.php.net/
 
 This document describes the template language and will be most useful as
-reference to those developing Markup templates. Templates are XML files of some
+reference to those developing Genshi templates. Templates are XML files of some
 kind (such as XHTML) that include processing directives_ (elements or
 attributes identified by a separate namespace) that affect how the template is
 rendered, and template expressions_ that are dynamically substituted by
@@ -30,7 +30,7 @@ variable data.
 Python API
 ----------
 
-The Python code required for templating with Markup is generally based on the
+The Python code required for templating with Genshi is generally based on the
 following pattern:
 
 * Attain a ``Template`` object from a string or file object containing the
@@ -42,7 +42,7 @@ following pattern:
 
 For example::
 
-  from markup.template import Template
+  from genshi.template import Template
 
   tmpl = Template('<h1>$title</h1>')
   stream = tmpl.generate(title='Hello, world!')
@@ -55,7 +55,7 @@ That code would produce the following output::
 However, if you want includes_ to work, you should attain the template instance
 through a ``TemplateLoader``, and load the template from a file::
 
-  from markup.template import TemplateLoader
+  from genshi.template import TemplateLoader
 
   loader = TemplateLoader([templates_dir])
   tmpl = loader.load('test.html')
@@ -78,7 +78,7 @@ If the expression starts with a letter and contains only letters and digits,
 the curly braces may be omitted. In all other cases, the braces are required so
 that the template processors knows where the expression ends::
 
-  >>> from markup.template import Context, Template
+  >>> from genshi.template import Context, Template
   >>> tmpl = Template('<em>${items[0].capitalize()} item</em>')
   >>> print tmpl.generate(Context(items=['first', 'second']))
   <em>First item</em>
@@ -88,7 +88,7 @@ access items in a dictionary using “dotted notation” (i.e. as if they were
 attributes), and vice-versa (i.e. access attributes as if they were items in a
 dictionary)::
 
-  >>> from markup.template import Context, Template
+  >>> from genshi.template import Context, Template
   >>> tmpl = Template('<em>${dict.foo}</em>')
   >>> print tmpl.generate(Context(dict={'foo': 'bar'}))
   <em>bar</em>
@@ -101,28 +101,28 @@ Template Directives
 -------------------
 
 Directives are elements and/or attributes in the template that are identified
-by the namespace ``http://markup.edgewall.org/``. They can affect how the
-template is rendered in a number of ways: Markup provides directives for
+by the namespace ``http://genshi.edgewall.org/``. They can affect how the
+template is rendered in a number of ways: Genshi provides directives for
 conditionals and looping, among others.
 
 To use directives in a template, the namespace should be declared, which is
 usually done on the root element::
 
   <html xmlns="http://www.w3.org/1999/xhtml"
-        xmlns:py="http://markup.edgewall.org/"
+        xmlns:py="http://genshi.edgewall.org/"
         lang="en">
     ...
   </html>
 
 In this example, the default namespace is set to the XHTML namespace, and the
-namespace for Markup directives is bound to the prefix “py”.
+namespace for Genshi directives is bound to the prefix “py”.
 
 All directives can be applied as attributes, and some can also be used as
 elements. The ``if`` directives for conditionals, for example, can be used in
 both ways::
 
   <html xmlns="http://www.w3.org/1999/xhtml"
-        xmlns:py="http://markup.edgewall.org/"
+        xmlns:py="http://genshi.edgewall.org/"
         lang="en">
     ...
     <div py:if="foo">
@@ -134,7 +134,7 @@ both ways::
 This is basically equivalent to the following::
 
   <html xmlns="http://www.w3.org/1999/xhtml"
-        xmlns:py="http://markup.edgewall.org/"
+        xmlns:py="http://genshi.edgewall.org/"
         lang="en">
     ...
     <py:if test="foo">
@@ -385,7 +385,7 @@ This would result in the following output::
 
 Inside the body of a ``py:match`` directive, the ``select(path)`` function is
 made available so that parts or all of the original element can be incorporated
-in the output of the match template. See [wiki:MarkupStream#UsingXPath] for
+in the output of the match template. See [wiki:GenshiStream#UsingXPath] for
 more information about this function.
 
 This directive can also be used as an element::
@@ -474,7 +474,7 @@ This directive can also be used as an element::
 Note that if a variable of the same name already existed outside of the scope
 of the ``py:with`` directive, it will **not** be overwritten. Instead, it
 will have the same value it had prior to the ``py:with`` assignment.
-Effectively, this means that variables are immutable in Markup.
+Effectively, this means that variables are immutable in Genshi.
 
 
 .. _order:
@@ -516,7 +516,7 @@ prefix “xi”) and use the ``<xi:include>`` element where you want the externa
 file to be pulled in::
 
   <html xmlns="http://www.w3.org/1999/xhtml"
-        xmlns:py="http://markup.edgewall.org/"
+        xmlns:py="http://genshi.edgewall.org/"
         xmlns:xi="http://www.w3.org/2001/XInclude">
     <xi:include href="base.html" />
     ...
@@ -540,10 +540,10 @@ write:
 
   <xi:include href="base.html"><xi:fallback /></xi:include>
 
-See the XInclude_ for more about fallback content. Note though that Markup
+See the XInclude_ for more about fallback content. Note though that Genshi
 currently only supports a small subset of XInclude.
 
-Incudes in Markup are fully dynamic: Just like normal attributes, the `href`
+Incudes in Genshi are fully dynamic: Just like normal attributes, the `href`
 attribute accepts expressions_, and directives_ can be used on the
 ``<xi:include />`` element just as on any other element, meaning you can do
 things like conditional includes::

@@ -1,5 +1,5 @@
 Version 0.3
-http://svn.edgewall.org/repos/markup/tags/0.3.0/
+http://svn.edgewall.org/repos/genshi/tags/0.3.0/
 (?, from branches/stable/0.3.x)
 
  * Expression evaluation now differentiates between undefined variables and
@@ -37,7 +37,7 @@ http://svn.edgewall.org/repos/markup/tags/0.3.0/
 
 
 Version 0.2
-http://svn.edgewall.org/repos/markup/tags/0.2.0/
+http://svn.edgewall.org/repos/genshi/tags/0.2.0/
 (Aug 22 2006, from branches/stable/0.2.x)
 
  * XPath syntax errors now contain position info (ticket #20).
@@ -76,7 +76,7 @@ http://svn.edgewall.org/repos/markup/tags/0.2.0/
 
 
 Version 0.1
-http://svn.edgewall.org/repos/markup/tags/0.1.0/
+http://svn.edgewall.org/repos/genshi/tags/0.1.0/
 (Aug 3 2006, from branches/stable/0.1.x)
 
  * First public release

@@ -6,11 +6,11 @@
 #
 # This software is licensed as described in the file COPYING, which
 # you should have received as part of this distribution. The terms
-# are also available at http://markup.edgewall.org/wiki/License.
+# are also available at http://genshi.edgewall.org/wiki/License.
 #
 # This software consists of voluntary contributions made by many
 # individuals. For the exact contribution history, see the revision
-# history and logs, available at http://markup.edgewall.org/log/.
+# history and logs, available at http://genshi.edgewall.org/log/.
 
 try:
     from setuptools import setup
@@ -18,18 +18,19 @@ except ImportError:
     from distutils.core import setup
 
 setup(
-    name = 'Markup',
+    name = 'Genshi',
     version = '0.3',
-    description = 'Toolkit for stream-based generation of markup for the web',
+    description = 'A toolkit for stream-based generation of output for the web',
     long_description = \
-"""Markup is a Python library that provides an integrated set of components for
-parsing, generating, and processing HTML or XML content in a uniform manner.
-The major feature is a template language that is heavily inspired by Kid.""",
+"""Genshi is a Python library that provides an integrated set of components
+for parsing, generating, and processing HTML, XML or other textual content for
+output generation on the web. The major feature is a template language, which
+is heavily inspired by Kid.""",
     author = 'Edgewall Software',
     author_email = 'info@edgewall.org',
     license = 'BSD',
-    url = 'http://markup.edgewall.org/',
-    download_url = 'http://markup.edgewall.org/wiki/MarkupDownload',
+    url = 'http://genshi.edgewall.org/',
+    download_url = 'http://genshi.edgewall.org/wiki/GenshiDownload',
     zip_safe = True,
 
     classifiers = [
@@ -45,12 +46,12 @@ The major feature is a template language that is heavily inspired by Kid.""",
         'Topic :: Text Processing :: Markup :: XML'
     ],
     keywords = ['python.templating.engines'],
-    packages = ['markup'],
-    test_suite = 'markup.tests.suite',
+    packages = ['genshi'],
+    test_suite = 'genshi.tests.suite',
 
     extras_require = {'plugin': ['setuptools>=0.6a2']},
     entry_points = """
     [python.templating.engines]
-    markup = markup.plugin:TemplateEnginePlugin[plugin]
+    genshi = genshi.plugin:TemplateEnginePlugin[plugin]
     """,
 )

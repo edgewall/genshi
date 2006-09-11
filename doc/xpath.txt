@@ -1,10 +1,10 @@
 .. -*- mode: rst; encoding: utf-8 -*-
 
 =====================
-Using XPath in Markup
+Using XPath in Genshi
 =====================
 
-Markup provides basic XPath_ support for matching and querying event streams.
+Genshi provides basic XPath_ support for matching and querying event streams.
 
 .. _xpath: http://www.w3.org/TR/xpath
 
@@ -18,7 +18,7 @@ Markup provides basic XPath_ support for matching and querying event streams.
 Limitations
 -----------
 
-Due to the streaming nature of the processing model, Markup uses only a subset
+Due to the streaming nature of the processing model, Genshi uses only a subset
 of the `XPath 1.0`_ language.
 
 .. _`XPath 1.0`: http://www.w3.org/TR/xpath
@@ -31,7 +31,7 @@ In particular, only the following axes are supported:
 * ``descendant-or-self``
 * ``self``
 
-This means you can't use the ``parent``, ancestor, or sibling axes in Markup
+This means you can't use the ``parent``, ancestor, or sibling axes in Genshi
 (the ``namespace`` axis isn't supported either, but what you'd ever need that
 for I don't know). Basically, any path expression that would require buffering
 of the stream is not supported.
@@ -64,7 +64,7 @@ Querying Streams
 
 ::
 
-  from markup.input import XML
+  from genshi.input import XML
 
   doc = XML('''<doc>
    <items count="2">

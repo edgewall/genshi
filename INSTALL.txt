@@ -1,4 +1,4 @@
-Installing Markup
+Installing Genshi
 =================
 
 Prerequisites
@@ -11,13 +11,13 @@ Prerequisites
 Installation
 ------------
 
-Once you've downloaded and unpacked a Markup source release, enter the
+Once you've downloaded and unpacked a Genshi source release, enter the
 directory where the archive was unpacked, and run:
 
   $ python setup.py install
 
 Note that you may need administrator/root privileges for this step, as
-this command will by default attempt to install Markup to the Python
+this command will by default attempt to install Genshi to the Python
 site-packages directory on your system.
 
 For advanced options, please refer to the easy_install and/or the distutils
@@ -30,8 +30,8 @@ documentation:
 Support
 -------
 
-If you encounter any problems with Markup, please don't hesitate to ask
-questions on the Markup mailing list or IRC channel:
+If you encounter any problems with Genshi, please don't hesitate to ask
+questions on the Genshi mailing list or IRC channel:
 
-  http://markup.edgewall.org/wiki/MailingList
-  http://markup.edgewall.org/wiki/IrcChannel
+  http://genshi.edgewall.org/wiki/MailingList
+  http://genshi.edgewall.org/wiki/IrcChannel

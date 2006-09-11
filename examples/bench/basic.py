@@ -4,10 +4,10 @@ from StringIO import StringIO
 import sys
 import timeit
 
-__all__ = ['clearsilver', 'django', 'kid', 'markup', 'simpletal']
+__all__ = ['clearsilver', 'django', 'kid', 'genshi', 'simpletal']
 
-def markup(dirname, verbose=False):
-    from markup.template import TemplateLoader
+def genshi(dirname, verbose=False):
+    from genshi.template import TemplateLoader
     loader = TemplateLoader([dirname], auto_reload=False)
     template = loader.load('template.html')
     def render():

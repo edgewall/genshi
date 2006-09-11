@@ -11,8 +11,8 @@ import timeit
 
 import cElementTree as cet
 from elementtree import ElementTree as et
-from markup.builder import tag
-from markup.template import Template
+from genshi.builder import tag
+from genshi.template import Template
 import neo_cgi
 import neo_cs
 import neo_util
@@ -38,16 +38,16 @@ except ImportError:
 table = [dict(a=1,b=2,c=3,d=4,e=5,f=6,g=7,h=8,i=9,j=10)
           for x in range(1000)]
 
-markup_tmpl = Template("""
-<table xmlns:py="http://markup.edgewall.org/">
+genshi_tmpl = Template("""
+<table xmlns:py="http://genshi.edgewall.org/">
 <tr py:for="row in table">
 <td py:for="c in row.values()" py:content="c"/>
 </tr>
 </table>
 """)
 
-markup_tmpl2 = Template("""
-<table xmlns:py="http://markup.edgewall.org/">$table</table>
+genshi_tmpl2 = Template("""
+<table xmlns:py="http://genshi.edgewall.org/">$table</table>
 """)
 
 if DjangoTemplate:
@@ -64,22 +64,22 @@ if DjangoTemplate:
         context = DjangoContext({'table': table})
         django_tmpl.render(context)
 
-def test_markup():
-    """Markup template"""
-    stream = markup_tmpl.generate(table=table)
+def test_genshi():
+    """Genshi template"""
+    stream = genshi_tmpl.generate(table=table)
     stream.render('html', strip_whitespace=False)
 
-def test_markup_builder():
-    """Markup template + tag builder"""
+def test_genshi_builder():
+    """Genshi template + tag builder"""
     stream = tag.TABLE([
         tag.tr([tag.td(c) for c in row.values()])
         for row in table
     ]).generate()
-    stream = markup_tmpl2.generate(table=stream)
+    stream = genshi_tmpl2.generate(table=stream)
     stream.render('html', strip_whitespace=False)
 
 def test_builder():
-    """Markup tag builder"""
+    """Genshi tag builder"""
     stream = tag.TABLE([
         tag.tr([
             tag.td(c) for c in row.values()
@@ -154,7 +154,7 @@ if neo_cgi:
 
 
 def run(which=None, number=10):
-    tests = ['test_builder', 'test_markup', 'test_markup_builder', 'test_kid',
+    tests = ['test_builder', 'test_genshi', 'test_genshi_builder', 'test_kid',
              'test_kid_et', 'test_et', 'test_cet', 'test_clearsilver',
              'test_django']
     if which:

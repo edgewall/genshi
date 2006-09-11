@@ -4,7 +4,7 @@
 Generating Markup Programmatically
 ==================================
 
-Markup provides a ``builder`` module which lets you generate markup from Python
+Genshi provides a ``builder`` module which lets you generate markup from Python
 code using a very simple syntax. The main entry point to the ``builder`` module
 is the ``tag`` object (which is actually an instance of the ``ElementFactory``
 class). You should rarely (if ever) need to directly import and use any of the
@@ -22,7 +22,7 @@ Creating Elements
 Elements can be created through the `tag` object using attribute access, for
 example::
 
-  >>> from markup.builder import tag
+  >>> from genshi.builder import tag
   >>> doc = tag.p('Some text and ', tag.a('a link', href='http://example.org/'), '.')
   >>> doc
   <Element "p">
@@ -52,7 +52,7 @@ stream::
 
   >>> stream = doc.generate()
   >>> stream
-  <markup.core.Stream object at 0x72d230>
+  <genshi.core.Stream object at 0x72d230>
   >>> print stream
   <p class="intro">Some text and <a href="http://example.org/">a link</a>.<br/></p>
 

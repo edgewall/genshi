@@ -5,7 +5,7 @@ import os
 import sys
 import timing
 
-from markup.template import Context, TemplateLoader
+from genshi.template import Context, TemplateLoader
 
 def test():
     base_path = os.path.dirname(os.path.abspath(__file__))

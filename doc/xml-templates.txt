@@ -151,17 +151,13 @@ directive can be used to strip off the unwanted element, or the directive can
 simply be used as an element.
 
 
-Available Directives
-====================
-
-
 Conditional Sections
---------------------
+====================
 
 .. _`py:if`:
 
 ``py:if``
-`````````
+---------
 
 The element is only rendered if the expression evaluates to a truth value::
 
@@ -188,10 +184,11 @@ This directive can also be used as an element::
 .. _`py:when`:
 .. _`py:otherwise`:
 
-``py:choose`` / ``py:when`` / ``py:otherwise``
-``````````````````````````````````````````````
+``py:choose``
+-------------
 
-This set of directives provides advanced contional processing for rendering one
+The ``py:choose`` directive, in combination with the directives ``py:when``
+and ``py:otherwise`` provides advanced contional processing for rendering one
 of several alternatives. The first matching ``py:when`` branch is rendered, or,
 if no ``py:when`` branch matches, the ``py:otherwise`` branch is be rendered.
 
@@ -227,12 +224,12 @@ This would produce the following output::
 
 
 Looping
--------
+=======
 
 .. _`py:for`:
 
 ``py:for``
-``````````
+----------
 
 The element is repeated for every item in an iterable::
 
@@ -256,13 +253,13 @@ This directive can also be used as an element::
 
 
 Snippet Reuse
--------------
+=============
 
 .. _`py:def`:
 .. _`macros`:
 
 ``py:def``
-``````````
+----------
 
 The ``py:def`` directive can be used to create macros, i.e. snippets of
 template code that have a name and optionally some parameters, and that can be
@@ -318,7 +315,7 @@ This directive can also be used as an element::
 .. _`py:match`:
 
 ``py:match``
-````````````
+------------
 
 This directive defines a *match template*: given an XPath expression, it
 replaces any element in the template that matches the expression with its own
@@ -358,12 +355,12 @@ This directive can also be used as an element::
 
 
 Variable Binding
-----------------
+================
 
 .. _`with`:
 
 ``py:with``
-```````````
+-----------
 
 The ``py:with`` directive lets you assign expressions to variables, which can
 be used to make expressions inside the directive less verbose and more
@@ -396,12 +393,12 @@ Effectively, this means that variables are immutable in Genshi.
 
 
 Structure Manipulation
-----------------------
+======================
 
 .. _`py:attrs`:
 
 ``py:attrs``
-````````````
+------------
 
 This directive adds, modifies or removes attributes from the element::
 
@@ -429,7 +426,7 @@ This directive can only be used as an attribute.
 .. _`py:content`:
 
 ``py:content``
-``````````````
+--------------
 
 This directive replaces any nested content with the result of evaluating the
 expression::
@@ -450,7 +447,7 @@ This directive can only be used as an attribute.
 .. _`py:replace`:
 
 ``py:replace``
-``````````````
+--------------
 
 This directive replaces the element itself with the result of evaluating the
 expression::
@@ -471,7 +468,7 @@ This directive can only be used as an attribute.
 .. _`py:strip`:
 
 ``py:strip``
-````````````
+------------
 
 This directive conditionally strips the top-level element from the output. When
 the value of the ``py:strip`` attribute evaluates to ``True``, the element is

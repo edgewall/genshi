@@ -12,7 +12,7 @@ import timeit
 import cElementTree as cet
 from elementtree import ElementTree as et
 from genshi.builder import tag
-from genshi.template import Template
+from genshi.template import MarkupTemplate
 import neo_cgi
 import neo_cs
 import neo_util
@@ -38,7 +38,7 @@ except ImportError:
 table = [dict(a=1,b=2,c=3,d=4,e=5,f=6,g=7,h=8,i=9,j=10)
           for x in range(1000)]
 
-genshi_tmpl = Template("""
+genshi_tmpl = MarkupTemplate("""
 <table xmlns:py="http://genshi.edgewall.org/">
 <tr py:for="row in table">
 <td py:for="c in row.values()" py:content="c"/>
@@ -46,7 +46,7 @@ genshi_tmpl = Template("""
 </table>
 """)
 
-genshi_tmpl2 = Template("""
+genshi_tmpl2 = MarkupTemplate("""
 <table xmlns:py="http://genshi.edgewall.org/">$table</table>
 """)
 

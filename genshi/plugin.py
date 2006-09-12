@@ -21,7 +21,7 @@ from pkg_resources import resource_filename
 from genshi.core import Attrs, Stream, QName
 from genshi.eval import Undefined
 from genshi.input import HTML, XML
-from genshi.template import Context, Template, TemplateLoader
+from genshi.template import Context, MarkupTemplate, Template, TemplateLoader
 
 def ET(element):
     """Converts the given ElementTree element to a markup stream."""
@@ -59,7 +59,7 @@ class TemplateEnginePlugin(object):
         a string.
         """
         if template_string is not None:
-            return Template(template_string)
+            return MarkupTemplate(template_string)
 
         divider = templatename.rfind('.')
         if divider >= 0:

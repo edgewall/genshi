@@ -155,40 +155,41 @@ Available Directives
 ====================
 
 
-.. _`py:attrs`:
+Conditional Sections
+--------------------
 
-``py:attrs``
-------------
+.. _`py:if`:
 
-This directive adds, modifies or removes attributes from the element::
+``py:if``
+`````````
 
-  <ul>
-    <li py:attrs="foo">Bar</li>
-  </ul>
+The element is only rendered if the expression evaluates to a truth value::
 
-Given ``foo={'class': 'collapse'}`` in the template context, this would
-produce::
+  <div>
+    <b py:if="foo">${bar}</b>
+  </div>
 
-  <ul>
-    <li class="collapse">Bar</li>
-  </ul>
+Given the data ``foo=True`` and ``bar='Hello'`` in the template context, this
+would produce::
 
-Attributes with the value ``None`` are omitted, so given ``foo={'class': None}``
-in the context for the same template this would produce::
+  <div>
+    <b>Hello</b>
+  </div>
 
-  <ul>
-    <li>Bar</li>
-  </ul>
+This directive can also be used as an element::
 
-This directive can only be used as an attribute.
-
+  <div>
+    <py:if test="foo">
+      <b>${bar}</b>
+    </py:if>
+  </div>
 
 .. _`py:choose`:
 .. _`py:when`:
 .. _`py:otherwise`:
 
 ``py:choose`` / ``py:when`` / ``py:otherwise``
-----------------------------------------------
+``````````````````````````````````````````````
 
 This set of directives provides advanced contional processing for rendering one
 of several alternatives. The first matching ``py:when`` branch is rendered, or,
@@ -225,32 +226,43 @@ This would produce the following output::
   </div>
 
 
-.. _`py:content`:
+Looping
+-------
 
-``py:content``
---------------
+.. _`py:for`:
 
-This directive replaces any nested content with the result of evaluating the
-expression::
+``py:for``
+``````````
 
-  <ul>
-    <li py:content="bar">Hello</li>
-  </ul>
-
-Given ``bar='Bye'`` in the context data, this would produce::
+The element is repeated for every item in an iterable::
 
   <ul>
-    <li>Bye</li>
+    <li py:for="item in items">${item}</li>
   </ul>
 
-This directive can only be used as an attribute.
+Given ``items=[1, 2, 3]`` in the context data, this would produce::
 
+  <ul>
+    <li>1</li><li>2</li><li>3</li>
+  </ul>
+
+This directive can also be used as an element::
+
+  <ul>
+    <py:for each="item in items">
+      <li>${item}</li>
+    </py:for>
+  </ul>
+
+
+Snippet Reuse
+-------------
 
 .. _`py:def`:
 .. _`macros`:
 
 ``py:def``
-----------
+``````````
 
 The ``py:def`` directive can be used to create macros, i.e. snippets of
 template code that have a name and optionally some parameters, and that can be
@@ -302,64 +314,11 @@ This directive can also be used as an element::
   </div>
 
 
-.. _`py:for`:
-
-``py:for``
-----------
-
-The element is repeated for every item in an iterable::
-
-  <ul>
-    <li py:for="item in items">${item}</li>
-  </ul>
-
-Given ``items=[1, 2, 3]`` in the context data, this would produce::
-
-  <ul>
-    <li>1</li><li>2</li><li>3</li>
-  </ul>
-
-This directive can also be used as an element::
-
-  <ul>
-    <py:for each="item in items">
-      <li>${item}</li>
-    </py:for>
-  </ul>
-
-
-.. _`py:if`:
-
-``py:if``
-------------
-
-The element is only rendered if the expression evaluates to a truth value::
-
-  <div>
-    <b py:if="foo">${bar}</b>
-  </div>
-
-Given the data ``foo=True`` and ``bar='Hello'`` in the template context, this
-would produce::
-
-  <div>
-    <b>Hello</b>
-  </div>
-
-This directive can also be used as an element::
-
-  <div>
-    <py:if test="foo">
-      <b>${bar}</b>
-    </py:if>
-  </div>
-
-
-.. _`py:match`:
 .. _Match Templates:
+.. _`py:match`:
 
 ``py:match``
-------------
+````````````
 
 This directive defines a *match template*: given an XPath expression, it
 replaces any element in the template that matches the expression with its own
@@ -398,54 +357,13 @@ This directive can also be used as an element::
   </div>
 
 
-.. _`py:replace`:
-
-``py:replace``
---------------
-
-This directive replaces the element itself with the result of evaluating the
-expression::
-
-  <div>
-    <span py:replace="bar">Hello</span>
-  </div>
-
-Given ``bar='Bye'`` in the context data, this would produce::
-
-  <div>
-    Bye
-  </div>
-
-This directive can only be used as an attribute.
-
-
-.. _`py:strip`:
-
-``py:strip``
-------------
-
-This directive conditionally strips the top-level element from the output. When
-the value of the ``py:strip`` attribute evaluates to ``True``, the element is
-stripped from the output::
-
-  <div>
-    <div py:strip="True"><b>foo</b></div>
-  </div>
-
-This would be rendered as::
-
-  <div>
-    <b>foo</b>
-  </div>
-
-As a shorthand, if the value of the ``py:strip`` attribute is empty, that has
-the same effect as using a truth value (i.e. the element is stripped).
-
+Variable Binding
+----------------
 
 .. _`with`:
 
 ``py:with``
------------
+```````````
 
 The ``py:with`` directive lets you assign expressions to variables, which can
 be used to make expressions inside the directive less verbose and more
@@ -475,6 +393,102 @@ Note that if a variable of the same name already existed outside of the scope
 of the ``py:with`` directive, it will **not** be overwritten. Instead, it
 will have the same value it had prior to the ``py:with`` assignment.
 Effectively, this means that variables are immutable in Genshi.
+
+
+Structure Manipulation
+----------------------
+
+.. _`py:attrs`:
+
+``py:attrs``
+````````````
+
+This directive adds, modifies or removes attributes from the element::
+
+  <ul>
+    <li py:attrs="foo">Bar</li>
+  </ul>
+
+Given ``foo={'class': 'collapse'}`` in the template context, this would
+produce::
+
+  <ul>
+    <li class="collapse">Bar</li>
+  </ul>
+
+Attributes with the value ``None`` are omitted, so given ``foo={'class': None}``
+in the context for the same template this would produce::
+
+  <ul>
+    <li>Bar</li>
+  </ul>
+
+This directive can only be used as an attribute.
+
+
+.. _`py:content`:
+
+``py:content``
+``````````````
+
+This directive replaces any nested content with the result of evaluating the
+expression::
+
+  <ul>
+    <li py:content="bar">Hello</li>
+  </ul>
+
+Given ``bar='Bye'`` in the context data, this would produce::
+
+  <ul>
+    <li>Bye</li>
+  </ul>
+
+This directive can only be used as an attribute.
+
+
+.. _`py:replace`:
+
+``py:replace``
+``````````````
+
+This directive replaces the element itself with the result of evaluating the
+expression::
+
+  <div>
+    <span py:replace="bar">Hello</span>
+  </div>
+
+Given ``bar='Bye'`` in the context data, this would produce::
+
+  <div>
+    Bye
+  </div>
+
+This directive can only be used as an attribute.
+
+
+.. _`py:strip`:
+
+``py:strip``
+````````````
+
+This directive conditionally strips the top-level element from the output. When
+the value of the ``py:strip`` attribute evaluates to ``True``, the element is
+stripped from the output::
+
+  <div>
+    <div py:strip="True"><b>foo</b></div>
+  </div>
+
+This would be rendered as::
+
+  <div>
+    <b>foo</b>
+  </div>
+
+As a shorthand, if the value of the ``py:strip`` attribute is empty, that has
+the same effect as using a truth value (i.e. the element is stripped).
 
 
 .. _order:

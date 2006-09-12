@@ -1,8 +1,11 @@
 .. -*- mode: rst; encoding: utf-8 -*-
 
-======
-Genshi
-======
+.. image:: logo.png
+   :width: 225
+   :height: 81
+   :align: center
+   :alt: Genshi - Generate output for the web
+   :class: logo
 
 -----------------------------------------------------------
 A toolkit for stream-based generation of output for the web

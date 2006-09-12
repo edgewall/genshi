@@ -31,6 +31,146 @@
 	<array>
 		<dict>
 			<key>Bounds</key>
+			<string>{{58.1159, 157}, {94.5364, 31}}</string>
+			<key>Class</key>
+			<string>ShapedGraphic</string>
+			<key>FontInfo</key>
+			<dict>
+				<key>Font</key>
+				<string>Helvetica</string>
+				<key>Size</key>
+				<real>12</real>
+			</dict>
+			<key>ID</key>
+			<integer>54</integer>
+			<key>Shape</key>
+			<string>Rectangle</string>
+			<key>Style</key>
+			<dict>
+				<key>shadow</key>
+				<dict>
+					<key>Draws</key>
+					<string>NO</string>
+				</dict>
+			</dict>
+			<key>Text</key>
+			<dict>
+				<key>Text</key>
+				<string>{\rtf1\mac\ansicpg10000\cocoartf824\cocoasubrtf410
+{\fonttbl\f0\fswiss\fcharset77 Helvetica;}
+{\colortbl;\red255\green255\blue255;}
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\qc\pardirnatural
+
+\f0\fs22 \cf0 Fragment}</string>
+			</dict>
+		</dict>
+		<dict>
+			<key>Bounds</key>
+			<string>{{387.348, 157}, {94.5364, 31}}</string>
+			<key>Class</key>
+			<string>ShapedGraphic</string>
+			<key>FontInfo</key>
+			<dict>
+				<key>Font</key>
+				<string>Helvetica</string>
+				<key>Size</key>
+				<real>12</real>
+			</dict>
+			<key>ID</key>
+			<integer>53</integer>
+			<key>Shape</key>
+			<string>Rectangle</string>
+			<key>Style</key>
+			<dict>
+				<key>shadow</key>
+				<dict>
+					<key>Draws</key>
+					<string>NO</string>
+				</dict>
+			</dict>
+			<key>Text</key>
+			<dict>
+				<key>Text</key>
+				<string>{\rtf1\mac\ansicpg10000\cocoartf824\cocoasubrtf410
+{\fonttbl\f0\fswiss\fcharset77 Helvetica;}
+{\colortbl;\red255\green255\blue255;}
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\qc\pardirnatural
+
+\f0\fs22 \cf0 TextTemplate}</string>
+			</dict>
+		</dict>
+		<dict>
+			<key>Bounds</key>
+			<string>{{241.464, 376}, {94.5364, 31}}</string>
+			<key>Class</key>
+			<string>ShapedGraphic</string>
+			<key>FontInfo</key>
+			<dict>
+				<key>Font</key>
+				<string>Helvetica</string>
+				<key>Size</key>
+				<real>12</real>
+			</dict>
+			<key>ID</key>
+			<integer>52</integer>
+			<key>Shape</key>
+			<string>Rectangle</string>
+			<key>Style</key>
+			<dict>
+				<key>shadow</key>
+				<dict>
+					<key>Draws</key>
+					<string>NO</string>
+				</dict>
+			</dict>
+			<key>Text</key>
+			<dict>
+				<key>Text</key>
+				<string>{\rtf1\mac\ansicpg10000\cocoartf824\cocoasubrtf410
+{\fonttbl\f0\fswiss\fcharset77 Helvetica;}
+{\colortbl;\red255\green255\blue255;}
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\qc\pardirnatural
+
+\f0\fs22 \cf0 Plain Text Serializer}</string>
+			</dict>
+		</dict>
+		<dict>
+			<key>Bounds</key>
+			<string>{{126, 376}, {94.5364, 31}}</string>
+			<key>Class</key>
+			<string>ShapedGraphic</string>
+			<key>FontInfo</key>
+			<dict>
+				<key>Font</key>
+				<string>Helvetica</string>
+				<key>Size</key>
+				<real>12</real>
+			</dict>
+			<key>ID</key>
+			<integer>51</integer>
+			<key>Shape</key>
+			<string>Rectangle</string>
+			<key>Style</key>
+			<dict>
+				<key>shadow</key>
+				<dict>
+					<key>Draws</key>
+					<string>NO</string>
+				</dict>
+			</dict>
+			<key>Text</key>
+			<dict>
+				<key>Text</key>
+				<string>{\rtf1\mac\ansicpg10000\cocoartf824\cocoasubrtf410
+{\fonttbl\f0\fswiss\fcharset77 Helvetica;}
+{\colortbl;\red255\green255\blue255;}
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\qc\pardirnatural
+
+\f0\fs22 \cf0 XHTML Serializer}</string>
+			</dict>
+		</dict>
+		<dict>
+			<key>Bounds</key>
 			<string>{{241.464, 258}, {94.5364, 31}}</string>
 			<key>Class</key>
 			<string>ShapedGraphic</string>
@@ -80,8 +220,8 @@
 			<real>-1</real>
 			<key>Points</key>
 			<array>
-				<string>{372, 149.5}</string>
-				<string>{317.768, 149.5}</string>
+				<string>{372, 148.88}</string>
+				<string>{317.768, 149.21}</string>
 			</array>
 			<key>Style</key>
 			<dict>
@@ -103,7 +243,7 @@
 		</dict>
 		<dict>
 			<key>Bounds</key>
-			<string>{{387.348, 138}, {94.5364, 31}}</string>
+			<string>{{387.348, 119}, {94.5364, 31}}</string>
 			<key>Class</key>
 			<string>ShapedGraphic</string>
 			<key>FontInfo</key>
@@ -115,6 +255,11 @@
 			</dict>
 			<key>ID</key>
 			<integer>47</integer>
+			<key>Link</key>
+			<dict>
+				<key>url</key>
+				<string>/wiki/Documentation/xml-templates.html</string>
+			</dict>
 			<key>Shape</key>
 			<string>Rectangle</string>
 			<key>Style</key>
@@ -133,12 +278,12 @@
 {\colortbl;\red255\green255\blue255;}
 \pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\qc\pardirnatural
 
-\f0\fs22 \cf0 Template}</string>
+\f0\fs22 \cf0 MarkupTemplate}</string>
 			</dict>
 		</dict>
 		<dict>
 			<key>Bounds</key>
-			<string>{{372, 119}, {125.232, 61}}</string>
+			<string>{{372, 99}, {125.232, 99}}</string>
 			<key>Class</key>
 			<string>ShapedGraphic</string>
 			<key>FontInfo</key>
@@ -159,11 +304,6 @@
 			</dict>
 			<key>ID</key>
 			<integer>46</integer>
-			<key>Link</key>
-			<dict>
-				<key>url</key>
-				<string>/browser/trunk/markup/template.py</string>
-			</dict>
 			<key>Shape</key>
 			<string>Rectangle</string>
 			<key>Style</key>
@@ -258,7 +398,7 @@
 		</dict>
 		<dict>
 			<key>Bounds</key>
-			<string>{{58.1159, 138}, {94.5364, 31}}</string>
+			<string>{{58.1159, 119}, {94.5364, 31}}</string>
 			<key>Class</key>
 			<string>ShapedGraphic</string>
 			<key>FontInfo</key>
@@ -288,7 +428,7 @@
 {\colortbl;\red255\green255\blue255;}
 \pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\qc\pardirnatural
 
-\f0\fs22 \cf0 Fragment}</string>
+\f0\fs22 \cf0 Element}</string>
 			</dict>
 		</dict>
 		<dict>
@@ -605,7 +745,7 @@
 			<key>Link</key>
 			<dict>
 				<key>url</key>
-				<string>/browser/trunk/markup/core.py</string>
+				<string>/wiki/Documentation/streams.html</string>
 			</dict>
 			<key>Shape</key>
 			<string>Rectangle</string>
@@ -851,7 +991,7 @@
 		</dict>
 		<dict>
 			<key>Bounds</key>
-			<string>{{116, 328}, {308, 51}}</string>
+			<string>{{116, 328}, {308, 89}}</string>
 			<key>Class</key>
 			<string>ShapedGraphic</string>
 			<key>FontInfo</key>
@@ -932,7 +1072,7 @@
 		</dict>
 		<dict>
 			<key>Bounds</key>
-			<string>{{42.7682, 119}, {125.232, 61}}</string>
+			<string>{{42.7682, 100}, {125.232, 99}}</string>
 			<key>Class</key>
 			<string>ShapedGraphic</string>
 			<key>FontInfo</key>
@@ -956,7 +1096,7 @@
 			<key>Link</key>
 			<dict>
 				<key>url</key>
-				<string>/browser/trunk/markup/builder.py</string>
+				<string>/wiki/Documentation/builder.html</string>
 			</dict>
 			<key>Shape</key>
 			<string>Rectangle</string>
@@ -1042,10 +1182,7 @@
 		</dict>
 	</array>
 	<key>LayoutInfo</key>
-	<dict>
-		<key>LayoutTarget</key>
-		<integer>3</integer>
-	</dict>
+	<dict/>
 	<key>LinksVisible</key>
 	<string>NO</string>
 	<key>MagnetsVisible</key>
@@ -1096,10 +1233,7 @@
 				</dict>
 			</array>
 			<key>LayoutInfo</key>
-			<dict>
-				<key>LayoutTarget</key>
-				<integer>3</integer>
-			</dict>
+			<dict/>
 			<key>Orientation</key>
 			<integer>2</integer>
 			<key>RowAlign</key>
@@ -1115,7 +1249,7 @@
 		</dict>
 	</array>
 	<key>ModificationDate</key>
-	<string>2006-07-10 11:06:23 +0200</string>
+	<string>2006-09-12 18:13:56 +0200</string>
 	<key>Modifier</key>
 	<string>Christopher Lenz</string>
 	<key>NotesVisible</key>
@@ -1126,6 +1260,34 @@
 	<string>NO</string>
 	<key>PageBreaks</key>
 	<string>YES</string>
+	<key>PrintInfo</key>
+	<dict>
+		<key>NSBottomMargin</key>
+		<array>
+			<string>float</string>
+			<string>36</string>
+		</array>
+		<key>NSLeftMargin</key>
+		<array>
+			<string>float</string>
+			<string>36</string>
+		</array>
+		<key>NSPaperSize</key>
+		<array>
+			<string>size</string>
+			<string>{595, 842}</string>
+		</array>
+		<key>NSRightMargin</key>
+		<array>
+			<string>float</string>
+			<string>36</string>
+		</array>
+		<key>NSTopMargin</key>
+		<array>
+			<string>float</string>
+			<string>36</string>
+		</array>
+	</dict>
 	<key>ReadOnly</key>
 	<string>NO</string>
 	<key>RowAlign</key>

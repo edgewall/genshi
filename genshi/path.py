@@ -642,8 +642,6 @@ class BooleanFunction(Function):
         self.expr = expr
     def __call__(self, kind, data, pos, namespaces, variables):
         val = self.expr(kind, data, pos, namespaces, variables)
-        if type(val) is tuple:
-            val = val[1]
         return bool(val)
     def __repr__(self):
         return 'boolean(%r)' % self.expr
@@ -657,8 +655,6 @@ class CeilingFunction(Function):
         self.number = number
     def __call__(self, kind, data, pos, namespaces, variables):
         number = self.number(kind, data, pos, namespaces, variables)
-        if type(number) is tuple:
-            number = number[1]
         return ceil(float(number))
     def __repr__(self):
         return 'ceiling(%r)' % self.number
@@ -674,9 +670,6 @@ class ConcatFunction(Function):
         strings = []
         for item in [expr(kind, data, pos, namespaces, variables)
                      for expr in self.exprs]:
-            if type(item) is tuple:
-                assert item[0] is TEXT
-                item = item[1]
             strings.append(item)
         return u''.join(strings)
     def __repr__(self):
@@ -692,11 +685,7 @@ class ContainsFunction(Function):
         self.string2 = string2
     def __call__(self, kind, data, pos, namespaces, variables):
         string1 = self.string1(kind, data, pos, namespaces, variables)
-        if type(string1) is tuple:
-            string1 = string1[1]
         string2 = self.string2(kind, data, pos, namespaces, variables)
-        if type(string2) is tuple:
-            string2 = string2[1]
         return string2 in string1
     def __repr__(self):
         return 'contains(%r, %r)' % (self.string1, self.string2)
@@ -718,8 +707,6 @@ class FloorFunction(Function):
         self.number = number
     def __call__(self, kind, data, pos, namespaces, variables):
         number = self.number(kind, data, pos, namespaces, variables)
-        if type(number) is tuple:
-            number = number[1]
         return floor(float(number))
     def __repr__(self):
         return 'floor(%r)' % self.number
@@ -780,8 +767,6 @@ class NormalizeSpaceFunction(Function):
         self.expr = expr
     def __call__(self, kind, data, pos, namespaces, variables):
         string = self.expr(kind, data, pos, namespaces, variables)
-        if type(string) is tuple:
-            string = string[1]
         return self._normalize(' ', string.strip())
     def __repr__(self):
         return 'normalize-space(%s)' % repr(self.expr)
@@ -793,8 +778,6 @@ class NumberFunction(Function):
         self.expr = expr
     def __call__(self, kind, data, pos, namespaces, variables):
         val = self.expr(kind, data, pos, namespaces, variables)
-        if type(val) is tuple:
-            val = val[1]
         return float(val)
     def __repr__(self):
         return 'number(%r)' % self.expr
@@ -808,8 +791,6 @@ class RoundFunction(Function):
         self.number = number
     def __call__(self, kind, data, pos, namespaces, variables):
         number = self.number(kind, data, pos, namespaces, variables)
-        if type(number) is tuple:
-            number = number[1]
         return round(float(number))
     def __repr__(self):
         return 'round(%r)' % self.number
@@ -824,11 +805,7 @@ class StartsWithFunction(Function):
         self.string2 = string2
     def __call__(self, kind, data, pos, namespaces, variables):
         string1 = self.string1(kind, data, pos, namespaces, variables)
-        if type(string1) is tuple:
-            string1 = string1[1]
         string2 = self.string2(kind, data, pos, namespaces, variables)
-        if type(string2) is tuple:
-            string2 = string2[1]
         return string1.startswith(string2)
     def __repr__(self):
         return 'starts-with(%r, %r)' % (self.string1, self.string2)
@@ -842,8 +819,6 @@ class StringLengthFunction(Function):
         self.expr = expr
     def __call__(self, kind, data, pos, namespaces, variables):
         string = self.expr(kind, data, pos, namespaces, variables)
-        if type(string) is tuple:
-            string = string[1]
         return len(string)
     def __repr__(self):
         return 'string-length(%r)' % self.expr
@@ -859,16 +834,10 @@ class SubstringFunction(Function):
         self.length = length
     def __call__(self, kind, data, pos, namespaces, variables):
         string = self.string(kind, data, pos, namespaces, variables)
-        if type(string) is tuple:
-            string = string[1]
         start = self.start(kind, data, pos, namespaces, variables)
-        if type(start) is tuple:
-            start = start[1]
         length = 0
         if self.length is not None:
             length = self.length(kind, data, pos, namespaces, variables)
-            if type(length) is tuple:
-                length = length[1]
         return string[int(start):len(string) - int(length)]
     def __repr__(self):
         if self.length is not None:
@@ -887,11 +856,7 @@ class SubstringAfterFunction(Function):
         self.string2 = string2
     def __call__(self, kind, data, pos, namespaces, variables):
         string1 = self.string1(kind, data, pos, namespaces, variables)
-        if type(string1) is tuple:
-            string1 = string1[1]
         string2 = self.string2(kind, data, pos, namespaces, variables)
-        if type(string2) is tuple:
-            string2 = string2[1]
         index = string1.find(string2)
         if index >= 0:
             return string1[index + len(string2):]
@@ -909,11 +874,7 @@ class SubstringBeforeFunction(Function):
         self.string2 = string2
     def __call__(self, kind, data, pos, namespaces, variables):
         string1 = self.string1(kind, data, pos, namespaces, variables)
-        if type(string1) is tuple:
-            string1 = string1[1]
         string2 = self.string2(kind, data, pos, namespaces, variables)
-        if type(string2) is tuple:
-            string2 = string2[1]
         index = string1.find(string2)
         if index >= 0:
             return string1[:index]
@@ -932,14 +893,8 @@ class TranslateFunction(Function):
         self.tochars = tochars
     def __call__(self, kind, data, pos, namespaces, variables):
         string = self.string(kind, data, pos, namespaces, variables)
-        if type(string) is tuple:
-            string = string[1]
         fromchars = self.fromchars(kind, data, pos, namespaces, variables)
-        if type(fromchars) is tuple:
-            fromchars = fromchars[1]
         tochars = self.tochars(kind, data, pos, namespaces, variables)
-        if type(tochars) is tuple:
-            tochars = tochars[1]
         table = dict(zip([ord(c) for c in fromchars],
                          [ord(c) for c in tochars]))
         return string.translate(table)
@@ -1014,13 +969,9 @@ class AndOperator(object):
         self.rval = rval
     def __call__(self, kind, data, pos, namespaces, variables):
         lval = self.lval(kind, data, pos, namespaces, variables)
-        if type(lval) is tuple:
-            lval = lval[1]
         if not lval:
             return False
         rval = self.rval(kind, data, pos, namespaces, variables)
-        if type(rval) is tuple:
-            rval = rval[1]
         return bool(rval)
     def __repr__(self):
         return '%s and %s' % (self.lval, self.rval)
@@ -1033,11 +984,7 @@ class EqualsOperator(object):
         self.rval = rval
     def __call__(self, kind, data, pos, namespaces, variables):
         lval = self.lval(kind, data, pos, namespaces, variables)
-        if type(lval) is tuple:
-            lval = lval[1]
         rval = self.rval(kind, data, pos, namespaces, variables)
-        if type(rval) is tuple:
-            rval = rval[1]
         return lval == rval
     def __repr__(self):
         return '%s=%s' % (self.lval, self.rval)
@@ -1050,11 +997,7 @@ class NotEqualsOperator(object):
         self.rval = rval
     def __call__(self, kind, data, pos, namespaces, variables):
         lval = self.lval(kind, data, pos, namespaces, variables)
-        if type(lval) is tuple:
-            lval = lval[1]
         rval = self.rval(kind, data, pos, namespaces, variables)
-        if type(rval) is tuple:
-            rval = rval[1]
         return lval != rval
     def __repr__(self):
         return '%s!=%s' % (self.lval, self.rval)
@@ -1067,13 +1010,9 @@ class OrOperator(object):
         self.rval = rval
     def __call__(self, kind, data, pos, namespaces, variables):
         lval = self.lval(kind, data, pos, namespaces, variables)
-        if type(lval) is tuple:
-            lval = lval[1]
         if lval:
             return True
         rval = self.rval(kind, data, pos, namespaces, variables)
-        if type(rval) is tuple:
-            rval = rval[1]
         return bool(rval)
     def __repr__(self):
         return '%s or %s' % (self.lval, self.rval)
@@ -1086,11 +1025,7 @@ class GreaterThanOperator(object):
         self.rval = rval
     def __call__(self, kind, data, pos, namespaces, variables):
         lval = self.lval(kind, data, pos, namespaces, variables)
-        if type(lval) is tuple:
-            lval = lval[1]
         rval = self.rval(kind, data, pos, namespaces, variables)
-        if type(rval) is tuple:
-            rval = rval[1]
         return float(lval) > float(rval)
     def __repr__(self):
         return '%s>%s' % (self.lval, self.rval)
@@ -1103,11 +1038,7 @@ class GreaterThanOperator(object):
         self.rval = rval
     def __call__(self, kind, data, pos, namespaces, variables):
         lval = self.lval(kind, data, pos, namespaces, variables)
-        if type(lval) is tuple:
-            lval = lval[1]
         rval = self.rval(kind, data, pos, namespaces, variables)
-        if type(rval) is tuple:
-            rval = rval[1]
         return float(lval) > float(rval)
     def __repr__(self):
         return '%s>%s' % (self.lval, self.rval)
@@ -1120,11 +1051,7 @@ class GreaterThanOrEqualOperator(object):
         self.rval = rval
     def __call__(self, kind, data, pos, namespaces, variables):
         lval = self.lval(kind, data, pos, namespaces, variables)
-        if type(lval) is tuple:
-            lval = lval[1]
         rval = self.rval(kind, data, pos, namespaces, variables)
-        if type(rval) is tuple:
-            rval = rval[1]
         return float(lval) >= float(rval)
     def __repr__(self):
         return '%s>=%s' % (self.lval, self.rval)
@@ -1137,11 +1064,7 @@ class LessThanOperator(object):
         self.rval = rval
     def __call__(self, kind, data, pos, namespaces, variables):
         lval = self.lval(kind, data, pos, namespaces, variables)
-        if type(lval) is tuple:
-            lval = lval[1]
         rval = self.rval(kind, data, pos, namespaces, variables)
-        if type(rval) is tuple:
-            rval = rval[1]
         return float(lval) < float(rval)
     def __repr__(self):
         return '%s<%s' % (self.lval, self.rval)
@@ -1154,11 +1077,7 @@ class LessThanOrEqualOperator(object):
         self.rval = rval
     def __call__(self, kind, data, pos, namespaces, variables):
         lval = self.lval(kind, data, pos, namespaces, variables)
-        if type(lval) is tuple:
-            lval = lval[1]
         rval = self.rval(kind, data, pos, namespaces, variables)
-        if type(rval) is tuple:
-            rval = rval[1]
         return float(lval) <= float(rval)
     def __repr__(self):
         return '%s<=%s' % (self.lval, self.rval)

@@ -559,7 +559,7 @@ class LocalNameTest(object):
     def __call__(self, kind, data, pos, namespaces, variables):
         if kind is START:
             if self.principal_type is ATTRIBUTE and self.name in data[1]:
-                return TEXT, data[1].get(self.name), pos
+                return data[1].get(self.name)
             else:
                 return data[0].localname == self.name
     def __repr__(self):
@@ -578,7 +578,7 @@ class QualifiedNameTest(object):
         qname = QName('%s}%s' % (namespaces.get(self.prefix), self.name))
         if kind is START:
             if self.principal_type is ATTRIBUTE and qname in data[1]:
-                return TEXT, data[1].get(qname), pos
+                return data[1].get(qname)
             else:
                 return data[0] == qname
     def __repr__(self):
@@ -731,7 +731,7 @@ class LocalNameFunction(Function):
     __slots__ = []
     def __call__(self, kind, data, pos, namespaces, variables):
         if kind is START:
-            return TEXT, data[0].localname, pos
+            return data[0].localname
     def __repr__(self):
         return 'local-name()'
 
@@ -742,7 +742,7 @@ class NameFunction(Function):
     __slots__ = []
     def __call__(self, kind, data, pos, namespaces, variables):
         if kind is START:
-            return TEXT, data[0], pos
+            return data[0]
     def __repr__(self):
         return 'name()'
 
@@ -753,7 +753,7 @@ class NamespaceUriFunction(Function):
     __slots__ = []
     def __call__(self, kind, data, pos, namespaces, variables):
         if kind is START:
-            return TEXT, data[0].namespace, pos
+            return data[0].namespace
     def __repr__(self):
         return 'namespace-uri()'
 

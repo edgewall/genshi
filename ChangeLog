@@ -2,6 +2,8 @@ Version 0.3
 http://svn.edgewall.org/repos/genshi/tags/0.3.0/
 (?, from branches/stable/0.3.x)
 
+ * The project name was changed from "Markup" to "Genshi". See UPGRADE.txt
+   for upgrade instructions.
  * Expression evaluation now differentiates between undefined variables and
    variables that are defined but set to `None`. This also means that local
    variables can override built-ins even if the local variable are set to
@@ -34,6 +36,8 @@ http://svn.edgewall.org/repos/genshi/tags/0.3.0/
    to multiple elements (ticket #49).
  * Using namespace prefixes in XPath expressions is now supported.
  * Expressions now correctly handle slices (ticket #51).
+ * A simple text-based template language is now included for generating
+   plain text output (ticket #47).
 
 
 Version 0.2

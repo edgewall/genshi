@@ -1216,7 +1216,6 @@ class TextTemplate(Template):
     Foobar
     """
     directives = [('def', DefDirective),
-                  ('comment', StripDirective),
                   ('when', WhenDirective),
                   ('otherwise', OtherwiseDirective),
                   ('for', ForDirective),
@@ -1224,7 +1223,7 @@ class TextTemplate(Template):
                   ('choose', ChooseDirective),
                   ('with', WithDirective)]
 
-    _directive_re = re.compile('^\s*#(\w+.*)\n?', re.MULTILINE)
+    _DIRECTIVE_RE = re.compile(r'^\s*(?<!\\)#((?:\w+|#).*)\n?', re.MULTILINE)
 
     def _parse(self):
         """Parse the template from text input."""
@@ -1235,7 +1234,8 @@ class TextTemplate(Template):
         source = self.source.read()
         offset = 0
         lineno = 1
-        for idx, mo in enumerate(self._directive_re.finditer(source)):
+
+        for idx, mo in enumerate(self._DIRECTIVE_RE.finditer(source)):
             start, end = mo.span()
             if start > offset:
                 text = source[offset:start]
@@ -1252,25 +1252,25 @@ class TextTemplate(Template):
             else:
                 command, value = directive[0], None
 
-            if command != 'end':
-                cls = self._dir_by_name.get(command)
-                if cls is None:
-                    raise BadDirectiveError(command)
-                directive = cls(value, self.filename, lineno, 0)
-                dirmap[depth] = (directive, len(stream))
-                depth += 1
-            else:
+            if command == 'end':
                 depth -= 1
                 if depth in dirmap:
                     directive, start_offset = dirmap.pop(depth)
                     substream = stream[start_offset:]
                     stream[start_offset:] = [(SUB, ([directive], substream),
                                               (self.filename, lineno, 0))]
+            elif command != '#':
+                cls = self._dir_by_name.get(command)
+                if cls is None:
+                    raise BadDirectiveError(command)
+                directive = cls(value, self.filename, lineno, 0)
+                dirmap[depth] = (directive, len(stream))
+                depth += 1
 
             offset = end
 
         if offset < len(source):
-            text = source[offset:]
+            text = source[offset:].replace('\\#', '#')
             for kind, data, pos in self._interpolate(text, self.filename,
                                                      lineno, 0):
                 stream.append((kind, data, pos))

@@ -849,9 +849,7 @@ class TemplateTestCase(unittest.TestCase):
 
 
 class MarkupTemplateTestCase(unittest.TestCase):
-    """Tests for basic template processing, expression evaluation and error
-    reporting.
-    """
+    """Tests for markup template processing."""
 
     def test_interpolate_mixed3(self):
         tmpl = MarkupTemplate('<root> ${var} $var</root>')
@@ -983,6 +981,18 @@ class MarkupTemplateTestCase(unittest.TestCase):
         </div>""", str(tmpl.generate()))
 
 
+class TextTemplateTestCase(unittest.TestCase):
+    """Tests for text template processing."""
+
+    def test_escaping(self):
+        tmpl = TextTemplate('\\#escaped')
+        self.assertEqual('#escaped', str(tmpl.generate()))
+
+    def test_comment(self):
+        tmpl = TextTemplate('## a comment')
+        self.assertEqual('', str(tmpl.generate()))
+
+
 class TemplateLoaderTestCase(unittest.TestCase):
     """Tests for the template loader."""
 
@@ -1092,6 +1102,7 @@ def suite():
     suite.addTest(unittest.makeSuite(WithDirectiveTestCase, 'test'))
     suite.addTest(unittest.makeSuite(TemplateTestCase, 'test'))
     suite.addTest(unittest.makeSuite(MarkupTemplateTestCase, 'test'))
+    suite.addTest(unittest.makeSuite(TextTemplateTestCase, 'test'))
     suite.addTest(unittest.makeSuite(TemplateLoaderTestCase, 'test'))
     return suite
 

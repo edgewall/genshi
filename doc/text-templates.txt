@@ -30,7 +30,7 @@ Python API
 The Python code required for templating with Genshi is generally based on the
 following pattern:
 
-* Attain a ``Template`` object from a string or file object containing the
+* Attain a ``TextTemplate`` object from a string or file object containing the
   template source. This can either be done directly, or through a
   ``TemplateLoader`` instance.
 * Call the ``generate()`` method of the template, passing any data that should
@@ -66,10 +66,9 @@ automatically cached, and only parsed again when the template file changes::
 Template Expressions
 --------------------
 
-Python_ expressions can be used in text and attribute values. An expression is
-substituted with the result of its evaluation against the template data.
-Expressions need to prefixed with a dollar sign (``$``) and usually enclosed in
-curly braces (``{…}``).
+Python_ expressions can be used in text and as arguments to directives_. An expression is substituted with the result of its evaluation against the
+template data. Expressions need to prefixed with a dollar sign (``$``) and 
+usually enclosed in curly braces (``{…}``).
 
 .. _python: http://www.python.org/
 
@@ -92,6 +91,24 @@ a dictionary)::
   >>> print tmpl.generate(dict={'foo': 'bar'})
   bar
 
+Another difference is that you can access variables that are not defined, and
+won't get a ``NameError`` exception::
+
+  >>> from genshi.template import TextTemplate
+  >>> tmpl = TextTemplate('${doh}')
+  >>> print tmpl.generate()
+  <BLANKLINE>
+
+You **will** however get a ``NameError`` if you try to call an undefined 
+variable, or do anything else with it, such as accessing its attributes. If you
+need to know whether a variable is defined, you can check its type against the
+``Undefined`` class, for example in an `#if`_ directive::
+
+  >>> from genshi.template import TextTemplate
+  >>> tmpl = TextTemplate('${type(doh) is Undefined}')
+  >>> print tmpl.generate()
+  True
+
 
 .. _`directives`:
 
@@ -99,19 +116,17 @@ a dictionary)::
 Template Directives
 -------------------
 
-Directives are lines starting with a ``#`` character followed by the directive
-name. They can affect how the template is rendered in a number of ways: Genshi
-provides directives for conditionals and looping, among others.
-
-For example::
-
-  #if foo
-    Bar
-  #end
+Directives are lines starting with a ``#`` character followed immediately by the directive name. They can affect how the template is rendered in a number of
+ways: Genshi provides directives for conditionals and looping, among others.
 
 Directives must be on separate lines, and the ``#`` character must be be the
 first non-whitespace character on that line. Each directive must be “closed”
 using a ``#end`` marker.
+
+If you want to include a literal ``#`` in the output, you need to escape it
+by prepending a backslash character (``\``). Note that this is **not** required 
+if the ``#`` isn't immediately followed by a letter, or it isn't the first
+non-whitespace character on the line.
 
 
 Conditional Sections

@@ -233,14 +233,14 @@ class ChooseDirectiveTestCase(unittest.TestCase):
         tmpl = TextTemplate("""#choose
           #when 1 == 1
             1
-          #endwhen
+          #end
           #when 2 == 2
             2
-          #endwhen
+          #end
           #when 3 == 3
             3
-          #endwhen
-        #endchoose""")
+          #end
+        #end""")
         self.assertEqual("""            1\n""", str(tmpl.generate()))
 
 
@@ -367,7 +367,7 @@ class DefDirectiveTestCase(unittest.TestCase):
         tmpl = TextTemplate("""
           #def echo(greeting, name='world')
             ${greeting}, ${name}!
-          #enddef
+          #end
           ${echo('Hi', name='you')}
         """)
         self.assertEqual("""                      Hi, you!

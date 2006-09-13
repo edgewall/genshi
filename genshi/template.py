@@ -742,26 +742,15 @@ class TemplateMeta(type):
 
 
 class Template(object):
-    """Can parse a template and transform it into the corresponding output
-    based on context data.
+    """Abstract template base class.
+    
+    This class implements most of the template processing model, but does not
+    specify the syntax of templates.
     """
     __metaclass__ = TemplateMeta
 
     EXPR = StreamEventKind('EXPR') # an expression
     SUB = StreamEventKind('SUB') # a "subprogram"
-
-    directives = [('def', DefDirective),
-                  ('match', MatchDirective),
-                  ('when', WhenDirective),
-                  ('otherwise', OtherwiseDirective),
-                  ('for', ForDirective),
-                  ('if', IfDirective),
-                  ('choose', ChooseDirective),
-                  ('with', WithDirective),
-                  ('replace', ReplaceDirective),
-                  ('content', ContentDirective),
-                  ('attrs', AttrsDirective),
-                  ('strip', StripDirective)]
 
     def __init__(self, source, basedir=None, filename=None, loader=None):
         """Initialize a template from either a string or a file-like object."""
@@ -1006,8 +995,15 @@ SUB = Template.SUB
 
 
 class MarkupTemplate(Template):
-    """Can parse a template and transform it into the corresponding output
-    based on context data.
+    """Implementation of the template language for XML-based templates.
+    
+    >>> tmpl = MarkupTemplate('''<ul xmlns:py="http://genshi.edgewall.org/">
+    ...   <li py:for="item in items">${item}</li>
+    ... </ul>''')
+    >>> print tmpl.generate(items=[1, 2, 3])
+    <ul>
+      <li>1</li><li>2</li><li>3</li>
+    </ul>
     """
     NAMESPACE = Namespace('http://genshi.edgewall.org/')
 
@@ -1035,14 +1031,7 @@ class MarkupTemplate(Template):
             self.filters.append(IncludeFilter(loader))
 
     def _parse(self):
-        """Parse the template.
-        
-        The parsing stage parses the XML template and constructs a list of
-        directives that will be executed in the render stage. The input is
-        split up into literal output (markup that does not depend on the
-        context data) and actual directives (commands or variable
-        substitution).
-        """
+        """Parse the template from an XML document."""
         stream = [] # list of events of the "compiled" template
         dirmap = {} # temporary mapping of directives to elements
         ns_prefix = {}
@@ -1211,7 +1200,7 @@ class TextTemplate(Template):
     ... We have the following items for you:
     ... #for item in items
     ...  * $item
-    ... #endfor
+    ... #end
     ... 
     ... All the best,
     ... Foobar''')
@@ -1238,6 +1227,7 @@ class TextTemplate(Template):
     _directive_re = re.compile('^\s*#(\w+.*)\n?', re.MULTILINE)
 
     def _parse(self):
+        """Parse the template from text input."""
         stream = [] # list of events of the "compiled" template
         dirmap = {} # temporary mapping of directives to elements
         depth = 0
@@ -1254,7 +1244,7 @@ class TextTemplate(Template):
                     stream.append((kind, data, pos))
                 lineno += len(text.splitlines())
 
-            text = source[start:end].lstrip().lstrip('#')
+            text = source[start:end].lstrip()[1:]
             lineno += len(text.splitlines())
             directive = text.split(None, 1)
             if len(directive) > 1:
@@ -1262,7 +1252,7 @@ class TextTemplate(Template):
             else:
                 command, value = directive[0], None
 
-            if not command.startswith('end'):
+            if command != 'end':
                 cls = self._dir_by_name.get(command)
                 if cls is None:
                     raise BadDirectiveError(command)
@@ -1271,7 +1261,6 @@ class TextTemplate(Template):
                 depth += 1
             else:
                 depth -= 1
-                command = command[3:]
                 if depth in dirmap:
                     directive, start_offset = dirmap.pop(depth)
                     substream = stream[start_offset:]

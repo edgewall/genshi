@@ -4,9 +4,9 @@
 Genshi XML Template Language
 ============================
 
-Genshi provides a simple XML-based template language that is heavily inspired
-by Kid_, which in turn was inspired by a number of existing template languages,
-namely XSLT_, TAL_, and PHP_.
+Genshi provides a XML-based template language that is heavily inspired by Kid_,
+which in turn was inspired by a number of existing template languages, namely
+XSLT_, TAL_, and PHP_.
 
 .. _kid: http://kid-templating.org/
 .. _python: http://www.python.org/
@@ -15,8 +15,8 @@ namely XSLT_, TAL_, and PHP_.
 .. _php: http://www.php.net/
 
 This document describes the template language and will be most useful as
-reference to those developing Genshi templates. Templates are XML files of some
-kind (such as XHTML) that include processing directives_ (elements or
+reference to those developing Genshi XML templates. Templates are XML files of
+some kind (such as XHTML) that include processing directives_ (elements or
 attributes identified by a separate namespace) that affect how the template is
 rendered, and template expressions_ that are dynamically substituted by
 variable data.
@@ -33,8 +33,8 @@ Python API
 The Python code required for templating with Genshi is generally based on the
 following pattern:
 
-* Attain a ``Template`` object from a string or file object containing the
-  template XML source. This can either be done directly, or through a
+* Attain a ``MarkupTemplate`` object from a string or file object containing
+  the template XML source. This can either be done directly, or through a
   ``TemplateLoader`` instance.
 * Call the ``generate()`` method of the template, passing any data that should
   be made available to the template as keyword arguments.
@@ -42,9 +42,9 @@ following pattern:
 
 For example::
 
-  from genshi.template import Template
+  from genshi.template import MarkupTemplate
 
-  tmpl = Template('<h1>$title</h1>')
+  tmpl = MarkupTemplate('<h1>$title</h1>')
   stream = tmpl.generate(title='Hello, world!')
   print stream.render('xhtml')
 
@@ -78,9 +78,9 @@ If the expression starts with a letter and contains only letters and digits,
 the curly braces may be omitted. In all other cases, the braces are required so
 that the template processors knows where the expression ends::
 
-  >>> from genshi.template import Context, Template
-  >>> tmpl = Template('<em>${items[0].capitalize()} item</em>')
-  >>> print tmpl.generate(Context(items=['first', 'second']))
+  >>> from genshi.template import MarkupTemplate
+  >>> tmpl = MarkupTemplate('<em>${items[0].capitalize()} item</em>')
+  >>> print tmpl.generate(items=['first', 'second'])
   <em>First item</em>
 
 Expressions support the full power of Python. In addition, it is possible to
@@ -88,9 +88,9 @@ access items in a dictionary using “dotted notation” (i.e. as if they were
 attributes), and vice-versa (i.e. access attributes as if they were items in a
 dictionary)::
 
-  >>> from genshi.template import Context, Template
-  >>> tmpl = Template('<em>${dict.foo}</em>')
-  >>> print tmpl.generate(Context(dict={'foo': 'bar'}))
+  >>> from genshi.template import MarkupTemplate
+  >>> tmpl = MarkupTemplate('<em>${dict.foo}</em>')
+  >>> print tmpl.generate(dict={'foo': 'bar'})
   <em>bar</em>
 
 

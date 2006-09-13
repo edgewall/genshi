@@ -992,6 +992,10 @@ class TextTemplateTestCase(unittest.TestCase):
         tmpl = TextTemplate('## a comment')
         self.assertEqual('', str(tmpl.generate()))
 
+    def test_comment_escaping(self):
+        tmpl = TextTemplate('\\## escaped comment')
+        self.assertEqual('## escaped comment', str(tmpl.generate()))
+
 
 class TemplateLoaderTestCase(unittest.TestCase):
     """Tests for the template loader."""

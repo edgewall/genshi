@@ -121,7 +121,10 @@ ways: Genshi provides directives for conditionals and looping, among others.
 
 Directives must be on separate lines, and the ``#`` character must be be the
 first non-whitespace character on that line. Each directive must be “closed”
-using a ``#end`` marker.
+using a ``#end`` marker. You can add after the ``#end`` marker, for example to
+document which directive is being closed, or even the expression associated with 
+that directive. Any text after ``#end`` (but on the same line) is  ignored, 
+and effectively treated as a comment.
 
 If you want to include a literal ``#`` in the output, you need to escape it
 by prepending a backslash character (``\``). Note that this is **not** required 

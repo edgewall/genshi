@@ -996,6 +996,13 @@ class TextTemplateTestCase(unittest.TestCase):
         tmpl = TextTemplate('\\## escaped comment')
         self.assertEqual('## escaped comment', str(tmpl.generate()))
 
+    def test_end_with_args(self):
+        tmpl = TextTemplate("""
+        #if foo
+          bar
+        #end 'if foo'""")
+        self.assertEqual('', str(tmpl.generate()))
+
 
 class TemplateLoaderTestCase(unittest.TestCase):
     """Tests for the template loader."""

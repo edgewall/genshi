@@ -35,7 +35,7 @@
 
     <div py:if="tg_flash" class="flash" py:content="tg_flash"></div>
 
-    <div py:replace="select('*')"/>
+    <div py:replace="select('*|text()')"/>
 
     <p align="center"><img src="/static/images/tg_under_the_hood.png" alt="TurboGears under the hood"/></p>
 </body>

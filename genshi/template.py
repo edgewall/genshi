@@ -783,7 +783,7 @@ class Template(object):
         raise NotImplementedError
 
     _FULL_EXPR_RE = re.compile(r'(?<!\$)\$\{(.+?)\}', re.DOTALL)
-    _SHORT_EXPR_RE = re.compile(r'(?<!\$)\$([a-zA-Z][a-zA-Z0-9_\.]*)')
+    _SHORT_EXPR_RE = re.compile(r'(?<!\$)\$([a-zA-Z_][a-zA-Z0-9_\.]*)')
 
     def _interpolate(cls, text, filename=None, lineno=-1, offset=-1):
         """Parse the given string and extract expressions.
@@ -916,77 +916,6 @@ class Template(object):
                 for event in self._flatten(substream, ctxt):
                     yield event
             else:
-                yield kind, data, pos
-
-    def _match(self, stream, ctxt=None, match_templates=None):
-        """Internal stream filter that applies any defined match templates
-        to the stream.
-        """
-        if match_templates is None:
-            match_templates = ctxt._match_templates
-        nsprefix = {} # mapping of namespace prefixes to URIs
-
-        tail = []
-        def _strip(stream):
-            depth = 1
-            while 1:
-                kind, data, pos = stream.next()
-                if kind is START:
-                    depth += 1
-                elif kind is END:
-                    depth -= 1
-                if depth > 0:
-                    yield kind, data, pos
-                else:
-                    tail[:] = [(kind, data, pos)]
-                    break
-
-        for kind, data, pos in stream:
-
-            # We (currently) only care about start and end events for matching
-            # We might care about namespace events in the future, though
-            if not match_templates or kind not in (START, END):
-                yield kind, data, pos
-                continue
-
-            for idx, (test, path, template, directives) in \
-                    enumerate(match_templates):
-
-                if test(kind, data, pos, nsprefix, ctxt) is True:
-
-                    # Let the remaining match templates know about the event so
-                    # they get a chance to update their internal state
-                    for test in [mt[0] for mt in match_templates[idx + 1:]]:
-                        test(kind, data, pos, nsprefix, ctxt)
-
-                    # Consume and store all events until an end event
-                    # corresponding to this start event is encountered
-                    content = [(kind, data, pos)]
-                    content += list(self._match(_strip(stream), ctxt)) + tail
-
-                    kind, data, pos = tail[0]
-                    for test in [mt[0] for mt in match_templates]:
-                        test(kind, data, pos, nsprefix, ctxt)
-
-                    # Make the select() function available in the body of the
-                    # match template
-                    def select(path):
-                        return Stream(content).select(path)
-                    ctxt.push(dict(select=select))
-
-                    # Recursively process the output
-                    template = _apply_directives(template, ctxt, directives)
-                    for event in self._match(self._eval(self._flatten(template,
-                                                                      ctxt),
-                                                        ctxt), ctxt,
-                                             match_templates[:idx] +
-                                             match_templates[idx + 1:]):
-                        yield event
-
-                    ctxt.pop()
-                    break
-
-            else: # no matches
                 yield kind, data, pos
 
 

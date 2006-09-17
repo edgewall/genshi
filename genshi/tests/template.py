@@ -827,6 +827,36 @@ class TemplateTestCase(unittest.TestCase):
         self.assertEqual(Template.EXPR, parts[0][0])
         self.assertEqual('bla', parts[0][1].source)
 
+    def test_interpolate_short(self):
+        parts = list(Template._interpolate('$bla'))
+        self.assertEqual(1, len(parts))
+        self.assertEqual(Template.EXPR, parts[0][0])
+        self.assertEqual('bla', parts[0][1].source)
+
+    def test_interpolate_short_starting_with_underscore(self):
+        parts = list(Template._interpolate('$_bla'))
+        self.assertEqual(1, len(parts))
+        self.assertEqual(Template.EXPR, parts[0][0])
+        self.assertEqual('_bla', parts[0][1].source)
+
+    def test_interpolate_short_containing_underscore(self):
+        parts = list(Template._interpolate('$foo_bar'))
+        self.assertEqual(1, len(parts))
+        self.assertEqual(Template.EXPR, parts[0][0])
+        self.assertEqual('foo_bar', parts[0][1].source)
+
+    def test_interpolate_short_starting_with_dot(self):
+        parts = list(Template._interpolate('$.bla'))
+        self.assertEqual(1, len(parts))
+        self.assertEqual(Stream.TEXT, parts[0][0])
+        self.assertEqual('$.bla', parts[0][1])
+
+    def test_interpolate_short_containing_dot(self):
+        parts = list(Template._interpolate('$foo.bar'))
+        self.assertEqual(1, len(parts))
+        self.assertEqual(Template.EXPR, parts[0][0])
+        self.assertEqual('foo.bar', parts[0][1].source)
+
     def test_interpolate_mixed1(self):
         parts = list(Template._interpolate('$foo bar $baz'))
         self.assertEqual(3, len(parts))
@@ -847,6 +877,15 @@ class TemplateTestCase(unittest.TestCase):
         self.assertEqual(Stream.TEXT, parts[2][0])
         self.assertEqual(' baz', parts[2][1])
 
+    def test_interpolate_mixed1(self):
+        parts = list(Template._interpolate('$foo bar $baz'))
+        self.assertEqual(3, len(parts))
+        self.assertEqual(Template.EXPR, parts[0][0])
+        self.assertEqual('foo', parts[0][1].source)
+        self.assertEqual(Stream.TEXT, parts[1][0])
+        self.assertEqual(' bar ', parts[1][1])
+        self.assertEqual(Template.EXPR, parts[2][0])
+        self.assertEqual('baz', parts[2][1].source)
 
 class MarkupTemplateTestCase(unittest.TestCase):
     """Tests for markup template processing."""

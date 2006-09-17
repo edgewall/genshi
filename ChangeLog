@@ -1,6 +1,6 @@
 Version 0.3
 http://svn.edgewall.org/repos/genshi/tags/0.3.0/
-(?, from branches/stable/0.3.x)
+(Sep 17 2006, from branches/stable/0.3.x)
 
  * The project name was changed from "Markup" to "Genshi". See UPGRADE.txt
    for upgrade instructions.

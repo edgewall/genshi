@@ -827,12 +827,6 @@ class TemplateTestCase(unittest.TestCase):
         self.assertEqual(Template.EXPR, parts[0][0])
         self.assertEqual('bla', parts[0][1].source)
 
-    def test_interpolate_short(self):
-        parts = list(Template._interpolate('$bla'))
-        self.assertEqual(1, len(parts))
-        self.assertEqual(Template.EXPR, parts[0][0])
-        self.assertEqual('bla', parts[0][1].source)
-
     def test_interpolate_short_starting_with_underscore(self):
         parts = list(Template._interpolate('$_bla'))
         self.assertEqual(1, len(parts))
@@ -856,6 +850,18 @@ class TemplateTestCase(unittest.TestCase):
         self.assertEqual(1, len(parts))
         self.assertEqual(Template.EXPR, parts[0][0])
         self.assertEqual('foo.bar', parts[0][1].source)
+
+    def test_interpolate_short_starting_with_digit(self):
+        parts = list(Template._interpolate('$0bla'))
+        self.assertEqual(1, len(parts))
+        self.assertEqual(Stream.TEXT, parts[0][0])
+        self.assertEqual('$0bla', parts[0][1])
+
+    def test_interpolate_short_containing_digit(self):
+        parts = list(Template._interpolate('$foo0'))
+        self.assertEqual(1, len(parts))
+        self.assertEqual(Template.EXPR, parts[0][0])
+        self.assertEqual('foo0', parts[0][1].source)
 
     def test_interpolate_mixed1(self):
         parts = list(Template._interpolate('$foo bar $baz'))

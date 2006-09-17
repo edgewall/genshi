@@ -1030,19 +1030,6 @@ class GreaterThanOperator(object):
     def __repr__(self):
         return '%s>%s' % (self.lval, self.rval)
 
-class GreaterThanOperator(object):
-    """The relational operator `>` (greater than)."""
-    __slots__ = ['lval', 'rval']
-    def __init__(self, lval, rval):
-        self.lval = lval
-        self.rval = rval
-    def __call__(self, kind, data, pos, namespaces, variables):
-        lval = self.lval(kind, data, pos, namespaces, variables)
-        rval = self.rval(kind, data, pos, namespaces, variables)
-        return float(lval) > float(rval)
-    def __repr__(self):
-        return '%s>%s' % (self.lval, self.rval)
-
 class GreaterThanOrEqualOperator(object):
     """The relational operator `>=` (greater than or equal)."""
     __slots__ = ['lval', 'rval']

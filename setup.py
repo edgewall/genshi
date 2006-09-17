@@ -30,7 +30,7 @@ is heavily inspired by Kid.""",
     author_email = 'info@edgewall.org',
     license = 'BSD',
     url = 'http://genshi.edgewall.org/',
-    download_url = 'http://genshi.edgewall.org/wiki/GenshiDownload',
+    download_url = 'http://genshi.edgewall.org/wiki/Download',
     zip_safe = True,
 
     classifiers = [

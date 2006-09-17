@@ -19,7 +19,7 @@ except ImportError:
 
 setup(
     name = 'Genshi',
-    version = '0.3',
+    version = '0.4',
     description = 'A toolkit for stream-based generation of output for the web',
     long_description = \
 """Genshi is a Python library that provides an integrated set of components

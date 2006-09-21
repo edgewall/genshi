@@ -13,6 +13,7 @@
 
 """Implementation of the template engine."""
 
+from itertools import chain
 try:
     from collections import deque
 except ImportError:
@@ -849,7 +850,7 @@ class Template(object):
             stream = filter_(iter(stream), ctxt)
         return Stream(stream)
 
-    def _eval(self, stream, ctxt=None):
+    def _eval(self, stream, ctxt):
         """Internal stream filter that evaluates any expressions in `START` and
         `TEXT` events.
         """
@@ -905,7 +906,7 @@ class Template(object):
             else:
                 yield kind, data, pos
 
-    def _flatten(self, stream, ctxt=None):
+    def _flatten(self, stream, ctxt):
         """Internal stream filter that expands `SUB` events in the stream."""
         for kind, data, pos in stream:
             if kind is SUB:
@@ -1049,7 +1050,7 @@ class MarkupTemplate(Template):
 
         return stream
 
-    def _match(self, stream, ctxt=None, match_templates=None):
+    def _match(self, stream, ctxt, match_templates=None):
         """Internal stream filter that applies any defined match templates
         to the stream.
         """
@@ -1092,8 +1093,12 @@ class MarkupTemplate(Template):
 
                     # Consume and store all events until an end event
                     # corresponding to this start event is encountered
-                    content = [(kind, data, pos)]
-                    content += list(self._match(_strip(stream), ctxt)) + tail
+                    content = chain([(kind, data, pos)],
+                                    self._match(_strip(stream), ctxt),
+                                    tail)
+                    for filter_ in self.filters[3:]:
+                        content = filter_(content, ctxt)
+                    content = list(content)
 
                     kind, data, pos = tail[0]
                     for test in [mt[0] for mt in match_templates]:

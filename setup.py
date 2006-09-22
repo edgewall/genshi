@@ -52,6 +52,8 @@ is heavily inspired by Kid.""",
     extras_require = {'plugin': ['setuptools>=0.6a2']},
     entry_points = """
     [python.templating.engines]
-    genshi = genshi.plugin:TemplateEnginePlugin[plugin]
+    genshi = genshi.plugin:MarkupTemplateEnginePlugin[plugin]
+    genshi-markup = genshi.plugin:MarkupTemplateEnginePlugin[plugin]
+    genshi-text = genshi.plugin:TextTemplateEnginePlugin[plugin]
     """,
 )

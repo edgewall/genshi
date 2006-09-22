@@ -230,10 +230,10 @@ class PathTestCase(unittest.TestCase):
         self.assertEqual('<?php echo("x") ?>', path.select(xml).render())
 
     def test_simple_union(self):
-        xml = XML('<root>Oh <foo>my</foo></root>')
+        xml = XML("""<body>1<br />2<br />3<br /></body>""")
         path = Path('*|text()')
         self.assertEqual('<Path "child::*|child::text()">', repr(path))
-        self.assertEqual('Oh <foo>my</foo>', path.select(xml).render())
+        self.assertEqual('1<br/>2<br/>3<br/>', path.select(xml).render())
 
     def test_predicate_name(self):
         xml = XML('<root><foo/><bar/></root>')

@@ -157,6 +157,7 @@ class Path(object):
         paths = [(p, len(p), [0], [], [0] * len(p)) for p in self.paths]
 
         def _test(kind, data, pos, namespaces, variables):
+            retval = None
             for steps, size, cursors, cutoff, counter in paths:
 
                 # Manage the stack that tells us "where we are" in the stream
@@ -166,7 +167,8 @@ class Path(object):
                     continue
                 elif kind is START:
                     cursors.append(cursors and cursors[-1] or 0)
-                elif not cursors:
+
+                if retval or not cursors:
                     continue
                 cursor = cursors[-1]
                 depth = len(cursors)
@@ -176,7 +178,7 @@ class Path(object):
 
                 ctxtnode = not ignore_context and kind is START \
                                               and depth == 2
-                matched = retval = None
+                matched = None
                 while 1:
                     # Fetch the next location step
                     axis, nodetest, predicates = steps[cursor]
@@ -262,8 +264,7 @@ class Path(object):
                         break
                     cursors[-1] = cursor
 
-                if retval:
-                    return retval
+            return retval
 
         return _test
 

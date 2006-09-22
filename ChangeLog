@@ -1,6 +1,6 @@
 Version 0.3.1
 http://svn.edgewall.org/repos/genshi/tags/0.3.1/
-(?, from branches/stable/0.3.x)
+(Sep 22 2006, from branches/stable/0.3.x)
 
  * Includes and user-defined filters were not getting the correct context data
    when used inside a match template (ticket #56).

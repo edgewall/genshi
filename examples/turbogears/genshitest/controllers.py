@@ -11,6 +11,7 @@ from genshitest import json
 log = logging.getLogger("genshitest.controllers")
 
 class Root(controllers.RootController):
+
     @expose(template="genshitest.templates.welcome")
     def index(self):
         import time
@@ -21,7 +22,6 @@ class Root(controllers.RootController):
                                                     "TurboGears widgets with "
                                                     "Genshi",
                                             rows=5, cols=40))
-
 
     @expose(template="genshitest.templates.login")
     def login(self, forward_url=None, previous_url=None, *args, **kw):

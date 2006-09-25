@@ -31,9 +31,9 @@ from genshi.eval import Expression
 from genshi.input import XMLParser
 from genshi.path import Path
 
-__all__ = ['BadDirectiveError', 'TemplateError', 'TemplateSyntaxError',
-           'TemplateNotFound', 'MarkupTemplate', 'TextTemplate',
-           'TemplateLoader']
+__all__ = ['BadDirectiveError', 'MarkupTemplate', 'Template', 'TemplateError',
+           'TemplateSyntaxError', 'TemplateNotFound', 'TemplateLoader',
+           'TextTemplate']
 
 
 class TemplateError(Exception):
@@ -384,6 +384,7 @@ class DefDirective(Directive):
 
         # Store the function reference in the bottom context frame so that it
         # doesn't get popped off before processing the template has finished
+        # FIXME: this makes context data mutable as a side-effect
         ctxt.frames[-1][self.name] = function
 
         return []
@@ -433,8 +434,7 @@ class ForDirective(Directive):
             ctxt.pop()
 
     def __repr__(self):
-        return '<%s "%s in %s">' % (self.__class__.__name__,
-                                    ', '.join(self.targets), self.expr.source)
+        return '<%s>' % self.__class__.__name__
 
 
 class IfDirective(Directive):
@@ -726,9 +726,7 @@ class WithDirective(Directive):
         ctxt.pop()
 
     def __repr__(self):
-        return '<%s "%s">' % (self.__class__.__name__,
-                              '; '.join(['%s = %s' % (name, expr.source)
-                                         for name, expr in self.vars]))
+        return '<%s>' % (self.__class__.__name__)
 
 
 class TemplateMeta(type):
@@ -764,7 +762,7 @@ class Template(object):
         if basedir and filename:
             self.filepath = os.path.join(basedir, filename)
         else:
-            self.filepath = None
+            self.filepath = filename
 
         self.filters = [self._flatten, self._eval]
 
@@ -994,7 +992,7 @@ class MarkupTemplate(Template):
                     if cls is None:
                         raise BadDirectiveError(tag.localname, pos[0], pos[1])
                     value = attrib.get(getattr(cls, 'ATTRIBUTE', None), '')
-                    directives.append(cls(value, *pos))
+                    directives.append(cls(value, self.filepath, pos[1], pos[2]))
                     strip = True
 
                 new_attrib = []
@@ -1004,10 +1002,12 @@ class MarkupTemplate(Template):
                         if cls is None:
                             raise BadDirectiveError(name.localname, pos[0],
                                                     pos[1])
-                        directives.append(cls(value, *pos))
+                        directives.append(cls(value, self.filepath, pos[1],
+                                              pos[2]))
                     else:
                         if value:
-                            value = list(self._interpolate(value, *pos))
+                            value = list(self._interpolate(value, self.filepath,
+                                                           pos[1], pos[2]))
                             if len(value) == 1 and value[0][0] is TEXT:
                                 value = value[0][1]
                         else:
@@ -1038,7 +1038,8 @@ class MarkupTemplate(Template):
                                               pos)]
 
             elif kind is TEXT:
-                for kind, data, pos in self._interpolate(data, *pos):
+                for kind, data, pos in self._interpolate(data, self.filepath,
+                                                         pos[1], pos[2]):
                     stream.append((kind, data, pos))
 
             elif kind is COMMENT:

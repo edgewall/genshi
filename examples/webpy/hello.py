@@ -19,8 +19,7 @@ class hello(object):
         stream = tmpl.generate(name=name, times=int(i.times))
 
         web.header('Content-Type', 'text/html; charset=utf-8', unique=True)
-        for output in stream.serialize('html'):
-            print output.encode('utf-8'),
+        print stream.render('html')
 
 
 if __name__ == '__main__':

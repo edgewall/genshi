@@ -20,7 +20,7 @@ class hello(object):
 
         web.header('Content-Type', 'text/html; charset=utf-8', unique=True)
         for output in stream.serialize('html'):
-            print output.encode('utf-8')
+            print output.encode('utf-8'),
 
 
 if __name__ == '__main__':

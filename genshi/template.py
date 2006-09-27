@@ -31,9 +31,9 @@ from genshi.eval import Expression
 from genshi.input import XMLParser
 from genshi.path import Path
 
-__all__ = ['BadDirectiveError', 'TemplateError', 'TemplateSyntaxError',
-           'TemplateNotFound', 'MarkupTemplate', 'TextTemplate',
-           'TemplateLoader']
+__all__ = ['BadDirectiveError', 'MarkupTemplate', 'Template', 'TemplateError',
+           'TemplateSyntaxError', 'TemplateNotFound', 'TemplateLoader',
+           'TextTemplate']
 
 
 class TemplateError(Exception):
@@ -108,7 +108,7 @@ class Context(object):
         self._match_templates = []
 
     def __repr__(self):
-        return repr(self.frames)
+        return repr(list(self.frames))
 
     def __setitem__(self, key, value):
         """Set a variable in the current scope."""
@@ -384,6 +384,7 @@ class DefDirective(Directive):
 
         # Store the function reference in the bottom context frame so that it
         # doesn't get popped off before processing the template has finished
+        # FIXME: this makes context data mutable as a side-effect
         ctxt.frames[-1][self.name] = function
 
         return []
@@ -433,8 +434,7 @@ class ForDirective(Directive):
             ctxt.pop()
 
     def __repr__(self):
-        return '<%s "%s in %s">' % (self.__class__.__name__,
-                                    ', '.join(self.targets), self.expr.source)
+        return '<%s>' % self.__class__.__name__
 
 
 class IfDirective(Directive):
@@ -726,9 +726,7 @@ class WithDirective(Directive):
         ctxt.pop()
 
     def __repr__(self):
-        return '<%s "%s">' % (self.__class__.__name__,
-                              '; '.join(['%s = %s' % (name, expr.source)
-                                         for name, expr in self.vars]))
+        return '<%s>' % (self.__class__.__name__)
 
 
 class TemplateMeta(type):
@@ -764,7 +762,7 @@ class Template(object):
         if basedir and filename:
             self.filepath = os.path.join(basedir, filename)
         else:
-            self.filepath = None
+            self.filepath = filename
 
         self.filters = [self._flatten, self._eval]
 
@@ -967,7 +965,7 @@ class MarkupTemplate(Template):
         ns_prefix = {}
         depth = 0
 
-        for kind, data, pos in XMLParser(self.source, filename=self.filename):
+        for kind, data, pos in XMLParser(self.source, filename=self.filepath):
 
             if kind is START_NS:
                 # Strip out the namespace declaration for template directives
@@ -1173,7 +1171,7 @@ class TextTemplate(Template):
             start, end = mo.span()
             if start > offset:
                 text = source[offset:start]
-                for kind, data, pos in self._interpolate(text, self.filename,
+                for kind, data, pos in self._interpolate(text, self.filepath,
                                                          lineno, 0):
                     stream.append((kind, data, pos))
                 lineno += len(text.splitlines())
@@ -1192,12 +1190,12 @@ class TextTemplate(Template):
                     directive, start_offset = dirmap.pop(depth)
                     substream = stream[start_offset:]
                     stream[start_offset:] = [(SUB, ([directive], substream),
-                                              (self.filename, lineno, 0))]
+                                              (self.filepath, lineno, 0))]
             elif command != '#':
                 cls = self._dir_by_name.get(command)
                 if cls is None:
                     raise BadDirectiveError(command)
-                directive = cls(value, self.filename, lineno, 0)
+                directive = cls(value, self.filepath, lineno, 0)
                 dirmap[depth] = (directive, len(stream))
                 depth += 1
 
@@ -1205,7 +1203,7 @@ class TextTemplate(Template):
 
         if offset < len(source):
             text = source[offset:].replace('\\#', '#')
-            for kind, data, pos in self._interpolate(text, self.filename,
+            for kind, data, pos in self._interpolate(text, self.filepath,
                                                      lineno, 0):
                 stream.append((kind, data, pos))
 

@@ -23,6 +23,11 @@ class Root(controllers.RootController):
                                                     "Genshi",
                                             rows=5, cols=40))
 
+    @expose(template="genshi-text:genshitest.templates.plain",
+            content_type='text/plain; charset=utf-8')
+    def plain(self):
+        return dict(name='world')
+
     @expose(template="genshitest.templates.login")
     def login(self, forward_url=None, previous_url=None, *args, **kw):
 

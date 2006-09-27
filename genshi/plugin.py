@@ -21,7 +21,8 @@ from pkg_resources import resource_filename
 from genshi.core import Attrs, Stream, QName
 from genshi.eval import Undefined
 from genshi.input import HTML, XML
-from genshi.template import Context, MarkupTemplate, Template, TemplateLoader
+from genshi.template import Context, MarkupTemplate, Template, TemplateLoader, \
+                            TextTemplate
 
 def ET(element):
     """Converts the given ElementTree element to a markup stream."""
@@ -42,8 +43,11 @@ def ET(element):
         yield Stream.TEXT, element.tail, (None, -1, -1)
 
 
-class TemplateEnginePlugin(object):
+class AbstractTemplateEnginePlugin(object):
     """Implementation of the plugin API."""
+
+    template_class = None
+    extension = None
 
     def __init__(self, extra_vars_func=None, options=None):
         if options is None:
@@ -59,15 +63,15 @@ class TemplateEnginePlugin(object):
         a string.
         """
         if template_string is not None:
-            return MarkupTemplate(template_string)
+            return self.template_class(template_string)
 
         divider = templatename.rfind('.')
         if divider >= 0:
             package = templatename[:divider]
-            basename = templatename[divider + 1:] + '.html'
+            basename = templatename[divider + 1:] + self.extension
             templatename = resource_filename(package, basename)
 
-        return self.loader.load(templatename)
+        return self.loader.load(templatename, cls=self.template_class)
 
     def render(self, info, format='html', fragment=False, template=None):
         """Render the template to a string using the provided info."""
@@ -77,12 +81,7 @@ class TemplateEnginePlugin(object):
         """Render the output to an event stream."""
         if not isinstance(template, Template):
             template = self.load_template(template)
-
-        data = {'ET': ET, 'HTML': HTML, 'XML': XML}
-        if self.get_extra_vars:
-            data.update(self.get_extra_vars())
-        data.update(info)
-        ctxt = Context(**data)
+        ctxt = Context(**info)
 
         # Some functions for Kid compatibility
         def defined(name):
@@ -93,3 +92,33 @@ class TemplateEnginePlugin(object):
         ctxt['value_of'] = value_of
 
         return template.generate(ctxt)
+
+
+class MarkupTemplateEnginePlugin(AbstractTemplateEnginePlugin):
+    """Implementation of the plugin API for markup templates."""
+
+    template_class = MarkupTemplate
+    extension = '.html'
+
+    def transform(self, info, template):
+        """Render the output to an event stream."""
+        data = {'ET': ET, 'HTML': HTML, 'XML': XML}
+        if self.get_extra_vars:
+            data.update(self.get_extra_vars())
+        data.update(info)
+        return super(MarkupTemplateEnginePlugin, self).transform(data, template)
+
+
+class TextTemplateEnginePlugin(AbstractTemplateEnginePlugin):
+    """Implementation of the plugin API for text templates."""
+
+    template_class = TextTemplate
+    extension = '.txt'
+
+    def transform(self, info, template):
+        """Render the output to an event stream."""
+        data = {}
+        if self.get_extra_vars:
+            data.update(self.get_extra_vars())
+        data.update(info)
+        return super(TextTemplateEnginePlugin, self).transform(data, template)

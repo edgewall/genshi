@@ -108,7 +108,7 @@ class Context(object):
         self._match_templates = []
 
     def __repr__(self):
-        return repr(self.frames)
+        return repr(list(self.frames))
 
     def __setitem__(self, key, value):
         """Set a variable in the current scope."""
@@ -965,7 +965,7 @@ class MarkupTemplate(Template):
         ns_prefix = {}
         depth = 0
 
-        for kind, data, pos in XMLParser(self.source, filename=self.filename):
+        for kind, data, pos in XMLParser(self.source, filename=self.filepath):
 
             if kind is START_NS:
                 # Strip out the namespace declaration for template directives
@@ -992,7 +992,7 @@ class MarkupTemplate(Template):
                     if cls is None:
                         raise BadDirectiveError(tag.localname, pos[0], pos[1])
                     value = attrib.get(getattr(cls, 'ATTRIBUTE', None), '')
-                    directives.append(cls(value, self.filepath, pos[1], pos[2]))
+                    directives.append(cls(value, *pos))
                     strip = True
 
                 new_attrib = []
@@ -1002,12 +1002,10 @@ class MarkupTemplate(Template):
                         if cls is None:
                             raise BadDirectiveError(name.localname, pos[0],
                                                     pos[1])
-                        directives.append(cls(value, self.filepath, pos[1],
-                                              pos[2]))
+                        directives.append(cls(value, *pos))
                     else:
                         if value:
-                            value = list(self._interpolate(value, self.filepath,
-                                                           pos[1], pos[2]))
+                            value = list(self._interpolate(value, *pos))
                             if len(value) == 1 and value[0][0] is TEXT:
                                 value = value[0][1]
                         else:
@@ -1038,8 +1036,7 @@ class MarkupTemplate(Template):
                                               pos)]
 
             elif kind is TEXT:
-                for kind, data, pos in self._interpolate(data, self.filepath,
-                                                         pos[1], pos[2]):
+                for kind, data, pos in self._interpolate(data, *pos):
                     stream.append((kind, data, pos))
 
             elif kind is COMMENT:
@@ -1174,7 +1171,7 @@ class TextTemplate(Template):
             start, end = mo.span()
             if start > offset:
                 text = source[offset:start]
-                for kind, data, pos in self._interpolate(text, self.filename,
+                for kind, data, pos in self._interpolate(text, self.filepath,
                                                          lineno, 0):
                     stream.append((kind, data, pos))
                 lineno += len(text.splitlines())
@@ -1193,12 +1190,12 @@ class TextTemplate(Template):
                     directive, start_offset = dirmap.pop(depth)
                     substream = stream[start_offset:]
                     stream[start_offset:] = [(SUB, ([directive], substream),
-                                              (self.filename, lineno, 0))]
+                                              (self.filepath, lineno, 0))]
             elif command != '#':
                 cls = self._dir_by_name.get(command)
                 if cls is None:
                     raise BadDirectiveError(command)
-                directive = cls(value, self.filename, lineno, 0)
+                directive = cls(value, self.filepath, lineno, 0)
                 dirmap[depth] = (directive, len(stream))
                 depth += 1
 
@@ -1206,7 +1203,7 @@ class TextTemplate(Template):
 
         if offset < len(source):
             text = source[offset:].replace('\\#', '#')
-            for kind, data, pos in self._interpolate(text, self.filename,
+            for kind, data, pos in self._interpolate(text, self.filepath,
                                                      lineno, 0):
                 stream.append((kind, data, pos))
 

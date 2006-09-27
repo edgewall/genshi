@@ -9,7 +9,7 @@
 #
 # This software consists of voluntary contributions made by many
 # individuals. For the exact contribution history, see the revision
-# history and logs, available at hhttp://genshi.edgewall.org/log/.
+# history and logs, available at http://genshi.edgewall.org/log/.
 
 import doctest
 import sys

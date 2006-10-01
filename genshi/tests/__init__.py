@@ -17,7 +17,7 @@ import unittest
 def suite():
     import genshi
     from genshi.tests import builder, core, eval, filters, input, output, \
-                             path, template
+                             path, template, util
     suite = unittest.TestSuite()
     suite.addTest(doctest.DocTestSuite(genshi))
     suite.addTest(builder.suite())
@@ -28,6 +28,7 @@ def suite():
     suite.addTest(output.suite())
     suite.addTest(path.suite())
     suite.addTest(template.suite())
+    suite.addTest(util.suite())
     return suite
 
 if __name__ == '__main__':

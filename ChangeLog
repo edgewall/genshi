@@ -16,6 +16,10 @@ http://svn.edgewall.org/repos/genshi/tags/0.4.0/
    HTML forms based on a dictionary of values.
  * The set of permitted tag and attribute names for the HTMLSanitizer can now
    be configured per instance.
+ * Fixed the namespace context used by XPath patterns in py:match templates.
+   The were erroneously using the namespace context of the elements being
+   matched, where they should rather use the context in which they were
+   defined.
 
 
 Version 0.3.1

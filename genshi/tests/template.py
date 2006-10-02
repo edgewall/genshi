@@ -690,6 +690,18 @@ class MatchDirectiveTestCase(unittest.TestCase):
           </p></form>
         </html>""", str(tmpl.generate(fields=fields, values=values)))
 
+    def test_namespace_context(self):
+        tmpl = MarkupTemplate("""<html xmlns:py="http://genshi.edgewall.org/"
+                                       xmlns:x="http://www.example.org/">
+          <div py:match="x:foo">Foo</div>
+          <foo xmlns="http://www.example.org/"/>
+        </html>""")
+        # FIXME: there should be a way to strip out unwanted/unused namespaces,
+        #        such as the "x" in this example
+        self.assertEqual("""<html xmlns:x="http://www.example.org/">
+          <div>Foo</div>
+        </html>""", str(tmpl.generate()))
+
     # FIXME
     #def test_match_after_step(self):
     #    tmpl = MarkupTemplate("""<div xmlns:py="http://genshi.edgewall.org/">

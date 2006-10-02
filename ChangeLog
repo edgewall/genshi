@@ -1,3 +1,21 @@
+Version 0.4
+http://svn.edgewall.org/repos/genshi/tags/0.4.0/
+(?, from branches/stable/0.4.x)
+
+ * New example applications for CherryPy and web.py.
+ * Exceptions from templates now contain the absolute path to the template file
+   when a search path is used. This enables tracebacks to display the line in
+   question.
+ * The template engine plugin now provides three different types: "genshi" and
+   "genshi-markup" map to markup templates, while "genshi-text" maps to text
+   templates.
+ * The template loader now uses a LRU cache to limit the number of cached
+   templates to a configurable maximum. Also, a race condition in the template
+   loader was fixed by adding locking.
+ * A new filter (genshi.filters.HTMLFormFiller) was added, which can populate 
+   HTML forms based on a dictionary of values.
+
+
 Version 0.3.1
 http://svn.edgewall.org/repos/genshi/tags/0.3.1/
 (Sep 22 2006, from branches/stable/0.3.x)

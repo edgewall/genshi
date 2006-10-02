@@ -61,7 +61,11 @@ class HTMLFormFiller(object):
         self.data = data
 
     def __call__(self, stream, ctxt=None):
-        """Apply the filter to the given stream."""
+        """Apply the filter to the given stream.
+        
+        @param stream: the markup event stream to filter
+        @param ctxt: the template context (unused)
+        """
         in_form = in_select = in_option = in_textarea = False
         select_value = option_value = textarea_value = None
         option_start = option_text = None
@@ -169,7 +173,7 @@ class HTMLSanitizer(object):
     from the stream.
     """
 
-    _SAFE_TAGS = frozenset(['a', 'abbr', 'acronym', 'address', 'area', 'b',
+    SAFE_TAGS = frozenset(['a', 'abbr', 'acronym', 'address', 'area', 'b',
         'big', 'blockquote', 'br', 'button', 'caption', 'center', 'cite',
         'code', 'col', 'colgroup', 'dd', 'del', 'dfn', 'dir', 'div', 'dl', 'dt',
         'em', 'fieldset', 'font', 'form', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
@@ -179,7 +183,7 @@ class HTMLSanitizer(object):
         'tbody', 'td', 'textarea', 'tfoot', 'th', 'thead', 'tr', 'tt', 'u',
         'ul', 'var'])
 
-    _SAFE_ATTRS = frozenset(['abbr', 'accept', 'accept-charset', 'accesskey',
+    SAFE_ATTRS = frozenset(['abbr', 'accept', 'accept-charset', 'accesskey',
         'action', 'align', 'alt', 'axis', 'bgcolor', 'border', 'cellpadding',
         'cellspacing', 'char', 'charoff', 'charset', 'checked', 'cite', 'class',
         'clear', 'cols', 'colspan', 'color', 'compact', 'coords', 'datetime',
@@ -190,30 +194,59 @@ class HTMLSanitizer(object):
         'rows', 'rowspan', 'rules', 'scope', 'selected', 'shape', 'size',
         'span', 'src', 'start', 'style', 'summary', 'tabindex', 'target',
         'title', 'type', 'usemap', 'valign', 'value', 'vspace', 'width'])
-    _URI_ATTRS = frozenset(['action', 'background', 'dynsrc', 'href', 'lowsrc',
+
+    SAFE_SCHEMES = frozenset(['file', 'ftp', 'http', 'https', 'mailto', None])
+
+    URI_ATTRS = frozenset(['action', 'background', 'dynsrc', 'href', 'lowsrc',
         'src'])
-    _SAFE_SCHEMES = frozenset(['file', 'ftp', 'http', 'https', 'mailto', None])
+
+    def __init__(self, safe_tags=SAFE_TAGS, safe_attrs=SAFE_ATTRS,
+                 safe_schemes=SAFE_SCHEMES, uri_attrs=URI_ATTRS):
+        """Create the sanitizer.
+        
+        The exact set of allowed elements and attributes can be configured.
+        
+        @param safe_tags: a set of tag names that are considered safe
+        @param safe_attrs: a set of attribute names that are considered safe
+        @param safe_schemes: a set of URI schemes that are considered safe
+        @param uri_attrs: a set of names of attributes that contain URIs
+        """
+        self.safe_tags = safe_tags
+        self.safe_attrs = safe_attrs
+        self.uri_attrs = uri_attrs
+        self.safe_schemes = safe_schemes
 
     def __call__(self, stream, ctxt=None):
+        """Apply the filter to the given stream.
+        
+        @param stream: the markup event stream to filter
+        @param ctxt: the template context (unused)
+        """
         waiting_for = None
+
+        def _get_scheme(href):
+            if ':' not in href:
+                return None
+            chars = [char for char in href.split(':', 1)[0] if char.isalnum()]
+            return ''.join(chars).lower()
 
         for kind, data, pos in stream:
             if kind is START:
                 if waiting_for:
                     continue
                 tag, attrib = data
-                if tag not in self._SAFE_TAGS:
+                if tag not in self.safe_tags:
                     waiting_for = tag
                     continue
 
                 new_attrib = Attrs()
                 for attr, value in attrib:
                     value = stripentities(value)
-                    if attr not in self._SAFE_ATTRS:
+                    if attr not in self.safe_attrs:
                         continue
-                    elif attr in self._URI_ATTRS:
+                    elif attr in self.uri_attrs:
                         # Don't allow URI schemes such as "javascript:"
-                        if self._get_scheme(value) not in self._SAFE_SCHEMES:
+                        if _get_scheme(value) not in self.safe_schemes:
                             continue
                     elif attr == 'style':
                         # Remove dangerous CSS declarations from inline styles
@@ -223,7 +256,7 @@ class HTMLSanitizer(object):
                             if 'expression' in decl:
                                 is_evil = True
                             for m in re.finditer(r'url\s*\(([^)]+)', decl):
-                                if self._get_scheme(m.group(1)) not in self._SAFE_SCHEMES:
+                                if _get_scheme(m.group(1)) not in self.safe_schemes:
                                     is_evil = True
                                     break
                             if not is_evil:
@@ -246,12 +279,6 @@ class HTMLSanitizer(object):
             else:
                 if not waiting_for:
                     yield kind, data, pos
-
-    def _get_scheme(self, text):
-        if ':' not in text:
-            return None
-        chars = [char for char in text.split(':', 1)[0] if char.isalnum()]
-        return ''.join(chars).lower()
 
 
 class IncludeFilter(object):

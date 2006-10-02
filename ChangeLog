@@ -14,6 +14,8 @@ http://svn.edgewall.org/repos/genshi/tags/0.4.0/
    loader was fixed by adding locking.
  * A new filter (genshi.filters.HTMLFormFiller) was added, which can populate 
    HTML forms based on a dictionary of values.
+ * The set of permitted tag and attribute names for the HTMLSanitizer can now
+   be configured per instance.
 
 
 Version 0.3.1

@@ -110,8 +110,22 @@ class XHTMLSerializerTestCase(unittest.TestCase):
         output = XML(text).render(XHTMLSerializer)
         self.assertEqual(text, output)
 
+    def test_script_escaping_with_namespace(self):
+        text = """<script xmlns="http://www.w3.org/1999/xhtml">/*<![CDATA[*/
+            if (1 < 2) { alert("Doh"); }
+        /*]]>*/</script>"""
+        output = XML(text).render(XHTMLSerializer)
+        self.assertEqual(text, output)
+
     def test_style_escaping(self):
         text = """<style>/*<![CDATA[*/
+            html > body { display: none; }
+        /*]]>*/</style>"""
+        output = XML(text).render(XHTMLSerializer)
+        self.assertEqual(text, output)
+
+    def test_style_escaping_with_namespace(self):
+        text = """<style xmlns="http://www.w3.org/1999/xhtml">/*<![CDATA[*/
             html > body { display: none; }
         /*]]>*/</style>"""
         output = XML(text).render(XHTMLSerializer)
@@ -156,11 +170,29 @@ class HTMLSerializerTestCase(unittest.TestCase):
         self.assertEqual('<script>if (1 < 2) { alert("Doh"); }</script>',
                          output)
 
+    def test_script_escaping_with_namespace(self):
+        text = """<script xmlns="http://www.w3.org/1999/xhtml">
+            if (1 &lt; 2) { alert("Doh"); }
+        </script>"""
+        output = XML(text).render(HTMLSerializer)
+        self.assertEqual("""<script>
+            if (1 < 2) { alert("Doh"); }
+        </script>""", output)
+
     def test_style_escaping(self):
         text = '<style>html &gt; body { display: none; }</style>'
         output = XML(text).render(HTMLSerializer)
         self.assertEqual('<style>html > body { display: none; }</style>',
                          output)
+
+    def test_style_escaping_with_namespace(self):
+        text = """<style xmlns="http://www.w3.org/1999/xhtml">
+            html &gt; body { display: none; }
+        </style>"""
+        output = XML(text).render(HTMLSerializer)
+        self.assertEqual("""<style>
+            html > body { display: none; }
+        </style>""", output)
 
 
 class EmptyTagFilterTestCase(unittest.TestCase):

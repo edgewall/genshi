@@ -20,6 +20,8 @@ http://svn.edgewall.org/repos/genshi/tags/0.4.0/
    The were erroneously using the namespace context of the elements being
    matched, where they should rather use the context in which they were
    defined.
+ * The content of `<script>` and `<style>` elements is no longer escaped when
+   serializing to HTML but declaring the XHTML namespace in the template.
 
 
 Version 0.3.1

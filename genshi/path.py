@@ -802,7 +802,7 @@ class StartsWithFunction(Function):
     """
     __slots__ = ['string1', 'string2']
     def __init__(self, string1, string2):
-        self.string1 = string2
+        self.string1 = string1
         self.string2 = string2
     def __call__(self, kind, data, pos, namespaces, variables):
         string1 = self.string1(kind, data, pos, namespaces, variables)

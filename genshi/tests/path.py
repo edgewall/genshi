@@ -363,6 +363,8 @@ class PathTestCase(unittest.TestCase):
         xml = XML('<root><foo>bar</foo></root>')
         path = Path('*[starts-with(name(), "f")]')
         self.assertEqual('<foo>bar</foo>', path.select(xml).render())
+        path = Path('*[starts-with(name(), "b")]')
+        self.assertEqual('', path.select(xml).render())
 
     def test_predicate_string_length_function(self):
         xml = XML('<root><foo>bar</foo></root>')

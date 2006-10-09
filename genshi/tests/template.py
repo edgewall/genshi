@@ -21,7 +21,8 @@ import tempfile
 from genshi import template
 from genshi.core import Markup, Stream
 from genshi.template import BadDirectiveError, MarkupTemplate, Template, \
-                            TemplateLoader, TemplateSyntaxError, TextTemplate
+                            TemplateLoader, TemplateRuntimeError, \
+                            TemplateSyntaxError, TextTemplate
 
 
 class AttrsDirectiveTestCase(unittest.TestCase):
@@ -173,7 +174,7 @@ class ChooseDirectiveTestCase(unittest.TestCase):
         tmpl = MarkupTemplate("""<doc xmlns:py="http://genshi.edgewall.org/">
           <div py:when="xy" />
         </doc>""")
-        self.assertRaises(TemplateSyntaxError, str, tmpl.generate())
+        self.assertRaises(TemplateRuntimeError, str, tmpl.generate())
 
     def test_otherwise_outside_choose(self):
         """
@@ -183,7 +184,7 @@ class ChooseDirectiveTestCase(unittest.TestCase):
         tmpl = MarkupTemplate("""<doc xmlns:py="http://genshi.edgewall.org/">
           <div py:otherwise="" />
         </doc>""")
-        self.assertRaises(TemplateSyntaxError, str, tmpl.generate())
+        self.assertRaises(TemplateRuntimeError, str, tmpl.generate())
 
     def test_when_without_test(self):
         """
@@ -195,7 +196,7 @@ class ChooseDirectiveTestCase(unittest.TestCase):
             <py:when>foo</py:when>
           </div>
         </doc>""")
-        self.assertRaises(TemplateSyntaxError, str, tmpl.generate())
+        self.assertRaises(TemplateRuntimeError, str, tmpl.generate())
 
     def test_otherwise_without_test(self):
         """
@@ -439,6 +440,22 @@ class ForDirectiveTestCase(unittest.TestCase):
             <p>0: key=a, value=1</p>
             <p>1: key=b, value=2</p>
         </doc>""", str(tmpl.generate(items=enumerate(dict(a=1, b=2).items()))))
+
+    def test_not_iterable(self):
+        """
+        Verify that assignment to nested tuples works correctly.
+        """
+        tmpl = MarkupTemplate("""<doc xmlns:py="http://genshi.edgewall.org/">
+          <py:for each="item in foo">
+            $item
+          </py:for>
+        </doc>""", filename='test.html')
+        try:
+            list(tmpl.generate(foo=12))
+        except TemplateRuntimeError, e:
+            self.assertEqual('test.html', e.filename)
+            if sys.version_info[:2] >= (2, 4):
+                self.assertEqual(2, e.lineno)
 
 
 class IfDirectiveTestCase(unittest.TestCase):

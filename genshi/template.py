@@ -73,6 +73,19 @@ class BadDirectiveError(TemplateSyntaxError):
         TemplateSyntaxError.__init__(self, message, filename, lineno)
 
 
+class TemplateRuntimeError(TemplateError):
+    """Exception raised when an the evualation of a Python expression in a
+    template causes an error."""
+
+    def __init__(self, message, filename='<string>', lineno=-1, offset=-1):
+        self.msg = message
+        message = '%s (%s, line %d)' % (self.msg, filename, lineno)
+        TemplateError.__init__(self, message)
+        self.filename = filename
+        self.lineno = lineno
+        self.offset = offset
+
+
 class TemplateNotFound(TemplateError):
     """Exception raised when a specific template file could not be found."""
 
@@ -435,12 +448,16 @@ class ForDirective(Directive):
         assign = self.assign
         scope = {}
         stream = list(stream)
-        for item in iter(iterable):
-            assign(scope, item)
-            ctxt.push(scope)
-            for event in _apply_directives(stream, ctxt, directives):
-                yield event
-            ctxt.pop()
+        try:
+            iterator = iter(iterable)
+            for item in iterator:
+                assign(scope, item)
+                ctxt.push(scope)
+                for event in _apply_directives(stream, ctxt, directives):
+                    yield event
+                ctxt.pop()
+        except TypeError, e:
+            raise TemplateRuntimeError(str(e), *stream[0][2])
 
     def __repr__(self):
         return '<%s>' % self.__class__.__name__
@@ -652,14 +669,14 @@ class WhenDirective(Directive):
     def __call__(self, stream, ctxt, directives):
         matched, frame = ctxt._find('_choose.matched')
         if not frame:
-            raise TemplateSyntaxError('"when" directives can only be used '
-                                      'inside a "choose" directive',
-                                      *stream.next()[2])
+            raise TemplateRuntimeError('"when" directives can only be used '
+                                       'inside a "choose" directive',
+                                       *stream.next()[2])
         if matched:
             return []
         if not self.expr:
-            raise TemplateSyntaxError('"when" directive has no test condition',
-                                      *stream.next()[2])
+            raise TemplateRuntimeError('"when" directive has no test condition',
+                                       *stream.next()[2])
         value = self.expr.evaluate(ctxt)
         if '_choose.value' in frame:
             matched = (value == frame['_choose.value'])
@@ -681,9 +698,9 @@ class OtherwiseDirective(Directive):
     def __call__(self, stream, ctxt, directives):
         matched, frame = ctxt._find('_choose.matched')
         if not frame:
-            raise TemplateSyntaxError('an "otherwise" directive can only be '
-                                      'used inside a "choose" directive',
-                                      *stream.next()[2])
+            raise TemplateRuntimeError('an "otherwise" directive can only be '
+                                       'used inside a "choose" directive',
+                                       *stream.next()[2])
         if matched:
             return []
         frame['_choose.matched'] = True

@@ -1164,6 +1164,22 @@ class TemplateLoaderTestCase(unittest.TestCase):
               <div>Included</div>
             </html>""", tmpl.generate().render())
 
+    def test_relative_include_from_inmemory_template(self):
+        file1 = open(os.path.join(self.dirname, 'tmpl1.html'), 'w')
+        try:
+            file1.write("""<div>Included</div>""")
+        finally:
+            file1.close()
+
+        loader = TemplateLoader([self.dirname])
+        tmpl2 = MarkupTemplate("""<html xmlns:xi="http://www.w3.org/2001/XInclude">
+          <xi:include href="../tmpl1.html" />
+        </html>""", filename='subdir/tmpl2.html', loader=loader)
+
+        self.assertEqual("""<html>
+          <div>Included</div>
+        </html>""", tmpl2.generate().render())
+
 
 def suite():
     suite = unittest.TestSuite()

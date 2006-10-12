@@ -1314,7 +1314,7 @@ class TemplateLoader(object):
             directly
         @param cls: the class of the template object to instantiate
         """
-        if relative_to:
+        if relative_to and not os.path.isabs(relative_to):
             filename = os.path.join(os.path.dirname(relative_to), filename)
         filename = os.path.normpath(filename)
 
@@ -1329,12 +1329,21 @@ class TemplateLoader(object):
             except KeyError:
                 pass
 
-            # Bypass the search path if the filename is absolute
             search_path = self.search_path
+
             if os.path.isabs(filename):
+                # Bypass the search path if the requested filename is absolute
                 search_path = [os.path.dirname(filename)]
 
-            if not search_path:
+            elif relative_to and os.path.isabs(relative_to):
+                # Make sure that the directory containing the including
+                # template is on the search path
+                dirname = os.path.dirname(relative_to)
+                if dirname not in search_path:
+                    search_path = search_path[:] + [dirname]
+
+            elif not search_path:
+                # Uh oh, don't know where to look for the template
                 raise TemplateError('Search path for templates not configured')
 
             for dirname in search_path:
@@ -1352,7 +1361,7 @@ class TemplateLoader(object):
                 except IOError:
                     continue
 
-            raise TemplateNotFound(filename, self.search_path)
+            raise TemplateNotFound(filename, search_path)
 
         finally:
             self._lock.release()

@@ -3,12 +3,6 @@ http://svn.edgewall.org/repos/genshi/tags/0.4.0/
 (?, from branches/stable/0.4.x)
 
  * New example applications for CherryPy and web.py.
- * Exceptions from templates now contain the absolute path to the template file
-   when a search path is used. This enables tracebacks to display the line in
-   question.
- * The template engine plugin now provides three different types: "genshi" and
-   "genshi-markup" map to markup templates, while "genshi-text" maps to text
-   templates.
  * The template loader now uses a LRU cache to limit the number of cached
    templates to a configurable maximum. Also, a race condition in the template
    loader was fixed by adding locking.
@@ -16,12 +10,28 @@ http://svn.edgewall.org/repos/genshi/tags/0.4.0/
    HTML forms based on a dictionary of values.
  * The set of permitted tag and attribute names for the HTMLSanitizer can now
    be configured per instance.
+
+
+Version 0.3.2
+http://svn.edgewall.org/repos/genshi/tags/0.3.2/
+(Oct 12 2006, from branches/stable/0.3.x)
+
+ * Exceptions from templates now contain the absolute path to the template file
+   when a search path is used. This enables tracebacks to display the line in
+   question.
+ * The template engine plugin now provides three different types: "genshi" and
+   "genshi-markup" map to markup templates, while "genshi-text" maps to text
+   templates.
  * Fixed the namespace context used by XPath patterns in py:match templates.
    The were erroneously using the namespace context of the elements being
    matched, where they should rather use the context in which they were
    defined.
- * The content of `<script>` and `<style>` elements is no longer escaped when
+ * The contents of `<script>` and `<style>` elements are no longer escaped when
    serializing to HTML but declaring the XHTML namespace in the template.
+ * Improved error message raised when using the `py:for` directive on an object
+   that is not iterable (ticket #60).
+ * Fixed the XPath function `starts-with()` which was always returning true
+   (ticket #61).
 
 
 Version 0.3.1

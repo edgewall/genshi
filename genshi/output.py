@@ -298,7 +298,10 @@ class HTMLSerializer(XHTMLSerializer):
     <div><a href="foo"></a><br><hr noshade></div>
     """
 
-    _NOESCAPE_ELEMS = frozenset([QName('script'), QName('style')])
+    _NOESCAPE_ELEMS = frozenset([QName('script'),
+                                 QName('http://www.w3.org/1999/xhtml}script'),
+                                 QName('style'),
+                                 QName('http://www.w3.org/1999/xhtml}style')])
 
     def __init__(self, doctype=None, strip_whitespace=True):
         """Initialize the HTML serializer.

@@ -565,12 +565,14 @@ the including template after the point it was included.
 By default, an error will be raised if an included file is not found. If that's
 not what you want, you can specify fallback content that should be used if the
 include fails. For example, to to make the include above fail silently, you'd
-write:
+write::
 
   <xi:include href="base.html"><xi:fallback /></xi:include>
 
-See the XInclude_ for more about fallback content. Note though that Genshi
-currently only supports a small subset of XInclude.
+See the `XInclude specification`_ for more about fallback content. Note though 
+that Genshi currently only supports a small subset of XInclude.
+
+.. _`xinclude specification`: http://www.w3.org/TR/xinclude/
 
 Incudes in Genshi are fully dynamic: Just like normal attributes, the `href`
 attribute accepts expressions_, and directives_ can be used on the

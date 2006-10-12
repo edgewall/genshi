@@ -68,6 +68,19 @@ class BadDirectiveError(TemplateSyntaxError):
         TemplateSyntaxError.__init__(self, message, filename, lineno)
 
 
+class TemplateRuntimeError(TemplateError):
+    """Exception raised when an the evualation of a Python expression in a
+    template causes an error."""
+
+    def __init__(self, message, filename='<string>', lineno=-1, offset=-1):
+        self.msg = message
+        message = '%s (%s, line %d)' % (self.msg, filename, lineno)
+        TemplateError.__init__(self, message)
+        self.filename = filename
+        self.lineno = lineno
+        self.offset = offset
+
+
 class TemplateNotFound(TemplateError):
     """Exception raised when a specific template file could not be found."""
 
@@ -161,7 +174,8 @@ class Directive(object):
     """
     __slots__ = ['expr']
 
-    def __init__(self, value, filename=None, lineno=-1, offset=-1):
+    def __init__(self, value, namespaces=None, filename=None, lineno=-1,
+                 offset=-1):
         try:
             self.expr = value and Expression(value, filename, lineno) or None
         except SyntaxError, err:
@@ -340,8 +354,9 @@ class DefDirective(Directive):
 
     ATTRIBUTE = 'function'
 
-    def __init__(self, args, filename=None, lineno=-1, offset=-1):
-        Directive.__init__(self, None, filename, lineno, offset)
+    def __init__(self, args, namespaces=None, filename=None, lineno=-1,
+                 offset=-1):
+        Directive.__init__(self, None, namespaces, filename, lineno, offset)
         ast = compiler.parse(args, 'eval').node
         self.args = []
         self.defaults = {}
@@ -409,14 +424,16 @@ class ForDirective(Directive):
 
     ATTRIBUTE = 'each'
 
-    def __init__(self, value, filename=None, lineno=-1, offset=-1):
+    def __init__(self, value, namespaces=None, filename=None, lineno=-1,
+                 offset=-1):
         if ' in ' not in value:
             raise TemplateSyntaxError('"in" keyword missing in "for" directive',
                                       filename, lineno, offset)
         assign, value = value.split(' in ', 1)
         ast = compiler.parse(assign, 'exec')
         self.assign = _assignment(ast.node.nodes[0].expr)
-        Directive.__init__(self, value.strip(), filename, lineno, offset)
+        Directive.__init__(self, value.strip(), namespaces, filename, lineno,
+                           offset)
 
     def __call__(self, stream, ctxt, directives):
         iterable = self.expr.evaluate(ctxt)
@@ -426,12 +443,16 @@ class ForDirective(Directive):
         assign = self.assign
         scope = {}
         stream = list(stream)
-        for item in iter(iterable):
-            assign(scope, item)
-            ctxt.push(scope)
-            for event in _apply_directives(stream, ctxt, directives):
-                yield event
-            ctxt.pop()
+        try:
+            iterator = iter(iterable)
+            for item in iterator:
+                assign(scope, item)
+                ctxt.push(scope)
+                for event in _apply_directives(stream, ctxt, directives):
+                    yield event
+                ctxt.pop()
+        except TypeError, e:
+            raise TemplateRuntimeError(str(e), *stream[0][2])
 
     def __repr__(self):
         return '<%s>' % self.__class__.__name__
@@ -475,17 +496,22 @@ class MatchDirective(Directive):
       </span>
     </div>
     """
-    __slots__ = ['path']
+    __slots__ = ['path', 'namespaces']
 
     ATTRIBUTE = 'path'
 
-    def __init__(self, value, filename=None, lineno=-1, offset=-1):
-        Directive.__init__(self, None, filename, lineno, offset)
+    def __init__(self, value, namespaces=None, filename=None, lineno=-1,
+                 offset=-1):
+        Directive.__init__(self, None, namespaces, filename, lineno, offset)
         self.path = Path(value, filename, lineno)
+        if namespaces is None:
+            namespaces = {}
+        self.namespaces = namespaces.copy()
 
     def __call__(self, stream, ctxt, directives):
         ctxt._match_templates.append((self.path.test(ignore_context=True),
-                                      self.path, list(stream), directives))
+                                      self.path, list(stream), self.namespaces,
+                                      directives))
         return []
 
     def __repr__(self):
@@ -638,14 +664,14 @@ class WhenDirective(Directive):
     def __call__(self, stream, ctxt, directives):
         matched, frame = ctxt._find('_choose.matched')
         if not frame:
-            raise TemplateSyntaxError('"when" directives can only be used '
-                                      'inside a "choose" directive',
-                                      *stream.next()[2])
+            raise TemplateRuntimeError('"when" directives can only be used '
+                                       'inside a "choose" directive',
+                                       *stream.next()[2])
         if matched:
             return []
         if not self.expr:
-            raise TemplateSyntaxError('"when" directive has no test condition',
-                                      *stream.next()[2])
+            raise TemplateRuntimeError('"when" directive has no test condition',
+                                       *stream.next()[2])
         value = self.expr.evaluate(ctxt)
         if '_choose.value' in frame:
             matched = (value == frame['_choose.value'])
@@ -667,9 +693,9 @@ class OtherwiseDirective(Directive):
     def __call__(self, stream, ctxt, directives):
         matched, frame = ctxt._find('_choose.matched')
         if not frame:
-            raise TemplateSyntaxError('an "otherwise" directive can only be '
-                                      'used inside a "choose" directive',
-                                      *stream.next()[2])
+            raise TemplateRuntimeError('an "otherwise" directive can only be '
+                                       'used inside a "choose" directive',
+                                       *stream.next()[2])
         if matched:
             return []
         frame['_choose.matched'] = True
@@ -693,8 +719,9 @@ class WithDirective(Directive):
 
     ATTRIBUTE = 'vars'
 
-    def __init__(self, value, filename=None, lineno=-1, offset=-1):
-        Directive.__init__(self, None, filename, lineno, offset)
+    def __init__(self, value, namespaces=None, filename=None, lineno=-1,
+                 offset=-1):
+        Directive.__init__(self, None, namespaces, filename, lineno, offset)
         self.vars = []
         value = value.strip()
         try:
@@ -970,15 +997,13 @@ class MarkupTemplate(Template):
             if kind is START_NS:
                 # Strip out the namespace declaration for template directives
                 prefix, uri = data
-                if uri == self.NAMESPACE:
-                    ns_prefix[prefix] = uri
-                else:
+                ns_prefix[prefix] = uri
+                if uri != self.NAMESPACE:
                     stream.append((kind, data, pos))
 
             elif kind is END_NS:
-                if data in ns_prefix:
-                    del ns_prefix[data]
-                else:
+                uri = ns_prefix.pop(data)
+                if uri != self.NAMESPACE:
                     stream.append((kind, data, pos))
 
             elif kind is START:
@@ -992,7 +1017,7 @@ class MarkupTemplate(Template):
                     if cls is None:
                         raise BadDirectiveError(tag.localname, pos[0], pos[1])
                     value = attrib.get(getattr(cls, 'ATTRIBUTE', None), '')
-                    directives.append(cls(value, *pos))
+                    directives.append(cls(value, ns_prefix, *pos))
                     strip = True
 
                 new_attrib = []
@@ -1002,7 +1027,7 @@ class MarkupTemplate(Template):
                         if cls is None:
                             raise BadDirectiveError(name.localname, pos[0],
                                                     pos[1])
-                        directives.append(cls(value, *pos))
+                        directives.append(cls(value, ns_prefix, *pos))
                     else:
                         if value:
                             value = list(self._interpolate(value, *pos))
@@ -1054,7 +1079,6 @@ class MarkupTemplate(Template):
         """
         if match_templates is None:
             match_templates = ctxt._match_templates
-        nsprefix = {} # mapping of namespace prefixes to URIs
 
         tail = []
         def _strip(stream):
@@ -1079,15 +1103,15 @@ class MarkupTemplate(Template):
                 yield kind, data, pos
                 continue
 
-            for idx, (test, path, template, directives) in \
+            for idx, (test, path, template, namespaces, directives) in \
                     enumerate(match_templates):
 
-                if test(kind, data, pos, nsprefix, ctxt) is True:
+                if test(kind, data, pos, namespaces, ctxt) is True:
 
                     # Let the remaining match templates know about the event so
                     # they get a chance to update their internal state
                     for test in [mt[0] for mt in match_templates[idx + 1:]]:
-                        test(kind, data, pos, nsprefix, ctxt)
+                        test(kind, data, pos, namespaces, ctxt)
 
                     # Consume and store all events until an end event
                     # corresponding to this start event is encountered
@@ -1100,12 +1124,12 @@ class MarkupTemplate(Template):
 
                     kind, data, pos = tail[0]
                     for test in [mt[0] for mt in match_templates]:
-                        test(kind, data, pos, nsprefix, ctxt)
+                        test(kind, data, pos, namespaces, ctxt)
 
                     # Make the select() function available in the body of the
                     # match template
                     def select(path):
-                        return Stream(content).select(path)
+                        return Stream(content).select(path, namespaces, ctxt)
                     ctxt.push(dict(select=select))
 
                     # Recursively process the output
@@ -1195,7 +1219,7 @@ class TextTemplate(Template):
                 cls = self._dir_by_name.get(command)
                 if cls is None:
                     raise BadDirectiveError(command)
-                directive = cls(value, self.filepath, lineno, 0)
+                directive = cls(value, None, self.filepath, lineno, 0)
                 dirmap[depth] = (directive, len(stream))
                 depth += 1
 
@@ -1282,7 +1306,7 @@ class TemplateLoader(object):
             directly
         @param cls: the class of the template object to instantiate
         """
-        if relative_to:
+        if relative_to and not os.path.isabs(relative_to):
             filename = os.path.join(os.path.dirname(relative_to), filename)
         filename = os.path.normpath(filename)
 
@@ -1295,12 +1319,21 @@ class TemplateLoader(object):
         except KeyError:
             pass
 
-        # Bypass the search path if the filename is absolute
         search_path = self.search_path
+
         if os.path.isabs(filename):
+            # Bypass the search path if the requested filename is absolute
             search_path = [os.path.dirname(filename)]
 
-        if not search_path:
+        elif relative_to and os.path.isabs(relative_to):
+            # Make sure that the directory containing the including
+            # template is on the search path
+            dirname = os.path.dirname(relative_to)
+            if dirname not in search_path:
+                search_path = search_path[:] + [dirname]
+
+        elif not search_path:
+            # Uh oh, don't know where to look for the template
             raise TemplateError('Search path for templates not configured')
 
         for dirname in search_path:
@@ -1318,4 +1351,4 @@ class TemplateLoader(object):
             except IOError:
                 continue
 
-        raise TemplateNotFound(filename, self.search_path)
+        raise TemplateNotFound(filename, search_path)

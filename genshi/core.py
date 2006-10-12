@@ -146,14 +146,14 @@ class Stream(object):
             return output.encode(encoding, errors)
         return output
 
-    def select(self, path):
+    def select(self, path, namespaces=None, variables=None):
         """Return a new stream that contains the events matching the given
         XPath expression.
         
         @param path: a string containing the XPath expression
         """
         from genshi.path import Path
-        return Path(path).select(self)
+        return Path(path).select(self, namespaces, variables)
 
     def serialize(self, method='xml', **kwargs):
         """Generate strings corresponding to a specific serialization of the
@@ -508,6 +508,9 @@ class Namespace(object):
 
     def __contains__(self, qname):
         return qname.namespace == self.uri
+
+    def __ne__(self, other):
+        return not self == other
 
     def __eq__(self, other):
         if isinstance(other, Namespace):

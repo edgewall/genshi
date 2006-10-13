@@ -10,6 +10,9 @@ http://svn.edgewall.org/repos/genshi/tags/0.4.0/
    HTML forms based on a dictionary of values.
  * The set of permitted tag and attribute names for the HTMLSanitizer can now
    be configured per instance.
+ * The template engine plugin now supports a range of options for
+   configuration, for example to set the default serialization method, the
+   default output encoding, or the default DOCTYPE.
 
 
 Version 0.3.3
@@ -18,6 +21,8 @@ http://svn.edgewall.org/repos/genshi/tags/0.3.3/
 
  * Fixed bug introduced in 0.3.2 that broke the parsing of templates which
    declare the same namespace more than once in a nested fashion.
+ * Fixed the parsing of HTML entity references inside attribute values, both
+   in the `XMLParser` and the `HTMLParser` classes.
 
 
 Version 0.3.2

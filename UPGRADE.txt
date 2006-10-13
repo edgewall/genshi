@@ -1,0 +1,29 @@
+Upgrading Genshi
+================
+
+Upgrading from Markup
+---------------------
+
+Prior to version 0.3, the name of the Genshi project was "Markup". The
+name change means that you will have to adjust your import statements
+and the namespace URI of XML templates, among other things:
+
+ * The package name was changed from "markup" to "genshi". Please
+   adjust any import statements referring to the old package name.
+ * The namespace URI for directives in Genshi XML templates has changed
+   from http://markup.edgewall.org/ to http://genshi.edgewall.org/.
+   Please update the xmlns:py declaration in your template files
+   accordingly.
+
+Furthermore, due to the inclusion of a text-based template language,
+the class:
+
+  `markup.template.Template`
+
+has been renamed to:
+
+  `markup.template.MarkupTemplate`
+
+If you've been using the Template class directly, you'll need to
+update your code (a simple find/replace should do--the API itself
+did not change).

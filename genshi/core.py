@@ -22,6 +22,11 @@ __all__ = ['Stream', 'Markup', 'escape', 'unescape', 'Namespace', 'QName']
 
 class StreamEventKind(str):
     """A kind of event on an XML stream."""
+    __slots__ = []
+    _instances = {}
+
+    def __new__(cls, val):
+        return cls._instances.setdefault(val, str.__new__(cls, val))
 
 
 class Stream(object):
@@ -146,14 +151,14 @@ class Stream(object):
             return output.encode(encoding, errors)
         return output
 
-    def select(self, path):
+    def select(self, path, namespaces=None, variables=None):
         """Return a new stream that contains the events matching the given
         XPath expression.
         
         @param path: a string containing the XPath expression
         """
         from genshi.path import Path
-        return Path(path).select(self)
+        return Path(path).select(self, namespaces, variables)
 
     def serialize(self, method='xml', **kwargs):
         """Generate strings corresponding to a specific serialization of the
@@ -208,7 +213,7 @@ def _ensure(stream):
         yield event
 
 try:
-    from markup._speedups import _ensure
+    from genshi._speedups import _ensure
 except ImportError:
     pass # just use the Python implementation
 
@@ -455,7 +460,7 @@ class Markup(unicode):
 
 
 try:
-    from markup._speedups import Markup
+    from genshi._speedups import Markup
 except ImportError:
     pass # just use the Python implementation
 
@@ -513,11 +518,23 @@ class Namespace(object):
             return uri
         return object.__new__(cls, uri)
 
+    def __getnewargs__(self):
+        return (self.uri,)
+
+    def __getstate__(self):
+        return self.uri
+
+    def __setstate__(self, uri):
+        self.uri = uri
+
     def __init__(self, uri):
         self.uri = unicode(uri)
 
     def __contains__(self, qname):
         return qname.namespace == self.uri
+
+    def __ne__(self, other):
+        return not self == other
 
     def __eq__(self, other):
         if isinstance(other, Namespace):
@@ -579,3 +596,6 @@ class QName(unicode):
             self = unicode.__new__(cls, qname)
             self.namespace, self.localname = None, unicode(qname)
         return self
+
+    def __getnewargs__(self):
+        return (self.lstrip('{'),)

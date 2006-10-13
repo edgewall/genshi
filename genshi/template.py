@@ -13,6 +13,7 @@
 
 """Implementation of the template engine."""
 
+from itertools import chain
 try:
     from collections import deque
 except ImportError:
@@ -23,15 +24,21 @@ import compiler
 import os
 import re
 from StringIO import StringIO
+try:
+    import threading
+except ImportError:
+    import dummythreading as threading
 
 from genshi.core import Attrs, Namespace, Stream, StreamEventKind, _ensure
 from genshi.core import START, END, START_NS, END_NS, TEXT, COMMENT
 from genshi.eval import Expression
 from genshi.input import XMLParser
 from genshi.path import Path
+from genshi.util import LRUCache
 
-__all__ = ['BadDirectiveError', 'TemplateError', 'TemplateSyntaxError',
-           'TemplateNotFound', 'Template', 'TemplateLoader']
+__all__ = ['BadDirectiveError', 'MarkupTemplate', 'Template', 'TemplateError',
+           'TemplateSyntaxError', 'TemplateNotFound', 'TemplateLoader',
+           'TextTemplate']
 
 
 class TemplateError(Exception):
@@ -64,6 +71,19 @@ class BadDirectiveError(TemplateSyntaxError):
     def __init__(self, name, filename='<string>', lineno=-1):
         message = 'bad directive "%s"' % name
         TemplateSyntaxError.__init__(self, message, filename, lineno)
+
+
+class TemplateRuntimeError(TemplateError):
+    """Exception raised when an the evualation of a Python expression in a
+    template causes an error."""
+
+    def __init__(self, message, filename='<string>', lineno=-1, offset=-1):
+        self.msg = message
+        message = '%s (%s, line %d)' % (self.msg, filename, lineno)
+        TemplateError.__init__(self, message)
+        self.filename = filename
+        self.lineno = lineno
+        self.offset = offset
 
 
 class TemplateNotFound(TemplateError):
@@ -106,7 +126,7 @@ class Context(object):
         self._match_templates = []
 
     def __repr__(self):
-        return repr(self.frames)
+        return repr(list(self.frames))
 
     def __setitem__(self, key, value):
         """Set a variable in the current scope."""
@@ -159,7 +179,8 @@ class Directive(object):
     """
     __slots__ = ['expr']
 
-    def __init__(self, value, filename=None, lineno=-1, offset=-1):
+    def __init__(self, value, namespaces=None, filename=None, lineno=-1,
+                 offset=-1):
         try:
             self.expr = value and Expression(value, filename, lineno) or None
         except SyntaxError, err:
@@ -216,7 +237,7 @@ class AttrsDirective(Directive):
     of `(name, value)` tuples. The items in that dictionary or sequence are
     added as attributes to the element:
     
-    >>> tmpl = Template('''<ul xmlns:py="http://genshi.edgewall.org/">
+    >>> tmpl = MarkupTemplate('''<ul xmlns:py="http://genshi.edgewall.org/">
     ...   <li py:attrs="foo">Bar</li>
     ... </ul>''')
     >>> print tmpl.generate(foo={'class': 'collapse'})
@@ -269,7 +290,7 @@ class ContentDirective(Directive):
     This directive replaces the content of the element with the result of
     evaluating the value of the `py:content` attribute:
     
-    >>> tmpl = Template('''<ul xmlns:py="http://genshi.edgewall.org/">
+    >>> tmpl = MarkupTemplate('''<ul xmlns:py="http://genshi.edgewall.org/">
     ...   <li py:content="bar">Hello</li>
     ... </ul>''')
     >>> print tmpl.generate(bar='Bye')
@@ -305,7 +326,7 @@ class DefDirective(Directive):
     A named template function can be used just like a normal Python function
     from template expressions:
     
-    >>> tmpl = Template('''<div xmlns:py="http://genshi.edgewall.org/">
+    >>> tmpl = MarkupTemplate('''<div xmlns:py="http://genshi.edgewall.org/">
     ...   <p py:def="echo(greeting, name='world')" class="message">
     ...     ${greeting}, ${name}!
     ...   </p>
@@ -321,7 +342,7 @@ class DefDirective(Directive):
     If a function does not require parameters, the parenthesis can be omitted
     both when defining and when calling it:
     
-    >>> tmpl = Template('''<div xmlns:py="http://genshi.edgewall.org/">
+    >>> tmpl = MarkupTemplate('''<div xmlns:py="http://genshi.edgewall.org/">
     ...   <p py:def="helloworld" class="message">
     ...     Hello, world!
     ...   </p>
@@ -338,8 +359,9 @@ class DefDirective(Directive):
 
     ATTRIBUTE = 'function'
 
-    def __init__(self, args, filename=None, lineno=-1, offset=-1):
-        Directive.__init__(self, None, filename, lineno, offset)
+    def __init__(self, args, namespaces=None, filename=None, lineno=-1,
+                 offset=-1):
+        Directive.__init__(self, None, namespaces, filename, lineno, offset)
         ast = compiler.parse(args, 'eval').node
         self.args = []
         self.defaults = {}
@@ -382,6 +404,7 @@ class DefDirective(Directive):
 
         # Store the function reference in the bottom context frame so that it
         # doesn't get popped off before processing the template has finished
+        # FIXME: this makes context data mutable as a side-effect
         ctxt.frames[-1][self.name] = function
 
         return []
@@ -394,7 +417,7 @@ class ForDirective(Directive):
     """Implementation of the `py:for` template directive for repeating an
     element based on an iterable in the context data.
     
-    >>> tmpl = Template('''<ul xmlns:py="http://genshi.edgewall.org/">
+    >>> tmpl = MarkupTemplate('''<ul xmlns:py="http://genshi.edgewall.org/">
     ...   <li py:for="item in items">${item}</li>
     ... </ul>''')
     >>> print tmpl.generate(items=[1, 2, 3])
@@ -402,18 +425,21 @@ class ForDirective(Directive):
       <li>1</li><li>2</li><li>3</li>
     </ul>
     """
-    __slots__ = ['assign']
+    __slots__ = ['assign', 'filename']
 
     ATTRIBUTE = 'each'
 
-    def __init__(self, value, filename=None, lineno=-1, offset=-1):
+    def __init__(self, value, namespaces=None, filename=None, lineno=-1,
+                 offset=-1):
         if ' in ' not in value:
             raise TemplateSyntaxError('"in" keyword missing in "for" directive',
                                       filename, lineno, offset)
         assign, value = value.split(' in ', 1)
         ast = compiler.parse(assign, 'exec')
         self.assign = _assignment(ast.node.nodes[0].expr)
-        Directive.__init__(self, value.strip(), filename, lineno, offset)
+        self.filename = filename
+        Directive.__init__(self, value.strip(), namespaces, filename, lineno,
+                           offset)
 
     def __call__(self, stream, ctxt, directives):
         iterable = self.expr.evaluate(ctxt)
@@ -423,23 +449,26 @@ class ForDirective(Directive):
         assign = self.assign
         scope = {}
         stream = list(stream)
-        for item in iter(iterable):
-            assign(scope, item)
-            ctxt.push(scope)
-            for event in _apply_directives(stream, ctxt, directives):
-                yield event
-            ctxt.pop()
+        try:
+            iterator = iter(iterable)
+            for item in iterator:
+                assign(scope, item)
+                ctxt.push(scope)
+                for event in _apply_directives(stream, ctxt, directives):
+                    yield event
+                ctxt.pop()
+        except TypeError, e:
+            raise TemplateRuntimeError(str(e), self.filename, *stream[0][2][1:])
 
     def __repr__(self):
-        return '<%s "%s in %s">' % (self.__class__.__name__,
-                                    ', '.join(self.targets), self.expr.source)
+        return '<%s>' % self.__class__.__name__
 
 
 class IfDirective(Directive):
     """Implementation of the `py:if` template directive for conditionally
     excluding elements from being output.
     
-    >>> tmpl = Template('''<div xmlns:py="http://genshi.edgewall.org/">
+    >>> tmpl = MarkupTemplate('''<div xmlns:py="http://genshi.edgewall.org/">
     ...   <b py:if="foo">${bar}</b>
     ... </div>''')
     >>> print tmpl.generate(foo=True, bar='Hello')
@@ -460,7 +489,7 @@ class IfDirective(Directive):
 class MatchDirective(Directive):
     """Implementation of the `py:match` template directive.
 
-    >>> tmpl = Template('''<div xmlns:py="http://genshi.edgewall.org/">
+    >>> tmpl = MarkupTemplate('''<div xmlns:py="http://genshi.edgewall.org/">
     ...   <span py:match="greeting">
     ...     Hello ${select('@name')}
     ...   </span>
@@ -473,17 +502,22 @@ class MatchDirective(Directive):
       </span>
     </div>
     """
-    __slots__ = ['path']
+    __slots__ = ['path', 'namespaces']
 
     ATTRIBUTE = 'path'
 
-    def __init__(self, value, filename=None, lineno=-1, offset=-1):
-        Directive.__init__(self, None, filename, lineno, offset)
+    def __init__(self, value, namespaces=None, filename=None, lineno=-1,
+                 offset=-1):
+        Directive.__init__(self, None, namespaces, filename, lineno, offset)
         self.path = Path(value, filename, lineno)
+        if namespaces is None:
+            namespaces = {}
+        self.namespaces = namespaces.copy()
 
     def __call__(self, stream, ctxt, directives):
         ctxt._match_templates.append((self.path.test(ignore_context=True),
-                                      self.path, list(stream), directives))
+                                      self.path, list(stream), self.namespaces,
+                                      directives))
         return []
 
     def __repr__(self):
@@ -496,7 +530,7 @@ class ReplaceDirective(Directive):
     This directive replaces the element with the result of evaluating the
     value of the `py:replace` attribute:
     
-    >>> tmpl = Template('''<div xmlns:py="http://genshi.edgewall.org/">
+    >>> tmpl = MarkupTemplate('''<div xmlns:py="http://genshi.edgewall.org/">
     ...   <span py:replace="bar">Hello</span>
     ... </div>''')
     >>> print tmpl.generate(bar='Bye')
@@ -507,7 +541,7 @@ class ReplaceDirective(Directive):
     This directive is equivalent to `py:content` combined with `py:strip`,
     providing a less verbose way to achieve the same effect:
     
-    >>> tmpl = Template('''<div xmlns:py="http://genshi.edgewall.org/">
+    >>> tmpl = MarkupTemplate('''<div xmlns:py="http://genshi.edgewall.org/">
     ...   <span py:content="bar" py:strip="">Hello</span>
     ... </div>''')
     >>> print tmpl.generate(bar='Bye')
@@ -528,7 +562,7 @@ class StripDirective(Directive):
     When the value of the `py:strip` attribute evaluates to `True`, the element
     is stripped from the output
     
-    >>> tmpl = Template('''<div xmlns:py="http://genshi.edgewall.org/">
+    >>> tmpl = MarkupTemplate('''<div xmlns:py="http://genshi.edgewall.org/">
     ...   <div py:strip="True"><b>foo</b></div>
     ... </div>''')
     >>> print tmpl.generate()
@@ -541,7 +575,7 @@ class StripDirective(Directive):
     This directive is particulary interesting for named template functions or
     match templates that do not generate a top-level element:
     
-    >>> tmpl = Template('''<div xmlns:py="http://genshi.edgewall.org/">
+    >>> tmpl = MarkupTemplate('''<div xmlns:py="http://genshi.edgewall.org/">
     ...   <div py:def="echo(what)" py:strip="">
     ...     <b>${what}</b>
     ...   </div>
@@ -582,7 +616,7 @@ class ChooseDirective(Directive):
     If no `py:when` directive is matched then the fallback directive
     `py:otherwise` will be used.
     
-    >>> tmpl = Template('''<div xmlns:py="http://genshi.edgewall.org/"
+    >>> tmpl = MarkupTemplate('''<div xmlns:py="http://genshi.edgewall.org/"
     ...   py:choose="">
     ...   <span py:when="0 == 1">0</span>
     ...   <span py:when="1 == 1">1</span>
@@ -596,7 +630,7 @@ class ChooseDirective(Directive):
     If the `py:choose` directive contains an expression, the nested `py:when`
     directives are tested for equality to the `py:choose` expression:
     
-    >>> tmpl = Template('''<div xmlns:py="http://genshi.edgewall.org/"
+    >>> tmpl = MarkupTemplate('''<div xmlns:py="http://genshi.edgewall.org/"
     ...   py:choose="2">
     ...   <span py:when="1">1</span>
     ...   <span py:when="2">2</span>
@@ -630,25 +664,35 @@ class WhenDirective(Directive):
     
     See the documentation of `py:choose` for usage.
     """
+    __slots__ = ['filename']
 
     ATTRIBUTE = 'test'
+
+    def __init__(self, value, namespaces=None, filename=None, lineno=-1,
+                 offset=-1):
+        Directive.__init__(self, value, namespaces, filename, lineno, offset)
+        self.filename = filename
 
     def __call__(self, stream, ctxt, directives):
         matched, frame = ctxt._find('_choose.matched')
         if not frame:
-            raise TemplateSyntaxError('"when" directives can only be used '
-                                      'inside a "choose" directive',
-                                      *stream.next()[2])
+            raise TemplateRuntimeError('"when" directives can only be used '
+                                       'inside a "choose" directive',
+                                       self.filename, *stream.next()[2][1:])
         if matched:
             return []
-        if not self.expr:
-            raise TemplateSyntaxError('"when" directive has no test condition',
-                                      *stream.next()[2])
-        value = self.expr.evaluate(ctxt)
+        if not self.expr and '_choose.value' not in frame:
+            raise TemplateRuntimeError('either "choose" or "when" directive '
+                                       'must have a test expression',
+                                       self.filename, *stream.next()[2][1:])
         if '_choose.value' in frame:
-            matched = (value == frame['_choose.value'])
+            value = frame['_choose.value']
+            if self.expr:
+                matched = value == self.expr.evaluate(ctxt)
+            else:
+                matched = bool(value)
         else:
-            matched = bool(value)
+            matched = bool(self.expr.evaluate(ctxt))
         frame['_choose.matched'] = matched
         if not matched:
             return []
@@ -662,12 +706,19 @@ class OtherwiseDirective(Directive):
     
     See the documentation of `py:choose` for usage.
     """
+    __slots__ = ['filename']
+
+    def __init__(self, value, namespaces=None, filename=None, lineno=-1,
+                 offset=-1):
+        Directive.__init__(self, None, namespaces, filename, lineno, offset)
+        self.filename = filename
+
     def __call__(self, stream, ctxt, directives):
         matched, frame = ctxt._find('_choose.matched')
         if not frame:
-            raise TemplateSyntaxError('an "otherwise" directive can only be '
-                                      'used inside a "choose" directive',
-                                      *stream.next()[2])
+            raise TemplateRuntimeError('an "otherwise" directive can only be '
+                                       'used inside a "choose" directive',
+                                       self.filename, *stream.next()[2][1:])
         if matched:
             return []
         frame['_choose.matched'] = True
@@ -679,7 +730,7 @@ class WithDirective(Directive):
     """Implementation of the `py:with` template directive, which allows
     shorthand access to variables and expressions.
     
-    >>> tmpl = Template('''<div xmlns:py="http://genshi.edgewall.org/">
+    >>> tmpl = MarkupTemplate('''<div xmlns:py="http://genshi.edgewall.org/">
     ...   <span py:with="y=7; z=x+10">$x $y $z</span>
     ... </div>''')
     >>> print tmpl.generate(x=42)
@@ -691,8 +742,9 @@ class WithDirective(Directive):
 
     ATTRIBUTE = 'vars'
 
-    def __init__(self, value, filename=None, lineno=-1, offset=-1):
-        Directive.__init__(self, None, filename, lineno, offset)
+    def __init__(self, value, namespaces=None, filename=None, lineno=-1,
+                 offset=-1):
+        Directive.__init__(self, None, namespaces, filename, lineno, offset)
         self.vars = []
         value = value.strip()
         try:
@@ -724,36 +776,32 @@ class WithDirective(Directive):
         ctxt.pop()
 
     def __repr__(self):
-        return '<%s "%s">' % (self.__class__.__name__,
-                              '; '.join(['%s = %s' % (name, expr.source)
-                                         for name, expr in self.vars]))
+        return '<%s>' % (self.__class__.__name__)
+
+
+class TemplateMeta(type):
+    """Meta class for templates."""
+
+    def __new__(cls, name, bases, d):
+        if 'directives' in d:
+            d['_dir_by_name'] = dict(d['directives'])
+            d['_dir_order'] = [directive[1] for directive in d['directives']]
+
+        return type.__new__(cls, name, bases, d)
 
 
 class Template(object):
-    """Can parse a template and transform it into the corresponding output
-    based on context data.
+    """Abstract template base class.
+    
+    This class implements most of the template processing model, but does not
+    specify the syntax of templates.
     """
-    NAMESPACE = Namespace('http://genshi.edgewall.org/')
+    __metaclass__ = TemplateMeta
 
     EXPR = StreamEventKind('EXPR') # an expression
     SUB = StreamEventKind('SUB') # a "subprogram"
 
-    directives = [('def', DefDirective),
-                  ('match', MatchDirective),
-                  ('when', WhenDirective),
-                  ('otherwise', OtherwiseDirective),
-                  ('for', ForDirective),
-                  ('if', IfDirective),
-                  ('choose', ChooseDirective),
-                  ('with', WithDirective),
-                  ('replace', ReplaceDirective),
-                  ('content', ContentDirective),
-                  ('attrs', AttrsDirective),
-                  ('strip', StripDirective)]
-    _dir_by_name = dict(directives)
-    _dir_order = [directive[1] for directive in directives]
-
-    def __init__(self, source, basedir=None, filename=None):
+    def __init__(self, source, basedir=None, filename=None, loader=None):
         """Initialize a template from either a string or a file-like object."""
         if isinstance(source, basestring):
             self.source = StringIO(source)
@@ -764,114 +812,30 @@ class Template(object):
         if basedir and filename:
             self.filepath = os.path.join(basedir, filename)
         else:
-            self.filepath = None
+            self.filepath = filename
 
-        self.filters = []
-        self.stream = self.parse()
+        self.filters = [self._flatten, self._eval]
+
+        self.stream = self._parse()
 
     def __repr__(self):
         return '<%s "%s">' % (self.__class__.__name__, self.filename)
 
-    def parse(self):
+    def _parse(self):
         """Parse the template.
         
-        The parsing stage parses the XML template and constructs a list of
+        The parsing stage parses the template and constructs a list of
         directives that will be executed in the render stage. The input is
-        split up into literal output (markup that does not depend on the
-        context data) and actual directives (commands or variable
-        substitution).
+        split up into literal output (text that does not depend on the context
+        data) and directives or expressions.
         """
-        stream = [] # list of events of the "compiled" template
-        dirmap = {} # temporary mapping of directives to elements
-        ns_prefix = {}
-        depth = 0
-
-        for kind, data, pos in XMLParser(self.source, filename=self.filename):
-
-            if kind is START_NS:
-                # Strip out the namespace declaration for template directives
-                prefix, uri = data
-                if uri == self.NAMESPACE:
-                    ns_prefix[prefix] = uri
-                else:
-                    stream.append((kind, data, pos))
-
-            elif kind is END_NS:
-                if data in ns_prefix:
-                    del ns_prefix[data]
-                else:
-                    stream.append((kind, data, pos))
-
-            elif kind is START:
-                # Record any directive attributes in start tags
-                tag, attrib = data
-                directives = []
-                strip = False
-
-                if tag in self.NAMESPACE:
-                    cls = self._dir_by_name.get(tag.localname)
-                    if cls is None:
-                        raise BadDirectiveError(tag.localname, pos[0], pos[1])
-                    value = attrib.get(getattr(cls, 'ATTRIBUTE', None), '')
-                    directives.append(cls(value, *pos))
-                    strip = True
-
-                new_attrib = []
-                for name, value in attrib:
-                    if name in self.NAMESPACE:
-                        cls = self._dir_by_name.get(name.localname)
-                        if cls is None:
-                            raise BadDirectiveError(name.localname, pos[0],
-                                                    pos[1])
-                        directives.append(cls(value, *pos))
-                    else:
-                        if value:
-                            value = list(self._interpolate(value, *pos))
-                            if len(value) == 1 and value[0][0] is TEXT:
-                                value = value[0][1]
-                        else:
-                            value = [(TEXT, u'', pos)]
-                        new_attrib.append((name, value))
-
-                if directives:
-                    directives.sort(lambda a, b: cmp(self._dir_order.index(a.__class__),
-                                                     self._dir_order.index(b.__class__)))
-                    dirmap[(depth, tag)] = (directives, len(stream), strip)
-
-                stream.append((kind, (tag, Attrs(new_attrib)), pos))
-                depth += 1
-
-            elif kind is END:
-                depth -= 1
-                stream.append((kind, data, pos))
-
-                # If there have have directive attributes with the corresponding
-                # start tag, move the events inbetween into a "subprogram"
-                if (depth, data) in dirmap:
-                    directives, start_offset, strip = dirmap.pop((depth, data))
-                    substream = stream[start_offset:]
-                    if strip:
-                        substream = substream[1:-1]
-                    stream[start_offset:] = [(SUB, (directives, substream),
-                                              pos)]
-
-            elif kind is TEXT:
-                for kind, data, pos in self._interpolate(data, *pos):
-                    stream.append((kind, data, pos))
-
-            elif kind is COMMENT:
-                if not data.lstrip().startswith('!'):
-                    stream.append((kind, data, pos))
-
-            else:
-                stream.append((kind, data, pos))
-
-        return stream
+        raise NotImplementedError
 
     _FULL_EXPR_RE = re.compile(r'(?<!\$)\$\{(.+?)\}', re.DOTALL)
-    _SHORT_EXPR_RE = re.compile(r'(?<!\$)\$([a-zA-Z][a-zA-Z0-9_\.]*)')
+    _SHORT_EXPR_RE = re.compile(r'(?<!\$)\$([a-zA-Z_][a-zA-Z0-9_\.]*)')
 
-    def _interpolate(cls, text, filename=None, lineno=-1, offset=-1):
+    def _interpolate(cls, text, basedir=None, filename=None, lineno=-1,
+                     offset=0):
         """Parse the given string and extract expressions.
         
         This method returns a list containing both literal text and `Expression`
@@ -931,11 +895,11 @@ class Template(object):
             ctxt = Context(**kwargs)
 
         stream = self.stream
-        for filter_ in [self._flatten, self._eval, self._match] + self.filters:
+        for filter_ in self.filters:
             stream = filter_(iter(stream), ctxt)
         return Stream(stream)
 
-    def _eval(self, stream, ctxt=None):
+    def _eval(self, stream, ctxt):
         """Internal stream filter that evaluates any expressions in `START` and
         `TEXT` events.
         """
@@ -991,7 +955,7 @@ class Template(object):
             else:
                 yield kind, data, pos
 
-    def _flatten(self, stream, ctxt=None):
+    def _flatten(self, stream, ctxt):
         """Internal stream filter that expands `SUB` events in the stream."""
         for kind, data, pos in stream:
             if kind is SUB:
@@ -1004,13 +968,146 @@ class Template(object):
             else:
                 yield kind, data, pos
 
-    def _match(self, stream, ctxt=None, match_templates=None):
+
+EXPR = Template.EXPR
+SUB = Template.SUB
+
+
+class MarkupTemplate(Template):
+    """Implementation of the template language for XML-based templates.
+    
+    >>> tmpl = MarkupTemplate('''<ul xmlns:py="http://genshi.edgewall.org/">
+    ...   <li py:for="item in items">${item}</li>
+    ... </ul>''')
+    >>> print tmpl.generate(items=[1, 2, 3])
+    <ul>
+      <li>1</li><li>2</li><li>3</li>
+    </ul>
+    """
+    NAMESPACE = Namespace('http://genshi.edgewall.org/')
+
+    directives = [('def', DefDirective),
+                  ('match', MatchDirective),
+                  ('when', WhenDirective),
+                  ('otherwise', OtherwiseDirective),
+                  ('for', ForDirective),
+                  ('if', IfDirective),
+                  ('choose', ChooseDirective),
+                  ('with', WithDirective),
+                  ('replace', ReplaceDirective),
+                  ('content', ContentDirective),
+                  ('attrs', AttrsDirective),
+                  ('strip', StripDirective)]
+
+    def __init__(self, source, basedir=None, filename=None, loader=None):
+        """Initialize a template from either a string or a file-like object."""
+        Template.__init__(self, source, basedir=basedir, filename=filename,
+                          loader=loader)
+
+        self.filters.append(self._match)
+        if loader:
+            from genshi.filters import IncludeFilter
+            self.filters.append(IncludeFilter(loader))
+
+    def _parse(self):
+        """Parse the template from an XML document."""
+        stream = [] # list of events of the "compiled" template
+        dirmap = {} # temporary mapping of directives to elements
+        ns_prefix = {}
+        depth = 0
+
+        for kind, data, pos in XMLParser(self.source, filename=self.filename):
+
+            if kind is START_NS:
+                # Strip out the namespace declaration for template directives
+                prefix, uri = data
+                ns_prefix[prefix] = uri
+                if uri != self.NAMESPACE:
+                    stream.append((kind, data, pos))
+
+            elif kind is END_NS:
+                uri = ns_prefix.pop(data, None)
+                if uri and uri != self.NAMESPACE:
+                    stream.append((kind, data, pos))
+
+            elif kind is START:
+                # Record any directive attributes in start tags
+                tag, attrib = data
+                directives = []
+                strip = False
+
+                if tag in self.NAMESPACE:
+                    cls = self._dir_by_name.get(tag.localname)
+                    if cls is None:
+                        raise BadDirectiveError(tag.localname, self.filepath,
+                                                pos[1])
+                    value = attrib.get(getattr(cls, 'ATTRIBUTE', None), '')
+                    directives.append(cls(value, ns_prefix, self.filepath,
+                                          pos[1], pos[2]))
+                    strip = True
+
+                new_attrib = []
+                for name, value in attrib:
+                    if name in self.NAMESPACE:
+                        cls = self._dir_by_name.get(name.localname)
+                        if cls is None:
+                            raise BadDirectiveError(name.localname,
+                                                    self.filepath, pos[1])
+                        directives.append(cls(value, ns_prefix, self.filepath,
+                                              pos[1], pos[2]))
+                    else:
+                        if value:
+                            value = list(self._interpolate(value, self.basedir,
+                                                           *pos))
+                            if len(value) == 1 and value[0][0] is TEXT:
+                                value = value[0][1]
+                        else:
+                            value = [(TEXT, u'', pos)]
+                        new_attrib.append((name, value))
+
+                if directives:
+                    index = self._dir_order.index
+                    directives.sort(lambda a, b: cmp(index(a.__class__),
+                                                     index(b.__class__)))
+                    dirmap[(depth, tag)] = (directives, len(stream), strip)
+
+                stream.append((kind, (tag, Attrs(new_attrib)), pos))
+                depth += 1
+
+            elif kind is END:
+                depth -= 1
+                stream.append((kind, data, pos))
+
+                # If there have have directive attributes with the corresponding
+                # start tag, move the events inbetween into a "subprogram"
+                if (depth, data) in dirmap:
+                    directives, start_offset, strip = dirmap.pop((depth, data))
+                    substream = stream[start_offset:]
+                    if strip:
+                        substream = substream[1:-1]
+                    stream[start_offset:] = [(SUB, (directives, substream),
+                                              pos)]
+
+            elif kind is TEXT:
+                for kind, data, pos in self._interpolate(data, self.basedir,
+                                                         *pos):
+                    stream.append((kind, data, pos))
+
+            elif kind is COMMENT:
+                if not data.lstrip().startswith('!'):
+                    stream.append((kind, data, pos))
+
+            else:
+                stream.append((kind, data, pos))
+
+        return stream
+
+    def _match(self, stream, ctxt, match_templates=None):
         """Internal stream filter that applies any defined match templates
         to the stream.
         """
         if match_templates is None:
             match_templates = ctxt._match_templates
-        nsprefix = {} # mapping of namespace prefixes to URIs
 
         tail = []
         def _strip(stream):
@@ -1035,29 +1132,33 @@ class Template(object):
                 yield kind, data, pos
                 continue
 
-            for idx, (test, path, template, directives) in \
+            for idx, (test, path, template, namespaces, directives) in \
                     enumerate(match_templates):
 
-                if test(kind, data, pos, nsprefix, ctxt) is True:
+                if test(kind, data, pos, namespaces, ctxt) is True:
 
                     # Let the remaining match templates know about the event so
                     # they get a chance to update their internal state
                     for test in [mt[0] for mt in match_templates[idx + 1:]]:
-                        test(kind, data, pos, nsprefix, ctxt)
+                        test(kind, data, pos, namespaces, ctxt)
 
                     # Consume and store all events until an end event
                     # corresponding to this start event is encountered
-                    content = [(kind, data, pos)]
-                    content += list(self._match(_strip(stream), ctxt)) + tail
+                    content = chain([(kind, data, pos)],
+                                    self._match(_strip(stream), ctxt),
+                                    tail)
+                    for filter_ in self.filters[3:]:
+                        content = filter_(content, ctxt)
+                    content = list(content)
 
                     kind, data, pos = tail[0]
                     for test in [mt[0] for mt in match_templates]:
-                        test(kind, data, pos, nsprefix, ctxt)
+                        test(kind, data, pos, namespaces, ctxt)
 
                     # Make the select() function available in the body of the
                     # match template
                     def select(path):
-                        return Stream(content).select(path)
+                        return Stream(content).select(path, namespaces, ctxt)
                     ctxt.push(dict(select=select))
 
                     # Recursively process the output
@@ -1076,8 +1177,90 @@ class Template(object):
                 yield kind, data, pos
 
 
-EXPR = Template.EXPR
-SUB = Template.SUB
+class TextTemplate(Template):
+    """Implementation of a simple text-based template engine.
+    
+    >>> tmpl = TextTemplate('''Dear $name,
+    ... 
+    ... We have the following items for you:
+    ... #for item in items
+    ...  * $item
+    ... #end
+    ... 
+    ... All the best,
+    ... Foobar''')
+    >>> print tmpl.generate(name='Joe', items=[1, 2, 3]).render('text')
+    Dear Joe,
+    <BLANKLINE>
+    We have the following items for you:
+     * 1
+     * 2
+     * 3
+    <BLANKLINE>
+    All the best,
+    Foobar
+    """
+    directives = [('def', DefDirective),
+                  ('when', WhenDirective),
+                  ('otherwise', OtherwiseDirective),
+                  ('for', ForDirective),
+                  ('if', IfDirective),
+                  ('choose', ChooseDirective),
+                  ('with', WithDirective)]
+
+    _DIRECTIVE_RE = re.compile(r'^\s*(?<!\\)#((?:\w+|#).*)\n?', re.MULTILINE)
+
+    def _parse(self):
+        """Parse the template from text input."""
+        stream = [] # list of events of the "compiled" template
+        dirmap = {} # temporary mapping of directives to elements
+        depth = 0
+
+        source = self.source.read()
+        offset = 0
+        lineno = 1
+
+        for idx, mo in enumerate(self._DIRECTIVE_RE.finditer(source)):
+            start, end = mo.span()
+            if start > offset:
+                text = source[offset:start]
+                for kind, data, pos in self._interpolate(text, self.basedir,
+                                                         self.filename, lineno):
+                    stream.append((kind, data, pos))
+                lineno += len(text.splitlines())
+
+            text = source[start:end].lstrip()[1:]
+            lineno += len(text.splitlines())
+            directive = text.split(None, 1)
+            if len(directive) > 1:
+                command, value = directive
+            else:
+                command, value = directive[0], None
+
+            if command == 'end':
+                depth -= 1
+                if depth in dirmap:
+                    directive, start_offset = dirmap.pop(depth)
+                    substream = stream[start_offset:]
+                    stream[start_offset:] = [(SUB, ([directive], substream),
+                                              (self.filepath, lineno, 0))]
+            elif command != '#':
+                cls = self._dir_by_name.get(command)
+                if cls is None:
+                    raise BadDirectiveError(command)
+                directive = cls(value, None, self.filepath, lineno, 0)
+                dirmap[depth] = (directive, len(stream))
+                depth += 1
+
+            offset = end
+
+        if offset < len(source):
+            text = source[offset:].replace('\\#', '#')
+            for kind, data, pos in self._interpolate(text, self.basedir,
+                                                     self.filename, lineno):
+                stream.append((kind, data, pos))
+
+        return stream
 
 
 class TemplateLoader(object):
@@ -1100,7 +1283,7 @@ class TemplateLoader(object):
     template file, and returns the corresponding `Template` object:
     
     >>> template = loader.load(os.path.basename(path))
-    >>> isinstance(template, Template)
+    >>> isinstance(template, MarkupTemplate)
     True
     
     Template instances are cached: requesting a template with the same name
@@ -1111,22 +1294,25 @@ class TemplateLoader(object):
     
     >>> os.remove(path)
     """
-    def __init__(self, search_path=None, auto_reload=False):
+    def __init__(self, search_path=None, auto_reload=False, max_cache_size=25):
         """Create the template laoder.
         
         @param search_path: a list of absolute path names that should be
             searched for template files
         @param auto_reload: whether to check the last modification time of
             template files, and reload them if they have changed
+        @param max_cache_size: the maximum number of templates to keep in the
+            cache
         """
         self.search_path = search_path
         if self.search_path is None:
             self.search_path = []
         self.auto_reload = auto_reload
-        self._cache = {}
+        self._cache = LRUCache(max_cache_size)
         self._mtime = {}
+        self._lock = threading.Lock()
 
-    def load(self, filename, relative_to=None):
+    def load(self, filename, relative_to=None, cls=MarkupTemplate):
         """Load the template with the given name.
         
         If the `filename` parameter is relative, this method searches the search
@@ -1150,43 +1336,56 @@ class TemplateLoader(object):
         @param relative_to: the filename of the template from which the new
             template is being loaded, or `None` if the template is being loaded
             directly
+        @param cls: the class of the template object to instantiate
         """
-        from genshi.filters import IncludeFilter
-
-        if relative_to:
+        if relative_to and not os.path.isabs(relative_to):
             filename = os.path.join(os.path.dirname(relative_to), filename)
         filename = os.path.normpath(filename)
 
-        # First check the cache to avoid reparsing the same file
+        self._lock.acquire()
         try:
-            tmpl = self._cache[filename]
-            if not self.auto_reload or \
-                    os.path.getmtime(tmpl.filepath) == self._mtime[filename]:
-                return tmpl
-        except KeyError:
-            pass
-
-        # Bypass the search path if the filename is absolute
-        search_path = self.search_path
-        if os.path.isabs(filename):
-            search_path = [os.path.dirname(filename)]
-
-        if not search_path:
-            raise TemplateError('Search path for templates not configured')
-
-        for dirname in search_path:
-            filepath = os.path.join(dirname, filename)
+            # First check the cache to avoid reparsing the same file
             try:
-                fileobj = open(filepath, 'U')
-                try:
-                    tmpl = Template(fileobj, basedir=dirname, filename=filename)
-                    tmpl.filters.append(IncludeFilter(self))
-                finally:
-                    fileobj.close()
-                self._cache[filename] = tmpl
-                self._mtime[filename] = os.path.getmtime(filepath)
-                return tmpl
-            except IOError:
-                continue
+                tmpl = self._cache[filename]
+                if not self.auto_reload or \
+                        os.path.getmtime(tmpl.filepath) == self._mtime[filename]:
+                    return tmpl
+            except KeyError:
+                pass
 
-        raise TemplateNotFound(filename, self.search_path)
+            search_path = self.search_path
+
+            if os.path.isabs(filename):
+                # Bypass the search path if the requested filename is absolute
+                search_path = [os.path.dirname(filename)]
+
+            elif relative_to and os.path.isabs(relative_to):
+                # Make sure that the directory containing the including
+                # template is on the search path
+                dirname = os.path.dirname(relative_to)
+                if dirname not in search_path:
+                    search_path = search_path[:] + [dirname]
+
+            elif not search_path:
+                # Uh oh, don't know where to look for the template
+                raise TemplateError('Search path for templates not configured')
+
+            for dirname in search_path:
+                filepath = os.path.join(dirname, filename)
+                try:
+                    fileobj = open(filepath, 'U')
+                    try:
+                        tmpl = cls(fileobj, basedir=dirname, filename=filename,
+                                   loader=self)
+                    finally:
+                        fileobj.close()
+                    self._cache[filename] = tmpl
+                    self._mtime[filename] = os.path.getmtime(filepath)
+                    return tmpl
+                except IOError:
+                    continue
+
+            raise TemplateNotFound(filename, search_path)
+
+        finally:
+            self._lock.release()

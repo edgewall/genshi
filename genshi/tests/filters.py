@@ -12,11 +12,269 @@
 # history and logs, available at http://genshi.edgewall.org/log/.
 
 import doctest
+import os
+import shutil
+import tempfile
 import unittest
 
+from genshi import filters
 from genshi.core import Stream
 from genshi.input import HTML, ParseError
-from genshi.filters import HTMLSanitizer
+from genshi.filters import HTMLFormFiller, HTMLSanitizer
+from genshi.template import TemplateLoader
+
+
+class HTMLFormFillerTestCase(unittest.TestCase):
+
+    def test_fill_input_text_no_value(self):
+        html = HTML("""<form><p>
+          <input type="text" name="foo" />
+        </p></form>""") | HTMLFormFiller()
+        self.assertEquals("""<form><p>
+          <input type="text" name="foo"/>
+        </p></form>""", unicode(html))
+
+    def test_fill_input_text_single_value(self):
+        html = HTML("""<form><p>
+          <input type="text" name="foo" />
+        </p></form>""") | HTMLFormFiller(data={'foo': 'bar'})
+        self.assertEquals("""<form><p>
+          <input type="text" name="foo" value="bar"/>
+        </p></form>""", unicode(html))
+
+    def test_fill_input_text_multi_value(self):
+        html = HTML("""<form><p>
+          <input type="text" name="foo" />
+        </p></form>""") | HTMLFormFiller(data={'foo': ['bar']})
+        self.assertEquals("""<form><p>
+          <input type="text" name="foo" value="bar"/>
+        </p></form>""", unicode(html))
+
+    def test_fill_input_hidden_no_value(self):
+        html = HTML("""<form><p>
+          <input type="hidden" name="foo" />
+        </p></form>""") | HTMLFormFiller()
+        self.assertEquals("""<form><p>
+          <input type="hidden" name="foo"/>
+        </p></form>""", unicode(html))
+
+    def test_fill_input_hidden_single_value(self):
+        html = HTML("""<form><p>
+          <input type="hidden" name="foo" />
+        </p></form>""") | HTMLFormFiller(data={'foo': 'bar'})
+        self.assertEquals("""<form><p>
+          <input type="hidden" name="foo" value="bar"/>
+        </p></form>""", unicode(html))
+
+    def test_fill_input_hidden_multi_value(self):
+        html = HTML("""<form><p>
+          <input type="hidden" name="foo" />
+        </p></form>""") | HTMLFormFiller(data={'foo': ['bar']})
+        self.assertEquals("""<form><p>
+          <input type="hidden" name="foo" value="bar"/>
+        </p></form>""", unicode(html))
+
+    def test_fill_textarea_no_value(self):
+        html = HTML("""<form><p>
+          <textarea name="foo"></textarea>
+        </p></form>""") | HTMLFormFiller()
+        self.assertEquals("""<form><p>
+          <textarea name="foo"/>
+        </p></form>""", unicode(html))
+
+    def test_fill_textarea_single_value(self):
+        html = HTML("""<form><p>
+          <textarea name="foo"></textarea>
+        </p></form>""") | HTMLFormFiller(data={'foo': 'bar'})
+        self.assertEquals("""<form><p>
+          <textarea name="foo">bar</textarea>
+        </p></form>""", unicode(html))
+
+    def test_fill_textarea_multi_value(self):
+        html = HTML("""<form><p>
+          <textarea name="foo"></textarea>
+        </p></form>""") | HTMLFormFiller(data={'foo': ['bar']})
+        self.assertEquals("""<form><p>
+          <textarea name="foo">bar</textarea>
+        </p></form>""", unicode(html))
+
+    def test_fill_input_checkbox_no_value(self):
+        html = HTML("""<form><p>
+          <input type="checkbox" name="foo" />
+        </p></form>""") | HTMLFormFiller()
+        self.assertEquals("""<form><p>
+          <input type="checkbox" name="foo"/>
+        </p></form>""", unicode(html))
+
+    def test_fill_input_checkbox_single_value_auto(self):
+        html = HTML("""<form><p>
+          <input type="checkbox" name="foo" />
+        </p></form>""")
+        self.assertEquals("""<form><p>
+          <input type="checkbox" name="foo"/>
+        </p></form>""", unicode(html | HTMLFormFiller(data={'foo': ''})))
+        self.assertEquals("""<form><p>
+          <input type="checkbox" name="foo" checked="checked"/>
+        </p></form>""", unicode(html | HTMLFormFiller(data={'foo': 'on'})))
+
+    def test_fill_input_checkbox_single_value_defined(self):
+        html = HTML("""<form><p>
+          <input type="checkbox" name="foo" value="1" />
+        </p></form>""")
+        self.assertEquals("""<form><p>
+          <input type="checkbox" name="foo" value="1" checked="checked"/>
+        </p></form>""", unicode(html | HTMLFormFiller(data={'foo': '1'})))
+        self.assertEquals("""<form><p>
+          <input type="checkbox" name="foo" value="1"/>
+        </p></form>""", unicode(html | HTMLFormFiller(data={'foo': '2'})))
+
+    def test_fill_input_checkbox_multi_value_auto(self):
+        html = HTML("""<form><p>
+          <input type="checkbox" name="foo" />
+        </p></form>""")
+        self.assertEquals("""<form><p>
+          <input type="checkbox" name="foo"/>
+        </p></form>""", unicode(html | HTMLFormFiller(data={'foo': []})))
+        self.assertEquals("""<form><p>
+          <input type="checkbox" name="foo" checked="checked"/>
+        </p></form>""", unicode(html | HTMLFormFiller(data={'foo': ['on']})))
+
+    def test_fill_input_checkbox_multi_value_defined(self):
+        html = HTML("""<form><p>
+          <input type="checkbox" name="foo" value="1" />
+        </p></form>""")
+        self.assertEquals("""<form><p>
+          <input type="checkbox" name="foo" value="1" checked="checked"/>
+        </p></form>""", unicode(html | HTMLFormFiller(data={'foo': ['1']})))
+        self.assertEquals("""<form><p>
+          <input type="checkbox" name="foo" value="1"/>
+        </p></form>""", unicode(html | HTMLFormFiller(data={'foo': ['2']})))
+
+    def test_fill_input_radio_no_value(self):
+        html = HTML("""<form><p>
+          <input type="radio" name="foo" />
+        </p></form>""") | HTMLFormFiller()
+        self.assertEquals("""<form><p>
+          <input type="radio" name="foo"/>
+        </p></form>""", unicode(html))
+
+    def test_fill_input_radio_single_value(self):
+        html = HTML("""<form><p>
+          <input type="radio" name="foo" value="1" />
+        </p></form>""")
+        self.assertEquals("""<form><p>
+          <input type="radio" name="foo" value="1" checked="checked"/>
+        </p></form>""", unicode(html | HTMLFormFiller(data={'foo': '1'})))
+        self.assertEquals("""<form><p>
+          <input type="radio" name="foo" value="1"/>
+        </p></form>""", unicode(html | HTMLFormFiller(data={'foo': '2'})))
+
+    def test_fill_input_radio_multi_value(self):
+        html = HTML("""<form><p>
+          <input type="radio" name="foo" value="1" />
+        </p></form>""")
+        self.assertEquals("""<form><p>
+          <input type="radio" name="foo" value="1" checked="checked"/>
+        </p></form>""", unicode(html | HTMLFormFiller(data={'foo': ['1']})))
+        self.assertEquals("""<form><p>
+          <input type="radio" name="foo" value="1"/>
+        </p></form>""", unicode(html | HTMLFormFiller(data={'foo': ['2']})))
+
+    def test_fill_select_no_value_auto(self):
+        html = HTML("""<form><p>
+          <select name="foo">
+            <option>1</option>
+            <option>2</option>
+            <option>3</option>
+          </select>
+        </p></form>""") | HTMLFormFiller()
+        self.assertEquals("""<form><p>
+          <select name="foo">
+            <option>1</option>
+            <option>2</option>
+            <option>3</option>
+          </select>
+        </p></form>""", unicode(html))
+
+    def test_fill_select_no_value_defined(self):
+        html = HTML("""<form><p>
+          <select name="foo">
+            <option value="1">1</option>
+            <option value="2">2</option>
+            <option value="3">3</option>
+          </select>
+        </p></form>""") | HTMLFormFiller()
+        self.assertEquals("""<form><p>
+          <select name="foo">
+            <option value="1">1</option>
+            <option value="2">2</option>
+            <option value="3">3</option>
+          </select>
+        </p></form>""", unicode(html))
+
+    def test_fill_select_single_value_auto(self):
+        html = HTML("""<form><p>
+          <select name="foo">
+            <option>1</option>
+            <option>2</option>
+            <option>3</option>
+          </select>
+        </p></form>""") | HTMLFormFiller(data={'foo': '1'})
+        self.assertEquals("""<form><p>
+          <select name="foo">
+            <option selected="selected">1</option>
+            <option>2</option>
+            <option>3</option>
+          </select>
+        </p></form>""", unicode(html))
+
+    def test_fill_select_single_value_defined(self):
+        html = HTML("""<form><p>
+          <select name="foo">
+            <option value="1">1</option>
+            <option value="2">2</option>
+            <option value="3">3</option>
+          </select>
+        </p></form>""") | HTMLFormFiller(data={'foo': '1'})
+        self.assertEquals("""<form><p>
+          <select name="foo">
+            <option value="1" selected="selected">1</option>
+            <option value="2">2</option>
+            <option value="3">3</option>
+          </select>
+        </p></form>""", unicode(html))
+
+    def test_fill_select_multi_value_auto(self):
+        html = HTML("""<form><p>
+          <select name="foo" multiple>
+            <option>1</option>
+            <option>2</option>
+            <option>3</option>
+          </select>
+        </p></form>""") | HTMLFormFiller(data={'foo': ['1', '3']})
+        self.assertEquals("""<form><p>
+          <select name="foo" multiple="multiple">
+            <option selected="selected">1</option>
+            <option>2</option>
+            <option selected="selected">3</option>
+          </select>
+        </p></form>""", unicode(html))
+
+    def test_fill_select_multi_value_defined(self):
+        html = HTML("""<form><p>
+          <select name="foo" multiple>
+            <option value="1">1</option>
+            <option value="2">2</option>
+            <option value="3">3</option>
+          </select>
+        </p></form>""") | HTMLFormFiller(data={'foo': ['1', '3']})
+        self.assertEquals("""<form><p>
+          <select name="foo" multiple="multiple">
+            <option value="1" selected="selected">1</option>
+            <option value="2">2</option>
+            <option value="3" selected="selected">3</option>
+          </select>
+        </p></form>""", unicode(html))
 
 
 class HTMLSanitizerTestCase(unittest.TestCase):
@@ -116,9 +374,46 @@ class HTMLSanitizerTestCase(unittest.TestCase):
         self.assertEquals(u'<img/>', unicode(html | HTMLSanitizer()))
 
 
+class IncludeFilterTestCase(unittest.TestCase):
+
+    def setUp(self):
+        self.dirname = tempfile.mkdtemp(suffix='markup_test')
+
+    def tearDown(self):
+        shutil.rmtree(self.dirname)
+
+    def test_select_inluded_elements(self):
+        file1 = open(os.path.join(self.dirname, 'tmpl1.html'), 'w')
+        try:
+            file1.write("""<li>$item</li>""")
+        finally:
+            file1.close()
+
+        file2 = open(os.path.join(self.dirname, 'tmpl2.html'), 'w')
+        try:
+            file2.write("""<html xmlns:xi="http://www.w3.org/2001/XInclude"
+                                 xmlns:py="http://genshi.edgewall.org/">
+              <ul py:match="ul">${select('li')}</ul>
+              <ul py:with="items=(1, 2, 3)">
+                <xi:include href="tmpl1.html" py:for="item in items" />
+              </ul>
+            </html>""")
+        finally:
+            file2.close()
+
+        loader = TemplateLoader([self.dirname])
+        tmpl = loader.load('tmpl2.html')
+        self.assertEqual("""<html>
+              <ul><li>1</li><li>2</li><li>3</li></ul>
+            </html>""", tmpl.generate().render())
+
+
 def suite():
     suite = unittest.TestSuite()
+    suite.addTest(doctest.DocTestSuite(filters))
+    suite.addTest(unittest.makeSuite(HTMLFormFillerTestCase, 'test'))
     suite.addTest(unittest.makeSuite(HTMLSanitizerTestCase, 'test'))
+    suite.addTest(unittest.makeSuite(IncludeFilterTestCase, 'test'))
     return suite
 
 if __name__ == '__main__':

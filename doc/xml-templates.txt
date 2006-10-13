@@ -4,9 +4,9 @@
 Genshi XML Template Language
 ============================
 
-Genshi provides a simple XML-based template language that is heavily inspired
-by Kid_, which in turn was inspired by a number of existing template languages,
-namely XSLT_, TAL_, and PHP_.
+Genshi provides a XML-based template language that is heavily inspired by Kid_,
+which in turn was inspired by a number of existing template languages, namely
+XSLT_, TAL_, and PHP_.
 
 .. _kid: http://kid-templating.org/
 .. _python: http://www.python.org/
@@ -15,8 +15,8 @@ namely XSLT_, TAL_, and PHP_.
 .. _php: http://www.php.net/
 
 This document describes the template language and will be most useful as
-reference to those developing Genshi templates. Templates are XML files of some
-kind (such as XHTML) that include processing directives_ (elements or
+reference to those developing Genshi XML templates. Templates are XML files of
+some kind (such as XHTML) that include processing directives_ (elements or
 attributes identified by a separate namespace) that affect how the template is
 rendered, and template expressions_ that are dynamically substituted by
 variable data.
@@ -33,8 +33,8 @@ Python API
 The Python code required for templating with Genshi is generally based on the
 following pattern:
 
-* Attain a ``Template`` object from a string or file object containing the
-  template XML source. This can either be done directly, or through a
+* Attain a ``MarkupTemplate`` object from a string or file object containing
+  the template XML source. This can either be done directly, or through a
   ``TemplateLoader`` instance.
 * Call the ``generate()`` method of the template, passing any data that should
   be made available to the template as keyword arguments.
@@ -42,9 +42,9 @@ following pattern:
 
 For example::
 
-  from genshi.template import Template
+  from genshi.template import MarkupTemplate
 
-  tmpl = Template('<h1>$title</h1>')
+  tmpl = MarkupTemplate('<h1>$title</h1>')
   stream = tmpl.generate(title='Hello, world!')
   print stream.render('xhtml')
 
@@ -78,9 +78,9 @@ If the expression starts with a letter and contains only letters and digits,
 the curly braces may be omitted. In all other cases, the braces are required so
 that the template processors knows where the expression ends::
 
-  >>> from genshi.template import Context, Template
-  >>> tmpl = Template('<em>${items[0].capitalize()} item</em>')
-  >>> print tmpl.generate(Context(items=['first', 'second']))
+  >>> from genshi.template import MarkupTemplate
+  >>> tmpl = MarkupTemplate('<em>${items[0].capitalize()} item</em>')
+  >>> print tmpl.generate(items=['first', 'second'])
   <em>First item</em>
 
 Expressions support the full power of Python. In addition, it is possible to
@@ -88,10 +88,28 @@ access items in a dictionary using “dotted notation” (i.e. as if they were
 attributes), and vice-versa (i.e. access attributes as if they were items in a
 dictionary)::
 
-  >>> from genshi.template import Context, Template
-  >>> tmpl = Template('<em>${dict.foo}</em>')
-  >>> print tmpl.generate(Context(dict={'foo': 'bar'}))
+  >>> from genshi.template import MarkupTemplate
+  >>> tmpl = MarkupTemplate('<em>${dict.foo}</em>')
+  >>> print tmpl.generate(dict={'foo': 'bar'})
   <em>bar</em>
+
+Another difference is that you can access variables that are not defined, and
+won't get a ``NameError`` exception::
+
+  >>> from genshi.template import TextTemplate
+  >>> tmpl = TextTemplate('${doh}')
+  >>> print tmpl.generate()
+  <BLANKLINE>
+
+You **will** however get a ``NameError`` if you try to call an undefined 
+variable, or do anything else with it, such as accessing its attributes. If you
+need to know whether a variable is defined, you can check its type against the
+``Undefined`` class, for example in an `py:if`_ directive::
+
+  >>> from genshi.template import TextTemplate
+  >>> tmpl = TextTemplate('${type(doh) is Undefined}')
+  >>> print tmpl.generate()
+  True
 
 
 .. _`directives`:
@@ -151,46 +169,44 @@ directive can be used to strip off the unwanted element, or the directive can
 simply be used as an element.
 
 
-Available Directives
+Conditional Sections
 ====================
 
+.. _`py:if`:
 
-.. _`py:attrs`:
+``py:if``
+---------
 
-``py:attrs``
-------------
+The element is only rendered if the expression evaluates to a truth value::
 
-This directive adds, modifies or removes attributes from the element::
+  <div>
+    <b py:if="foo">${bar}</b>
+  </div>
 
-  <ul>
-    <li py:attrs="foo">Bar</li>
-  </ul>
+Given the data ``foo=True`` and ``bar='Hello'`` in the template context, this
+would produce::
 
-Given ``foo={'class': 'collapse'}`` in the template context, this would
-produce::
+  <div>
+    <b>Hello</b>
+  </div>
 
-  <ul>
-    <li class="collapse">Bar</li>
-  </ul>
+This directive can also be used as an element::
 
-Attributes with the value ``None`` are omitted, so given ``foo={'class': None}``
-in the context for the same template this would produce::
-
-  <ul>
-    <li>Bar</li>
-  </ul>
-
-This directive can only be used as an attribute.
-
+  <div>
+    <py:if test="foo">
+      <b>${bar}</b>
+    </py:if>
+  </div>
 
 .. _`py:choose`:
 .. _`py:when`:
 .. _`py:otherwise`:
 
-``py:choose`` / ``py:when`` / ``py:otherwise``
-----------------------------------------------
+``py:choose``
+-------------
 
-This set of directives provides advanced contional processing for rendering one
+The ``py:choose`` directive, in combination with the directives ``py:when``
+and ``py:otherwise`` provides advanced contional processing for rendering one
 of several alternatives. The first matching ``py:when`` branch is rendered, or,
 if no ``py:when`` branch matches, the ``py:otherwise`` branch is be rendered.
 
@@ -225,26 +241,37 @@ This would produce the following output::
   </div>
 
 
-.. _`py:content`:
+Looping
+=======
 
-``py:content``
---------------
+.. _`py:for`:
 
-This directive replaces any nested content with the result of evaluating the
-expression::
+``py:for``
+----------
 
-  <ul>
-    <li py:content="bar">Hello</li>
-  </ul>
-
-Given ``bar='Bye'`` in the context data, this would produce::
+The element is repeated for every item in an iterable::
 
   <ul>
-    <li>Bye</li>
+    <li py:for="item in items">${item}</li>
   </ul>
 
-This directive can only be used as an attribute.
+Given ``items=[1, 2, 3]`` in the context data, this would produce::
 
+  <ul>
+    <li>1</li><li>2</li><li>3</li>
+  </ul>
+
+This directive can also be used as an element::
+
+  <ul>
+    <py:for each="item in items">
+      <li>${item}</li>
+    </py:for>
+  </ul>
+
+
+Snippet Reuse
+=============
 
 .. _`py:def`:
 .. _`macros`:
@@ -302,61 +329,8 @@ This directive can also be used as an element::
   </div>
 
 
-.. _`py:for`:
-
-``py:for``
-----------
-
-The element is repeated for every item in an iterable::
-
-  <ul>
-    <li py:for="item in items">${item}</li>
-  </ul>
-
-Given ``items=[1, 2, 3]`` in the context data, this would produce::
-
-  <ul>
-    <li>1</li><li>2</li><li>3</li>
-  </ul>
-
-This directive can also be used as an element::
-
-  <ul>
-    <py:for each="item in items">
-      <li>${item}</li>
-    </py:for>
-  </ul>
-
-
-.. _`py:if`:
-
-``py:if``
-------------
-
-The element is only rendered if the expression evaluates to a truth value::
-
-  <div>
-    <b py:if="foo">${bar}</b>
-  </div>
-
-Given the data ``foo=True`` and ``bar='Hello'`` in the template context, this
-would produce::
-
-  <div>
-    <b>Hello</b>
-  </div>
-
-This directive can also be used as an element::
-
-  <div>
-    <py:if test="foo">
-      <b>${bar}</b>
-    </py:if>
-  </div>
-
-
-.. _`py:match`:
 .. _Match Templates:
+.. _`py:match`:
 
 ``py:match``
 ------------
@@ -396,6 +370,96 @@ This directive can also be used as an element::
     </py:match>
     <greeting name="Dude" />
   </div>
+
+
+Variable Binding
+================
+
+.. _`with`:
+
+``py:with``
+-----------
+
+The ``py:with`` directive lets you assign expressions to variables, which can
+be used to make expressions inside the directive less verbose and more
+efficient. For example, if you need use the expression ``author.posts`` more
+than once, and that actually results in a database query, assigning the results
+to a variable using this directive would probably help.
+
+For example::
+
+  <div>
+    <span py:with="y=7; z=x+10">$x $y $z</span>
+  </div>
+
+Given ``x=42`` in the context data, this would produce::
+
+  <div>
+    <span>42 7 52</span>
+  </div>
+
+This directive can also be used as an element::
+
+  <div>
+    <py:with vars="y=7; z=x+10">$x $y $z</py:with>
+  </div>
+
+Note that if a variable of the same name already existed outside of the scope
+of the ``py:with`` directive, it will **not** be overwritten. Instead, it
+will have the same value it had prior to the ``py:with`` assignment.
+Effectively, this means that variables are immutable in Genshi.
+
+
+Structure Manipulation
+======================
+
+.. _`py:attrs`:
+
+``py:attrs``
+------------
+
+This directive adds, modifies or removes attributes from the element::
+
+  <ul>
+    <li py:attrs="foo">Bar</li>
+  </ul>
+
+Given ``foo={'class': 'collapse'}`` in the template context, this would
+produce::
+
+  <ul>
+    <li class="collapse">Bar</li>
+  </ul>
+
+Attributes with the value ``None`` are omitted, so given ``foo={'class': None}``
+in the context for the same template this would produce::
+
+  <ul>
+    <li>Bar</li>
+  </ul>
+
+This directive can only be used as an attribute.
+
+
+.. _`py:content`:
+
+``py:content``
+--------------
+
+This directive replaces any nested content with the result of evaluating the
+expression::
+
+  <ul>
+    <li py:content="bar">Hello</li>
+  </ul>
+
+Given ``bar='Bye'`` in the context data, this would produce::
+
+  <ul>
+    <li>Bye</li>
+  </ul>
+
+This directive can only be used as an attribute.
 
 
 .. _`py:replace`:
@@ -440,41 +504,6 @@ This would be rendered as::
 
 As a shorthand, if the value of the ``py:strip`` attribute is empty, that has
 the same effect as using a truth value (i.e. the element is stripped).
-
-
-.. _`with`:
-
-``py:with``
------------
-
-The ``py:with`` directive lets you assign expressions to variables, which can
-be used to make expressions inside the directive less verbose and more
-efficient. For example, if you need use the expression ``author.posts`` more
-than once, and that actually results in a database query, assigning the results
-to a variable using this directive would probably help.
-
-For example::
-
-  <div>
-    <span py:with="y=7; z=x+10">$x $y $z</span>
-  </div>
-
-Given ``x=42`` in the context data, this would produce::
-
-  <div>
-    <span>42 7 52</span>
-  </div>
-
-This directive can also be used as an element::
-
-  <div>
-    <py:with vars="y=7; z=x+10">$x $y $z</py:with>
-  </div>
-
-Note that if a variable of the same name already existed outside of the scope
-of the ``py:with`` directive, it will **not** be overwritten. Instead, it
-will have the same value it had prior to the ``py:with`` assignment.
-Effectively, this means that variables are immutable in Genshi.
 
 
 .. _order:
@@ -536,12 +565,14 @@ the including template after the point it was included.
 By default, an error will be raised if an included file is not found. If that's
 not what you want, you can specify fallback content that should be used if the
 include fails. For example, to to make the include above fail silently, you'd
-write:
+write::
 
   <xi:include href="base.html"><xi:fallback /></xi:include>
 
-See the XInclude_ for more about fallback content. Note though that Genshi
-currently only supports a small subset of XInclude.
+See the `XInclude specification`_ for more about fallback content. Note though 
+that Genshi currently only supports a small subset of XInclude.
+
+.. _`xinclude specification`: http://www.w3.org/TR/xinclude/
 
 Incudes in Genshi are fully dynamic: Just like normal attributes, the `href`
 attribute accepts expressions_, and directives_ can be used on the

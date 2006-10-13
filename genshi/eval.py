@@ -91,7 +91,8 @@ class Expression(object):
         retval = eval(self.code, {'data': data,
                                   '_lookup_name': _lookup_name,
                                   '_lookup_attr': _lookup_attr,
-                                  '_lookup_item': _lookup_item})
+                                  '_lookup_item': _lookup_item},
+                                 {'data': data})
         if not nocall and type(retval) is not Undefined and callable(retval):
             retval = retval()
         return retval
@@ -295,17 +296,33 @@ class ASTTransformer(object):
     visitAssName = visitAssTuple = _visitDefault
     visitConst = visitName = _visitDefault
 
-    def visitKeyword(self, node, *args, **kwargs):
-        node.expr = self.visit(node.expr, *args, **kwargs)
-        return node
-
     def visitDict(self, node, *args, **kwargs):
         node.items = [(self.visit(k, *args, **kwargs),
                        self.visit(v, *args, **kwargs)) for k, v in node.items]
         return node
 
-    def visitTuple(self, node, *args, **kwargs):
-        node.nodes = [self.visit(n, *args, **kwargs) for n in node.nodes]
+    def visitGenExpr(self, node, *args, **kwargs):
+        node.code = self.visit(node.code, *args, **kwargs)
+        node.filename = '<string>' # workaround for bug in pycodegen
+        return node
+
+    def visitGenExprFor(self, node, *args, **kwargs):
+        node.assign = self.visit(node.assign, *args, **kwargs)
+        node.iter = self.visit(node.iter, *args, **kwargs)
+        node.ifs = [self.visit(x, *args, **kwargs) for x in node.ifs]
+        return node
+
+    def visitGenExprIf(self, node, *args, **kwargs):
+        node.test = self.visit(node.test, *args, **kwargs)
+        return node
+
+    def visitGenExprInner(self, node, *args, **kwargs):
+        node.expr = self.visit(node.expr, *args, **kwargs)
+        node.quals = [self.visit(x, *args, **kwargs) for x in node.quals]
+        return node
+
+    def visitKeyword(self, node, *args, **kwargs):
+        node.expr = self.visit(node.expr, *args, **kwargs)
         return node
 
     def visitList(self, node, *args, **kwargs):
@@ -327,26 +344,6 @@ class ASTTransformer(object):
         node.test = self.visit(node.test, *args, **kwargs)
         return node
 
-    def visitGenExpr(self, node, *args, **kwargs):
-        node.code = self.visit(node.code, *args, **kwargs)
-        node.filename = '<string>' # workaround for bug in pycodegen
-        return node
-
-    def visitGenExprFor(self, node, *args, **kwargs):
-        node.assign = self.visit(node.assign, *args, **kwargs)
-        node.iter = self.visit(node.iter, *args, **kwargs)
-        node.ifs = [self.visit(x, *args, **kwargs) for x in node.ifs]
-        return node
-
-    def visitGenExprIf(self, node, *args, **kwargs):
-        node.test = self.visit(node.test, locals_=True, *args, **kwargs)
-        return node
-
-    def visitGenExprInner(self, node, *args, **kwargs):
-        node.expr = self.visit(node.expr, locals_=True, *args, **kwargs)
-        node.quals = [self.visit(x, *args, **kwargs) for x in node.quals]
-        return node
-
     def visitSlice(self, node, *args, **kwargs):
         node.expr = self.visit(node.expr, locals_=True, *args, **kwargs)
         if node.lower is not None:
@@ -359,6 +356,10 @@ class ASTTransformer(object):
         node.nodes = [self.visit(x, *args, **kwargs) for x in node.nodes]
         return node
 
+    def visitTuple(self, node, *args, **kwargs):
+        node.nodes = [self.visit(n, *args, **kwargs) for n in node.nodes]
+        return node
+
 
 class ExpressionASTTransformer(ASTTransformer):
     """Concrete AST transformer that implements the AST transformations needed
@@ -368,6 +369,15 @@ class ExpressionASTTransformer(ASTTransformer):
     def visitConst(self, node, locals_=False):
         if isinstance(node.value, str):
             return ast.Const(node.value.decode('utf-8'))
+        return node
+
+    def visitGenExprIf(self, node, *args, **kwargs):
+        node.test = self.visit(node.test, locals_=True)
+        return node
+
+    def visitGenExprInner(self, node, *args, **kwargs):
+        node.expr = self.visit(node.expr, locals_=True)
+        node.quals = [self.visit(x) for x in node.quals]
         return node
 
     def visitGetattr(self, node, locals_=False):

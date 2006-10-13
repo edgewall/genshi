@@ -389,7 +389,7 @@ Markup_stripentities(PyObject* self, PyObject *args, PyObject *kwds)
         return NULL;
     }
 
-    module = PyImport_ImportModule("markup.core");
+    module = PyImport_ImportModule("genshi.core");
     if (module == NULL) return NULL;
     func = PyObject_GetAttrString(module, "stripentities");
     Py_DECREF(module);
@@ -416,7 +416,7 @@ Markup_striptags(PyObject* self)
 {
     PyObject *module, *func, *result, *args;
 
-    module = PyImport_ImportModule("markup.core");
+    module = PyImport_ImportModule("genshi.core");
     if (module == NULL) return NULL;
     func = PyObject_GetAttrString(module, "striptags");
     Py_DECREF(module);
@@ -451,7 +451,7 @@ static PyMethodDef Markup_methods[] = {
     {NULL}  /* Sentinel */
 };
 
-static PyNumberMethods markup_as_number = {
+static PyNumberMethods Markup_as_number = {
         0, /*nb_add*/
         0, /*nb_subtract*/
         Markup_mul, /*nb_multiply*/
@@ -459,7 +459,7 @@ static PyNumberMethods markup_as_number = {
         Markup_mod, /*nb_remainder*/
 };
 
-static PySequenceMethods markup_as_sequence = {
+static PySequenceMethods Markup_as_sequence = {
         0, /*sq_length*/
         Markup_concat, /*sq_concat*/
         0, /*sq_repeat*/
@@ -482,8 +482,8 @@ PyTypeObject MarkupType = {
     0,          /*tp_setattr*/
     0,          /*tp_compare*/
     Markup_repr, /*tp_repr*/
-    &markup_as_number, /*tp_as_number*/
-    &markup_as_sequence, /*tp_as_sequence*/
+    &Markup_as_number, /*tp_as_number*/
+    &Markup_as_sequence, /*tp_as_sequence*/
     0,          /*tp_as_mapping*/
     0,          /*tp_hash */
 

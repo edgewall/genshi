@@ -18,9 +18,11 @@ import shutil
 import sys
 import tempfile
 
+from genshi import template
 from genshi.core import Markup, Stream
-from genshi.template import BadDirectiveError, Template, TemplateLoader, \
-                            TemplateSyntaxError
+from genshi.template import BadDirectiveError, MarkupTemplate, Template, \
+                            TemplateLoader, TemplateRuntimeError, \
+                            TemplateSyntaxError, TextTemplate
 
 
 class AttrsDirectiveTestCase(unittest.TestCase):
@@ -30,7 +32,7 @@ class AttrsDirectiveTestCase(unittest.TestCase):
         """
         Verify that the directive has access to the loop variables.
         """
-        tmpl = Template("""<doc xmlns:py="http://genshi.edgewall.org/">
+        tmpl = MarkupTemplate("""<doc xmlns:py="http://genshi.edgewall.org/">
           <elem py:for="item in items" py:attrs="item"/>
         </doc>""")
         items = [{'id': 1, 'class': 'foo'}, {'id': 2, 'class': 'bar'}]
@@ -43,7 +45,7 @@ class AttrsDirectiveTestCase(unittest.TestCase):
         Verify that an attribute value that evaluates to `None` removes an
         existing attribute of that name.
         """
-        tmpl = Template("""<doc xmlns:py="http://genshi.edgewall.org/">
+        tmpl = MarkupTemplate("""<doc xmlns:py="http://genshi.edgewall.org/">
           <elem class="foo" py:attrs="{'class': 'bar'}"/>
         </doc>""")
         self.assertEqual("""<doc>
@@ -55,7 +57,7 @@ class AttrsDirectiveTestCase(unittest.TestCase):
         Verify that an attribute value that evaluates to `None` removes an
         existing attribute of that name.
         """
-        tmpl = Template("""<doc xmlns:py="http://genshi.edgewall.org/">
+        tmpl = MarkupTemplate("""<doc xmlns:py="http://genshi.edgewall.org/">
           <elem class="foo" py:attrs="{'class': None}"/>
         </doc>""")
         self.assertEqual("""<doc>
@@ -72,7 +74,7 @@ class ChooseDirectiveTestCase(unittest.TestCase):
         Verify that, if multiple `py:when` bodies match, only the first is
         output.
         """
-        tmpl = Template("""<div xmlns:py="http://genshi.edgewall.org/" py:choose="">
+        tmpl = MarkupTemplate("""<div xmlns:py="http://genshi.edgewall.org/" py:choose="">
           <span py:when="1 == 1">1</span>
           <span py:when="2 == 2">2</span>
           <span py:when="3 == 3">3</span>
@@ -82,7 +84,7 @@ class ChooseDirectiveTestCase(unittest.TestCase):
         </div>""", str(tmpl.generate()))
 
     def test_otherwise(self):
-        tmpl = Template("""<div xmlns:py="http://genshi.edgewall.org/" py:choose="">
+        tmpl = MarkupTemplate("""<div xmlns:py="http://genshi.edgewall.org/" py:choose="">
           <span py:when="False">hidden</span>
           <span py:otherwise="">hello</span>
         </div>""")
@@ -94,7 +96,7 @@ class ChooseDirectiveTestCase(unittest.TestCase):
         """
         Verify that `py:choose` blocks can be nested:
         """
-        tmpl = Template("""<doc xmlns:py="http://genshi.edgewall.org/">
+        tmpl = MarkupTemplate("""<doc xmlns:py="http://genshi.edgewall.org/">
           <div py:choose="1">
             <div py:when="1" py:choose="3">
               <span py:when="2">2</span>
@@ -114,7 +116,7 @@ class ChooseDirectiveTestCase(unittest.TestCase):
         """
         Verify more complex nesting.
         """
-        tmpl = Template("""<doc xmlns:py="http://genshi.edgewall.org/">
+        tmpl = MarkupTemplate("""<doc xmlns:py="http://genshi.edgewall.org/">
           <div py:choose="1">
             <div py:when="1" py:choose="">
               <span py:when="2">OK</span>
@@ -134,7 +136,7 @@ class ChooseDirectiveTestCase(unittest.TestCase):
         """
         Verify more complex nesting using otherwise.
         """
-        tmpl = Template("""<doc xmlns:py="http://genshi.edgewall.org/">
+        tmpl = MarkupTemplate("""<doc xmlns:py="http://genshi.edgewall.org/">
           <div py:choose="1">
             <div py:when="1" py:choose="2">
               <span py:when="1">FAIL</span>
@@ -155,7 +157,7 @@ class ChooseDirectiveTestCase(unittest.TestCase):
         Verify that a when directive with a strip directive actually strips of
         the outer element.
         """
-        tmpl = Template("""<doc xmlns:py="http://genshi.edgewall.org/">
+        tmpl = MarkupTemplate("""<doc xmlns:py="http://genshi.edgewall.org/">
           <div py:choose="" py:strip="">
             <span py:otherwise="">foo</span>
           </div>
@@ -169,39 +171,54 @@ class ChooseDirectiveTestCase(unittest.TestCase):
         Verify that a `when` directive outside of a `choose` directive is
         reported as an error.
         """
-        tmpl = Template("""<doc xmlns:py="http://genshi.edgewall.org/">
+        tmpl = MarkupTemplate("""<doc xmlns:py="http://genshi.edgewall.org/">
           <div py:when="xy" />
         </doc>""")
-        self.assertRaises(TemplateSyntaxError, str, tmpl.generate())
+        self.assertRaises(TemplateRuntimeError, str, tmpl.generate())
 
     def test_otherwise_outside_choose(self):
         """
         Verify that an `otherwise` directive outside of a `choose` directive is
         reported as an error.
         """
-        tmpl = Template("""<doc xmlns:py="http://genshi.edgewall.org/">
+        tmpl = MarkupTemplate("""<doc xmlns:py="http://genshi.edgewall.org/">
           <div py:otherwise="" />
         </doc>""")
-        self.assertRaises(TemplateSyntaxError, str, tmpl.generate())
+        self.assertRaises(TemplateRuntimeError, str, tmpl.generate())
 
     def test_when_without_test(self):
         """
         Verify that an `when` directive that doesn't have a `test` attribute
         is reported as an error.
         """
-        tmpl = Template("""<doc xmlns:py="http://genshi.edgewall.org/">
+        tmpl = MarkupTemplate("""<doc xmlns:py="http://genshi.edgewall.org/">
           <div py:choose="" py:strip="">
             <py:when>foo</py:when>
           </div>
         </doc>""")
-        self.assertRaises(TemplateSyntaxError, str, tmpl.generate())
+        self.assertRaises(TemplateRuntimeError, str, tmpl.generate())
+
+    def test_when_without_test_but_with_choose_value(self):
+        """
+        Verify that an `when` directive that doesn't have a `test` attribute
+        works as expected as long as the parent `choose` directive has a test
+        expression.
+        """
+        tmpl = MarkupTemplate("""<doc xmlns:py="http://genshi.edgewall.org/">
+          <div py:choose="foo" py:strip="">
+            <py:when>foo</py:when>
+          </div>
+        </doc>""")
+        self.assertEqual("""<doc>
+            foo
+        </doc>""", str(tmpl.generate(foo='Yeah')))
 
     def test_otherwise_without_test(self):
         """
         Verify that an `otherwise` directive can be used without a `test`
         attribute.
         """
-        tmpl = Template("""<doc xmlns:py="http://genshi.edgewall.org/">
+        tmpl = MarkupTemplate("""<doc xmlns:py="http://genshi.edgewall.org/">
           <div py:choose="" py:strip="">
             <py:otherwise>foo</py:otherwise>
           </div>
@@ -214,7 +231,7 @@ class ChooseDirectiveTestCase(unittest.TestCase):
         """
         Verify that the directive can also be used as an element.
         """
-        tmpl = Template("""<doc xmlns:py="http://genshi.edgewall.org/">
+        tmpl = MarkupTemplate("""<doc xmlns:py="http://genshi.edgewall.org/">
           <py:choose>
             <py:when test="1 == 1">1</py:when>
             <py:when test="2 == 2">2</py:when>
@@ -225,6 +242,23 @@ class ChooseDirectiveTestCase(unittest.TestCase):
             1
         </doc>""", str(tmpl.generate()))
 
+    def test_in_text_template(self):
+        """
+        Verify that the directive works as expected in a text template.
+        """
+        tmpl = TextTemplate("""#choose
+          #when 1 == 1
+            1
+          #end
+          #when 2 == 2
+            2
+          #end
+          #when 3 == 3
+            3
+          #end
+        #end""")
+        self.assertEqual("""            1\n""", str(tmpl.generate()))
+
 
 class DefDirectiveTestCase(unittest.TestCase):
     """Tests for the `py:def` template directive."""
@@ -234,7 +268,7 @@ class DefDirectiveTestCase(unittest.TestCase):
         Verify that a named template function with a strip directive actually
         strips of the outer element.
         """
-        tmpl = Template("""<doc xmlns:py="http://genshi.edgewall.org/">
+        tmpl = MarkupTemplate("""<doc xmlns:py="http://genshi.edgewall.org/">
           <div py:def="echo(what)" py:strip="">
             <b>${what}</b>
           </div>
@@ -245,7 +279,7 @@ class DefDirectiveTestCase(unittest.TestCase):
         </doc>""", str(tmpl.generate()))
 
     def test_exec_in_replace(self):
-        tmpl = Template("""<div xmlns:py="http://genshi.edgewall.org/">
+        tmpl = MarkupTemplate("""<div xmlns:py="http://genshi.edgewall.org/">
           <p py:def="echo(greeting, name='world')" class="message">
             ${greeting}, ${name}!
           </p>
@@ -261,7 +295,7 @@ class DefDirectiveTestCase(unittest.TestCase):
         """
         Verify that the directive can also be used as an element.
         """
-        tmpl = Template("""<doc xmlns:py="http://genshi.edgewall.org/">
+        tmpl = MarkupTemplate("""<doc xmlns:py="http://genshi.edgewall.org/">
           <py:def function="echo(what)">
             <b>${what}</b>
           </py:def>
@@ -276,7 +310,7 @@ class DefDirectiveTestCase(unittest.TestCase):
         Verify that a template function defined inside a conditional block can
         be called from outside that block.
         """
-        tmpl = Template("""<doc xmlns:py="http://genshi.edgewall.org/">
+        tmpl = MarkupTemplate("""<doc xmlns:py="http://genshi.edgewall.org/">
           <py:if test="semantic">
             <strong py:def="echo(what)">${what}</strong>
           </py:if>
@@ -293,7 +327,7 @@ class DefDirectiveTestCase(unittest.TestCase):
         """
         Verify that keyword arguments work with `py:def` directives.
         """
-        tmpl = Template("""<doc xmlns:py="http://genshi.edgewall.org/">
+        tmpl = MarkupTemplate("""<doc xmlns:py="http://genshi.edgewall.org/">
           <b py:def="echo(what, bold=False)" py:strip="not bold">${what}</b>
           ${echo('foo')}
         </doc>""")
@@ -302,7 +336,7 @@ class DefDirectiveTestCase(unittest.TestCase):
         </doc>""", str(tmpl.generate()))
 
     def test_invocation_in_attribute(self):
-        tmpl = Template("""<doc xmlns:py="http://genshi.edgewall.org/">
+        tmpl = MarkupTemplate("""<doc xmlns:py="http://genshi.edgewall.org/">
           <py:def function="echo(what)">${what or 'something'}</py:def>
           <p class="${echo('foo')}">bar</p>
         </doc>""")
@@ -311,7 +345,7 @@ class DefDirectiveTestCase(unittest.TestCase):
         </doc>""", str(tmpl.generate()))
 
     def test_invocation_in_attribute_none(self):
-        tmpl = Template("""<doc xmlns:py="http://genshi.edgewall.org/">
+        tmpl = MarkupTemplate("""<doc xmlns:py="http://genshi.edgewall.org/">
           <py:def function="echo()">${None}</py:def>
           <p class="${echo()}">bar</p>
         </doc>""")
@@ -322,7 +356,7 @@ class DefDirectiveTestCase(unittest.TestCase):
     def test_function_raising_typeerror(self):
         def badfunc():
             raise TypeError
-        tmpl = Template("""<html xmlns:py="http://genshi.edgewall.org/">
+        tmpl = MarkupTemplate("""<html xmlns:py="http://genshi.edgewall.org/">
           <div py:def="dobadfunc()">
             ${badfunc()}
           </div>
@@ -331,7 +365,7 @@ class DefDirectiveTestCase(unittest.TestCase):
         self.assertRaises(TypeError, list, tmpl.generate(badfunc=badfunc))
 
     def test_def_in_matched(self):
-        tmpl = Template("""<doc xmlns:py="http://genshi.edgewall.org/">
+        tmpl = MarkupTemplate("""<doc xmlns:py="http://genshi.edgewall.org/">
           <head py:match="head">${select('*')}</head>
           <head>
             <py:def function="maketitle(test)"><b py:replace="test" /></py:def>
@@ -342,6 +376,19 @@ class DefDirectiveTestCase(unittest.TestCase):
           <head><title>True</title></head>
         </doc>""", str(tmpl.generate()))
 
+    def test_in_text_template(self):
+        """
+        Verify that the directive works as expected in a text template.
+        """
+        tmpl = TextTemplate("""
+          #def echo(greeting, name='world')
+            ${greeting}, ${name}!
+          #end
+          ${echo('Hi', name='you')}
+        """)
+        self.assertEqual("""                      Hi, you!
+        """, str(tmpl.generate()))
+
 
 class ForDirectiveTestCase(unittest.TestCase):
     """Tests for the `py:for` template directive."""
@@ -351,7 +398,7 @@ class ForDirectiveTestCase(unittest.TestCase):
         Verify that the combining the `py:for` directive with `py:strip` works
         correctly.
         """
-        tmpl = Template("""<doc xmlns:py="http://genshi.edgewall.org/">
+        tmpl = MarkupTemplate("""<doc xmlns:py="http://genshi.edgewall.org/">
           <div py:for="item in items" py:strip="">
             <b>${item}</b>
           </div>
@@ -368,7 +415,7 @@ class ForDirectiveTestCase(unittest.TestCase):
         """
         Verify that the directive can also be used as an element.
         """
-        tmpl = Template("""<doc xmlns:py="http://genshi.edgewall.org/">
+        tmpl = MarkupTemplate("""<doc xmlns:py="http://genshi.edgewall.org/">
           <py:for each="item in items">
             <b>${item}</b>
           </py:for>
@@ -385,7 +432,7 @@ class ForDirectiveTestCase(unittest.TestCase):
         """
         Verify that assignment to tuples works correctly.
         """
-        tmpl = Template("""<doc xmlns:py="http://genshi.edgewall.org/">
+        tmpl = MarkupTemplate("""<doc xmlns:py="http://genshi.edgewall.org/">
           <py:for each="k, v in items">
             <p>key=$k, value=$v</p>
           </py:for>
@@ -399,7 +446,7 @@ class ForDirectiveTestCase(unittest.TestCase):
         """
         Verify that assignment to nested tuples works correctly.
         """
-        tmpl = Template("""<doc xmlns:py="http://genshi.edgewall.org/">
+        tmpl = MarkupTemplate("""<doc xmlns:py="http://genshi.edgewall.org/">
           <py:for each="idx, (k, v) in items">
             <p>$idx: key=$k, value=$v</p>
           </py:for>
@@ -408,6 +455,22 @@ class ForDirectiveTestCase(unittest.TestCase):
             <p>0: key=a, value=1</p>
             <p>1: key=b, value=2</p>
         </doc>""", str(tmpl.generate(items=enumerate(dict(a=1, b=2).items()))))
+
+    def test_not_iterable(self):
+        """
+        Verify that assignment to nested tuples works correctly.
+        """
+        tmpl = MarkupTemplate("""<doc xmlns:py="http://genshi.edgewall.org/">
+          <py:for each="item in foo">
+            $item
+          </py:for>
+        </doc>""", filename='test.html')
+        try:
+            list(tmpl.generate(foo=12))
+        except TemplateRuntimeError, e:
+            self.assertEqual('test.html', e.filename)
+            if sys.version_info[:2] >= (2, 4):
+                self.assertEqual(2, e.lineno)
 
 
 class IfDirectiveTestCase(unittest.TestCase):
@@ -418,7 +481,7 @@ class IfDirectiveTestCase(unittest.TestCase):
         Verify that the combining the `py:if` directive with `py:strip` works
         correctly.
         """
-        tmpl = Template("""<doc xmlns:py="http://genshi.edgewall.org/">
+        tmpl = MarkupTemplate("""<doc xmlns:py="http://genshi.edgewall.org/">
           <b py:if="foo" py:strip="">${bar}</b>
         </doc>""")
         self.assertEqual("""<doc>
@@ -429,7 +492,7 @@ class IfDirectiveTestCase(unittest.TestCase):
         """
         Verify that the directive can also be used as an element.
         """
-        tmpl = Template("""<doc xmlns:py="http://genshi.edgewall.org/">
+        tmpl = MarkupTemplate("""<doc xmlns:py="http://genshi.edgewall.org/">
           <py:if test="foo">${bar}</py:if>
         </doc>""")
         self.assertEqual("""<doc>
@@ -445,7 +508,7 @@ class MatchDirectiveTestCase(unittest.TestCase):
         Verify that a match template can produce the same kind of element that
         it matched without entering an infinite recursion.
         """
-        tmpl = Template("""<doc xmlns:py="http://genshi.edgewall.org/">
+        tmpl = MarkupTemplate("""<doc xmlns:py="http://genshi.edgewall.org/">
           <elem py:match="elem" py:strip="">
             <div class="elem">${select('text()')}</div>
           </elem>
@@ -460,7 +523,7 @@ class MatchDirectiveTestCase(unittest.TestCase):
         Verify that a match template can produce the same kind of element that
         it matched without entering an infinite recursion.
         """
-        tmpl = Template("""<doc xmlns:py="http://genshi.edgewall.org/">
+        tmpl = MarkupTemplate("""<doc xmlns:py="http://genshi.edgewall.org/">
           <elem py:match="elem">
             <div class="elem">${select('text()')}</div>
           </elem>
@@ -476,7 +539,7 @@ class MatchDirectiveTestCase(unittest.TestCase):
         """
         Verify that the directive can also be used as an element.
         """
-        tmpl = Template("""<doc xmlns:py="http://genshi.edgewall.org/">
+        tmpl = MarkupTemplate("""<doc xmlns:py="http://genshi.edgewall.org/">
           <py:match path="elem">
             <div class="elem">${select('text()')}</div>
           </py:match>
@@ -491,7 +554,7 @@ class MatchDirectiveTestCase(unittest.TestCase):
         Match directives are applied recursively, meaning that they are also
         applied to any content they may have produced themselves:
         """
-        tmpl = Template("""<doc xmlns:py="http://genshi.edgewall.org/">
+        tmpl = MarkupTemplate("""<doc xmlns:py="http://genshi.edgewall.org/">
           <elem py:match="elem">
             <div class="elem">
               ${select('*')}
@@ -522,7 +585,7 @@ class MatchDirectiveTestCase(unittest.TestCase):
         themselves output the element they match, avoiding recursion is even
         more complex, but should work.
         """
-        tmpl = Template("""<html xmlns:py="http://genshi.edgewall.org/">
+        tmpl = MarkupTemplate("""<html xmlns:py="http://genshi.edgewall.org/">
           <body py:match="body">
             <div id="header"/>
             ${select('*')}
@@ -543,7 +606,7 @@ class MatchDirectiveTestCase(unittest.TestCase):
         </html>""", str(tmpl.generate()))
 
     def test_select_all_attrs(self):
-        tmpl = Template("""<doc xmlns:py="http://genshi.edgewall.org/">
+        tmpl = MarkupTemplate("""<doc xmlns:py="http://genshi.edgewall.org/">
           <div py:match="elem" py:attrs="select('@*')">
             ${select('text()')}
           </div>
@@ -556,7 +619,7 @@ class MatchDirectiveTestCase(unittest.TestCase):
         </doc>""", str(tmpl.generate()))
 
     def test_select_all_attrs_empty(self):
-        tmpl = Template("""<doc xmlns:py="http://genshi.edgewall.org/">
+        tmpl = MarkupTemplate("""<doc xmlns:py="http://genshi.edgewall.org/">
           <div py:match="elem" py:attrs="select('@*')">
             ${select('text()')}
           </div>
@@ -569,7 +632,7 @@ class MatchDirectiveTestCase(unittest.TestCase):
         </doc>""", str(tmpl.generate()))
 
     def test_select_all_attrs_in_body(self):
-        tmpl = Template("""<doc xmlns:py="http://genshi.edgewall.org/">
+        tmpl = MarkupTemplate("""<doc xmlns:py="http://genshi.edgewall.org/">
           <div py:match="elem">
             Hey ${select('text()')} ${select('@*')}
           </div>
@@ -582,7 +645,7 @@ class MatchDirectiveTestCase(unittest.TestCase):
         </doc>""", str(tmpl.generate()))
 
     def test_def_in_match(self):
-        tmpl = Template("""<doc xmlns:py="http://genshi.edgewall.org/">
+        tmpl = MarkupTemplate("""<doc xmlns:py="http://genshi.edgewall.org/">
           <py:def function="maketitle(test)"><b py:replace="test" /></py:def>
           <head py:match="head">${select('*')}</head>
           <head><title>${maketitle(True)}</title></head>
@@ -592,7 +655,7 @@ class MatchDirectiveTestCase(unittest.TestCase):
         </doc>""", str(tmpl.generate()))
 
     def test_match_with_xpath_variable(self):
-        tmpl = Template("""<div xmlns:py="http://genshi.edgewall.org/">
+        tmpl = MarkupTemplate("""<div xmlns:py="http://genshi.edgewall.org/">
           <span py:match="*[name()=$tagname]">
             Hello ${select('@name')}
           </span>
@@ -608,7 +671,7 @@ class MatchDirectiveTestCase(unittest.TestCase):
         </div>""", str(tmpl.generate(tagname='sayhello')))
 
     def test_content_directive_in_match(self):
-        tmpl = Template("""<html xmlns:py="http://genshi.edgewall.org/">
+        tmpl = MarkupTemplate("""<html xmlns:py="http://genshi.edgewall.org/">
           <div py:match="foo">I said <q py:content="select('text()')">something</q>.</div>
           <foo>bar</foo>
         </html>""")
@@ -617,7 +680,7 @@ class MatchDirectiveTestCase(unittest.TestCase):
         </html>""", str(tmpl.generate()))
 
     def test_cascaded_matches(self):
-        tmpl = Template("""<html xmlns:py="http://genshi.edgewall.org/">
+        tmpl = MarkupTemplate("""<html xmlns:py="http://genshi.edgewall.org/">
           <body py:match="body">${select('*')}</body>
           <head py:match="head">${select('title')}</head>
           <body py:match="body">${select('*')}<hr /></body>
@@ -630,7 +693,7 @@ class MatchDirectiveTestCase(unittest.TestCase):
         </html>""", str(tmpl.generate()))
 
     def test_multiple_matches(self):
-        tmpl = Template("""<html xmlns:py="http://genshi.edgewall.org/">
+        tmpl = MarkupTemplate("""<html xmlns:py="http://genshi.edgewall.org/">
           <input py:match="form//input" py:attrs="select('@*')"
                  value="${values[str(select('@name'))]}" />
           <form><p py:for="field in fields">
@@ -659,9 +722,67 @@ class MatchDirectiveTestCase(unittest.TestCase):
           </p></form>
         </html>""", str(tmpl.generate(fields=fields, values=values)))
 
+    def test_namespace_context(self):
+        tmpl = MarkupTemplate("""<html xmlns:py="http://genshi.edgewall.org/"
+                                       xmlns:x="http://www.example.org/">
+          <div py:match="x:foo">Foo</div>
+          <foo xmlns="http://www.example.org/"/>
+        </html>""")
+        # FIXME: there should be a way to strip out unwanted/unused namespaces,
+        #        such as the "x" in this example
+        self.assertEqual("""<html xmlns:x="http://www.example.org/">
+          <div>Foo</div>
+        </html>""", str(tmpl.generate()))
+
+    def test_match_with_position_predicate(self):
+        tmpl = MarkupTemplate("""<html xmlns:py="http://genshi.edgewall.org/">
+          <p py:match="body/p[1]" class="first">${select('*|text()')}</p>
+          <body>
+            <p>Foo</p>
+            <p>Bar</p>
+          </body>
+        </html>""")
+        self.assertEqual("""<html>
+          <body>
+            <p class="first">Foo</p>
+            <p>Bar</p>
+          </body>
+        </html>""", str(tmpl.generate()))
+
+    def test_match_with_closure(self):
+        tmpl = MarkupTemplate("""<html xmlns:py="http://genshi.edgewall.org/">
+          <p py:match="body//p" class="para">${select('*|text()')}</p>
+          <body>
+            <p>Foo</p>
+            <div><p>Bar</p></div>
+          </body>
+        </html>""")
+        self.assertEqual("""<html>
+          <body>
+            <p class="para">Foo</p>
+            <div><p class="para">Bar</p></div>
+          </body>
+        </html>""", str(tmpl.generate()))
+
+    # FIXME
+    #def test_match_without_closure(self):
+    #    tmpl = MarkupTemplate("""<html xmlns:py="http://genshi.edgewall.org/">
+    #      <p py:match="body/p" class="para">${select('*|text()')}</p>
+    #      <body>
+    #        <p>Foo</p>
+    #        <div><p>Bar</p></div>
+    #      </body>
+    #    </html>""")
+    #    self.assertEqual("""<html>
+    #      <body>
+    #        <p class="para">Foo</p>
+    #        <div><p>Bar</p></div>
+    #      </body>
+    #    </html>""", str(tmpl.generate()))
+
     # FIXME
     #def test_match_after_step(self):
-    #    tmpl = Template("""<div xmlns:py="http://genshi.edgewall.org/">
+    #    tmpl = MarkupTemplate("""<div xmlns:py="http://genshi.edgewall.org/">
     #      <span py:match="div/greeting">
     #        Hello ${select('@name')}
     #      </span>
@@ -678,7 +799,7 @@ class StripDirectiveTestCase(unittest.TestCase):
     """Tests for the `py:strip` template directive."""
 
     def test_strip_false(self):
-        tmpl = Template("""<div xmlns:py="http://genshi.edgewall.org/">
+        tmpl = MarkupTemplate("""<div xmlns:py="http://genshi.edgewall.org/">
           <div py:strip="False"><b>foo</b></div>
         </div>""")
         self.assertEqual("""<div>
@@ -686,7 +807,7 @@ class StripDirectiveTestCase(unittest.TestCase):
         </div>""", str(tmpl.generate()))
 
     def test_strip_empty(self):
-        tmpl = Template("""<div xmlns:py="http://genshi.edgewall.org/">
+        tmpl = MarkupTemplate("""<div xmlns:py="http://genshi.edgewall.org/">
           <div py:strip=""><b>foo</b></div>
         </div>""")
         self.assertEqual("""<div>
@@ -698,7 +819,7 @@ class WithDirectiveTestCase(unittest.TestCase):
     """Tests for the `py:with` template directive."""
 
     def test_shadowing(self):
-        tmpl = Template("""<div xmlns:py="http://genshi.edgewall.org/">
+        tmpl = MarkupTemplate("""<div xmlns:py="http://genshi.edgewall.org/">
           ${x}
           <span py:with="x = x * 2" py:replace="x"/>
           ${x}
@@ -710,7 +831,7 @@ class WithDirectiveTestCase(unittest.TestCase):
         </div>""", str(tmpl.generate(x=42)))
 
     def test_as_element(self):
-        tmpl = Template("""<div xmlns:py="http://genshi.edgewall.org/">
+        tmpl = MarkupTemplate("""<div xmlns:py="http://genshi.edgewall.org/">
           <py:with vars="x = x * 2">${x}</py:with>
         </div>""")
         self.assertEqual("""<div>
@@ -718,7 +839,7 @@ class WithDirectiveTestCase(unittest.TestCase):
         </div>""", str(tmpl.generate(x=42)))
 
     def test_multiple_vars_same_name(self):
-        tmpl = Template("""<div xmlns:py="http://genshi.edgewall.org/">
+        tmpl = MarkupTemplate("""<div xmlns:py="http://genshi.edgewall.org/">
           <py:with vars="
             foo = 'bar';
             foo = foo.replace('r', 'z')
@@ -731,7 +852,7 @@ class WithDirectiveTestCase(unittest.TestCase):
         </div>""", str(tmpl.generate(x=42)))
 
     def test_multiple_vars_single_assignment(self):
-        tmpl = Template("""<div xmlns:py="http://genshi.edgewall.org/">
+        tmpl = MarkupTemplate("""<div xmlns:py="http://genshi.edgewall.org/">
           <py:with vars="x = y = z = 1">${x} ${y} ${z}</py:with>
         </div>""")
         self.assertEqual("""<div>
@@ -739,7 +860,7 @@ class WithDirectiveTestCase(unittest.TestCase):
         </div>""", str(tmpl.generate(x=42)))
 
     def test_nested_vars_single_assignment(self):
-        tmpl = Template("""<div xmlns:py="http://genshi.edgewall.org/">
+        tmpl = MarkupTemplate("""<div xmlns:py="http://genshi.edgewall.org/">
           <py:with vars="x, (y, z) = (1, (2, 3))">${x} ${y} ${z}</py:with>
         </div>""")
         self.assertEqual("""<div>
@@ -747,7 +868,7 @@ class WithDirectiveTestCase(unittest.TestCase):
         </div>""", str(tmpl.generate(x=42)))
 
     def test_multiple_vars_trailing_semicolon(self):
-        tmpl = Template("""<div xmlns:py="http://genshi.edgewall.org/">
+        tmpl = MarkupTemplate("""<div xmlns:py="http://genshi.edgewall.org/">
           <py:with vars="x = x * 2; y = x / 2;">${x} ${y}</py:with>
         </div>""")
         self.assertEqual("""<div>
@@ -755,7 +876,7 @@ class WithDirectiveTestCase(unittest.TestCase):
         </div>""", str(tmpl.generate(x=42)))
 
     def test_semicolon_escape(self):
-        tmpl = Template("""<div xmlns:py="http://genshi.edgewall.org/">
+        tmpl = MarkupTemplate("""<div xmlns:py="http://genshi.edgewall.org/">
           <py:with vars="x = 'here is a semicolon: ;'; y = 'here are two semicolons: ;;' ;">
             ${x}
             ${y}
@@ -796,6 +917,42 @@ class TemplateTestCase(unittest.TestCase):
         self.assertEqual(Template.EXPR, parts[0][0])
         self.assertEqual('bla', parts[0][1].source)
 
+    def test_interpolate_short_starting_with_underscore(self):
+        parts = list(Template._interpolate('$_bla'))
+        self.assertEqual(1, len(parts))
+        self.assertEqual(Template.EXPR, parts[0][0])
+        self.assertEqual('_bla', parts[0][1].source)
+
+    def test_interpolate_short_containing_underscore(self):
+        parts = list(Template._interpolate('$foo_bar'))
+        self.assertEqual(1, len(parts))
+        self.assertEqual(Template.EXPR, parts[0][0])
+        self.assertEqual('foo_bar', parts[0][1].source)
+
+    def test_interpolate_short_starting_with_dot(self):
+        parts = list(Template._interpolate('$.bla'))
+        self.assertEqual(1, len(parts))
+        self.assertEqual(Stream.TEXT, parts[0][0])
+        self.assertEqual('$.bla', parts[0][1])
+
+    def test_interpolate_short_containing_dot(self):
+        parts = list(Template._interpolate('$foo.bar'))
+        self.assertEqual(1, len(parts))
+        self.assertEqual(Template.EXPR, parts[0][0])
+        self.assertEqual('foo.bar', parts[0][1].source)
+
+    def test_interpolate_short_starting_with_digit(self):
+        parts = list(Template._interpolate('$0bla'))
+        self.assertEqual(1, len(parts))
+        self.assertEqual(Stream.TEXT, parts[0][0])
+        self.assertEqual('$0bla', parts[0][1])
+
+    def test_interpolate_short_containing_digit(self):
+        parts = list(Template._interpolate('$foo0'))
+        self.assertEqual(1, len(parts))
+        self.assertEqual(Template.EXPR, parts[0][0])
+        self.assertEqual('foo0', parts[0][1].source)
+
     def test_interpolate_mixed1(self):
         parts = list(Template._interpolate('$foo bar $baz'))
         self.assertEqual(3, len(parts))
@@ -816,36 +973,40 @@ class TemplateTestCase(unittest.TestCase):
         self.assertEqual(Stream.TEXT, parts[2][0])
         self.assertEqual(' baz', parts[2][1])
 
+
+class MarkupTemplateTestCase(unittest.TestCase):
+    """Tests for markup template processing."""
+
     def test_interpolate_mixed3(self):
-        tmpl = Template('<root> ${var} $var</root>')
+        tmpl = MarkupTemplate('<root> ${var} $var</root>')
         self.assertEqual('<root> 42 42</root>', str(tmpl.generate(var=42)))
 
     def test_interpolate_leading_trailing_space(self):
-        tmpl = Template('<root>${    foo    }</root>')
+        tmpl = MarkupTemplate('<root>${    foo    }</root>')
         self.assertEqual('<root>bar</root>', str(tmpl.generate(foo='bar')))
 
     def test_interpolate_multiline(self):
-        tmpl = Template("""<root>${dict(
+        tmpl = MarkupTemplate("""<root>${dict(
           bar = 'baz'
         )[foo]}</root>""")
         self.assertEqual('<root>baz</root>', str(tmpl.generate(foo='bar')))
 
     def test_interpolate_non_string_attrs(self):
-        tmpl = Template('<root attr="${1}"/>')
+        tmpl = MarkupTemplate('<root attr="${1}"/>')
         self.assertEqual('<root attr="1"/>', str(tmpl.generate()))
 
     def test_interpolate_list_result(self):
-        tmpl = Template('<root>$foo</root>')
+        tmpl = MarkupTemplate('<root>$foo</root>')
         self.assertEqual('<root>buzz</root>', str(tmpl.generate(foo=('buzz',))))
 
     def test_empty_attr(self):
-        tmpl = Template('<root attr=""/>')
+        tmpl = MarkupTemplate('<root attr=""/>')
         self.assertEqual('<root attr=""/>', str(tmpl.generate()))
 
     def test_bad_directive_error(self):
         xml = '<p xmlns:py="http://genshi.edgewall.org/" py:do="nothing" />'
         try:
-            tmpl = Template(xml, filename='test.html')
+            tmpl = MarkupTemplate(xml, filename='test.html')
         except BadDirectiveError, e:
             self.assertEqual('test.html', e.filename)
             if sys.version_info[:2] >= (2, 4):
@@ -854,7 +1015,7 @@ class TemplateTestCase(unittest.TestCase):
     def test_directive_value_syntax_error(self):
         xml = """<p xmlns:py="http://genshi.edgewall.org/" py:if="bar'" />"""
         try:
-            tmpl = Template(xml, filename='test.html')
+            tmpl = MarkupTemplate(xml, filename='test.html')
             self.fail('Expected SyntaxError')
         except TemplateSyntaxError, e:
             self.assertEqual('test.html', e.filename)
@@ -866,7 +1027,7 @@ class TemplateTestCase(unittest.TestCase):
           Foo <em>${bar"}</em>
         </p>"""
         try:
-            tmpl = Template(xml, filename='test.html')
+            tmpl = MarkupTemplate(xml, filename='test.html')
             self.fail('Expected SyntaxError')
         except TemplateSyntaxError, e:
             self.assertEqual('test.html', e.filename)
@@ -880,7 +1041,7 @@ class TemplateTestCase(unittest.TestCase):
 
         </p>"""
         try:
-            tmpl = Template(xml, filename='test.html')
+            tmpl = MarkupTemplate(xml, filename='test.html')
             self.fail('Expected SyntaxError')
         except TemplateSyntaxError, e:
             self.assertEqual('test.html', e.filename)
@@ -892,7 +1053,7 @@ class TemplateTestCase(unittest.TestCase):
         Verify that outputting context data that is a `Markup` instance is not
         escaped.
         """
-        tmpl = Template("""<div xmlns:py="http://genshi.edgewall.org/">
+        tmpl = MarkupTemplate("""<div xmlns:py="http://genshi.edgewall.org/">
           $myvar
         </div>""")
         self.assertEqual("""<div>
@@ -903,7 +1064,7 @@ class TemplateTestCase(unittest.TestCase):
         """
         Verify that outputting context data in text nodes doesn't escape quotes.
         """
-        tmpl = Template("""<div xmlns:py="http://genshi.edgewall.org/">
+        tmpl = MarkupTemplate("""<div xmlns:py="http://genshi.edgewall.org/">
           $myvar
         </div>""")
         self.assertEqual("""<div>
@@ -914,7 +1075,7 @@ class TemplateTestCase(unittest.TestCase):
         """
         Verify that outputting context data in attribtes escapes quotes.
         """
-        tmpl = Template("""<div xmlns:py="http://genshi.edgewall.org/">
+        tmpl = MarkupTemplate("""<div xmlns:py="http://genshi.edgewall.org/">
           <elem class="$myvar"/>
         </div>""")
         self.assertEqual("""<div>
@@ -922,7 +1083,7 @@ class TemplateTestCase(unittest.TestCase):
         </div>""", str(tmpl.generate(myvar='"foo"')))
 
     def test_directive_element(self):
-        tmpl = Template("""<div xmlns:py="http://genshi.edgewall.org/">
+        tmpl = MarkupTemplate("""<div xmlns:py="http://genshi.edgewall.org/">
           <py:if test="myvar">bar</py:if>
         </div>""")
         self.assertEqual("""<div>
@@ -930,7 +1091,7 @@ class TemplateTestCase(unittest.TestCase):
         </div>""", str(tmpl.generate(myvar='"foo"')))
 
     def test_normal_comment(self):
-        tmpl = Template("""<div xmlns:py="http://genshi.edgewall.org/">
+        tmpl = MarkupTemplate("""<div xmlns:py="http://genshi.edgewall.org/">
           <!-- foo bar -->
         </div>""")
         self.assertEqual("""<div>
@@ -938,12 +1099,45 @@ class TemplateTestCase(unittest.TestCase):
         </div>""", str(tmpl.generate()))
 
     def test_template_comment(self):
-        tmpl = Template("""<div xmlns:py="http://genshi.edgewall.org/">
+        tmpl = MarkupTemplate("""<div xmlns:py="http://genshi.edgewall.org/">
           <!-- !foo -->
           <!--!bar-->
         </div>""")
         self.assertEqual("""<div>
         </div>""", str(tmpl.generate()))
+
+    def test_parse_with_same_namespace_nested(self):
+        tmpl = MarkupTemplate("""<div xmlns:py="http://genshi.edgewall.org/">
+          <span xmlns:py="http://genshi.edgewall.org/">
+          </span>
+        </div>""")
+        self.assertEqual("""<div>
+          <span>
+          </span>
+        </div>""", str(tmpl.generate()))
+
+
+class TextTemplateTestCase(unittest.TestCase):
+    """Tests for text template processing."""
+
+    def test_escaping(self):
+        tmpl = TextTemplate('\\#escaped')
+        self.assertEqual('#escaped', str(tmpl.generate()))
+
+    def test_comment(self):
+        tmpl = TextTemplate('## a comment')
+        self.assertEqual('', str(tmpl.generate()))
+
+    def test_comment_escaping(self):
+        tmpl = TextTemplate('\\## escaped comment')
+        self.assertEqual('## escaped comment', str(tmpl.generate()))
+
+    def test_end_with_args(self):
+        tmpl = TextTemplate("""
+        #if foo
+          bar
+        #end 'if foo'""")
+        self.assertEqual('', str(tmpl.generate()))
 
 
 class TemplateLoaderTestCase(unittest.TestCase):
@@ -1041,10 +1235,26 @@ class TemplateLoaderTestCase(unittest.TestCase):
               <div>Included</div>
             </html>""", tmpl.generate().render())
 
+    def test_relative_include_from_inmemory_template(self):
+        file1 = open(os.path.join(self.dirname, 'tmpl1.html'), 'w')
+        try:
+            file1.write("""<div>Included</div>""")
+        finally:
+            file1.close()
+
+        loader = TemplateLoader([self.dirname])
+        tmpl2 = MarkupTemplate("""<html xmlns:xi="http://www.w3.org/2001/XInclude">
+          <xi:include href="../tmpl1.html" />
+        </html>""", filename='subdir/tmpl2.html', loader=loader)
+
+        self.assertEqual("""<html>
+          <div>Included</div>
+        </html>""", tmpl2.generate().render())
+
 
 def suite():
     suite = unittest.TestSuite()
-    suite.addTest(doctest.DocTestSuite(Template.__module__))
+    suite.addTest(doctest.DocTestSuite(template))
     suite.addTest(unittest.makeSuite(AttrsDirectiveTestCase, 'test'))
     suite.addTest(unittest.makeSuite(ChooseDirectiveTestCase, 'test'))
     suite.addTest(unittest.makeSuite(DefDirectiveTestCase, 'test'))
@@ -1054,6 +1264,8 @@ def suite():
     suite.addTest(unittest.makeSuite(StripDirectiveTestCase, 'test'))
     suite.addTest(unittest.makeSuite(WithDirectiveTestCase, 'test'))
     suite.addTest(unittest.makeSuite(TemplateTestCase, 'test'))
+    suite.addTest(unittest.makeSuite(MarkupTemplateTestCase, 'test'))
+    suite.addTest(unittest.makeSuite(TextTemplateTestCase, 'test'))
     suite.addTest(unittest.makeSuite(TemplateLoaderTestCase, 'test'))
     return suite
 

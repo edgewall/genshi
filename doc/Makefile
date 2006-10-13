@@ -2,6 +2,7 @@ HTML_FILES = \
 	builder.html \
 	index.html \
 	streams.html \
+	text-templates.html \
 	xml-templates.html \
 	xpath.html
 

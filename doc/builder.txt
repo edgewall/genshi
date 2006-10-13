@@ -63,7 +63,7 @@ Creating Fragments
 The ``tag`` object also allows creating “fragments”, which are basically lists
 of nodes (elements or text) that don't have a parent element. This can be useful
 for creating snippets of markup that are attached to a parent element later (for
-example in a template). Fragments are created by calling the ``tag`` object:
+example in a template). Fragments are created by calling the ``tag`` object::
 
   >>> fragment = tag('Hello, ', tag.em('word'), '!')
   >>> fragment

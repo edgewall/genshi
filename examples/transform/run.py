@@ -5,11 +5,11 @@ import os
 import sys
 
 from genshi.input import HTMLParser
-from genshi.template import Context, Template
+from genshi.template import Context, MarkupTemplate
 
 def transform(html_filename, tmpl_filename):
     tmpl_fileobj = open(tmpl_filename)
-    tmpl = Template(tmpl_fileobj, tmpl_filename)
+    tmpl = MarkupTemplate(tmpl_fileobj, tmpl_filename)
     tmpl_fileobj.close()
 
     html_fileobj = open(html_filename)

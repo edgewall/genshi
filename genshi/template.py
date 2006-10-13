@@ -425,7 +425,7 @@ class ForDirective(Directive):
       <li>1</li><li>2</li><li>3</li>
     </ul>
     """
-    __slots__ = ['assign']
+    __slots__ = ['assign', 'filename']
 
     ATTRIBUTE = 'each'
 
@@ -437,6 +437,7 @@ class ForDirective(Directive):
         assign, value = value.split(' in ', 1)
         ast = compiler.parse(assign, 'exec')
         self.assign = _assignment(ast.node.nodes[0].expr)
+        self.filename = filename
         Directive.__init__(self, value.strip(), namespaces, filename, lineno,
                            offset)
 
@@ -457,7 +458,7 @@ class ForDirective(Directive):
                     yield event
                 ctxt.pop()
         except TypeError, e:
-            raise TemplateRuntimeError(str(e), *stream[0][2])
+            raise TemplateRuntimeError(str(e), self.filename, *stream[0][2][1:])
 
     def __repr__(self):
         return '<%s>' % self.__class__.__name__
@@ -663,20 +664,26 @@ class WhenDirective(Directive):
     
     See the documentation of `py:choose` for usage.
     """
+    __slots__ = ['filename']
 
     ATTRIBUTE = 'test'
+
+    def __init__(self, value, namespaces=None, filename=None, lineno=-1,
+                 offset=-1):
+        Directive.__init__(self, value, namespaces, filename, lineno, offset)
+        self.filename = filename
 
     def __call__(self, stream, ctxt, directives):
         matched, frame = ctxt._find('_choose.matched')
         if not frame:
             raise TemplateRuntimeError('"when" directives can only be used '
                                        'inside a "choose" directive',
-                                       *stream.next()[2])
+                                       self.filename, *stream.next()[2][1:])
         if matched:
             return []
         if not self.expr:
             raise TemplateRuntimeError('"when" directive has no test condition',
-                                       *stream.next()[2])
+                                       self.filename, *stream.next()[2][1:])
         value = self.expr.evaluate(ctxt)
         if '_choose.value' in frame:
             matched = (value == frame['_choose.value'])
@@ -695,12 +702,19 @@ class OtherwiseDirective(Directive):
     
     See the documentation of `py:choose` for usage.
     """
+    __slots__ = ['filename']
+
+    def __init__(self, value, namespaces=None, filename=None, lineno=-1,
+                 offset=-1):
+        Directive.__init__(self, None, namespaces, filename, lineno, offset)
+        self.filename = filename
+
     def __call__(self, stream, ctxt, directives):
         matched, frame = ctxt._find('_choose.matched')
         if not frame:
             raise TemplateRuntimeError('an "otherwise" directive can only be '
                                        'used inside a "choose" directive',
-                                       *stream.next()[2])
+                                       self.filename, *stream.next()[2][1:])
         if matched:
             return []
         frame['_choose.matched'] = True
@@ -816,7 +830,8 @@ class Template(object):
     _FULL_EXPR_RE = re.compile(r'(?<!\$)\$\{(.+?)\}', re.DOTALL)
     _SHORT_EXPR_RE = re.compile(r'(?<!\$)\$([a-zA-Z_][a-zA-Z0-9_\.]*)')
 
-    def _interpolate(cls, text, filename=None, lineno=-1, offset=-1):
+    def _interpolate(cls, text, basedir=None, filename=None, lineno=-1,
+                     offset=0):
         """Parse the given string and extract expressions.
         
         This method returns a list containing both literal text and `Expression`
@@ -997,7 +1012,7 @@ class MarkupTemplate(Template):
         ns_prefix = {}
         depth = 0
 
-        for kind, data, pos in XMLParser(self.source, filename=self.filepath):
+        for kind, data, pos in XMLParser(self.source, filename=self.filename):
 
             if kind is START_NS:
                 # Strip out the namespace declaration for template directives
@@ -1020,9 +1035,11 @@ class MarkupTemplate(Template):
                 if tag in self.NAMESPACE:
                     cls = self._dir_by_name.get(tag.localname)
                     if cls is None:
-                        raise BadDirectiveError(tag.localname, pos[0], pos[1])
+                        raise BadDirectiveError(tag.localname, self.filepath,
+                                                pos[1])
                     value = attrib.get(getattr(cls, 'ATTRIBUTE', None), '')
-                    directives.append(cls(value, ns_prefix, *pos))
+                    directives.append(cls(value, ns_prefix, self.filepath,
+                                          pos[1], pos[2]))
                     strip = True
 
                 new_attrib = []
@@ -1030,12 +1047,14 @@ class MarkupTemplate(Template):
                     if name in self.NAMESPACE:
                         cls = self._dir_by_name.get(name.localname)
                         if cls is None:
-                            raise BadDirectiveError(name.localname, pos[0],
-                                                    pos[1])
-                        directives.append(cls(value, ns_prefix, *pos))
+                            raise BadDirectiveError(name.localname,
+                                                    self.filepath, pos[1])
+                        directives.append(cls(value, ns_prefix, self.filepath,
+                                              pos[1], pos[2]))
                     else:
                         if value:
-                            value = list(self._interpolate(value, *pos))
+                            value = list(self._interpolate(value, self.basedir,
+                                                           *pos))
                             if len(value) == 1 and value[0][0] is TEXT:
                                 value = value[0][1]
                         else:
@@ -1066,7 +1085,8 @@ class MarkupTemplate(Template):
                                               pos)]
 
             elif kind is TEXT:
-                for kind, data, pos in self._interpolate(data, *pos):
+                for kind, data, pos in self._interpolate(data, self.basedir,
+                                                         *pos):
                     stream.append((kind, data, pos))
 
             elif kind is COMMENT:
@@ -1200,8 +1220,8 @@ class TextTemplate(Template):
             start, end = mo.span()
             if start > offset:
                 text = source[offset:start]
-                for kind, data, pos in self._interpolate(text, self.filepath,
-                                                         lineno, 0):
+                for kind, data, pos in self._interpolate(text, self.basedir,
+                                                         self.filename, lineno):
                     stream.append((kind, data, pos))
                 lineno += len(text.splitlines())
 
@@ -1232,8 +1252,8 @@ class TextTemplate(Template):
 
         if offset < len(source):
             text = source[offset:].replace('\\#', '#')
-            for kind, data, pos in self._interpolate(text, self.filepath,
-                                                     lineno, 0):
+            for kind, data, pos in self._interpolate(text, self.basedir,
+                                                     self.filename, lineno):
                 stream.append((kind, data, pos))
 
         return stream

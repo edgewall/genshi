@@ -25,7 +25,22 @@ from genshi.core import Attrs, QName, Stream
 from genshi.core import DOCTYPE, START, END, START_NS, END_NS, TEXT, \
                         START_CDATA, END_CDATA, PI, COMMENT
 
-__all__ = ['ParseError', 'XMLParser', 'XML', 'HTMLParser', 'HTML']
+__all__ = ['ET', 'ParseError', 'XMLParser', 'XML', 'HTMLParser', 'HTML']
+
+def ET(element):
+    """Convert a given ElementTree element to a markup stream."""
+    tag_name = QName(element.tag.lstrip('{'))
+    attrs = Attrs(element.items())
+
+    yield START, (tag_name, attrs), (None, -1, -1)
+    if element.text:
+        yield TEXT, element.text, (None, -1, -1)
+    for child in element.getchildren():
+        for item in ET(child):
+            yield item
+    yield END, tag_name, (None, -1, -1)
+    if element.tail:
+        yield TEXT, element.tail, (None, -1, -1)
 
 
 class ParseError(Exception):

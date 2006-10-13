@@ -18,29 +18,10 @@ CherryPy/Buffet.
 
 from pkg_resources import resource_filename
 
-from genshi.core import Attrs, Stream, QName
 from genshi.eval import Undefined
-from genshi.input import HTML, XML
+from genshi.input import ET, HTML, XML
 from genshi.template import Context, MarkupTemplate, Template, TemplateLoader, \
                             TextTemplate
-
-def ET(element):
-    """Converts the given ElementTree element to a markup stream."""
-    tag_name = element.tag
-    if tag_name.startswith('{'):
-        tag_name = tag_name[1:]
-    tag_name = QName(tag_name)
-    attrib = Attrs(element.items())
-
-    yield (Stream.START, (tag_name, attrib), (None, -1, -1))
-    if element.text:
-        yield Stream.TEXT, element.text, (None, -1, -1)
-    for child in element.getchildren():
-        for item in ET(child):
-            yield item
-    yield Stream.END, tag_name, (None, -1, -1)
-    if element.tail:
-        yield Stream.TEXT, element.tail, (None, -1, -1)
 
 
 class AbstractTemplateEnginePlugin(object):

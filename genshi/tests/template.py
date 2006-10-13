@@ -198,6 +198,21 @@ class ChooseDirectiveTestCase(unittest.TestCase):
         </doc>""")
         self.assertRaises(TemplateRuntimeError, str, tmpl.generate())
 
+    def test_when_without_test_but_with_choose_value(self):
+        """
+        Verify that an `when` directive that doesn't have a `test` attribute
+        works as expected as long as the parent `choose` directive has a test
+        expression.
+        """
+        tmpl = MarkupTemplate("""<doc xmlns:py="http://genshi.edgewall.org/">
+          <div py:choose="foo" py:strip="">
+            <py:when>foo</py:when>
+          </div>
+        </doc>""")
+        self.assertEqual("""<doc>
+            foo
+        </doc>""", str(tmpl.generate(foo='Yeah')))
+
     def test_otherwise_without_test(self):
         """
         Verify that an `otherwise` directive can be used without a `test`

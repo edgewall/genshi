@@ -681,14 +681,18 @@ class WhenDirective(Directive):
                                        self.filename, *stream.next()[2][1:])
         if matched:
             return []
-        if not self.expr:
-            raise TemplateRuntimeError('"when" directive has no test condition',
+        if not self.expr and '_choose.value' not in frame:
+            raise TemplateRuntimeError('either "choose" or "when" directive '
+                                       'must have a test expression',
                                        self.filename, *stream.next()[2][1:])
-        value = self.expr.evaluate(ctxt)
         if '_choose.value' in frame:
-            matched = (value == frame['_choose.value'])
+            value = frame['_choose.value']
+            if self.expr:
+                matched = value == self.expr.evaluate(ctxt)
+            else:
+                matched = bool(value)
         else:
-            matched = bool(value)
+            matched = bool(self.expr.evaluate(ctxt))
         frame['_choose.matched'] = matched
         if not matched:
             return []

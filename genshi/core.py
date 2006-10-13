@@ -212,11 +212,6 @@ def _ensure(stream):
                 event = TEXT, unicode(event), (None, -1, -1)
         yield event
 
-try:
-    from genshi._speedups import _ensure
-except ImportError:
-    pass # just use the Python implementation
-
 
 class Attrs(list):
     """Sequence type that stores the attributes of an element.

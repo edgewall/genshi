@@ -529,141 +529,6 @@ PyTypeObject MarkupType = {
     0           /*tp_weaklist*/
 };
 
-/* _ensure generator */
-
-PyAPI_DATA(PyTypeObject) _ensureType;
-
-typedef struct {
-    PyObject_HEAD;
-    PyObject *stream;
-} _ensure;
-
-static void
-_ensure_dealloc(_ensure *self)
-{
-    Py_XDECREF(self->stream);
-    self->ob_type->tp_free((PyObject *) self);
-}
-
-static int
-_ensure_init(_ensure *self, PyObject *args, PyObject *kwds)
-{
-    PyObject *stream;
-    if (!PyArg_ParseTuple(args, "O", &stream)) return -1;
-
-    stream = PyObject_GetIter(stream);
-    if (stream == NULL) return -1;
-    Py_INCREF(stream);
-    self->stream = stream;
-
-    return 0;
-}
-
-static PyObject *
-_ensure_iter(_ensure *self)
-{
-    Py_INCREF(self);
-    return (PyObject *) self;
-}
-
-static PyObject *
-_ensure_next(_ensure *self)
-{
-    PyObject *result, *tmp, *tmp2, *pos, *module, *kind;
-
-    result = PyIter_Next(self->stream);
-    if (result == NULL) return NULL;
-    Py_INCREF(result);
-
-    if (!PyTuple_CheckExact(result)) {
-        if (PyObject_HasAttrString(result, "totuple")) {
-            tmp = PyObject_CallMethod(result, "totuple", NULL);
-            Py_DECREF(result);
-            if (tmp == NULL) return NULL;
-            Py_INCREF(tmp);
-            return tmp;
-        } else {
-            tmp = PyObject_Unicode(result);
-            Py_DECREF(result);
-            if (tmp == NULL) return NULL;
-
-            pos = PyTuple_New(3);
-            if (pos == NULL) return NULL;
-            PyTuple_SET_ITEM(pos, 0, Py_None);
-            PyTuple_SET_ITEM(pos, 1, PyInt_FromLong(-1));
-            PyTuple_SET_ITEM(pos, 2, PyInt_FromLong(-1));
-
-            module = PyImport_ImportModule("genshi.core");
-            if (module == NULL) return NULL;
-            kind = PyObject_GetAttrString(module, "TEXT");
-            Py_DECREF(module);
-            if (kind == NULL) return NULL;
-
-            tmp2 = PyTuple_New(3);
-            if (tmp == NULL) return NULL;
-            PyTuple_SET_ITEM(tmp2, 0, kind);
-            PyTuple_SET_ITEM(tmp2, 1, tmp);
-            PyTuple_SET_ITEM(tmp2, 2, tmp2);
-            Py_INCREF(tmp2);
-            return tmp2;
-        }
-    }
-
-    return result;
-}
-
-PyTypeObject _ensureType = {
-    PyObject_HEAD_INIT(NULL)
-    0,          /*ob_size*/
-    "genshi._speedups._ensure", /*tp_name*/
-    sizeof(_ensure),/*tp_basicsize*/
-    0,          /*tp_itemsize*/
-    (destructor) _ensure_dealloc, /*tp_dealloc*/
-    0,          /*tp_print*/ 
-    0,          /*tp_getattr*/
-    0,          /*tp_setattr*/
-    0,          /*tp_compare*/
-    0,          /*tp_repr*/
-    0,          /*tp_as_number*/
-    0,          /*tp_as_sequence*/
-    0,          /*tp_as_mapping*/
-    0,          /*tp_hash */
-
-    0,          /*tp_call*/
-    0,          /*tp_str*/
-    0,          /*tp_getattro*/
-    0,          /*tp_setattro*/
-    0,          /*tp_as_buffer*/
-
-    Py_TPFLAGS_DEFAULT | Py_TPFLAGS_HAVE_ITER, /*tp_flags*/
-    0,          /*tp_doc*/
-
-    0,          /*tp_traverse*/
-    0,          /*tp_clear*/
-
-    0,          /*tp_richcompare*/
-    0,          /*tp_weaklistoffset*/
-
-    (getiterfunc) _ensure_iter, /*tp_iter*/
-    (iternextfunc) _ensure_next, /*tp_iternext*/
-
-    /* Attribute descriptor and subclassing stuff */
-
-    0,          /*tp_methods*/
-    0,          /*tp_members*/
-    0,          /*tp_getset*/
-    0,          /*tp_base*/
-    0,          /*tp_dict*/
-
-    0,          /*tp_descr_get*/
-    0,          /*tp_descr_set*/
-    0,          /*tp_dictoffset*/
-
-    (initproc) _ensure_init, /*tp_init*/
-    0,          /*tp_alloc  will be set to PyType_GenericAlloc in module init*/
-    PyType_GenericNew          /*tp_new*/
-};
-
 PyMODINIT_FUNC
 init_speedups(void)
 {
@@ -671,14 +536,10 @@ init_speedups(void)
 
     if (PyType_Ready(&MarkupType) < 0)
         return;
-    if (PyType_Ready(&_ensureType) < 0)
-        return;
 
     init_constants();
 
     module = Py_InitModule("_speedups", NULL);
     Py_INCREF(&MarkupType);
     PyModule_AddObject(module, "Markup", (PyObject *) &MarkupType);
-    Py_INCREF(&_ensureType);
-    PyModule_AddObject(module, "_ensure", (PyObject *) &_ensureType);
 }

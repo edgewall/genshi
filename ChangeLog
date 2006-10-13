@@ -4,6 +4,8 @@ http://svn.edgewall.org/repos/genshi/tags/0.3.3/
 
  * Fixed bug introduced in 0.3.2 that broke the parsing of templates which
    declare the same namespace more than once in a nested fashion.
+ * Fixed the parsing of HTML entity references inside attribute values, both
+   in the `XMLParser` and the `HTMLParser` classes.
 
 
 Version 0.3.2

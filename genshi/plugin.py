@@ -20,8 +20,13 @@ from pkg_resources import resource_filename
 
 from genshi.eval import Undefined
 from genshi.input import ET, HTML, XML
+from genshi.output import DocType
 from genshi.template import Context, MarkupTemplate, Template, TemplateLoader, \
                             TextTemplate
+
+
+class ConfigurationError(Exception):
+    """Exception raised when invalid plugin options are encountered."""
 
 
 class AbstractTemplateEnginePlugin(object):
@@ -31,13 +36,23 @@ class AbstractTemplateEnginePlugin(object):
     extension = None
 
     def __init__(self, extra_vars_func=None, options=None):
+        self.get_extra_vars = extra_vars_func
         if options is None:
             options = {}
-        # TODO get loader_args from the options dict
-
-        self.loader = TemplateLoader(auto_reload=True)
         self.options = options
-        self.get_extra_vars = extra_vars_func
+
+        self.default_encoding = options.get('genshi.default_encoding', 'utf-8')
+        auto_reload = options.get('genshi.auto_reload', '').lower() \
+                            in ('1', 'yes', 'true')
+        search_path = options.get('genshi.search_path', '').split(':')
+        try:
+            max_cache_size = int(options.get('genshi.max_cache_size', 25))
+        except ValueError:
+            raise ConfigurationError('Invalid value for max_cache_size: "%s"' %
+                                     max_cache_size)
+
+        self.loader = TemplateLoader(search_path, auto_reload=auto_reload,
+                                     max_cache_size=max_cache_size)
 
     def load_template(self, templatename, template_string=None):
         """Find a template specified in python 'dot' notation, or load one from
@@ -54,9 +69,18 @@ class AbstractTemplateEnginePlugin(object):
 
         return self.loader.load(templatename, cls=self.template_class)
 
-    def render(self, info, format='html', fragment=False, template=None):
+    def _get_render_options(self, format=None):
+        if format is None:
+            format = self.default_format
+        kwargs = {'method': format}
+        if self.default_encoding:
+            kwargs['encoding'] = self.default_encoding
+        return kwargs
+
+    def render(self, info, format=None, fragment=False, template=None):
         """Render the template to a string using the provided info."""
-        return self.transform(info, template).render(method=format)
+        kwargs = self._get_render_options()
+        return self.transform(info, template).render(**kwargs)
 
     def transform(self, info, template):
         """Render the output to an event stream."""
@@ -81,6 +105,31 @@ class MarkupTemplateEnginePlugin(AbstractTemplateEnginePlugin):
     template_class = MarkupTemplate
     extension = '.html'
 
+    doctypes = {'html': DocType.HTML, 'html-strict': DocType.HTML_STRICT,
+                'html-transitional': DocType.HTML_TRANSITIONAL,
+                'xhtml': DocType.XHTML, 'xhtml-strict': DocType.XHTML_STRICT,
+                'xhtml-transitional': DocType.XHTML_TRANSITIONAL}
+
+    def __init__(self, extra_vars_func=None, options=None):
+        AbstractTemplateEnginePlugin.__init__(self, extra_vars_func, options)
+
+        doctype = options.get('genshi.default_doctype')
+        if doctype and doctype not in self.doctypes:
+            raise ConfigurationError('Unknown doctype "%s"' % doctype)
+        self.default_doctype = self.doctypes.get(doctype)
+
+        format = options.get('genshi.default_format', 'html')
+        if format not in ('html', 'xhtml', 'xml', 'text'):
+            raise ConfigurationError('Unknown output format "%s"' % format)
+        self.default_format = format
+
+    def _get_render_options(self, format=None):
+        kwargs = super(MarkupTemplateEnginePlugin,
+                       self)._get_render_options(format)
+        if self.default_doctype:
+            kwargs['doctype'] = self.default_doctype
+        return kwargs
+
     def transform(self, info, template):
         """Render the output to an event stream."""
         data = {'ET': ET, 'HTML': HTML, 'XML': XML}
@@ -95,6 +144,7 @@ class TextTemplateEnginePlugin(AbstractTemplateEnginePlugin):
 
     template_class = TextTemplate
     extension = '.txt'
+    default_format = 'text'
 
     def transform(self, info, template):
         """Render the output to an event stream."""

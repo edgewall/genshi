@@ -12,6 +12,14 @@ http://svn.edgewall.org/repos/genshi/tags/0.4.0/
    be configured per instance.
 
 
+Version 0.3.3
+http://svn.edgewall.org/repos/genshi/tags/0.3.3/
+(?, from branches/stable/0.3.x)
+
+ * Fixed bug introduced in 0.3.2 that broke the parsing of templates which
+   declare the same namespace more than once in a nested fashion.
+
+
 Version 0.3.2
 http://svn.edgewall.org/repos/genshi/tags/0.3.2/
 (Oct 12 2006, from branches/stable/0.3.x)

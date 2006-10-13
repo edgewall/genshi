@@ -1045,6 +1045,16 @@ class MarkupTemplateTestCase(unittest.TestCase):
         self.assertEqual("""<div>
         </div>""", str(tmpl.generate()))
 
+    def test_parse_with_same_namespace_nested(self):
+        tmpl = MarkupTemplate("""<div xmlns:py="http://genshi.edgewall.org/">
+          <span xmlns:py="http://genshi.edgewall.org/">
+          </span>
+        </div>""")
+        self.assertEqual("""<div>
+          <span>
+          </span>
+        </div>""", str(tmpl.generate()))
+
 
 class TextTemplateTestCase(unittest.TestCase):
     """Tests for text template processing."""

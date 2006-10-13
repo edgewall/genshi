@@ -1007,8 +1007,8 @@ class MarkupTemplate(Template):
                     stream.append((kind, data, pos))
 
             elif kind is END_NS:
-                uri = ns_prefix.pop(data)
-                if uri != self.NAMESPACE:
+                uri = ns_prefix.pop(data, None)
+                if uri and uri != self.NAMESPACE:
                     stream.append((kind, data, pos))
 
             elif kind is START:

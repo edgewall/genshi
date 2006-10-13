@@ -76,6 +76,15 @@ bar</elem>'''
         self.assertEqual(Stream.TEXT, kind)
         self.assertEqual(u'\xa0', data)
 
+    def test_html_entity_in_attribute(self):
+        text = '<p title="&nbsp;"/>'
+        events = list(XMLParser(StringIO(text)))
+        kind, data, pos = events[0]
+        self.assertEqual(Stream.START, kind)
+        self.assertEqual(u'\xa0', data[1].get('title'))
+        kind, data, pos = events[1]
+        self.assertEqual(Stream.END, kind)
+
     def test_undefined_entity_with_dtd(self):
         text = """<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
         "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
@@ -117,6 +126,22 @@ bar</elem>'''
         kind, data, pos = events[1]
         self.assertEqual(Stream.TEXT, kind)
         self.assertEqual(u'\u2013', data)
+
+    def test_html_entity_in_attribute(self):
+        text = '<p title="&nbsp;"></p>'
+        events = list(HTMLParser(StringIO(text)))
+        kind, data, pos = events[0]
+        self.assertEqual(Stream.START, kind)
+        self.assertEqual(u'\xa0', data[1].get('title'))
+        kind, data, pos = events[1]
+        self.assertEqual(Stream.END, kind)
+
+    def test_html_entity_in_text(self):
+        text = '<p>&nbsp;</p>'
+        events = list(HTMLParser(StringIO(text)))
+        kind, data, pos = events[1]
+        self.assertEqual(Stream.TEXT, kind)
+        self.assertEqual(u'\xa0', data)
 
 
 def suite():

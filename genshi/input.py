@@ -21,7 +21,7 @@ import HTMLParser as html
 import htmlentitydefs
 from StringIO import StringIO
 
-from genshi.core import Attrs, QName, Stream
+from genshi.core import Attrs, QName, Stream, stripentities
 from genshi.core import DOCTYPE, START, END, START_NS, END_NS, TEXT, \
                         START_CDATA, END_CDATA, PI, COMMENT
 
@@ -71,6 +71,10 @@ class XMLParser(object):
     END root
     """
 
+    _entitydefs = ['<!ENTITY %s "&#%d;">' % (name, value) for name, value in
+                   htmlentitydefs.name2codepoint.items()]
+    _external_dtd = '\n'.join(_entitydefs)
+
     def __init__(self, source, filename=None):
         """Initialize the parser for the given XML text.
         
@@ -100,7 +104,9 @@ class XMLParser(object):
         # Tell Expat that we'll handle non-XML entities ourselves
         # (in _handle_other)
         parser.DefaultHandler = self._handle_other
+        parser.SetParamEntityParsing(expat.XML_PARAM_ENTITY_PARSING_ALWAYS)
         parser.UseForeignDTD()
+        parser.ExternalEntityRefHandler = self._build_foreign
 
         # Location reporting is only support in Python >= 2.4
         if not hasattr(parser, 'CurrentLineNumber'):
@@ -140,6 +146,11 @@ class XMLParser(object):
 
     def __iter__(self):
         return iter(self.parse())
+
+    def _build_foreign(self, context, base, sysid, pubid):
+        parser = self.expat.ExternalEntityParserCreate(context)
+        parser.ParseFile(StringIO(self._external_dtd))
+        return 1
 
     def _enqueue(self, kind, data=None, pos=None):
         if pos is None:
@@ -292,7 +303,7 @@ class HTMLParser(html.HTMLParser, object):
         for name, value in attrib: # Fixup minimized attributes
             if value is None:
                 value = name
-            fixed_attrib.append((name, unicode(value)))
+            fixed_attrib.append((name, unicode(stripentities(value))))
 
         self._enqueue(START, (QName(tag), Attrs(fixed_attrib)))
         if tag in self._EMPTY_ELEMS:

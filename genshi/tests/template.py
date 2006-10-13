@@ -719,6 +719,52 @@ class MatchDirectiveTestCase(unittest.TestCase):
           <div>Foo</div>
         </html>""", str(tmpl.generate()))
 
+    def test_match_with_position_predicate(self):
+        tmpl = MarkupTemplate("""<html xmlns:py="http://genshi.edgewall.org/">
+          <p py:match="body/p[1]" class="first">${select('*|text()')}</p>
+          <body>
+            <p>Foo</p>
+            <p>Bar</p>
+          </body>
+        </html>""")
+        self.assertEqual("""<html>
+          <body>
+            <p class="first">Foo</p>
+            <p>Bar</p>
+          </body>
+        </html>""", str(tmpl.generate()))
+
+    def test_match_with_closure(self):
+        tmpl = MarkupTemplate("""<html xmlns:py="http://genshi.edgewall.org/">
+          <p py:match="body//p" class="para">${select('*|text()')}</p>
+          <body>
+            <p>Foo</p>
+            <div><p>Bar</p></div>
+          </body>
+        </html>""")
+        self.assertEqual("""<html>
+          <body>
+            <p class="para">Foo</p>
+            <div><p class="para">Bar</p></div>
+          </body>
+        </html>""", str(tmpl.generate()))
+
+    # FIXME
+    #def test_match_without_closure(self):
+    #    tmpl = MarkupTemplate("""<html xmlns:py="http://genshi.edgewall.org/">
+    #      <p py:match="body/p" class="para">${select('*|text()')}</p>
+    #      <body>
+    #        <p>Foo</p>
+    #        <div><p>Bar</p></div>
+    #      </body>
+    #    </html>""")
+    #    self.assertEqual("""<html>
+    #      <body>
+    #        <p class="para">Foo</p>
+    #        <div><p>Bar</p></div>
+    #      </body>
+    #    </html>""", str(tmpl.generate()))
+
     # FIXME
     #def test_match_after_step(self):
     #    tmpl = MarkupTemplate("""<div xmlns:py="http://genshi.edgewall.org/">

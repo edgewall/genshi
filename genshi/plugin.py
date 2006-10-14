@@ -79,7 +79,7 @@ class AbstractTemplateEnginePlugin(object):
 
     def render(self, info, format=None, fragment=False, template=None):
         """Render the template to a string using the provided info."""
-        kwargs = self._get_render_options()
+        kwargs = self._get_render_options(format=format)
         return self.transform(info, template).render(**kwargs)
 
     def transform(self, info, template):

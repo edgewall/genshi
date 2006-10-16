@@ -1354,17 +1354,20 @@ class TemplateLoader(object):
                 pass
 
             search_path = self.search_path
+            isabs = False
 
             if os.path.isabs(filename):
                 # Bypass the search path if the requested filename is absolute
                 search_path = [os.path.dirname(filename)]
+                isabs = True
 
             elif relative_to and os.path.isabs(relative_to):
                 # Make sure that the directory containing the including
                 # template is on the search path
                 dirname = os.path.dirname(relative_to)
                 if dirname not in search_path:
-                    search_path = search_path[:] + [dirname]
+                    search_path = search_path + [dirname]
+                isabs = True
 
             elif not search_path:
                 # Uh oh, don't know where to look for the template
@@ -1375,6 +1378,14 @@ class TemplateLoader(object):
                 try:
                     fileobj = open(filepath, 'U')
                     try:
+                        if isabs:
+                            # If the filename of either the included or the 
+                            # including template is absolute, make sure the
+                            # included template gets an absolute path, too,
+                            # so that nested include work properly without a
+                            # search path
+                            filename = os.path.join(dirname, filename)
+                            dirname = ''
                         tmpl = cls(fileobj, basedir=dirname, filename=filename,
                                    loader=self)
                     finally:

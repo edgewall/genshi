@@ -51,7 +51,8 @@ class AbstractTemplateEnginePlugin(object):
             raise ConfigurationError('Invalid value for max_cache_size: "%s"' %
                                      max_cache_size)
 
-        self.loader = TemplateLoader(search_path, auto_reload=auto_reload,
+        self.loader = TemplateLoader(filter(None, search_path),
+                                     auto_reload=auto_reload,
                                      max_cache_size=max_cache_size)
 
     def load_template(self, templatename, template_string=None):

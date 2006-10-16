@@ -281,7 +281,8 @@ class ExpressionTestCase(unittest.TestCase):
 
     def test_slice_with_vars(self):
         expr = Expression("numbers[start:end]")
-        self.assertEqual([0, 1], expr.evaluate({'numbers': range(5), 'start': 0, 'end': 2}))
+        self.assertEqual([0, 1], expr.evaluate({'numbers': range(5), 'start': 0,
+                                                'end': 2}))
 
     def test_slice_copy(self):
         expr = Expression("numbers[:]")
@@ -289,7 +290,8 @@ class ExpressionTestCase(unittest.TestCase):
 
     def test_slice_stride(self):
         expr = Expression("numbers[::stride]")
-        self.assertEqual([0, 2, 4], expr.evaluate({'numbers': range(5), 'stride': 2}))
+        self.assertEqual([0, 2, 4], expr.evaluate({'numbers': range(5),
+                                                   'stride': 2}))
 
     def test_slice_negative_start(self):
         expr = Expression("numbers[-1:]")
@@ -315,6 +317,7 @@ class ExpressionTestCase(unittest.TestCase):
             while frame.tb_next:
                 frame = frame.tb_next
                 frames.append(frame)
+            self.assertEqual('Variable "nothing" is not defined', str(e))
             self.assertEqual('<Expression "nothing()">',
                              frames[-3].tb_frame.f_code.co_name)
             self.assertEqual('index.html',
@@ -333,11 +336,47 @@ class ExpressionTestCase(unittest.TestCase):
             while frame.tb_next:
                 frame = frame.tb_next
                 frames.append(frame)
+            self.assertEqual('Variable "nothing" is not defined', str(e))
             self.assertEqual('<Expression "nothing.nil">',
                              frames[-3].tb_frame.f_code.co_name)
             self.assertEqual('index.html',
                              frames[-3].tb_frame.f_code.co_filename)
             self.assertEqual(50, frames[-3].tb_lineno)
+
+    def test_error_getitem_undefined(self):
+        expr = Expression("nothing[0]", filename='index.html', lineno=50)
+        try:
+            expr.evaluate({})
+            self.fail('Expected NameError')
+        except NameError, e:
+            exc_type, exc_value, exc_traceback = sys.exc_info()
+            frame = exc_traceback.tb_next
+            frames = []
+            while frame.tb_next:
+                frame = frame.tb_next
+                frames.append(frame)
+            self.assertEqual('Variable "nothing" is not defined', str(e))
+            self.assertEqual('<Expression "nothing[0]">',
+                             frames[-3].tb_frame.f_code.co_name)
+            self.assertEqual('index.html',
+                             frames[-3].tb_frame.f_code.co_filename)
+            self.assertEqual(50, frames[-3].tb_lineno)
+
+    def test_error_getattr_nested_undefined(self):
+        expr = Expression("nothing.nil", filename='index.html', lineno=50)
+        val = expr.evaluate({'nothing': object()})
+        assert isinstance(val, Undefined)
+        self.assertEqual("nil", val._name)
+
+    def test_error_getitem_nested_undefined_string(self):
+        expr = Expression("nothing['bla']", filename='index.html', lineno=50)
+        val = expr.evaluate({'nothing': object()})
+        assert isinstance(val, Undefined)
+        self.assertEqual("bla", val._name)
+
+    def test_error_getitem_nested_undefined_int(self):
+        expr = Expression("nothing[0]", filename='index.html', lineno=50)
+        self.assertRaises(TypeError, expr.evaluate, {'nothing': object()})
 
 
 def suite():

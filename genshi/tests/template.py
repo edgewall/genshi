@@ -1235,6 +1235,37 @@ class TemplateLoaderTestCase(unittest.TestCase):
               <div>Included</div>
             </html>""", tmpl.generate().render())
 
+    def test_relative_include_without_search_path_nested(self):
+        file1 = open(os.path.join(self.dirname, 'tmpl1.html'), 'w')
+        try:
+            file1.write("""<div>Included</div>""")
+        finally:
+            file1.close()
+
+        file2 = open(os.path.join(self.dirname, 'tmpl2.html'), 'w')
+        try:
+            file2.write("""<div xmlns:xi="http://www.w3.org/2001/XInclude">
+              <xi:include href="tmpl1.html" />
+            </div>""")
+        finally:
+            file2.close()
+
+        file3 = open(os.path.join(self.dirname, 'tmpl3.html'), 'w')
+        try:
+            file3.write("""<html xmlns:xi="http://www.w3.org/2001/XInclude">
+              <xi:include href="tmpl2.html" />
+            </html>""")
+        finally:
+            file3.close()
+
+        loader = TemplateLoader()
+        tmpl = loader.load(os.path.join(self.dirname, 'tmpl3.html'))
+        self.assertEqual("""<html>
+              <div>
+              <div>Included</div>
+            </div>
+            </html>""", tmpl.generate().render())
+
     def test_relative_include_from_inmemory_template(self):
         file1 = open(os.path.join(self.dirname, 'tmpl1.html'), 'w')
         try:

@@ -65,6 +65,14 @@ class Expression(object):
     __slots__ = ['source', 'code']
 
     def __init__(self, source, filename=None, lineno=-1):
+        """Create the expression, either from a string, or from an AST node.
+        
+        @param source: either a string containing the source code of the
+            expression, or an AST node
+        @param filename: the (preferably absolute) name of the file containing
+            the expression
+        @param lineno: the number of the line on which the expression was found
+        """
         if isinstance(source, basestring):
             self.source = source
             if isinstance(source, unicode):
@@ -128,10 +136,10 @@ class Undefined(object):
         ...
     NameError: Variable "foo" is not defined
     """
-    __slots__ = ['name']
+    __slots__ = ['_name']
 
     def __init__(self, name):
-        self.name = name
+        self._name = name
 
     def __call__(self, *args, **kwargs):
         self.throw()
@@ -149,7 +157,7 @@ class Undefined(object):
         return 'undefined'
 
     def throw(self):
-        raise NameError('Variable "%s" is not defined' % self.name)
+        raise NameError('Variable "%s" is not defined' % self._name)
 
 
 def _compile(node, source=None, filename=None, lineno=-1):
@@ -202,7 +210,7 @@ def _lookup_attr(data, obj, key):
     try:
         return obj[key]
     except (KeyError, TypeError):
-        return None
+        return Undefined(key)
 
 def _lookup_item(data, obj, key):
     if type(obj) is Undefined:
@@ -213,10 +221,11 @@ def _lookup_item(data, obj, key):
         return obj[key]
     except (KeyError, IndexError, TypeError), e:
         if isinstance(key, basestring):
-            try:
-                return getattr(obj, key)
-            except (AttributeError, TypeError), e:
-                pass
+            val = getattr(obj, key, Undefined)
+            if val is Undefined:
+                val = Undefined(key)
+            return val
+        raise
 
 
 class ASTTransformer(object):

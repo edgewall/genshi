@@ -13,16 +13,25 @@ http://svn.edgewall.org/repos/genshi/tags/0.4.0/
  * The template engine plugin now supports a range of options for
    configuration, for example to set the default serialization method, the
    default output encoding, or the default DOCTYPE.
+ * The ElementTree adaptation function `ET()` has moved into the `genshi.input`
+   module.
+ * Allow `when` directives to omit the test expression as long as the
+   associated choose directive does have one. In that case, the when branch is
+   followed if the expression of the choose directive evaluates to a truth
+   value.
 
 
 Version 0.3.3
 http://svn.edgewall.org/repos/genshi/tags/0.3.3/
-(?, from branches/stable/0.3.x)
+(Oct 16 2006, from branches/stable/0.3.x)
 
  * Fixed bug introduced in 0.3.2 that broke the parsing of templates which
    declare the same namespace more than once in a nested fashion.
  * Fixed the parsing of HTML entity references inside attribute values, both
    in the `XMLParser` and the `HTMLParser` classes.
+ * Some changes to usage of absolute vs. relative template paths to ensure that
+   the filenamed-keyed cache employed by the TemplateLoader doesn't mix up
+   templates with the same name, but from different subdirectories.
 
 
 Version 0.3.2

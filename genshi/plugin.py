@@ -51,7 +51,8 @@ class AbstractTemplateEnginePlugin(object):
             raise ConfigurationError('Invalid value for max_cache_size: "%s"' %
                                      max_cache_size)
 
-        self.loader = TemplateLoader(search_path, auto_reload=auto_reload,
+        self.loader = TemplateLoader(filter(None, search_path),
+                                     auto_reload=auto_reload,
                                      max_cache_size=max_cache_size)
 
     def load_template(self, templatename, template_string=None):
@@ -79,7 +80,7 @@ class AbstractTemplateEnginePlugin(object):
 
     def render(self, info, format=None, fragment=False, template=None):
         """Render the template to a string using the provided info."""
-        kwargs = self._get_render_options()
+        kwargs = self._get_render_options(format=format)
         return self.transform(info, template).render(**kwargs)
 
     def transform(self, info, template):

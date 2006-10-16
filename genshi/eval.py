@@ -180,7 +180,7 @@ def _compile(node, source=None, filename=None, lineno=-1):
     return new.code(0, code.co_nlocals, code.co_stacksize,
                     code.co_flags | 0x0040, code.co_code, code.co_consts,
                     code.co_names, code.co_varnames, filename,
-                    '<Expression %s>' % (repr(source).replace("'", '"') or '?'),
+                    '<Expression %s>' % (repr(source or '?').replace("'", '"')),
                     lineno, code.co_lnotab, (), ())
 
 BUILTINS = __builtin__.__dict__.copy()

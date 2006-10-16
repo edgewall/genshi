@@ -302,15 +302,12 @@ class ContentDirective(Directive):
 
     def __call__(self, stream, ctxt, directives):
         def _generate():
-            kind, data, pos = stream.next()
-            if kind is START:
-                yield kind, data, pos # emit start tag
-            yield EXPR, self.expr, pos
-            previous = stream.next()
-            for event in stream:
-                previous = event
-            if previous is not None:
-                yield previous
+            yield stream.next()
+            yield EXPR, self.expr, (None, -1, -1)
+            event = stream.next()
+            for next in stream:
+                event = next
+            yield event
 
         return _apply_directives(_generate(), ctxt, directives)
 
@@ -552,8 +549,7 @@ class ReplaceDirective(Directive):
     __slots__ = []
 
     def __call__(self, stream, ctxt, directives):
-        kind, data, pos = stream.next()
-        yield EXPR, self.expr, pos
+        yield EXPR, self.expr, (None, -1, -1)
 
 
 class StripDirective(Directive):
@@ -929,44 +925,36 @@ class Template(object):
 
             elif kind is EXPR:
                 result = data.evaluate(ctxt)
-                if result is None:
-                    continue
-
-                # First check for a string, otherwise the iterable test below
-                # succeeds, and the string will be chopped up into individual
-                # characters
-                if isinstance(result, basestring):
-                    yield TEXT, result, pos
-                else:
-                    # Test if the expression evaluated to an iterable, in which
-                    # case we yield the individual items
-                    try:
-                        substream = _ensure(iter(result))
-                    except TypeError:
-                        # Neither a string nor an iterable, so just pass it
-                        # through
-                        yield TEXT, unicode(result), pos
-                    else:
+                if result is not None:
+                    # First check for a string, otherwise the iterable test below
+                    # succeeds, and the string will be chopped up into individual
+                    # characters
+                    if isinstance(result, basestring):
+                        yield TEXT, result, pos
+                    elif hasattr(result, '__iter__'):
+                        substream = _ensure(result)
                         for filter_ in filters:
                             substream = filter_(substream, ctxt)
                         for event in substream:
                             yield event
+                    else:
+                        yield TEXT, unicode(result), pos
 
             else:
                 yield kind, data, pos
 
     def _flatten(self, stream, ctxt):
         """Internal stream filter that expands `SUB` events in the stream."""
-        for kind, data, pos in stream:
-            if kind is SUB:
+        for event in stream:
+            if event[0] is SUB:
                 # This event is a list of directives and a list of nested
                 # events to which those directives should be applied
-                directives, substream = data
+                directives, substream = event[1]
                 substream = _apply_directives(substream, ctxt, directives)
                 for event in self._flatten(substream, ctxt):
                     yield event
             else:
-                yield kind, data, pos
+                yield event
 
 
 EXPR = Template.EXPR
@@ -1113,47 +1101,46 @@ class MarkupTemplate(Template):
         def _strip(stream):
             depth = 1
             while 1:
-                kind, data, pos = stream.next()
-                if kind is START:
+                event = stream.next()
+                if event[0] is START:
                     depth += 1
-                elif kind is END:
+                elif event[0] is END:
                     depth -= 1
                 if depth > 0:
-                    yield kind, data, pos
+                    yield event
                 else:
-                    tail[:] = [(kind, data, pos)]
+                    tail[:] = [event]
                     break
 
-        for kind, data, pos in stream:
+        for event in stream:
 
             # We (currently) only care about start and end events for matching
             # We might care about namespace events in the future, though
-            if not match_templates or kind not in (START, END):
-                yield kind, data, pos
+            if not match_templates or (event[0] is not START and
+                                       event[0] is not END):
+                yield event
                 continue
 
             for idx, (test, path, template, namespaces, directives) in \
                     enumerate(match_templates):
 
-                if test(kind, data, pos, namespaces, ctxt) is True:
+                if test(event, namespaces, ctxt) is True:
 
                     # Let the remaining match templates know about the event so
                     # they get a chance to update their internal state
                     for test in [mt[0] for mt in match_templates[idx + 1:]]:
-                        test(kind, data, pos, namespaces, ctxt)
+                        test(event, namespaces, ctxt)
 
                     # Consume and store all events until an end event
                     # corresponding to this start event is encountered
-                    content = chain([(kind, data, pos)],
-                                    self._match(_strip(stream), ctxt),
+                    content = chain([event], self._match(_strip(stream), ctxt),
                                     tail)
                     for filter_ in self.filters[3:]:
                         content = filter_(content, ctxt)
                     content = list(content)
 
-                    kind, data, pos = tail[0]
                     for test in [mt[0] for mt in match_templates]:
-                        test(kind, data, pos, namespaces, ctxt)
+                        test(tail[0], namespaces, ctxt)
 
                     # Make the select() function available in the body of the
                     # match template
@@ -1174,7 +1161,7 @@ class MarkupTemplate(Template):
                     break
 
             else: # no matches
-                yield kind, data, pos
+                yield event
 
 
 class TextTemplate(Template):

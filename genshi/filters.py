@@ -305,10 +305,10 @@ class IncludeFilter(object):
         """
         from genshi.template import TemplateError, TemplateNotFound
 
+        namespace = self.NAMESPACE
         ns_prefixes = []
         in_fallback = False
-        include_href, fallback_stream = None, None
-        namespace = self.NAMESPACE
+        include_href = fallback_stream = None
 
         for kind, data, pos in stream:
 

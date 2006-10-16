@@ -129,7 +129,7 @@ class Path(object):
                         elif subevent[0] is END:
                             depth -= 1
                         yield subevent
-                        test(subevent, namespaces, variables)
+                        test(subevent, namespaces, variables, updateonly=True)
                 elif result:
                     yield result
         return Stream(_generate())
@@ -141,7 +141,10 @@ class Path(object):
         The function returned expects the positional arguments `event`,
         `namespaces` and `variables`. The first is a stream event, while the
         latter two are a mapping of namespace prefixes to URIs, and a mapping
-        of variable names to values, respectively.
+        of variable names to values, respectively. In addition, the function
+        accepts an `updateonly` keyword argument that default to `False`. If
+        it is set to `True`, the function only updates its internal state,
+        but does not perform any tests or return a result.
         
         If the path matches the event, the function returns the match (for
         example, a `START` or `TEXT` event.) Otherwise, it returns `None`.
@@ -156,11 +159,10 @@ class Path(object):
         """
         paths = [(p, len(p), [0], [], [0] * len(p)) for p in self.paths]
 
-        def _test(event, namespaces, variables):
+        def _test(event, namespaces, variables, updateonly=False):
             kind, data, pos = event
             retval = None
             for steps, size, cursors, cutoff, counter in paths:
-
                 # Manage the stack that tells us "where we are" in the stream
                 if kind is END:
                     if cursors:
@@ -169,7 +171,7 @@ class Path(object):
                 elif kind is START:
                     cursors.append(cursors and cursors[-1] or 0)
 
-                if retval or not cursors:
+                if updateonly or retval or not cursors:
                     continue
                 cursor = cursors[-1]
                 depth = len(cursors)

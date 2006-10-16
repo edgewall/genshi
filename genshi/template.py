@@ -1129,7 +1129,7 @@ class MarkupTemplate(Template):
                     # Let the remaining match templates know about the event so
                     # they get a chance to update their internal state
                     for test in [mt[0] for mt in match_templates[idx + 1:]]:
-                        test(event, namespaces, ctxt)
+                        test(event, namespaces, ctxt, updateonly=True)
 
                     # Consume and store all events until an end event
                     # corresponding to this start event is encountered
@@ -1140,7 +1140,7 @@ class MarkupTemplate(Template):
                     content = list(content)
 
                     for test in [mt[0] for mt in match_templates]:
-                        test(tail[0], namespaces, ctxt)
+                        test(tail[0], namespaces, ctxt, updateonly=True)
 
                     # Make the select() function available in the body of the
                     # match template

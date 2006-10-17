@@ -142,9 +142,11 @@ class Undefined(object):
         self._name = name
 
     def __call__(self, *args, **kwargs):
+        __traceback_hide__ = True
         self.throw()
 
     def __getattr__(self, name):
+        __traceback_hide__ = True
         self.throw()
 
     def __iter__(self):
@@ -157,6 +159,7 @@ class Undefined(object):
         return 'undefined'
 
     def throw(self):
+        __traceback_hide__ = True
         raise NameError('Variable "%s" is not defined' % self._name)
 
 
@@ -187,6 +190,7 @@ BUILTINS = __builtin__.__dict__.copy()
 BUILTINS['Undefined'] = Undefined
 
 def _lookup_name(data, name, locals_=None):
+    __traceback_hide__ = True
     val = Undefined
     if locals_:
         val = locals_.get(name, val)
@@ -203,6 +207,7 @@ def _lookup_name(data, name, locals_=None):
     return val(name)
 
 def _lookup_attr(data, obj, key):
+    __traceback_hide__ = True
     if type(obj) is Undefined:
         obj.throw()
     if hasattr(obj, key):
@@ -213,6 +218,7 @@ def _lookup_attr(data, obj, key):
         return Undefined(key)
 
 def _lookup_item(data, obj, key):
+    __traceback_hide__ = True
     if type(obj) is Undefined:
         obj.throw()
     if len(key) == 1:

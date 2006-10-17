@@ -842,15 +842,17 @@ class Template(object):
         @param offset: the column number at which the text starts in the source
             (optional)
         """
-        def _interpolate(text, patterns, filename=filename, lineno=lineno,
-                         offset=offset):
+        filepath = filename
+        if filepath and basedir:
+            filepath = os.path.join(basedir, filepath)
+        def _interpolate(text, patterns, lineno=lineno, offset=offset):
             for idx, grp in enumerate(patterns.pop(0).split(text)):
                 if idx % 2:
                     try:
-                        yield EXPR, Expression(grp.strip(), filename, lineno), \
+                        yield EXPR, Expression(grp.strip(), filepath, lineno), \
                               (filename, lineno, offset)
                     except SyntaxError, err:
-                        raise TemplateSyntaxError(err, filename, lineno,
+                        raise TemplateSyntaxError(err, filepath, lineno,
                                                   offset + (err.offset or 0))
                 elif grp:
                     if patterns:

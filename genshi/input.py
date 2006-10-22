@@ -309,8 +309,10 @@ class HTMLParser(html.HTMLParser, object):
         fixed_attrib = []
         for name, value in attrib: # Fixup minimized attributes
             if value is None:
-                value = name
-            fixed_attrib.append((name, unicode(stripentities(value))))
+                value = unicode(name)
+            elif not isinstance(value, unicode):
+                value = value.decode(self.encoding, 'replace')
+            fixed_attrib.append((name, stripentities(value)))
 
         self._enqueue(START, (QName(tag), Attrs(fixed_attrib)))
         if tag in self._EMPTY_ELEMS:

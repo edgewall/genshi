@@ -1287,7 +1287,8 @@ class TemplateLoader(object):
         """Create the template laoder.
         
         @param search_path: a list of absolute path names that should be
-            searched for template files
+            searched for template files, or a string containing a single
+            absolute path
         @param auto_reload: whether to check the last modification time of
             template files, and reload them if they have changed
         @param max_cache_size: the maximum number of templates to keep in the
@@ -1296,6 +1297,8 @@ class TemplateLoader(object):
         self.search_path = search_path
         if self.search_path is None:
             self.search_path = []
+        elif isinstance(self.search_path, basestring):
+            self.search_path = [self.search_path]
         self.auto_reload = auto_reload
         self._cache = LRUCache(max_cache_size)
         self._mtime = {}

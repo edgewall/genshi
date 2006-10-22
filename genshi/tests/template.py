@@ -1140,6 +1140,21 @@ class TextTemplateTestCase(unittest.TestCase):
         self.assertEqual('', str(tmpl.generate()))
 
 
+    # FIXME
+    #def test_empty_lines(self):
+    #    tmpl = TextTemplate("""Your items:
+    #
+    #    #for item in items
+    #      * ${item}
+    #
+    #    #end""")
+    #    self.assertEqual("""Your items:
+    #      * 0
+    #      * 1
+    #      * 2
+    #    """, tmpl.generate(items=range(3)).render('text'))
+
+
 class TemplateLoaderTestCase(unittest.TestCase):
     """Tests for the template loader."""
 
@@ -1148,6 +1163,14 @@ class TemplateLoaderTestCase(unittest.TestCase):
 
     def tearDown(self):
         shutil.rmtree(self.dirname)
+
+    def test_search_path_empty(self):
+        loader = TemplateLoader()
+        self.assertEqual([], loader.search_path)
+
+    def test_search_path_as_string(self):
+        loader = TemplateLoader(self.dirname)
+        self.assertEqual([self.dirname], loader.search_path)
 
     def test_relative_include_samedir(self):
         file1 = open(os.path.join(self.dirname, 'tmpl1.html'), 'w')

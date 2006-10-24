@@ -15,7 +15,7 @@ import doctest
 import unittest
 import sys
 
-from genshi.core import Stream
+from genshi.core import Attrs, Stream, QName
 from genshi.input import HTML, XML
 from genshi.output import DocType, XMLSerializer, XHTMLSerializer, \
                           HTMLSerializer, EmptyTagFilter
@@ -24,7 +24,7 @@ from genshi.output import DocType, XMLSerializer, XHTMLSerializer, \
 class XMLSerializerTestCase(unittest.TestCase):
 
     def test_doctype_in_stream(self):
-        stream = Stream([(Stream.DOCTYPE, DocType.HTML_STRICT, ('?', -1, -1))])
+        stream = Stream([(Stream.DOCTYPE, DocType.HTML_STRICT, (None, -1, -1))])
         output = stream.render(XMLSerializer)
         self.assertEqual('<!DOCTYPE html PUBLIC '
                          '"-//W3C//DTD HTML 4.01//EN" '
@@ -34,15 +34,17 @@ class XMLSerializerTestCase(unittest.TestCase):
     def test_doctype_in_stream_no_sysid(self):
         stream = Stream([(Stream.DOCTYPE,
                          ('html', '-//W3C//DTD HTML 4.01//EN', None),
-                         ('?', -1, -1))])
+                         (None, -1, -1))])
         output = stream.render(XMLSerializer)
         self.assertEqual('<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN">\n',
                          output)
 
     def test_doctype_in_stream_no_pubid(self):
-        stream = Stream([(Stream.DOCTYPE,
-                         ('html', None, 'http://www.w3.org/TR/html4/strict.dtd'),
-                         ('?', -1, -1))])
+        stream = Stream([
+            (Stream.DOCTYPE,
+             ('html', None, 'http://www.w3.org/TR/html4/strict.dtd'),
+             (None, -1, -1))
+        ])
         output = stream.render(XMLSerializer)
         self.assertEqual('<!DOCTYPE html SYSTEM '
                          '"http://www.w3.org/TR/html4/strict.dtd">\n',
@@ -50,7 +52,7 @@ class XMLSerializerTestCase(unittest.TestCase):
 
     def test_doctype_in_stream_no_pubid_or_sysid(self):
         stream = Stream([(Stream.DOCTYPE, ('html', None, None),
-                         ('?', -1, -1))])
+                         (None, -1, -1))])
         output = stream.render(XMLSerializer)
         self.assertEqual('<!DOCTYPE html>\n', output)
 
@@ -63,7 +65,9 @@ class XMLSerializerTestCase(unittest.TestCase):
                          output)
 
     def test_doctype_one_and_only(self):
-        stream = Stream([(Stream.DOCTYPE, ('html', None, None), ('?', -1, -1))])
+        stream = Stream([
+            (Stream.DOCTYPE, ('html', None, None), (None, -1, -1))
+        ])
         output = stream.render(XMLSerializer, doctype=DocType.HTML_STRICT)
         self.assertEqual('<!DOCTYPE html PUBLIC '
                          '"-//W3C//DTD HTML 4.01//EN" '
@@ -71,30 +75,60 @@ class XMLSerializerTestCase(unittest.TestCase):
                          output)
 
     def test_comment(self):
-        stream = Stream([(Stream.COMMENT, 'foo bar', ('?', -1, -1))])
+        stream = Stream([(Stream.COMMENT, 'foo bar', (None, -1, -1))])
         output = stream.render(XMLSerializer)
         self.assertEqual('<!--foo bar-->', output)
 
     def test_processing_instruction(self):
-        stream = Stream([(Stream.PI, ('python', 'x = 2'), ('?', -1, -1))])
+        stream = Stream([(Stream.PI, ('python', 'x = 2'), (None, -1, -1))])
         output = stream.render(XMLSerializer)
         self.assertEqual('<?python x = 2?>', output)
 
     def test_nested_default_namespaces(self):
-        xml = XML("""<div xmlns="http://www.w3.org/1999/xhtml">
-          <p xmlns="http://www.w3.org/1999/xhtml" />
-        </div>""")
-        output = xml.render(XMLSerializer)
-        self.assertEqual("""<div xmlns="http://www.w3.org/1999/xhtml">
+        stream = Stream([
+            (Stream.START_NS, ('', 'http://example.org/'), (None, -1, -1)),
+            (Stream.START, (QName('div'), Attrs()), (None, -1, -1)),
+            (Stream.TEXT, '\n          ', (None, -1, -1)),
+            (Stream.START_NS, ('', 'http://example.org/'), (None, -1, -1)),
+            (Stream.START, (QName('p'), Attrs()), (None, -1, -1)),
+            (Stream.END, QName('p'), (None, -1, -1)),
+            (Stream.END_NS, '', (None, -1, -1)),
+            (Stream.TEXT, '\n          ', (None, -1, -1)),
+            (Stream.START_NS, ('', 'http://example.org/'), (None, -1, -1)),
+            (Stream.START, (QName('p'), Attrs()), (None, -1, -1)),
+            (Stream.END, QName('p'), (None, -1, -1)),
+            (Stream.END_NS, '', (None, -1, -1)),
+            (Stream.TEXT, '\n        ', (None, -1, -1)),
+            (Stream.END, QName('div'), (None, -1, -1)),
+            (Stream.END_NS, '', (None, -1, -1))
+        ])
+        output = stream.render(XMLSerializer)
+        self.assertEqual("""<div xmlns="http://example.org/">
+          <p/>
           <p/>
         </div>""", output)
 
     def test_nested_bound_namespaces(self):
-        xml = XML("""<div xmlns:x="http://example.org/">
-          <p xmlns:x="http://example.org/" />
-        </div>""")
-        output = xml.render(XMLSerializer)
+        stream = Stream([
+            (Stream.START_NS, ('x', 'http://example.org/'), (None, -1, -1)),
+            (Stream.START, (QName('div'), Attrs()), (None, -1, -1)),
+            (Stream.TEXT, '\n          ', (None, -1, -1)),
+            (Stream.START_NS, ('x', 'http://example.org/'), (None, -1, -1)),
+            (Stream.START, (QName('p'), Attrs()), (None, -1, -1)),
+            (Stream.END, QName('p'), (None, -1, -1)),
+            (Stream.END_NS, 'x', (None, -1, -1)),
+            (Stream.TEXT, '\n          ', (None, -1, -1)),
+            (Stream.START_NS, ('x', 'http://example.org/'), (None, -1, -1)),
+            (Stream.START, (QName('p'), Attrs()), (None, -1, -1)),
+            (Stream.END, QName('p'), (None, -1, -1)),
+            (Stream.END_NS, 'x', (None, -1, -1)),
+            (Stream.TEXT, '\n        ', (None, -1, -1)),
+            (Stream.END, QName('div'), (None, -1, -1)),
+            (Stream.END_NS, 'x', (None, -1, -1))
+        ])
+        output = stream.render(XMLSerializer)
         self.assertEqual("""<div xmlns:x="http://example.org/">
+          <p/>
           <p/>
         </div>""", output)
 
@@ -170,21 +204,51 @@ class XHTMLSerializerTestCase(unittest.TestCase):
         self.assertEqual(text, output)
 
     def test_nested_default_namespaces(self):
-        xml = XML("""<div xmlns="http://www.w3.org/1999/xhtml">
-          <p xmlns="http://www.w3.org/1999/xhtml" />
-        </div>""")
-        output = xml.render(XHTMLSerializer)
-        self.assertEqual("""<div xmlns="http://www.w3.org/1999/xhtml">
+        stream = Stream([
+            (Stream.START_NS, ('', 'http://example.org/'), (None, -1, -1)),
+            (Stream.START, (QName('div'), Attrs()), (None, -1, -1)),
+            (Stream.TEXT, '\n          ', (None, -1, -1)),
+            (Stream.START_NS, ('', 'http://example.org/'), (None, -1, -1)),
+            (Stream.START, (QName('p'), Attrs()), (None, -1, -1)),
+            (Stream.END, QName('p'), (None, -1, -1)),
+            (Stream.END_NS, '', (None, -1, -1)),
+            (Stream.TEXT, '\n          ', (None, -1, -1)),
+            (Stream.START_NS, ('', 'http://example.org/'), (None, -1, -1)),
+            (Stream.START, (QName('p'), Attrs()), (None, -1, -1)),
+            (Stream.END, QName('p'), (None, -1, -1)),
+            (Stream.END_NS, '', (None, -1, -1)),
+            (Stream.TEXT, '\n        ', (None, -1, -1)),
+            (Stream.END, QName('div'), (None, -1, -1)),
+            (Stream.END_NS, '', (None, -1, -1))
+        ])
+        output = stream.render(XHTMLSerializer)
+        self.assertEqual("""<div xmlns="http://example.org/">
+          <p></p>
           <p></p>
         </div>""", output)
 
     def test_nested_bound_namespaces(self):
-        xml = XML("""<div xmlns:x="http://example.org/">
-          <x:p xmlns:x="http://example.org/" />
-        </div>""")
-        output = xml.render(XHTMLSerializer)
+        stream = Stream([
+            (Stream.START_NS, ('x', 'http://example.org/'), (None, -1, -1)),
+            (Stream.START, (QName('div'), Attrs()), (None, -1, -1)),
+            (Stream.TEXT, '\n          ', (None, -1, -1)),
+            (Stream.START_NS, ('x', 'http://example.org/'), (None, -1, -1)),
+            (Stream.START, (QName('p'), Attrs()), (None, -1, -1)),
+            (Stream.END, QName('p'), (None, -1, -1)),
+            (Stream.END_NS, 'x', (None, -1, -1)),
+            (Stream.TEXT, '\n          ', (None, -1, -1)),
+            (Stream.START_NS, ('x', 'http://example.org/'), (None, -1, -1)),
+            (Stream.START, (QName('p'), Attrs()), (None, -1, -1)),
+            (Stream.END, QName('p'), (None, -1, -1)),
+            (Stream.END_NS, 'x', (None, -1, -1)),
+            (Stream.TEXT, '\n        ', (None, -1, -1)),
+            (Stream.END, QName('div'), (None, -1, -1)),
+            (Stream.END_NS, 'x', (None, -1, -1))
+        ])
+        output = stream.render(XHTMLSerializer)
         self.assertEqual("""<div xmlns:x="http://example.org/">
-          <x:p />
+          <p></p>
+          <p></p>
         </div>""", output)
 
 

@@ -67,10 +67,8 @@ class Expression(object):
     def __init__(self, source, filename=None, lineno=-1):
         if isinstance(source, basestring):
             self.source = source
-            if isinstance(source, unicode):
-                source = '\xef\xbb\xbf' + source.encode('utf-8')
-            self.code = _compile(parse(source, 'eval'), self.source,
-                                 filename=filename, lineno=lineno)
+            self.code = _compile(_parse(source), self.source, filename=filename,
+                                 lineno=lineno)
         else:
             assert isinstance(source, ast.Node)
             self.source = '?'
@@ -151,6 +149,11 @@ class Undefined(object):
     def throw(self):
         raise NameError('Variable "%s" is not defined' % self.name)
 
+
+def _parse(source, mode='eval'):
+    if isinstance(source, unicode):
+        source = '\xef\xbb\xbf' + source.encode('utf-8')
+    return parse(source, mode)
 
 def _compile(node, source=None, filename=None, lineno=-1):
     tree = ExpressionASTTransformer().visit(node)

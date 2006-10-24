@@ -27,7 +27,7 @@ from StringIO import StringIO
 
 from genshi.core import Attrs, Namespace, Stream, StreamEventKind, _ensure
 from genshi.core import START, END, START_NS, END_NS, TEXT, COMMENT
-from genshi.eval import Expression
+from genshi.eval import Expression, _parse
 from genshi.input import XMLParser
 from genshi.path import Path
 
@@ -357,7 +357,7 @@ class DefDirective(Directive):
     def __init__(self, args, namespaces=None, filename=None, lineno=-1,
                  offset=-1):
         Directive.__init__(self, None, namespaces, filename, lineno, offset)
-        ast = compiler.parse(args, 'eval').node
+        ast = _parse(args).node
         self.args = []
         self.defaults = {}
         if isinstance(ast, compiler.ast.CallFunc):
@@ -430,7 +430,7 @@ class ForDirective(Directive):
             raise TemplateSyntaxError('"in" keyword missing in "for" directive',
                                       filename, lineno, offset)
         assign, value = value.split(' in ', 1)
-        ast = compiler.parse(assign, 'exec')
+        ast = _parse(assign, 'exec')
         self.assign = _assignment(ast.node.nodes[0].expr)
         self.filename = filename
         Directive.__init__(self, value.strip(), namespaces, filename, lineno,
@@ -739,7 +739,7 @@ class WithDirective(Directive):
         self.vars = []
         value = value.strip()
         try:
-            ast = compiler.parse(value, 'exec').node
+            ast = _parse(value, 'exec').node
             for node in ast.nodes:
                 if isinstance(node, compiler.ast.Discard):
                     continue
@@ -837,15 +837,17 @@ class Template(object):
         @param offset: the column number at which the text starts in the source
             (optional)
         """
-        def _interpolate(text, patterns, filename=filename, lineno=lineno,
-                         offset=offset):
+        filepath = filename
+        if filepath and basedir:
+            filepath = os.path.join(basedir, filepath)
+        def _interpolate(text, patterns, lineno=lineno, offset=offset):
             for idx, grp in enumerate(patterns.pop(0).split(text)):
                 if idx % 2:
                     try:
-                        yield EXPR, Expression(grp.strip(), filename, lineno), \
+                        yield EXPR, Expression(grp.strip(), filepath, lineno), \
                               (filename, lineno, offset)
                     except SyntaxError, err:
-                        raise TemplateSyntaxError(err, filename, lineno,
+                        raise TemplateSyntaxError(err, filepath, lineno,
                                                   offset + (err.offset or 0))
                 elif grp:
                     if patterns:

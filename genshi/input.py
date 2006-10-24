@@ -61,7 +61,7 @@ class XMLParser(object):
     _external_dtd = '\n'.join(_entitydefs)
 
     def __init__(self, source, filename=None):
-        """Initialize the parser for the given XML text.
+        """Initialize the parser for the given XML input.
         
         @param source: the XML text as a file-like object
         @param filename: the name of the file, if appropriate
@@ -235,10 +235,17 @@ class HTMLParser(html.HTMLParser, object):
                               'hr', 'img', 'input', 'isindex', 'link', 'meta',
                               'param'])
 
-    def __init__(self, source, filename=None):
+    def __init__(self, source, filename=None, encoding='utf-8'):
+        """Initialize the parser for the given HTML input.
+        
+        @param source: the HTML text as a file-like object
+        @param filename: the name of the file, if known
+        @param filename: encoding of the file; ignored if the input is unicode
+        """
         html.HTMLParser.__init__(self)
         self.source = source
         self.filename = filename
+        self.encoding = encoding
         self._queue = []
         self._open_tags = []
 
@@ -287,8 +294,10 @@ class HTMLParser(html.HTMLParser, object):
         fixed_attrib = []
         for name, value in attrib: # Fixup minimized attributes
             if value is None:
-                value = name
-            fixed_attrib.append((name, unicode(stripentities(value))))
+                value = unicode(name)
+            elif not isinstance(value, unicode):
+                value = value.decode(self.encoding, 'replace')
+            fixed_attrib.append((name, stripentities(value)))
 
         self._enqueue(START, (QName(tag), Attrs(fixed_attrib)))
         if tag in self._EMPTY_ELEMS:
@@ -306,6 +315,8 @@ class HTMLParser(html.HTMLParser, object):
             self._enqueue(END, QName(tag))
 
     def handle_data(self, text):
+        if not isinstance(text, unicode):
+            text = text.decode(self.encoding, 'replace')
         self._enqueue(TEXT, text)
 
     def handle_charref(self, name):
@@ -328,8 +339,8 @@ class HTMLParser(html.HTMLParser, object):
         self._enqueue(COMMENT, text)
 
 
-def HTML(text):
-    return Stream(list(HTMLParser(StringIO(text))))
+def HTML(text, encoding='utf-8'):
+    return Stream(list(HTMLParser(StringIO(text), encoding=encoding)))
 
 def _coalesce(stream):
     """Coalesces adjacent TEXT events into a single event."""

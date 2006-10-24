@@ -792,7 +792,8 @@ class Template(object):
     EXPR = StreamEventKind('EXPR') # an expression
     SUB = StreamEventKind('SUB') # a "subprogram"
 
-    def __init__(self, source, basedir=None, filename=None, loader=None):
+    def __init__(self, source, basedir=None, filename=None, loader=None,
+                 encoding=None):
         """Initialize a template from either a string or a file-like object."""
         if isinstance(source, basestring):
             self.source = StringIO(source)
@@ -807,12 +808,12 @@ class Template(object):
 
         self.filters = [self._flatten, self._eval]
 
-        self.stream = self._parse()
+        self.stream = self._parse(encoding)
 
     def __repr__(self):
         return '<%s "%s">' % (self.__class__.__name__, self.filename)
 
-    def _parse(self):
+    def _parse(self, encoding):
         """Parse the template.
         
         The parsing stage parses the template and constructs a list of
@@ -992,24 +993,26 @@ class MarkupTemplate(Template):
                   ('attrs', AttrsDirective),
                   ('strip', StripDirective)]
 
-    def __init__(self, source, basedir=None, filename=None, loader=None):
+    def __init__(self, source, basedir=None, filename=None, loader=None,
+                 encoding=None):
         """Initialize a template from either a string or a file-like object."""
         Template.__init__(self, source, basedir=basedir, filename=filename,
-                          loader=loader)
+                          loader=loader, encoding=encoding)
 
         self.filters.append(self._match)
         if loader:
             from genshi.filters import IncludeFilter
             self.filters.append(IncludeFilter(loader))
 
-    def _parse(self):
+    def _parse(self, encoding):
         """Parse the template from an XML document."""
         stream = [] # list of events of the "compiled" template
         dirmap = {} # temporary mapping of directives to elements
         ns_prefix = {}
         depth = 0
 
-        for kind, data, pos in XMLParser(self.source, filename=self.filename):
+        for kind, data, pos in XMLParser(self.source, filename=self.filename,
+                                         encoding=encoding):
 
             if kind is START_NS:
                 # Strip out the namespace declaration for template directives
@@ -1203,13 +1206,15 @@ class TextTemplate(Template):
 
     _DIRECTIVE_RE = re.compile(r'^\s*(?<!\\)#((?:\w+|#).*)\n?', re.MULTILINE)
 
-    def _parse(self):
+    def _parse(self, encoding):
         """Parse the template from text input."""
         stream = [] # list of events of the "compiled" template
         dirmap = {} # temporary mapping of directives to elements
         depth = 0
+        if not encoding:
+            encoding = 'utf-8'
 
-        source = self.source.read()
+        source = self.source.read().decode(encoding, 'replace')
         offset = 0
         lineno = 1
 
@@ -1287,22 +1292,27 @@ class TemplateLoader(object):
     
     >>> os.remove(path)
     """
-    def __init__(self, search_path=None, auto_reload=False):
+    def __init__(self, search_path=None, auto_reload=False,
+                 default_encoding=None):
         """Create the template laoder.
         
         @param search_path: a list of absolute path names that should be
             searched for template files
         @param auto_reload: whether to check the last modification time of
             template files, and reload them if they have changed
+        @param default_encoding: the default encoding to assume when loading
+            templates; defaults to UTF-8
         """
         self.search_path = search_path
         if self.search_path is None:
             self.search_path = []
         self.auto_reload = auto_reload
+        self.default_encoding = default_encoding
         self._cache = {}
         self._mtime = {}
 
-    def load(self, filename, relative_to=None, cls=MarkupTemplate):
+    def load(self, filename, relative_to=None, cls=MarkupTemplate,
+             encoding=None):
         """Load the template with the given name.
         
         If the `filename` parameter is relative, this method searches the search
@@ -1327,7 +1337,11 @@ class TemplateLoader(object):
             template is being loaded, or `None` if the template is being loaded
             directly
         @param cls: the class of the template object to instantiate
+        @param encoding: the encoding of the template to load; defaults to the
+            `default_encoding` of the loader instance
         """
+        if encoding is None:
+            encoding = self.default_encoding
         if relative_to and not os.path.isabs(relative_to):
             filename = os.path.join(os.path.dirname(relative_to), filename)
         filename = os.path.normpath(filename)
@@ -1375,7 +1389,7 @@ class TemplateLoader(object):
                         filename = os.path.join(dirname, filename)
                         dirname = ''
                     tmpl = cls(fileobj, basedir=dirname, filename=filename,
-                               loader=self)
+                               loader=self, encoding=encoding)
                 finally:
                     fileobj.close()
                 self._cache[filename] = tmpl

@@ -1128,6 +1128,23 @@ class MarkupTemplateTestCase(unittest.TestCase):
           </span>
         </div>""", str(tmpl.generate()))
 
+    def test_latin1_encoded_with_xmldecl(self):
+        tmpl = MarkupTemplate(u"""<?xml version="1.0" encoding="iso-8859-1" ?>
+        <div xmlns:py="http://genshi.edgewall.org/">
+          \xf6
+        </div>""".encode('iso-8859-1'), encoding='iso-8859-1')
+        self.assertEqual(u"""<div>
+          \xf6
+        </div>""", unicode(tmpl.generate()))
+
+    def test_latin1_encoded_explicit_encoding(self):
+        tmpl = MarkupTemplate(u"""<div xmlns:py="http://genshi.edgewall.org/">
+          \xf6
+        </div>""".encode('iso-8859-1'), encoding='iso-8859-1')
+        self.assertEqual(u"""<div>
+          \xf6
+        </div>""", unicode(tmpl.generate()))
+
 
 class TextTemplateTestCase(unittest.TestCase):
     """Tests for text template processing."""
@@ -1151,6 +1168,10 @@ class TextTemplateTestCase(unittest.TestCase):
         #end 'if foo'""")
         self.assertEqual('', str(tmpl.generate()))
 
+    def test_latin1_encoded(self):
+        text = u'$foo\xf6$bar'.encode('iso-8859-1')
+        tmpl = TextTemplate(text, encoding='iso-8859-1')
+        self.assertEqual(u'x\xf6y', unicode(tmpl.generate(foo='x', bar='y')))
 
     # FIXME
     #def test_empty_lines(self):
@@ -1316,6 +1337,24 @@ class TemplateLoaderTestCase(unittest.TestCase):
         self.assertEqual("""<html>
           <div>Included</div>
         </html>""", tmpl2.generate().render())
+
+    def test_load_with_default_encoding(self):
+        f = open(os.path.join(self.dirname, 'tmpl.html'), 'w')
+        try:
+            f.write(u'<div>\xf6</div>'.encode('iso-8859-1'))
+        finally:
+            f.close()
+        loader = TemplateLoader([self.dirname], default_encoding='iso-8859-1')
+        loader.load('tmpl.html')
+
+    def test_load_with_explicit_encoding(self):
+        f = open(os.path.join(self.dirname, 'tmpl.html'), 'w')
+        try:
+            f.write(u'<div>\xf6</div>'.encode('iso-8859-1'))
+        finally:
+            f.close()
+        loader = TemplateLoader([self.dirname], default_encoding='utf-8')
+        loader.load('tmpl.html', encoding='iso-8859-1')
 
 
 def suite():

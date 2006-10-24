@@ -75,17 +75,20 @@ class XMLParser(object):
                    htmlentitydefs.name2codepoint.items()]
     _external_dtd = '\n'.join(_entitydefs)
 
-    def __init__(self, source, filename=None):
+    def __init__(self, source, filename=None, encoding=None):
         """Initialize the parser for the given XML input.
         
         @param source: the XML text as a file-like object
         @param filename: the name of the file, if appropriate
+        @param encoding: the encoding of the file; if not specified, the
+            encoding is assumed to be ASCII, UTF-8, or UTF-16, or whatever the
+            encoding specified in the XML declaration (if any)
         """
         self.source = source
         self.filename = filename
 
         # Setup the Expat parser
-        parser = expat.ParserCreate('utf-8', '}')
+        parser = expat.ParserCreate(encoding, '}')
         parser.buffer_text = True
         parser.returns_unicode = True
         parser.ordered_attributes = True

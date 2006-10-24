@@ -1288,8 +1288,8 @@ class TemplateLoader(object):
     
     >>> os.remove(path)
     """
-    def __init__(self, search_path=None, auto_reload=False, max_cache_size=25,
-                 default_encoding=None):
+    def __init__(self, search_path=None, auto_reload=False,
+                 default_encoding=None, max_cache_size=25):
         """Create the template laoder.
         
         @param search_path: a list of absolute path names that should be
@@ -1297,10 +1297,10 @@ class TemplateLoader(object):
             absolute path
         @param auto_reload: whether to check the last modification time of
             template files, and reload them if they have changed
-        @param max_cache_size: the maximum number of templates to keep in the
-            cache
         @param default_encoding: the default encoding to assume when loading
             templates; defaults to UTF-8
+        @param max_cache_size: the maximum number of templates to keep in the
+            cache
         """
         self.search_path = search_path
         if self.search_path is None:
@@ -1393,7 +1393,7 @@ class TemplateLoader(object):
                             filename = os.path.join(dirname, filename)
                             dirname = ''
                         tmpl = cls(fileobj, basedir=dirname, filename=filename,
-                                   encoding=encoding, loader=self)
+                                   loader=self, encoding=encoding)
                     finally:
                         fileobj.close()
                     self._cache[filename] = tmpl

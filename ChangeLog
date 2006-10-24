@@ -19,6 +19,19 @@ http://svn.edgewall.org/repos/genshi/tags/0.4.0/
    associated choose directive does have one. In that case, the when branch is
    followed if the expression of the choose directive evaluates to a truth
    value.
+ * Unsuccessful attribute or item lookups now return `Undefined` objects for
+   nicer error messages.
+
+
+Version 0.3.4
+http://svn.edgewall.org/repos/genshi/tags/0.3.4/
+(?, from branches/stable/0.3.x)
+
+ * The encoding of HTML and XML files, as well as markup and text templates,
+   can now be specified. Also, the encoding specified in XML declarations is
+   now respected unless an expiclit encoding is requested.
+ * Expressions used as arguments for `py:with`, `py:def`, and `py:for`
+   directives can now contain non-ASCII strings.
 
 
 Version 0.3.3

@@ -75,10 +75,8 @@ class Expression(object):
         """
         if isinstance(source, basestring):
             self.source = source
-            if isinstance(source, unicode):
-                source = '\xef\xbb\xbf' + source.encode('utf-8')
-            self.code = _compile(parse(source, 'eval'), self.source,
-                                 filename=filename, lineno=lineno)
+            self.code = _compile(_parse(source), self.source, filename=filename,
+                                 lineno=lineno)
         else:
             assert isinstance(source, ast.Node)
             self.source = '?'
@@ -142,9 +140,11 @@ class Undefined(object):
         self._name = name
 
     def __call__(self, *args, **kwargs):
+        __traceback_hide__ = True
         self.throw()
 
     def __getattr__(self, name):
+        __traceback_hide__ = True
         self.throw()
 
     def __iter__(self):
@@ -157,8 +157,14 @@ class Undefined(object):
         return 'undefined'
 
     def throw(self):
+        __traceback_hide__ = True
         raise NameError('Variable "%s" is not defined' % self._name)
 
+
+def _parse(source, mode='eval'):
+    if isinstance(source, unicode):
+        source = '\xef\xbb\xbf' + source.encode('utf-8')
+    return parse(source, mode)
 
 def _compile(node, source=None, filename=None, lineno=-1):
     tree = ExpressionASTTransformer().visit(node)
@@ -180,13 +186,14 @@ def _compile(node, source=None, filename=None, lineno=-1):
     return new.code(0, code.co_nlocals, code.co_stacksize,
                     code.co_flags | 0x0040, code.co_code, code.co_consts,
                     code.co_names, code.co_varnames, filename,
-                    '<Expression %s>' % (repr(source).replace("'", '"') or '?'),
+                    '<Expression %s>' % (repr(source or '?').replace("'", '"')),
                     lineno, code.co_lnotab, (), ())
 
 BUILTINS = __builtin__.__dict__.copy()
 BUILTINS['Undefined'] = Undefined
 
 def _lookup_name(data, name, locals_=None):
+    __traceback_hide__ = True
     val = Undefined
     if locals_:
         val = locals_.get(name, val)
@@ -203,6 +210,7 @@ def _lookup_name(data, name, locals_=None):
     return val(name)
 
 def _lookup_attr(data, obj, key):
+    __traceback_hide__ = True
     if type(obj) is Undefined:
         obj.throw()
     if hasattr(obj, key):
@@ -213,6 +221,7 @@ def _lookup_attr(data, obj, key):
         return Undefined(key)
 
 def _lookup_item(data, obj, key):
+    __traceback_hide__ = True
     if type(obj) is Undefined:
         obj.throw()
     if len(key) == 1:

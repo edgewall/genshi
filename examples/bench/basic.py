@@ -4,7 +4,7 @@ from StringIO import StringIO
 import sys
 import timeit
 
-__all__ = ['clearsilver', 'django', 'kid', 'genshi', 'simpletal']
+__all__ = ['clearsilver', 'myghty', 'django', 'kid', 'genshi', 'cheetah']
 
 def genshi(dirname, verbose=False):
     from genshi.template import TemplateLoader
@@ -15,6 +15,19 @@ def genshi(dirname, verbose=False):
                     items=['Number %d' % num for num in range(1, 15)])
         return template.generate(**data).render('xhtml')
 
+    if verbose:
+        print render()
+    return render
+
+def myghty(dirname, verbose=False):
+    from myghty import interp
+    interpreter = interp.Interpreter(component_root=dirname)
+    def render():
+        data = dict(title='Just a test', user='joe',
+                    items=['Number %d' % num for num in range(1, 15)])
+        buffer = StringIO()
+        interpreter.execute("template.myt", request_args=data, out_buffer=buffer)
+        return buffer.getvalue()
     if verbose:
         print render()
     return render
@@ -38,7 +51,10 @@ def cheetah(dirname, verbose=False):
     return render
 
 def clearsilver(dirname, verbose=False):
-    import neo_cgi
+    try:
+        import neo_cgi
+    except ImportError:
+        return lambda:None
     neo_cgi.update()
     import neo_util
     import neo_cs

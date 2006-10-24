@@ -42,7 +42,7 @@ class AbstractTemplateEnginePlugin(object):
         self.options = options
 
         self.default_encoding = options.get('genshi.default_encoding', 'utf-8')
-        auto_reload = options.get('genshi.auto_reload', '').lower() \
+        auto_reload = options.get('genshi.auto_reload', '1').lower() \
                             in ('1', 'yes', 'true')
         search_path = options.get('genshi.search_path', '').split(':')
         try:

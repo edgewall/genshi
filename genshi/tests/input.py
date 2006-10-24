@@ -59,6 +59,22 @@ bar</elem>'''
         self.assertEqual(Stream.TEXT, kind)
         self.assertEqual(u'\u2013', data)
 
+    def test_latin1_encoded(self):
+        text = u'<div>\xf6</div>'.encode('iso-8859-1')
+        events = list(XMLParser(StringIO(text), encoding='iso-8859-1'))
+        kind, data, pos = events[1]
+        self.assertEqual(Stream.TEXT, kind)
+        self.assertEqual(u'\xf6', data)
+
+    def test_latin1_encoded_xmldecl(self):
+        text = u"""<?xml version="1.0" encoding="iso-8859-1" ?>
+        <div>\xf6</div>
+        """.encode('iso-8859-1')
+        events = list(XMLParser(StringIO(text)))
+        kind, data, pos = events[1]
+        self.assertEqual(Stream.TEXT, kind)
+        self.assertEqual(u'\xf6', data)
+
     def test_html_entity_with_dtd(self):
         text = """<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
         "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
@@ -119,6 +135,20 @@ bar</elem>'''
         self.assertEqual(u'foo\nbar', data)
         if sys.version_info[:2] >= (2, 4):
             self.assertEqual((None, 1, 6), pos)
+
+    def test_input_encoding_text(self):
+        text = u'<div>\xf6</div>'.encode('iso-8859-1')
+        events = list(HTMLParser(StringIO(text), encoding='iso-8859-1'))
+        kind, data, pos = events[1]
+        self.assertEqual(Stream.TEXT, kind)
+        self.assertEqual(u'\xf6', data)
+
+    def test_input_encoding_attribute(self):
+        text = u'<div title="\xf6"></div>'.encode('iso-8859-1')
+        events = list(HTMLParser(StringIO(text), encoding='iso-8859-1'))
+        kind, (tag, attrib), pos = events[0]
+        self.assertEqual(Stream.START, kind)
+        self.assertEqual(u'\xf6', attrib.get('title'))
 
     def test_unicode_input(self):
         text = u'<div>\u2013</div>'

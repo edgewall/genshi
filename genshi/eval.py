@@ -75,10 +75,8 @@ class Expression(object):
         """
         if isinstance(source, basestring):
             self.source = source
-            if isinstance(source, unicode):
-                source = '\xef\xbb\xbf' + source.encode('utf-8')
-            self.code = _compile(parse(source, 'eval'), self.source,
-                                 filename=filename, lineno=lineno)
+            self.code = _compile(_parse(source), self.source, filename=filename,
+                                 lineno=lineno)
         else:
             assert isinstance(source, ast.Node)
             self.source = '?'
@@ -162,6 +160,11 @@ class Undefined(object):
         __traceback_hide__ = True
         raise NameError('Variable "%s" is not defined' % self._name)
 
+
+def _parse(source, mode='eval'):
+    if isinstance(source, unicode):
+        source = '\xef\xbb\xbf' + source.encode('utf-8')
+    return parse(source, mode)
 
 def _compile(node, source=None, filename=None, lineno=-1):
     tree = ExpressionASTTransformer().visit(node)

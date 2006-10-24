@@ -80,6 +80,24 @@ class XMLSerializerTestCase(unittest.TestCase):
         output = stream.render(XMLSerializer)
         self.assertEqual('<?python x = 2?>', output)
 
+    def test_nested_default_namespaces(self):
+        xml = XML("""<div xmlns="http://www.w3.org/1999/xhtml">
+          <p xmlns="http://www.w3.org/1999/xhtml" />
+        </div>""")
+        output = xml.render(XMLSerializer)
+        self.assertEqual("""<div xmlns="http://www.w3.org/1999/xhtml">
+          <p/>
+        </div>""", output)
+
+    def test_nested_bound_namespaces(self):
+        xml = XML("""<div xmlns:x="http://example.org/">
+          <p xmlns:x="http://example.org/" />
+        </div>""")
+        output = xml.render(XMLSerializer)
+        self.assertEqual("""<div xmlns:x="http://example.org/">
+          <p/>
+        </div>""", output)
+
 
 class XHTMLSerializerTestCase(unittest.TestCase):
 
@@ -150,6 +168,24 @@ class XHTMLSerializerTestCase(unittest.TestCase):
         </html:div>"""
         output = XML(text).render(XHTMLSerializer)
         self.assertEqual(text, output)
+
+    def test_nested_default_namespaces(self):
+        xml = XML("""<div xmlns="http://www.w3.org/1999/xhtml">
+          <p xmlns="http://www.w3.org/1999/xhtml" />
+        </div>""")
+        output = xml.render(XHTMLSerializer)
+        self.assertEqual("""<div xmlns="http://www.w3.org/1999/xhtml">
+          <p></p>
+        </div>""", output)
+
+    def test_nested_bound_namespaces(self):
+        xml = XML("""<div xmlns:x="http://example.org/">
+          <x:p xmlns:x="http://example.org/" />
+        </div>""")
+        output = xml.render(XHTMLSerializer)
+        self.assertEqual("""<div xmlns:x="http://example.org/">
+          <x:p />
+        </div>""", output)
 
 
 class HTMLSerializerTestCase(unittest.TestCase):

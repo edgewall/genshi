@@ -887,6 +887,18 @@ class WithDirectiveTestCase(unittest.TestCase):
             here are two semicolons: ;;
         </div>""", str(tmpl.generate()))
 
+    def test_unicode_expr(self):
+        tmpl = MarkupTemplate("""<div xmlns:py="http://genshi.edgewall.org/">
+          <span py:with="weeks=(u'一', u'二', u'三', u'四', u'五', u'六', u'日')">
+            $weeks
+          </span>
+        </div>""")
+        self.assertEqual("""<div>
+          <span>
+            一二三四五六日
+          </span>
+        </div>""", str(tmpl.generate()))
+
 
 class TemplateTestCase(unittest.TestCase):
     """Tests for basic template processing, expression evaluation and error

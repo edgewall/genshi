@@ -221,7 +221,7 @@ class Attrs(list):
     
     >>> attrs = Attrs([('href', '#'), ('title', 'Foo')])
     >>> attrs
-    [(u'href', '#'), (u'title', 'Foo')]
+    Attrs([(QName(u'href'), '#'), (QName(u'title'), 'Foo')])
     
     >>> 'href' in attrs
     True
@@ -232,17 +232,17 @@ class Attrs(list):
     'Foo'
     >>> attrs.set(u'title', 'Bar')
     >>> attrs
-    [(u'href', '#'), (u'title', 'Bar')]
+    Attrs([(QName(u'href'), '#'), (QName(u'title'), 'Bar')])
     >>> attrs.remove(u'title')
     >>> attrs
-    [(u'href', '#')]
+    Attrs([(QName(u'href'), '#')])
     
     New attributes added using the `set()` method are appended to the end of
     the list:
     
     >>> attrs.set(u'accesskey', 'k')
     >>> attrs
-    [(u'href', '#'), (u'accesskey', 'k')]
+    Attrs([(QName(u'href'), '#'), (QName(u'accesskey'), 'k')])
     
     An `Attrs` instance can also be initialized with keyword arguments.
     
@@ -287,6 +287,11 @@ class Attrs(list):
         for attr, _ in self:
             if attr == name:
                 return True
+
+    def __repr__(self):
+        if not self:
+            return 'Attrs()'
+        return 'Attrs(%s)' % list.__repr__(self)
 
     def get(self, name, default=None):
         """Return the value of the attribute with the specified name, or the
@@ -482,7 +487,7 @@ class Namespace(object):
     that namespace:
     
     >>> html.body
-    u'{http://www.w3.org/1999/xhtml}body'
+    QName(u'http://www.w3.org/1999/xhtml}body')
     >>> html.body.localname
     u'body'
     >>> html.body.namespace
@@ -492,7 +497,7 @@ class Namespace(object):
     attribute names that are not valid Python identifiers:
     
     >>> html['body']
-    u'{http://www.w3.org/1999/xhtml}body'
+    QName(u'http://www.w3.org/1999/xhtml}body')
     
     A `Namespace` object can also be used to test whether a specific `QName`
     belongs to that namespace using the `in` operator:
@@ -559,14 +564,14 @@ class QName(unicode):
     
     >>> qname = QName('foo')
     >>> qname
-    u'foo'
+    QName(u'foo')
     >>> qname.localname
     u'foo'
     >>> qname.namespace
     
     >>> qname = QName('http://www.w3.org/1999/xhtml}body')
     >>> qname
-    u'{http://www.w3.org/1999/xhtml}body'
+    QName(u'http://www.w3.org/1999/xhtml}body')
     >>> qname.localname
     u'body'
     >>> qname.namespace
@@ -589,3 +594,6 @@ class QName(unicode):
 
     def __getnewargs__(self):
         return (self.lstrip('{'),)
+
+    def __repr__(self):
+        return 'QName(%s)' % unicode.__repr__(self.lstrip('{'))

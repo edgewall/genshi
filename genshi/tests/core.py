@@ -160,6 +160,11 @@ class QNameTestCase(unittest.TestCase):
                           unpickled.namespace)
         self.assertEquals('elem', unpickled.localname)
 
+    def test_repr(self):
+        self.assertEqual("QName(u'elem')", repr(QName('elem')))
+        self.assertEqual("QName(u'http://www.example.org/namespace}elem')",
+                         repr(QName('http://www.example.org/namespace}elem')))
+
 
 def suite():
     suite = unittest.TestSuite()

@@ -84,7 +84,7 @@ class Expression(object):
                                  lineno=lineno)
 
     def __repr__(self):
-        return '<Expression "%s">' % self.source
+        return 'Expression(%r)' % self.source
 
     def evaluate(self, data, nocall=False):
         """Evaluate the expression against the given data dictionary.

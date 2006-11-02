@@ -25,7 +25,7 @@ http://svn.edgewall.org/repos/genshi/tags/0.4.0/
 
 Version 0.3.4
 http://svn.edgewall.org/repos/genshi/tags/0.3.4/
-(?, from branches/stable/0.3.x)
+(Nov 2 2006, from branches/stable/0.3.x)
 
  * The encoding of HTML and XML files, as well as markup and text templates,
    can now be specified. Also, the encoding specified in XML declarations is

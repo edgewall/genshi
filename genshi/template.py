@@ -352,7 +352,7 @@ class DefDirective(Directive):
       </p>
     </div>
     """
-    __slots__ = ['name', 'args', 'defaults']
+    __slots__ = ['name', 'args', 'defaults', 'signature']
 
     ATTRIBUTE = 'function'
 
@@ -360,6 +360,7 @@ class DefDirective(Directive):
                  offset=-1):
         Directive.__init__(self, None, namespaces, filename, lineno, offset)
         ast = _parse(args).node
+        self.signature = args
         self.args = []
         self.defaults = {}
         if isinstance(ast, compiler.ast.CallFunc):

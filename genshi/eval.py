@@ -62,7 +62,7 @@ class Expression(object):
     >>> Expression('len(items)').evaluate(data)
     3
     """
-    __slots__ = ['source', 'code']
+    __slots__ = ['source', 'code', 'node']
 
     def __init__(self, source, filename=None, lineno=-1):
         """Create the expression, either from a string, or from an AST node.
@@ -75,11 +75,13 @@ class Expression(object):
         """
         if isinstance(source, basestring):
             self.source = source
-            self.code = _compile(_parse(source), self.source, filename=filename,
+            self.node = _parse(source)
+            self.code = _compile(self.node, self.source, filename=filename,
                                  lineno=lineno)
         else:
             assert isinstance(source, ast.Node)
             self.source = '?'
+            self.node = source
             self.code = _compile(ast.Expression(source), filename=filename,
                                  lineno=lineno)
 

@@ -13,14 +13,17 @@
 
 
 from genshi import template
-from genshi.template import Template
+from genshi.template import Template, Context
+from genshi.path import Path
+from genshi.core import QName
 from genshi.codegen.printer import PythonPrinter, PYTHON_LINE, PYTHON_COMMENT, PYTHON_BLOCK
+from genshi.codegen import serialize, adapters, output
 from compiler import ast, parse, visitor
 import sets, re
 
 _directive_printers = {}
 
-def ident_from_assign(assign):
+def _ident_from_assign(assign):
     # a little trick to get the variable name from the already 
     # compiled assignment expression
     x = {}
@@ -40,15 +43,15 @@ class DirectivePrinter(object):
 class ForDirectivePrinter(DirectivePrinter):
     __directive__ = template.ForDirective
     def produce_directive(self, gencontext, directive, event, substream):
-        varname = ident_from_assign(directive.assign)
+        varname = _ident_from_assign(directive.assign)
         yield (PYTHON_LINE, "for %s in %s:" % (varname, directive.expr.source))
         for evt in gencontext.gen_stream(substream):
             yield evt
         yield (PYTHON_LINE, "")
     def declared_identifiers(self, gencontext, directive, event):
-        return [ident_from_assign(directive.assign)]
+        return [_ident_from_assign(directive.assign)]
     def undeclared_identifiers(self, gencontext, directive, event):
-        s = SearchIdents(directive.expr.source)
+        s = _SearchIdents(directive.expr.source)
         return list(s.identifiers)
 ForDirectivePrinter()
 
@@ -85,33 +88,52 @@ class DefDirectivePrinter(DirectivePrinter):
     def undeclared_identifiers(self, gencontext, directive, event):
         result = sets.Set()
         for expr in directive.defaults.values():
-            s = SearchIdents(expr.node)
+            s = _SearchIdents(expr.node)
             result = result.union(s.identifiers)
         return iter(result)
-            
 DefDirectivePrinter()
-    
 
 class Generator(object):
     """given a Template, generates Python modules (as strings or code objects)
     optimized to a particular Serializer."""
-    def __init__(self, template):
+    def __init__(self, template, method='html', serializer=None, strip_whitespace=False, filters=None):
         self.template = template
-    def generate_stream(self, serializer):
+        self.serializer = serializer or ({
+                'xml':   serialize.XMLSerializeFilter,
+               'xhtml': serialize.XHTMLSerializeFilter,
+               'html':  serialize.HTMLSerializeFilter,
+               'text':  serialize.TextSerializeFilter}[method]())
+        self.code = self._generate_module()
+        self.filters = filters or []
+        if strip_whitespace:
+            self.filters.append(output.PostWhitespaceFilter())
+    def generate(self, *args, **kwargs):
+        if args:
+            assert len(args) == 1
+            ctxt = args[0]
+            if ctxt is None:
+                ctxt = Context(**kwargs)
+            assert isinstance(ctxt, Context)
+        else:
+            ctxt = Context(**kwargs)
+        
+        return adapters.InlineStream(self, ctxt)
+        
+    def _generate_code_events(self):
         return PythonPrinter(
             PythonGenerator(
-                self.template.stream, serializer
+                self.template.stream, self.serializer
             ).generate()
         ).generate()
-    def generate_module(self, serializer):
+    def _generate_module(self):
         import imp
         module = imp.new_module("_some_ident")
-        pycode = u''.join(self.generate_stream(serializer))
+        pycode = u''.join(self._generate_code_events())
         code = compile(pycode, '<String>', 'exec')
         exec code in module.__dict__, module.__dict__
         return module
-        
-class SearchIdents(visitor.ASTVisitor):
+            
+class _SearchIdents(visitor.ASTVisitor):
     """an ASTVisitor that can locate identifier names in a string-based code block.
 
     This is not used in this example module, but will be used to locate and pre-declare 
@@ -145,7 +167,7 @@ class PythonGenerator(object):
         """locate undeclared python identifiers in the given stream.  stack is an empty set."""
         for evt in stream:
             if evt[0] is template.EXPR:
-                s = SearchIdents(evt[1].source)
+                s = _SearchIdents(evt[1].source)
                 for ident in s.identifiers.difference(stack):
                     yield (PYTHON_LINE, "%s = context.get('%s', None)" % (ident, ident))
             elif evt[0] is template.SUB:
@@ -162,7 +184,6 @@ class PythonGenerator(object):
     def gen_stream(self, stream):
         for event in self.serializer(stream):
             (kind, data, pos, literal) = event
-            #print "INCOMING:", event
             if kind is template.SUB:
                 directives, substream = event[1]
                 for d in directives:
@@ -182,7 +203,7 @@ class PythonGenerator(object):
                     yield evt
     def produce_preamble(self):
         for line in [
-            "from genshi.core import START, END, START_NS, END_NS, TEXT, COMMENT, DOCTYPE, QName, Stream",
+            "from genshi.core import START, END, START_NS, END_NS, TEXT, COMMENT, DOCTYPE, Stream",
             "from genshi.template import Context, Template",
             "from genshi.path import Path",
             "from genshi.codegen import interp",
@@ -203,8 +224,10 @@ class PythonGenerator(object):
     def end(self):
         yield (PYTHON_LINE, "")
     def produce_start_event(self, event):
-        yield (PYTHON_LINE, "yield (START, (QName(%s), %s), %s, %s)" % (
-            repr(event[1][0]), 
+        qn = QName(event[1][0])
+        yield (PYTHON_LINE, "yield (START, (%s, %s, %s), %s, %s)" % (
+            repr(qn.namespace),
+            repr(qn.localname), 
             repr(event[1][1]), 
             repr(event[2]), 
             repr(event[3]))

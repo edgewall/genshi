@@ -30,7 +30,7 @@ import re
 from genshi.core import escape, Markup, Namespace, QName, StreamEventKind
 from genshi.core import DOCTYPE, START, END, START_NS, TEXT, START_CDATA, \
                         END_CDATA, PI, COMMENT, XML_NAMESPACE
-from genshi.output import DocType, WhitespaceFilter
+from genshi.output import DocType
 
 __all__ = ['XMLSerializeFilter', 'XHTMLSerializeFilter', 'HTMLSerializeFilter']
 
@@ -38,10 +38,9 @@ class XMLSerializeFilter(object):
     """Delivers the given stream with additional XML text added to outgoing events.
     
     """
-
     _PRESERVE_SPACE = frozenset()
 
-    def __init__(self, doctype=None, strip_whitespace=True):
+    def __init__(self, doctype=None):
         """Initialize the XML serialize filter.
         
         @param doctype: a `(name, pubid, sysid)` tuple that represents the
@@ -54,10 +53,6 @@ class XMLSerializeFilter(object):
         if doctype:
             self.preamble.append((DOCTYPE, doctype, (None, -1, -1)))
         # TODO: fold empty tags ?
-        self.filters = []
-        if strip_whitespace:
-            # TODO: can we process whitespace before a template is executed with a Context ?
-            self.filters.append(WhitespaceFilter(self._PRESERVE_SPACE))
 
     def __call__(self, stream):
         raise "TODO"
@@ -89,7 +84,7 @@ class HTMLSerializeFilter(XHTMLSerializeFilter):
                                  QName('style'),
                                  QName('http://www.w3.org/1999/xhtml}style')])
 
-    def __init__(self, doctype=None, strip_whitespace=True):
+    def __init__(self, doctype=None):
         """Initialize the HTML serialize filter.
         
         @param doctype: a `(name, pubid, sysid)` tuple that represents the
@@ -98,11 +93,8 @@ class HTMLSerializeFilter(XHTMLSerializeFilter):
         @param strip_whitespace: whether extraneous whitespace should be
             stripped from the output
         """
-        super(HTMLSerializeFilter, self).__init__(doctype, False)
-        if strip_whitespace:
-            self.filters.append(WhitespaceFilter(self._PRESERVE_SPACE,
-                                                 self._NOESCAPE_ELEMS))
-
+        super(HTMLSerializeFilter, self).__init__(doctype)
+            
     def __call__(self, stream):
         namespace = self.NAMESPACE
         ns_mapping = {}
@@ -113,8 +105,6 @@ class HTMLSerializeFilter(XHTMLSerializeFilter):
         noescape = False
 
         stream = chain(self.preamble, stream)
-        for filter_ in self.filters:
-            stream = filter_(stream)
         for kind, data, pos in stream:
             if kind is START:
                 tag, attrib = data
@@ -174,3 +164,6 @@ class HTMLSerializeFilter(XHTMLSerializeFilter):
             else:
                 # all other events pass-thru
                 yield kind, data, pos, None
+
+class TextSerializeFilter(object):
+    pass    

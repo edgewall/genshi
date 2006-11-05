@@ -52,30 +52,36 @@ text = """<!DOCTYPE html
 def items():
     return ["one", "two", "three"]
 
-data = {'lala':'hi', 'items':items, 'foo':['f1', 'f2', 'f3']}
+data = {'lala':'hi', 'items':lambda:["one", "two", "three"], 'foo':['f1', 'f2', 'f3']}
     
 t = MarkupTemplate(text)
-print u''.join(HTMLSerializer()(t.generate(**data)))
+print t.generate(**data).render()
 
 g = generator.Generator(t)
-pycode =  u''.join(g.generate_stream(HTMLSerializeFilter()))
+pycode =  u''.join(g._generate_code_events())
 print pycode
 
-g = generator.Generator(t)
-module = g.generate_module(HTMLSerializeFilter())
-print u''.join(interp.run_inlined(module, data))
+print str(g.generate(**data))
 
 print "Running MarkupTemplate.generate()/HTMLSerializer..."
 now = time.time()
 for x in range(1,1000):
     stream = t.generate(**data)
-    serializer = HTMLSerializer()
-    list(serializer(stream))
+    stream.render()
 print "MarkupTemplate.generate()/HTMLSerializer totaltime: %f" % (time.time() - now)
 
 # inline
 print "Running inlined module..."
 now = time.time()
 for x in range(1,1000):
-    list(interp.run_inlined(module, data))
+    str(g.generate(**data))
 print "Inlined module totaltime: %f" % (time.time() - now)
+
+# inline with whitespace filter
+print "Running inlined module..."
+g = generator.Generator(t, strip_whitespace=True)
+now = time.time()
+for x in range(1,1000):
+    str(g.generate(**data))
+
+print "Inlined module w/ strip_whitespace totaltime: %f" % (time.time() - now)

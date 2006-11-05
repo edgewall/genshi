@@ -15,6 +15,7 @@ from genshi.template import MarkupTemplate, Template, Context
 from genshi.output import HTMLSerializer
 from genshi.codegen import generator, interp
 from genshi.codegen.serialize import HTMLSerializeFilter
+import time, sys
 
 text = """<!DOCTYPE html
     PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
@@ -27,7 +28,7 @@ text = """<!DOCTYPE html
     <div py:for="item in items()">
         ${lala + 'hi'}
         <div py:for="x in foo">
-        i am a greeting, ${item}
+        i am a greeting, ${item}, ${x}
         
         now heres replace
         <span py:replace="item">Hey Ho</span>
@@ -54,6 +55,8 @@ def items():
 data = {'lala':'hi', 'items':items, 'foo':['f1', 'f2', 'f3']}
     
 t = MarkupTemplate(text)
+print u''.join(HTMLSerializer()(t.generate(**data)))
+
 g = generator.Generator(t)
 pycode =  u''.join(g.generate_stream(HTMLSerializeFilter()))
 print pycode
@@ -62,3 +65,17 @@ g = generator.Generator(t)
 module = g.generate_module(HTMLSerializeFilter())
 print u''.join(interp.run_inlined(module, data))
 
+print "Running MarkupTemplate.generate()/HTMLSerializer..."
+now = time.time()
+for x in range(1,1000):
+    stream = t.generate(**data)
+    serializer = HTMLSerializer()
+    list(serializer(stream))
+print "MarkupTemplate.generate()/HTMLSerializer totaltime: %f" % (time.time() - now)
+
+# inline
+print "Running inlined module..."
+now = time.time()
+for x in range(1,1000):
+    list(interp.run_inlined(module, data))
+print "Inlined module totaltime: %f" % (time.time() - now)

@@ -72,6 +72,16 @@ def _match(stream, ctxt, match_templates=None):
         else:
             yield event
 
+def evaluate(result, pos):
+    if result is not None:
+        if isinstance(result, basestring):
+            yield TEXT, result, pos, result
+        elif hasattr(result, '__iter__'):
+            for event in result:
+                yield event
+        else:
+            yield TEXT, unicode(result), pos, result
+
 def run_inlined(module, data):
     context = Context(**data)
     for item in _match(module.go(context), context):

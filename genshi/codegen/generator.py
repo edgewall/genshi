@@ -72,6 +72,7 @@ class DefDirectivePrinter(DirectivePrinter):
     __directive__ = template.DefDirective
     def produce_directive(self, gencontext, directive, event, substream):
         sig = directive.signature
+        gencontext.defs.add(directive.name)
         if not re.search(r'\(.*\)$', sig):
             gencontext.defs_without_params.add(sig)
             sig += '()'
@@ -128,6 +129,7 @@ class PythonGenerator(object):
         self.stream = stream
         self.serializer = serializer
         self.defs_without_params = sets.Set()
+        self.defs = sets.Set()
     def generate(self):
         for evt in self.start():
             yield evt
@@ -183,6 +185,7 @@ class PythonGenerator(object):
             "from genshi.core import START, END, START_NS, END_NS, TEXT, COMMENT, DOCTYPE, QName, Stream",
             "from genshi.template import Context, Template",
             "from genshi.path import Path",
+            "from genshi.codegen import interp",
             "EXPR = Template.EXPR"
         ]:
             yield (PYTHON_LINE, line)
@@ -216,10 +219,12 @@ class PythonGenerator(object):
         if expr is None:
             expr = event[1]
         if expr.source in self.defs_without_params:
-            yield (PYTHON_LINE, "_expr = %s()" % (expr.source))
+            yield (PYTHON_LINE, "for _evt in interp.evaluate(%s(), %s):" % (expr.source, repr(event[2])))
         else:
-            yield (PYTHON_LINE, "_expr = %s" % (expr.source))
-        yield (PYTHON_LINE, "yield (EXPR, _expr, %s, unicode(_expr))" % (repr(event[2])))
+            yield (PYTHON_LINE, "for _evt in interp.evaluate(%s, %s):" % (expr.source, repr(event[2])))
+        yield (PYTHON_LINE, "yield _evt")
+        yield (PYTHON_LINE, "")
+        
     def produce_text_event(self, event):
         yield (PYTHON_LINE, "yield (TEXT, (%s), %s, %s)" % (
             repr(unicode(event[1])),

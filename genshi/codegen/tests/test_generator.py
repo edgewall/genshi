@@ -25,6 +25,11 @@ text = """<!DOCTYPE html
       xmlns:xi="http://www.w3.org/2001/XInclude"
       lang="en">
  <body>
+    <!-- remove this match to get much faster performance -->
+    <py:match path='*[@class="message"]'>
+        matched the message, which was ${select('*|text()')}
+        </py:match>
+        
     <div py:for="item in items()">
         ${lala + 'hi'}
         <div py:for="x in foo">
@@ -55,13 +60,15 @@ def items():
 data = {'lala':'hi', 'items':lambda:["one", "two", "three"], 'foo':['f1', 'f2', 'f3']}
     
 t = MarkupTemplate(text)
-print t.generate(**data).render()
+#print t.generate(**data).render()
+#sys.exit()
 
 g = generator.Generator(t)
 pycode =  u''.join(g._generate_code_events())
 print pycode
 
 print str(g.generate(**data))
+
 
 print "Running MarkupTemplate.generate()/HTMLSerializer..."
 now = time.time()

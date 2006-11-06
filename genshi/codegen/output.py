@@ -1,3 +1,4 @@
+"""output filters that apply to inline-generated streams"""
 from itertools import chain
 try:
     frozenset

@@ -78,6 +78,8 @@ class Path(object):
         @param text: the path expression
         """
         self.source = text
+        self.filename = filename
+        self.lineno = lineno
         self.paths = PathParser(text, filename, lineno).parse()
 
     def __repr__(self):
@@ -200,7 +202,6 @@ class Path(object):
 
                     # The node test matched
                     if matched:
-
                         # Check all the predicates for this step
                         if predicates:
                             for predicate in predicates:
@@ -266,7 +267,6 @@ class Path(object):
                         cutoff[:] = []
                         break
                     cursors[-1] = cursor
-
             return retval
 
         return _test

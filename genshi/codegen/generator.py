@@ -17,7 +17,7 @@ from genshi.template import Template, Context
 from genshi.path import Path
 from genshi.core import QName
 from genshi.codegen.printer import PythonPrinter, PYTHON_LINE, PYTHON_COMMENT, PYTHON_BLOCK
-from genshi.codegen import serialize, adapters, output
+from genshi.codegen import serialize, adapters, output, interp
 from compiler import ast, parse, visitor
 import sets, re
 
@@ -54,6 +54,22 @@ class ForDirectivePrinter(DirectivePrinter):
         s = _SearchIdents(directive.expr.source)
         return list(s.identifiers)
 ForDirectivePrinter()
+
+class MatchDirectivePrinter(DirectivePrinter):
+    __directive__ = template.MatchDirective
+    def produce_directive(self, gencontext, directive, event, substream):
+        yield (PYTHON_LINE, "def do_match(select):")
+        for evt in gencontext.gen_stream(substream):
+            yield evt
+        yield (PYTHON_LINE, "")
+        index = gencontext.path_index_by_directive[directive]
+        yield (PYTHON_LINE, """context._match_templates.append(
+                (INLINE_PATHS[%d].test(ignore_context=True),INLINE_PATHS[%d], do_match, _namespaces)
+            )""" % (index, index    )
+        )
+    def declared_identifiers(self, gencontext, directive, event):
+        return ['select']
+MatchDirectivePrinter()
 
 class IfDirectivePrinter(DirectivePrinter):
     __directive__ = template.IfDirective
@@ -103,6 +119,7 @@ class Generator(object):
                'xhtml': serialize.XHTMLSerializeFilter,
                'html':  serialize.HTMLSerializeFilter,
                'text':  serialize.TextSerializeFilter}[method]())
+               
         self.code = self._generate_module()
         self.filters = filters or []
         if strip_whitespace:
@@ -116,8 +133,11 @@ class Generator(object):
             assert isinstance(ctxt, Context)
         else:
             ctxt = Context(**kwargs)
-        
-        return adapters.InlineStream(self, ctxt)
+
+        stream = interp._match(self.code.go(ctxt), ctxt)
+        for _filter in self.filters:
+            stream = _filter(stream)
+        return adapters.InlineStream(stream)
         
     def _generate_code_events(self):
         return PythonPrinter(
@@ -152,10 +172,14 @@ class PythonGenerator(object):
         self.serializer = serializer
         self.defs_without_params = sets.Set()
         self.defs = sets.Set()
+        self.path_index_by_directive = {}
     def generate(self):
-        for evt in self.start():
+        for evt in self.produce_preamble():
             yield evt
         stream = list(self.stream)
+        yield (PYTHON_LINE, "INLINE_PATHS = [%s]" % ','.join(["adapters." + repr(p) for p in self.find_paths(stream)]))
+        yield (PYTHON_LINE, "def go(context):")
+        yield (PYTHON_LINE, "_namespaces = {u'py': u'http://genshi.edgewall.org/'}")
         for expr in self.find_identifiers(stream, sets.ImmutableSet()):
             yield expr
         for evt in self.gen_stream(stream):
@@ -163,6 +187,17 @@ class PythonGenerator(object):
         for  evt in self.end():
             yield evt
 
+    def find_paths(self, stream):
+        preexec_paths = []
+        for evt in stream:
+            if evt[0] is template.SUB:
+                for directive in evt[1][0]:
+                    if isinstance(directive, template.MatchDirective):
+                        ip = adapters.InlinePath(directive.path.source, directive.path.filename, directive.path.lineno)
+                        preexec_paths.append(ip)
+                        self.path_index_by_directive[directive] = len(preexec_paths) -1
+        return preexec_paths
+        
     def find_identifiers(self, stream, stack):
         """locate undeclared python identifiers in the given stream.  stack is an empty set."""
         for evt in stream:
@@ -201,12 +236,18 @@ class PythonGenerator(object):
             elif kind is template.TEXT:
                 for evt in self.produce_text_event(event):
                     yield evt
+            elif kind is template.START_NS:
+                for evt in self.produce_start_ns_event(event):
+                    yield evt
+            elif kind is template.END_NS:
+                for evt in self.produce_end_ns_event(event):
+                    yield evt
     def produce_preamble(self):
         for line in [
             "from genshi.core import START, END, START_NS, END_NS, TEXT, COMMENT, DOCTYPE, Stream",
             "from genshi.template import Context, Template",
             "from genshi.path import Path",
-            "from genshi.codegen import interp",
+            "from genshi.codegen import interp, adapters",
             "EXPR = Template.EXPR"
         ]:
             yield (PYTHON_LINE, line)
@@ -217,10 +258,6 @@ class PythonGenerator(object):
     def produce_directive(self, directive, event, substream):
         for evt in _directive_printers[directive.__class__].produce_directive(self, directive, event, substream):
             yield evt
-    def start(self):
-        for evt in self.produce_preamble():
-            yield evt
-        yield (PYTHON_LINE, "def go(context):")
     def end(self):
         yield (PYTHON_LINE, "")
     def produce_start_event(self, event):
@@ -254,4 +291,20 @@ class PythonGenerator(object):
             repr(event[2]),
             repr(unicode(event[3]))
         ))
+        
+    def produce_start_ns_event(self, event):
+        yield (PYTHON_LINE, "yield (START_NS, (%s), %s, %s)" % (
+            repr(unicode(event[1])),
+            repr(event[2]),
+            repr(unicode(''))
+        ))
+        yield (PYTHON_LINE, "_namespaces[%s] = %s" % (repr(event[1][0]), repr(unicode(event[1][1]))))
+    def produce_end_ns_event(self, event):
+        yield (PYTHON_LINE, "del _namespaces[%s]" % (repr(event[1])))
+        yield (PYTHON_LINE, "yield (START_NS, (%s), %s, %s)" % (
+            repr(unicode(event[1])),
+            repr(event[2]),
+            repr(unicode(''))
+        ))
+
 

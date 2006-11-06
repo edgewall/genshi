@@ -1,6 +1,9 @@
+"""defines resources available to generated modules"""
+
 from genshi.template import MarkupTemplate, Template, Context
 from genshi.path import Path
 from genshi.output import HTMLSerializer
+from genshi.codegen import adapters
 from compiler import ast, parse, visitor
 from genshi.core import START, END, START_NS, END_NS, TEXT, COMMENT, DOCTYPE, QName, Stream
 EXPR = Template.EXPR
@@ -33,6 +36,7 @@ def _match(stream, ctxt, match_templates=None):
                 break
 
     for event in stream:
+#        print "TESTING EVENT", event
         if not match_templates or (event[0] is not START and
                                    event[0] is not END):
             yield event
@@ -52,22 +56,16 @@ def _match(stream, ctxt, match_templates=None):
                 #for filter_ in self.filters[3:]:
                 #    content = filter_(content, ctxt)
                 content = list(content)
-
+                
                 for test in [mt[0] for mt in match_templates]:
                     test(tail[0][0:3], namespaces, ctxt, updateonly=True)
 
                 def select(path):
-                    return render_inline(InlinedPath(path).select(Stream(content), namespaces, ctxt))
+                    return adapters.InlinePath(path).select(Stream(content), namespaces, ctxt)
                 
-                # ctxt.push()/pop() is usually not going to be necessary for inlined execution
-                # since python scopes will handle most pushing/popping
-                ctxt.push(dict(select=select))
-
                 # similarly, no need for _eval (eval is inlined) as well as _flatten (inlined code already "flattened")
-                for event in _match(template, ctxt, match_templates[:idx] + match_templates[idx + 1:]):
+                for event in _match(template(select), ctxt, match_templates[:idx] + match_templates[idx + 1:]):
                     yield event
-
-                ctxt.pop()
                 break
         else:
             yield event
@@ -82,7 +80,3 @@ def evaluate(result, pos):
         else:
             yield TEXT, unicode(result), pos, result
 
-def run_inlined(module, data):
-    context = Context(**data)
-    for item in _match(module.go(context), context):
-        yield item[3]

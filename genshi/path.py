@@ -121,15 +121,17 @@ class Path(object):
                 result = test(event, namespaces, variables)
                 if result is True:
                     yield event
-                    depth = 1
-                    while depth > 0:
-                        subevent = stream.next()
-                        if subevent[0] is START:
-                            depth += 1
-                        elif subevent[0] is END:
-                            depth -= 1
-                        yield subevent
-                        test(subevent, namespaces, variables, updateonly=True)
+                    if event[0] is START:
+                        depth = 1
+                        while depth > 0:
+                            subevent = stream.next()
+                            if subevent[0] is START:
+                                depth += 1
+                            elif subevent[0] is END:
+                                depth -= 1
+                            yield subevent
+                            test(subevent, namespaces, variables,
+                                 updateonly=True)
                 elif result:
                     yield result
         return Stream(_generate())
@@ -160,7 +162,7 @@ class Path(object):
         paths = [(p, len(p), [0], [], [0] * len(p)) for p in self.paths]
 
         def _test(event, namespaces, variables, updateonly=False):
-            kind, data, pos = event
+            kind, data, pos = event[:3]
             retval = None
             for steps, size, cursors, cutoff, counter in paths:
                 # Manage the stack that tells us "where we are" in the stream
@@ -592,7 +594,7 @@ class CommentNodeTest(object):
     """Node test that matches any comment events."""
     __slots__ = []
     def __call__(self, kind, data, pos, namespaces, variables):
-        return kind is COMMENT and (kind, data, pos)
+        return kind is COMMENT
     def __repr__(self):
         return 'comment()'
 
@@ -612,8 +614,7 @@ class ProcessingInstructionNodeTest(object):
     def __init__(self, target=None):
         self.target = target
     def __call__(self, kind, data, pos, namespaces, variables):
-        if kind is PI and (not self.target or data[0] == self.target):
-            return (kind, data, pos)
+        return kind is PI and (not self.target or data[0] == self.target)
     def __repr__(self):
         arg = ''
         if self.target:
@@ -624,7 +625,7 @@ class TextNodeTest(object):
     """Node test that matches any text event."""
     __slots__ = []
     def __call__(self, kind, data, pos, namespaces, variables):
-        return kind is TEXT and (kind, data, pos)
+        return kind is TEXT
     def __repr__(self):
         return 'text()'
 

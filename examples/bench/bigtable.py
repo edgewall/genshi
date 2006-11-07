@@ -9,10 +9,18 @@ import cgi
 import sys
 import timeit
 from StringIO import StringIO
-import cElementTree as cet
-from elementtree import ElementTree as et
 from genshi.builder import tag
 from genshi.template import MarkupTemplate
+
+try:
+    from elementtree import ElementTree as et
+except ImportError:
+    et = None
+
+try:
+    import cElementTree as cet
+except ImportError:
+    cet = None
 
 try:
     import neo_cgi, neo_cs, neo_util
@@ -126,33 +134,37 @@ if kid:
         kid_tmpl.table = table
         kid_tmpl.serialize(output='html')
 
-    def test_kid_et():
-        """Kid template + cElementTree"""
+
+    if cet:
+        def test_kid_et():
+            """Kid template + cElementTree"""
+            _table = cet.Element('table')
+            for row in table:
+                td = cet.SubElement(_table, 'tr')
+                for c in row.values():
+                    cet.SubElement(td, 'td').text=str(c)
+            kid_tmpl2.table = _table
+            kid_tmpl2.serialize(output='html')
+
+if et:
+    def test_et():
+        """ElementTree"""
+        _table = et.Element('table')
+        for row in table:
+            tr = et.SubElement(_table, 'tr')
+            for c in row.values():
+                et.SubElement(tr, 'td').text=str(c)
+        et.tostring(_table)
+
+if cet:
+    def test_cet(): 
+        """cElementTree"""
         _table = cet.Element('table')
         for row in table:
-            td = cet.SubElement(_table, 'tr')
+            tr = cet.SubElement(_table, 'tr')
             for c in row.values():
-                cet.SubElement(td, 'td').text=str(c)
-        kid_tmpl2.table = _table
-        kid_tmpl2.serialize(output='html')
-
-def test_et(): 
-    """ElementTree"""
-    _table = et.Element('table')
-    for row in table:
-        tr = et.SubElement(_table, 'tr')
-        for c in row.values():
-            et.SubElement(tr, 'td').text=str(c)
-    et.tostring(_table)
-        
-def test_cet(): 
-    """cElementTree"""
-    _table = cet.Element('table')
-    for row in table:
-        tr = cet.SubElement(_table, 'tr')
-        for c in row.values():
-            cet.SubElement(tr, 'td').text=str(c)
-    cet.tostring(_table)
+                cet.SubElement(tr, 'td').text=str(c)
+        cet.tostring(_table)
 
 if neo_cgi:
     def test_clearsilver():

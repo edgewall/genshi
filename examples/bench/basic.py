@@ -146,7 +146,7 @@ def run(engines, number=2000, verbose=False):
             print '--------------------------------------------------------'
         else:
             print '%s:' % engine.capitalize(),
-        t = timeit.Timer(setup='from __main__ import %s; render = %s("%s", %s)'
+        t = timeit.Timer(setup='from __main__ import %s; render = %s(r"%s", %s)'
                                % (engine, engine, dirname, verbose),
                          stmt='render()')
         time = t.timeit(number=number) / number

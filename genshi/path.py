@@ -159,7 +159,9 @@ class Path(object):
         ...         print event
         ('START', (QName(u'child'), Attrs([(QName(u'id'), u'2')])), (None, 1, 34))
         """
-        paths = [(p, len(p), [0], [], [0] * len(p)) for p in self.paths]
+        paths = [(p, len(p), [0], [], [0] * len(p)) for p in [
+            (ignore_context and [_DOTSLASHSLASH] or []) + p for p in self.paths
+        ]]
 
         def _test(event, namespaces, variables, updateonly=False):
             kind, data, pos = event[:3]
@@ -228,45 +230,38 @@ class Path(object):
                                 cursors[-1] = cursor
                             cutoff[:] = []
 
-                    elif not ignore_context and kind is START:
-                        cutoff[:] = [depth]
-
-                    if last_step and not ignore_context and kind is START:
-                        if (axis is not DESCENDANT and
-                            axis is not DESCENDANT_OR_SELF):
+                    if kind is START:
+                        if last_step and not (axis is DESCENDANT or
+                                              axis is DESCENDANT_OR_SELF):
                             cutoff[:] = [depth]
 
-                    if kind is START and not last_step:
-                        next_axis = steps[cursor][0]
-                        if next_axis is ATTRIBUTE:
+                        elif steps[cursor][0] is ATTRIBUTE:
                             # If the axis of the next location step is the
-                            # attribute axis, we need to move on to processing
-                            # that step without waiting for the next markup
-                            # event
+                            # attribute axis, we need to move on to
+                            # processing that step without waiting for the
+                            # next markup event
                             continue
 
                     # We're done with this step if it's the last step or the
                     # axis isn't "self"
-                    if last_step or (axis is not SELF and
-                                     axis is not DESCENDANT_OR_SELF):
+                    if last_step or not (axis is SELF or
+                                         axis is DESCENDANT_OR_SELF):
                         break
 
-                if kind is START and axis is not DESCENDANT \
-                                 and axis is not DESCENDANT_OR_SELF:
+                if (retval or not matched) and kind is START and \
+                        not (axis is DESCENDANT or axis is DESCENDANT_OR_SELF):
                     # If this step is not a closure, it cannot be matched until
                     # the current element is closed... so we need to move the
                     # cursor back to the previous closure and retest that
                     # against the current element
-                    backsteps = [(k, d, p) for k, d, p in steps[:cursor]
+                    backsteps = [(i, k, d, p) for i, (k, d, p)
+                                 in enumerate(steps[:cursor])
                                  if k is DESCENDANT or k is DESCENDANT_OR_SELF]
                     backsteps.reverse()
-                    for axis, nodetest, predicates in backsteps:
-                        matched = nodetest(kind, data, pos, namespaces,
-                                           variables)
-                        if not matched:
-                            cursor -= 1
-                        cutoff[:] = []
-                        break
+                    for cursor, axis, nodetest, predicates in backsteps:
+                        if nodetest(kind, data, pos, namespaces, variables):
+                            cutoff[:] = []
+                            break
                     cursors[-1] = cursor
 
             return retval
@@ -1077,3 +1072,6 @@ class LessThanOrEqualOperator(object):
 _operator_map = {'=': EqualsOperator, '!=': NotEqualsOperator,
                  '>': GreaterThanOperator, '>=': GreaterThanOrEqualOperator,
                  '<': LessThanOperator, '>=': LessThanOrEqualOperator}
+
+
+_DOTSLASHSLASH = (DESCENDANT_OR_SELF, PrincipalTypeTest(None), ())

@@ -21,7 +21,9 @@ http://svn.edgewall.org/repos/genshi/tags/0.4.0/
    value.
  * Unsuccessful attribute or item lookups now return `Undefined` objects for
    nicer error messages.
-
+ * Fix XPath traversal in match templates. Previously, `div/p` would be treated 
+   the same as `div//p`, i.e. it would match all descendants and not just the
+   immediate children.
 
 Version 0.3.4
 http://svn.edgewall.org/repos/genshi/tags/0.3.4/

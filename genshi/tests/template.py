@@ -764,21 +764,20 @@ class MatchDirectiveTestCase(unittest.TestCase):
           </body>
         </html>""", str(tmpl.generate()))
 
-    # FIXME
-    #def test_match_without_closure(self):
-    #    tmpl = MarkupTemplate("""<html xmlns:py="http://genshi.edgewall.org/">
-    #      <p py:match="body/p" class="para">${select('*|text()')}</p>
-    #      <body>
-    #        <p>Foo</p>
-    #        <div><p>Bar</p></div>
-    #      </body>
-    #    </html>""")
-    #    self.assertEqual("""<html>
-    #      <body>
-    #        <p class="para">Foo</p>
-    #        <div><p>Bar</p></div>
-    #      </body>
-    #    </html>""", str(tmpl.generate()))
+    def test_match_without_closure(self):
+        tmpl = MarkupTemplate("""<html xmlns:py="http://genshi.edgewall.org/">
+          <p py:match="body/p" class="para">${select('*|text()')}</p>
+          <body>
+            <p>Foo</p>
+            <div><p>Bar</p></div>
+          </body>
+        </html>""")
+        self.assertEqual("""<html>
+          <body>
+            <p class="para">Foo</p>
+            <div><p>Bar</p></div>
+          </body>
+        </html>""", str(tmpl.generate()))
 
     # FIXME
     #def test_match_after_step(self):

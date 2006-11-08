@@ -12,8 +12,8 @@ import unittest
 
 class MarkupTemplateAdapter(object):
     def __init__(self, text):
-        self.generator = Generator(RealMarkupTemplate(text), strip_whitespace=True)
-        print u''.join(self.generator._generate_code_events())
+        self.generator = Generator(RealMarkupTemplate(text), strip_whitespace=True, compress_empty=True)
+        #print u''.join(self.generator._generate_code_events())
     def generate(self, *args, **kwargs):
         return self.generator.generate(*args, **kwargs)
 

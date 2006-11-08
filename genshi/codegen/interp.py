@@ -56,7 +56,7 @@ def _match(stream, ctxt, match_templates=None):
                 #for filter_ in self.filters[3:]:
                 #    content = filter_(content, ctxt)
                 content = list(content)
-                
+
                 for test in [mt[0] for mt in match_templates]:
                     test(tail[0][0:3], namespaces, ctxt, updateonly=True)
 
@@ -70,12 +70,24 @@ def _match(stream, ctxt, match_templates=None):
         else:
             yield event
 
+# TODO: this adds too much overhead
+def _ensure(stream):
+    """Ensure that every item on the stream is actually an inline event."""
+    for event in stream:
+        if type(event) is not tuple:
+            if hasattr(event, 'totuple'):
+                event = event.totuple()
+            else:
+                event = TEXT, unicode(event), (None, -1, -1), unicode(event)
+        yield event
+
 def evaluate(result, pos):
     if result is not None:
         if isinstance(result, basestring):
             yield TEXT, result, pos, result
         elif hasattr(result, '__iter__'):
-            for event in result:
+            substream = _ensure(result)
+            for event in substream:
                 yield event
         else:
             yield TEXT, unicode(result), pos, result

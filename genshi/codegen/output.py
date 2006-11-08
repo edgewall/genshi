@@ -12,6 +12,27 @@ from genshi.core import DOCTYPE, START, END, START_NS, TEXT, START_CDATA, \
                         END_CDATA, PI, COMMENT, XML_NAMESPACE
 
 
+class EmptyTagFilter(object):
+    """Combines `START` and `STOP` events into `EMPTY` events for elements that
+    have no contents.
+    """
+    EMPTY = StreamEventKind('EMPTY')
+
+    def __call__(self, stream):
+        prev = (None, None, None, None)
+        for kind, data, pos, literal in stream:
+            if prev[0] is START:
+                if kind is END:
+                    prev = EMPTY, prev[1], prev[2], prev[3][:-1] + '/>'
+                    yield prev
+                    continue
+                else:
+                    yield prev
+            if kind is not START:
+                yield kind, data, pos, literal
+            prev = kind, data, pos, literal
+EMPTY = EmptyTagFilter.EMPTY
+
 class PostWhitespaceFilter(object):
     """A filter that removes extraneous ignorable white space from the
     stream."""

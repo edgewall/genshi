@@ -112,7 +112,7 @@ DefDirectivePrinter()
 class Generator(object):
     """given a Template, generates Python modules (as strings or code objects)
     optimized to a particular Serializer."""
-    def __init__(self, template, method='html', serializer=None, strip_whitespace=False, filters=None):
+    def __init__(self, template, method='html', serializer=None, strip_whitespace=False, compress_empty=False, filters=None):
         self.template = template
         self.serializer = serializer or ({
                 'xml':   serialize.XMLSerializeFilter,
@@ -122,6 +122,8 @@ class Generator(object):
                
         self.code = self._generate_module()
         self.filters = filters or []
+        if compress_empty:
+            self.filters.append(output.EmptyTagFilter())
         if strip_whitespace:
             self.filters.append(output.PostWhitespaceFilter())
     def generate(self, *args, **kwargs):
@@ -164,7 +166,8 @@ class _SearchIdents(visitor.ASTVisitor):
             expr = parse(expr, "eval")
         visitor.walk(expr, self)
     def visitName(self, node, *args, **kwargs):
-        self.identifiers.add(node.name)
+        if node.name not in __builtins__:
+            self.identifiers.add(node.name)
 
 class PythonGenerator(object):
     def __init__(self, stream, serializer):

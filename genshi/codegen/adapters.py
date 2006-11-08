@@ -63,7 +63,10 @@ InlineEvent.__eventtypes__[template.START] = InlineStartEvent
 class InlineQName(unicode):
     """creates a QName-like object from a START event"""
     def __new__(cls, event):
-        self = unicode.__new__(cls, u'{%s}%s' % (event[1][0], event[1][1]))
+        if event[1][0] is not None:
+            self = unicode.__new__(cls, u'{%s}%s' % (event[1][0], event[1][1]))
+        else:
+            self = unicode.__new__(cls, u'%s' % (event[1][1]))
         self.namespace = event[1][0]
         self.localname = event[1][1]
         return self

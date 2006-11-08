@@ -24,6 +24,8 @@ http://svn.edgewall.org/repos/genshi/tags/0.4.0/
  * Fix XPath traversal in match templates. Previously, `div/p` would be treated 
    the same as `div//p`, i.e. it would match all descendants and not just the
    immediate children.
+ * Split up the `genshi.template` module into multiple modules inside the new
+   `genshi.template` package.
 
 Version 0.3.4
 http://svn.edgewall.org/repos/genshi/tags/0.3.4/

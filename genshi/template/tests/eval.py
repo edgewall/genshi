@@ -15,7 +15,7 @@ import doctest
 import sys
 import unittest
 
-from genshi.eval import Expression, Undefined
+from genshi.template.eval import Expression, Undefined
 
 
 class ExpressionTestCase(unittest.TestCase):
@@ -381,8 +381,8 @@ class ExpressionTestCase(unittest.TestCase):
 
 def suite():
     suite = unittest.TestSuite()
-    suite.addTest(unittest.makeSuite(ExpressionTestCase, 'test'))
     suite.addTest(doctest.DocTestSuite(Expression.__module__))
+    suite.addTest(unittest.makeSuite(ExpressionTestCase, 'test'))
     return suite
 
 if __name__ == '__main__':

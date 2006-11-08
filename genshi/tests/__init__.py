@@ -11,18 +11,17 @@
 # individuals. For the exact contribution history, see the revision
 # history and logs, available at http://genshi.edgewall.org/log/.
 
-import doctest
 import unittest
 
 def suite():
     import genshi
-    from genshi.tests import builder, core, eval, filters, input, output, \
-                             path, template, util
+    from genshi.tests import builder, core, filters, input, output, path, \
+                             util
+    from genshi.template import tests as template
+
     suite = unittest.TestSuite()
-    suite.addTest(doctest.DocTestSuite(genshi))
     suite.addTest(builder.suite())
     suite.addTest(core.suite())
-    suite.addTest(eval.suite())
     suite.addTest(filters.suite())
     suite.addTest(input.suite())
     suite.addTest(output.suite())

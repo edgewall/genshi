@@ -27,7 +27,7 @@ from StringIO import StringIO
 try:
     import threading
 except ImportError:
-    import dummythreading as threading
+    import dummy_threading as threading
 
 from genshi.core import Attrs, Namespace, Stream, StreamEventKind, _ensure
 from genshi.core import START, END, START_NS, END_NS, TEXT, COMMENT

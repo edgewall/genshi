@@ -21,11 +21,13 @@ http://svn.edgewall.org/repos/genshi/tags/0.4.0/
    value.
  * Unsuccessful attribute or item lookups now return `Undefined` objects for
    nicer error messages.
-
+ * Fix XPath traversal in match templates. Previously, `div/p` would be treated 
+   the same as `div//p`, i.e. it would match all descendants and not just the
+   immediate children.
 
 Version 0.3.4
 http://svn.edgewall.org/repos/genshi/tags/0.3.4/
-(?, from branches/stable/0.3.x)
+(Nov 2 2006, from branches/stable/0.3.x)
 
  * The encoding of HTML and XML files, as well as markup and text templates,
    can now be specified. Also, the encoding specified in XML declarations is

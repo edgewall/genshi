@@ -46,37 +46,12 @@ class InlineStream(object):
     def __unicode__(self):
         return self.render(encoding=None)
 
-class InlineEvent(object):
-    __eventtypes__ = {}
-    def __new__(cls, event):
-        return object.__new__(InlineEvent.__eventtypes__.get(event[0], InlineEvent), event)
-    def __init__(self, event):
-        self.event = event
-    def to_genshi(self):
-        return self.event[0:3]
-
-class InlineStartEvent(InlineEvent):
-    def to_genshi(self):
-        return (self.event[0], (InlineQName(self.event), Attrs(self.event[1][2])), self.event[2])
-InlineEvent.__eventtypes__[template.START] = InlineStartEvent
-        
-class InlineQName(unicode):
-    """creates a QName-like object from a START event"""
-    def __new__(cls, event):
-        if event[1][0] is not None:
-            self = unicode.__new__(cls, u'{%s}%s' % (event[1][0], event[1][1]))
-        else:
-            self = unicode.__new__(cls, u'%s' % (event[1][1]))
-        self.namespace = event[1][0]
-        self.localname = event[1][1]
-        return self
-        
 class InlinePath(Path):
     """overrides Path.test to adapt incoming events from inlined to Genshi."""
     def test(self, ignore_context=False):
         t = super(InlinePath, self).test(ignore_context=ignore_context)
         def _test(event, namespaces, variables, updateonly=False):
-            return t(InlineEvent(event).to_genshi(), namespaces, variables, updateonly=updateonly)
+            return t(event[0:3], namespaces, variables, updateonly=updateonly)
         return _test
     def select(self, stream, namespaces=None, variables=None):
         if namespaces is None:
@@ -104,9 +79,8 @@ class InlinePath(Path):
                 elif isinstance(result, tuple):
                     yield event
                 elif result:
-                    # in genshi.path.Path, this could be an Attrs or a 3-tupled event.
-                    # here, we only want Attrs to come out.
-                    yield result
+                    # scalar result, return an event
+                    yield template.TEXT, unicode(result), (None, -1, -1), unicode(result)
         return InlineStream(_generate())
 
     def __repr__(self):

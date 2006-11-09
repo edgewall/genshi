@@ -84,8 +84,8 @@ class PostWhitespaceFilter(object):
                     yield TEXT, Markup(text), pos, unicode(text)
 
                 if kind is START:
-                    namespace, localname, attrib = data
-                    tag = (namespace, localname)
+                    qname, attrib = data
+                    tag = (qname.namespace, qname.localname)
                     if not preserve and (tag in preserve_elems or
                                          adapters.get_attrib(attrib, space) == 'preserve'):
                         preserve = True

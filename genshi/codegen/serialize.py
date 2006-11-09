@@ -18,6 +18,8 @@ given standard Genshi 3-element streams.
 
 While this module is a severe transgression of DRY, reusing the output-specific logic
 from the genshi.output module would require de-optimizing the base genshi.output implementations.
+
+The Filters are also stateful and must be created per-generator.
 """
 
 from itertools import chain
@@ -52,10 +54,94 @@ class XMLSerializeFilter(object):
         self.preamble = []
         if doctype:
             self.preamble.append((DOCTYPE, doctype, (None, -1, -1)))
-        # TODO: fold empty tags ?
+        self.ns_attrib = []
+        self.ns_mapping = {XML_NAMESPACE.uri: 'xml'}
+        self.have_doctype = False
+        self.in_cdata = False
 
     def __call__(self, stream):
-        raise "TODO"
+        stream = chain(self.preamble, stream)
+        for kind, data, pos in stream:
+            if kind is START:
+                tag, attrib = data
+                tagname = tag.localname
+                namespace = tag.namespace
+                if namespace:
+                    if namespace in self.ns_mapping:
+                        prefix = self.ns_mapping[namespace]
+                        if prefix:
+                            tagname = '%s:%s' % (prefix, tagname)
+                    else:
+                        self.ns_attrib.append((QName('xmlns'), namespace))
+                buf = ['<', tagname]
+
+                for attr, value in attrib + self.ns_attrib:
+                    attrname = attr.localname
+                    if attr.namespace:
+                        prefix = ns_mapping.get(attr.namespace)
+                        if prefix:
+                            attrname = '%s:%s' % (prefix, attrname)
+                    buf += [' ', attrname, '="', escape(value), '"']
+                self.ns_attrib = []
+
+                buf += ['>']
+                yield kind, data, pos, u''.join(buf)
+
+            elif kind is END:
+                tag = data
+                tagname = tag.localname
+                if tag.namespace:
+                    prefix = self.ns_mapping.get(tag.namespace)
+                    if prefix:
+                        tagname = '%s:%s' % (prefix, tag.localname)
+                yield kind, data, pos, u'</%s>' % tagname
+
+            elif kind is TEXT:
+                if self.in_cdata:
+                    yield kind, data, pos, data
+                else:
+                    yield kind, data, pos, escape(data, quotes=False)
+
+            elif kind is COMMENT:
+                yield kind, data, pos, u'<!--%s-->' % data
+
+            elif kind is DOCTYPE and not self.have_doctype:
+                name, pubid, sysid = data
+                buf = ['<!DOCTYPE %s']
+                if pubid:
+                    buf += [' PUBLIC "%s"']
+                elif sysid:
+                    buf += [' SYSTEM']
+                if sysid:
+                    buf += [' "%s"']
+                buf += ['>\n']
+                yield kind, data, pos, unicode(Markup(''.join(buf), *filter(None, data)))
+                self.have_doctype = True
+
+            elif kind is START_NS:
+                prefix, uri = data
+                if uri not in self.ns_mapping:
+                    self.ns_mapping[uri] = prefix
+                    if not prefix:
+                        self.ns_attrib.append((QName('xmlns'), uri))
+                    else:
+                        self.ns_attrib.append((QName('xmlns:%s' % prefix), uri))
+                    yield kind, data, pos, None
+
+            elif kind is START_CDATA:
+                yield kind, data, pos, u'<![CDATA['
+                self.in_cdata = True
+
+            elif kind is END_CDATA:
+                yield kind, data, pos, u']]>'
+                self.in_cdata = False
+
+            elif kind is PI:
+                yield kind, data, pos, u'<?%s %s?>' % data
+            else:
+                # all other events pass-thru
+                yield kind, data, pos, None
+
 
 class XHTMLSerializeFilter(XMLSerializeFilter):
     """Delivers the given stream with additional XHTML text added to outgoing events.
@@ -108,30 +194,32 @@ class HTMLSerializeFilter(XHTMLSerializeFilter):
         for kind, data, pos in stream:
             if kind is START:
                 tag, attrib = data
-                if not tag.namespace or tag in namespace:
-                    tagname = tag.localname
-                    buf = ['<', tagname]
+                tagname = tag.localname
+                buf = ['<', tagname]
 
-                    for attr, value in attrib:
-                        attrname = attr.localname
-                        if not attr.namespace or attr in namespace:
-                            if attrname in boolean_attrs:
-                                if value:
-                                    buf += [' ', attrname]
-                            else:
-                                buf += [' ', attrname, '="', escape(value), '"']
+                for attr, value in attrib:
+                    attrname = attr.localname
+                    if not attr.namespace or attr in namespace:
+                        if attrname in boolean_attrs:
+                            if value:
+                                buf += [' ', attrname]
+                        else:
+                            buf += [' ', attrname, '="', escape(value), '"']
 
-                    buf += ['>']
+                buf += ['>']
 
+                if tag.namespace and tag not in namespace:
+                    yield kind, data, pos, u''
+                else:
                     yield kind, data, pos, u''.join(buf)
-
                     if tagname in noescape_elems:
                         noescape = True
 
             elif kind is END:
                 if not data.namespace or data in namespace:
                     yield kind, data, pos, u'</%s>' % data.localname
-
+                else:
+                    yield kind, data, pos, u''
                 noescape = False
 
             elif kind is TEXT:

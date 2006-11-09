@@ -20,6 +20,8 @@ from genshi.codegen.printer import PythonPrinter, PYTHON_LINE, PYTHON_COMMENT, P
 from genshi.codegen import serialize, adapters, output, interp
 from compiler import ast, parse, visitor
 import sets, re
+from genshi.core import DOCTYPE, START, END, START_NS, TEXT, START_CDATA, \
+                        END_CDATA, PI, COMMENT, XML_NAMESPACE
 
 _directive_printers = {}
 
@@ -112,7 +114,7 @@ DefDirectivePrinter()
 class Generator(object):
     """given a Template, generates Python modules (as strings or code objects)
     optimized to a particular Serializer."""
-    def __init__(self, template, method='html', serializer=None, strip_whitespace=False, compress_empty=False, filters=None):
+    def __init__(self, template, method='xml', serializer=None, strip_whitespace=False, compress_empty=False, filters=None):
         self.template = template
         self.serializer = serializer or ({
                 'xml':   serialize.XMLSerializeFilter,
@@ -227,16 +229,16 @@ class PythonGenerator(object):
                 for d in directives:
                     for evt in self.produce_directive(d, event, substream):
                         yield evt
-            elif kind is template.START:
+            elif kind is START:
                 for evt in self.produce_start_event(event):
                     yield evt
-            elif kind is template.END:
+            elif kind is END:
                 for evt in self.produce_end_event(event):
                     yield evt
             elif kind is template.EXPR:
                 for evt in self.produce_expr_event(event):
                     yield evt
-            elif kind is template.TEXT:
+            elif kind is TEXT:
                 for evt in self.produce_text_event(event):
                     yield evt
             elif kind is template.START_NS:
@@ -245,9 +247,12 @@ class PythonGenerator(object):
             elif kind is template.END_NS:
                 for evt in self.produce_end_ns_event(event):
                     yield evt
+            elif kind is DOCTYPE:
+                for evt in self.produce_doctype_event(event):
+                    yield evt
     def produce_preamble(self):
         for line in [
-            "from genshi.core import START, END, START_NS, END_NS, TEXT, COMMENT, DOCTYPE, Stream",
+            "from genshi.core import START, END, START_NS, END_NS, TEXT, COMMENT, DOCTYPE, Stream, QName, Attrs",
             "from genshi.template import Context, Template",
             "from genshi.path import Path",
             "from genshi.codegen import interp, adapters",
@@ -265,9 +270,8 @@ class PythonGenerator(object):
         yield (PYTHON_LINE, "")
     def produce_start_event(self, event):
         qn = QName(event[1][0])
-        yield (PYTHON_LINE, "yield (START, (%s, %s, %s), %s, %s)" % (
-            repr(qn.namespace),
-            repr(qn.localname), 
+        yield (PYTHON_LINE, "yield (START, (QName(%s), Attrs(%s)), %s, %s)" % (
+            repr(qn),
             repr(event[1][1]), 
             repr(event[2]), 
             repr(event[3]))
@@ -294,6 +298,12 @@ class PythonGenerator(object):
             repr(event[2]),
             repr(unicode(event[3]))
         ))
+    def produce_doctype_event(self, event):
+        yield (PYTHON_LINE, "yield (DOCTYPE, (%s), %s, %s)" % (
+            repr(unicode(event[1])),
+            repr(event[2]),
+            repr(unicode(event[3]))
+        ))
         
     def produce_start_ns_event(self, event):
         yield (PYTHON_LINE, "yield (START_NS, (%s), %s, %s)" % (
@@ -303,7 +313,7 @@ class PythonGenerator(object):
         ))
         yield (PYTHON_LINE, "_namespaces[%s] = %s" % (repr(event[1][0]), repr(unicode(event[1][1]))))
     def produce_end_ns_event(self, event):
-        yield (PYTHON_LINE, "del _namespaces[%s]" % (repr(event[1])))
+        #yield (PYTHON_LINE, "del _namespaces[%s]" % (repr(event[1])))
         yield (PYTHON_LINE, "yield (START_NS, (%s), %s, %s)" % (
             repr(unicode(event[1])),
             repr(event[2]),

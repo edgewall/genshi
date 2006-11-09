@@ -12,9 +12,8 @@
 # history and logs, available at http://genshi.edgewall.org/log/.
 
 from genshi.template import MarkupTemplate, Template, Context
-from genshi.output import HTMLSerializer
+from genshi.output import XMLSerializer
 from genshi.codegen import generator, interp
-from genshi.codegen.serialize import HTMLSerializeFilter
 import time, sys
 
 text = """<!DOCTYPE html
@@ -25,10 +24,10 @@ text = """<!DOCTYPE html
       xmlns:xi="http://www.w3.org/2001/XInclude"
       lang="en">
  <body>
-    <!-- remove this match to get much faster performance -->
-    <py:match path='*[@class="message"]'>
-        matched the message, which was ${select('*|text()')}
-        </py:match>
+ <py:match path='*[@class="message"]'>
+     matched the message, which was ${select('*|text()')}
+     </py:match>
+
         
     <div py:for="item in items()">
         ${lala + 'hi'}
@@ -69,6 +68,7 @@ print pycode
 
 print str(g.generate(**data))
 
+#sys.exit()
 
 print "Running MarkupTemplate.generate()/HTMLSerializer..."
 now = time.time()

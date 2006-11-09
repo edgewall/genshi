@@ -241,7 +241,7 @@ class ForDirective(Directive):
       <li>1</li><li>2</li><li>3</li>
     </ul>
     """
-    __slots__ = ['assign', 'filename']
+    __slots__ = ['assign', 'target', 'filename']
 
     ATTRIBUTE = 'each'
 
@@ -251,8 +251,8 @@ class ForDirective(Directive):
             raise TemplateSyntaxError('"in" keyword missing in "for" directive',
                                       filename, lineno, offset)
         assign, value = value.split(' in ', 1)
-        ast = _parse(assign, 'exec')
-        self.assign = _assignment(ast.node.nodes[0].expr)
+        self.target = _parse(assign, 'exec').node.nodes[0].expr
+        self.assign = _assignment(self.target)
         self.filename = filename
         Directive.__init__(self, value.strip(), namespaces, filename, lineno,
                            offset)
@@ -577,7 +577,7 @@ class WithDirective(Directive):
                     raise TemplateSyntaxError('only assignment allowed in '
                                               'value of the "with" directive',
                                               filename, lineno, offset)
-                self.vars.append(([_assignment(n) for n in node.nodes],
+                self.vars.append(([(n, _assignment(n)) for n in node.nodes],
                                   Expression(node.expr, filename, lineno)))
         except SyntaxError, err:
             err.msg += ' in expression "%s" of "%s" directive' % (value,
@@ -590,7 +590,7 @@ class WithDirective(Directive):
         ctxt.push(frame)
         for targets, expr in self.vars:
             value = expr.evaluate(ctxt, nocall=True)
-            for assign in targets:
+            for _, assign in targets:
                 assign(frame, value)
         for event in _apply_directives(stream, ctxt, directives):
             yield event

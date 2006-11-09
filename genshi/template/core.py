@@ -17,6 +17,7 @@ except ImportError:
     class deque(list):
         def appendleft(self, x): self.insert(0, x)
         def popleft(self): return self.pop(0)
+import imp
 import os
 import re
 from StringIO import StringIO
@@ -287,6 +288,19 @@ class Template(object):
                     offset += len(grp)
         return _interpolate(text, [cls._FULL_EXPR_RE, cls._SHORT_EXPR_RE])
     _interpolate = classmethod(_interpolate)
+
+    def compile(self):
+        """Compile the template to a Python module, and return the module
+        object.
+        """
+        from genshi.template.inline import inline
+
+        name = (self.filename or '_some_ident').replace('.', '_')
+        module = imp.new_module(name)
+        source = u'\n'.join(list(inline(self)))
+        code = compile(source, self.filepath or '<string>', 'exec')
+        exec code in module.__dict__, module.__dict__
+        return module
 
     def generate(self, *args, **kwargs):
         """Apply the template to the given context data.

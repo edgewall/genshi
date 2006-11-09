@@ -20,6 +20,16 @@ from genshi.template.eval import Expression, Undefined
 
 class ExpressionTestCase(unittest.TestCase):
 
+    def test_eq(self):
+        expr = Expression('x,y')
+        self.assertEqual(expr, Expression('x,y'))
+        self.assertNotEqual(expr, Expression('y, x'))
+
+    def test_hash(self):
+        expr = Expression('x,y')
+        self.assertEqual(hash(expr), hash(Expression('x,y')))
+        self.assertNotEqual(hash(expr), hash(Expression('y, x')))
+
     def test_name_lookup(self):
         self.assertEqual('bar', Expression('foo').evaluate({'foo': 'bar'}))
         self.assertEqual(id, Expression('id').evaluate({}, nocall=True))

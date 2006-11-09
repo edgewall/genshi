@@ -170,13 +170,14 @@ class DefDirective(Directive):
       </p>
     </div>
     """
-    __slots__ = ['name', 'args', 'defaults']
+    __slots__ = ['name', 'args', 'defaults', 'signature']
 
     ATTRIBUTE = 'function'
 
     def __init__(self, args, namespaces=None, filename=None, lineno=-1,
                  offset=-1):
         Directive.__init__(self, None, namespaces, filename, lineno, offset)
+        self.signature = args.strip()
         ast = _parse(args).node
         self.args = []
         self.defaults = {}

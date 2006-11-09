@@ -82,15 +82,11 @@ def inline(template):
     yield w('from genshi.core import Attrs, QName')
     yield w('from genshi.core import START, START_NS, END, END_NS, DOCTYPE, TEXT')
     yield w('from genshi.path import Path')
-    yield w('from genshi.template.core import Template')
     yield w('from genshi.template.eval import Expression')
     yield w('from genshi.template.inline import _expand, _expand_text')
-    yield w('')
+    yield w()
 
-    yield '# predeclare qnames, attributes, and expressions'
-    p_attrs, p_qnames, p_exprs = {}, {}, {}
-    ai, qi, ei, pi = [0], [0], [0], [0]
-    def _predecl(stream):
+    def _predecl_vars(stream):
         for kind, data, pos in stream:
 
             if kind is START:
@@ -126,27 +122,41 @@ def inline(template):
             elif kind is SUB:
                 directives, substream = data
                 for directive in directives:
+
                     if directive.expr:
                         if directive.expr not in p_exprs:
                             ei[0] += 1
                             yield w('E%d = %r', ei[0], directive.expr)
                             p_exprs[directive.expr] = ei[0]
+
                     elif hasattr(directive, 'vars'):
                         for _, expr in directive.vars:
                             if expr not in p_exprs:
                                 ei[0] += 1
                                 yield w('E%d = %r', ei[0], expr)
                                 p_exprs[expr] = ei[0]
+
                     elif hasattr(directive, 'path') and directive.path:
                         yield w('P%d = %r', pi[0], directive.path)
-                for line in _predecl(substream):
+
+                for line in _predecl_vars(substream):
                     yield line
 
-    lines = list(_predecl(template.stream))
-    lines.sort()
-    for line in lines:
-        yield line
-    yield w('')
+    def _predecl_funcs(stream):
+        for kind, data, pos in stream:
+            if kind is SUB:
+                directives, substream = data
+                for directive in directives:
+                    if isinstance(directive, DefDirective):
+                        yield w('def %s:', directive.signature)
+                        w.shift()
+                        args = ['%r: %s' % (name, name) for name
+                                in directive.args]
+                        yield w('ctxt.push({%s})', ', '.join(args))
+                        for line in _generate(substream):
+                            yield line
+                        yield w('ctxt.pop()')
+                        w.unshift()
 
     # Recursively apply directives
     def _apply(directives, stream):
@@ -176,6 +186,9 @@ def inline(template):
                 line = next
             yield line
             w.unshift()
+
+        elif isinstance(directive, DefDirective):
+            yield w('ctxt.frames[-1][%r] = %s', directive.name, directive.name)
 
         elif isinstance(directive, ForDirective):
             ei[0] += 1
@@ -236,7 +249,7 @@ def inline(template):
         else:
             raise NotImplementedError
 
-        yield w('')
+        yield w()
 
     # Generate code for the given template stream
     def _generate(stream):
@@ -287,8 +300,23 @@ def inline(template):
             else:
                 yield w('yield %s, %r, %r', kind, data, pos)
 
+    p_attrs, p_qnames, p_exprs = {}, {}, {}
+    ai, qi, ei, pi = [0], [0], [0], [0]
+
+    yield '# predeclare qnames, attributes, and expressions'
+    lines = list(_predecl_vars(template.stream))
+    lines.sort()
+    for line in lines:
+        yield line
+    yield w()
+
     yield w('def generate(ctxt):')
+    yield w()
     w.shift()
+
+    for line in _predecl_funcs(template.stream):
+        yield line
+    yield w()
 
     ei, pi = [0], [0]
     for line in _generate(template.stream):
@@ -306,7 +334,10 @@ if __name__ == '__main__':
       xmlns:py="http://genshi.edgewall.org/"
       lang="en">
  <body>
-    Hello, $hello!
+    <py:def function="sayhi(name='world')">
+      Hello, $name!
+    </py:def>
+    ${sayhi()}
     <ul py:if="items">
       <li py:for="idx, item in enumerate(items)"
           class="${idx % 2 and 'odd' or 'even'}">

@@ -83,6 +83,15 @@ class Expression(object):
             self.code = _compile(ast.Expression(source), filename=filename,
                                  lineno=lineno)
 
+    def __eq__(self, other):
+        return (type(other) == Expression) and (self.code == other.code)
+
+    def __hash__(self):
+        return hash(self.code)
+
+    def __ne__(self, other):
+        return not self == other
+
     def __repr__(self):
         return 'Expression(%r)' % self.source
 

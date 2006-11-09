@@ -107,10 +107,10 @@ def inline(template):
                     else:
                         for subkind, subdata, subpos in substream:
                             if subkind is EXPR:
-                                if subdata.source not in p_exprs:
+                                if subdata not in p_exprs:
                                     ei[0] += 1
                                     yield w('E%d = %r', ei[0], subdata)
-                                    p_exprs[subdata.source] = ei[0]
+                                    p_exprs[subdata] = ei[0]
 
                 if tuple(sattrs) not in p_attrs:
                     ai[0] += 1
@@ -118,25 +118,25 @@ def inline(template):
                     p_attrs[tuple(sattrs)] = ai[0]
 
             elif kind is EXPR:
-                if data.source not in p_exprs:
+                if data not in p_exprs:
                     ei[0] += 1
                     yield w('E%d = %r', ei[0], data)
-                    p_exprs[data.source] = ei[0]
+                    p_exprs[data] = ei[0]
 
             elif kind is SUB:
                 directives, substream = data
                 for directive in directives:
                     if directive.expr:
-                        if directive.expr.source not in p_exprs:
+                        if directive.expr not in p_exprs:
                             ei[0] += 1
                             yield w('E%d = %r', ei[0], directive.expr)
-                            p_exprs[directive.expr.source] = ei[0]
+                            p_exprs[directive.expr] = ei[0]
                     elif hasattr(directive, 'vars'):
                         for _, expr in directive.vars:
-                            if expr.source not in p_exprs:
+                            if expr not in p_exprs:
                                 ei[0] += 1
                                 yield w('E%d = %r', ei[0], expr)
-                                p_exprs[expr.source] = ei[0]
+                                p_exprs[expr] = ei[0]
                     elif hasattr(directive, 'path') and directive.path:
                         yield w('P%d = %r', pi[0], directive.path)
                 for line in _predecl(substream):
@@ -163,8 +163,8 @@ def inline(template):
 
         if isinstance(directive, ContentDirective):
             ei[0] += 1
-            yield w('for e in _expand(E%d.evaluate(ctxt), %r):', p_exprs[directive.expr.source],
-                    (None, -1, -1))
+            yield w('for e in _expand(E%d.evaluate(ctxt), %r):',
+                    p_exprs[directive.expr], (None, -1, -1))
             w.shift()
             lines = _apply(directives, stream)
             for line in lines:
@@ -179,7 +179,7 @@ def inline(template):
 
         elif isinstance(directive, ForDirective):
             ei[0] += 1
-            yield w('for v in E%d.evaluate(ctxt):', p_exprs[directive.expr.source])
+            yield w('for v in E%d.evaluate(ctxt):', p_exprs[directive.expr])
             w.shift()
             yield w('ctxt.push(%s)', _assign(directive.target))
             for line in _apply(directives, stream):
@@ -189,7 +189,7 @@ def inline(template):
 
         elif isinstance(directive, IfDirective):
             ei[0] += 1
-            yield w('if E%d.evaluate(ctxt):', p_exprs[directive.expr.source])
+            yield w('if E%d.evaluate(ctxt):', p_exprs[directive.expr])
             w.shift()
             for line in _apply(directives, stream):
                 yield line
@@ -198,13 +198,13 @@ def inline(template):
         elif isinstance(directive, ReplaceDirective):
             ei[0] += 1
             yield w('for e in _expand(E%d.evaluate(ctxt), %r): yield e',
-                    p_exprs[directive.expr.source],
+                    p_exprs[directive.expr],
                     (None, -1, -1))
 
         elif isinstance(directive, WithDirective):
             for targets, expr in directive.vars:
                 ei[0] += 1
-                yield w('v = E%d.evaluate(ctxt)', p_exprs[directive.expr.source])
+                yield w('v = E%d.evaluate(ctxt)', p_exprs[directive.expr])
                 for node, _ in targets:
                     yield w('ctxt.push(%s)', _assign(node))
             for line in _apply(directives, stream):
@@ -213,7 +213,7 @@ def inline(template):
 
         elif isinstance(directive, StripDirective):
             if directive.expr:
-                yield w('if E%d.evaluate(ctxt):', p_exprs[directive.expr.source])
+                yield w('if E%d.evaluate(ctxt):', p_exprs[directive.expr])
                 w.shift()
                 lines = _apply(directives, stream)
                 previous = lines.next()
@@ -244,7 +244,7 @@ def inline(template):
 
             if kind is EXPR:
                 yield w('for e in _expand(E%d.evaluate(ctxt), %r): yield e',
-                        p_exprs[data.source], pos)
+                        p_exprs[data], pos)
 
             elif kind is START:
                 tagname, attrs = data
@@ -263,7 +263,7 @@ def inline(template):
                             for subkind, subdata, subpos in value:
                                 if subkind is EXPR:
                                     parts.append('list(_expand_text(E%d.evaluate(ctxt)))' %
-                                                 p_exprs[subdata.source])
+                                                 p_exprs[subdata])
                                 elif subkind is TEXT:
                                     parts.append('[%r]' % subdata)
                             yield w('v = [v for v in %s if v is not None]',

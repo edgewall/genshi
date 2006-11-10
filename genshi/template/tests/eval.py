@@ -15,17 +15,26 @@ import doctest
 import sys
 import unittest
 
-from genshi.eval import Expression, Undefined
+from genshi.template.eval import Expression, Undefined
 
 
 class ExpressionTestCase(unittest.TestCase):
 
+    def test_eq(self):
+        expr = Expression('x,y')
+        self.assertEqual(expr, Expression('x,y'))
+        self.assertNotEqual(expr, Expression('y, x'))
+
+    def test_hash(self):
+        expr = Expression('x,y')
+        self.assertEqual(hash(expr), hash(Expression('x,y')))
+        self.assertNotEqual(hash(expr), hash(Expression('y, x')))
+
     def test_name_lookup(self):
         self.assertEqual('bar', Expression('foo').evaluate({'foo': 'bar'}))
-        self.assertEqual(id, Expression('id').evaluate({}, nocall=True))
+        self.assertEqual(id, Expression('id').evaluate({}))
         self.assertEqual('bar', Expression('id').evaluate({'id': 'bar'}))
-        self.assertEqual(None, Expression('id').evaluate({'id': None},
-                                                         nocall=True))
+        self.assertEqual(None, Expression('id').evaluate({'id': None}))
 
     def test_str_literal(self):
         self.assertEqual('foo', Expression('"foo"').evaluate({}))
@@ -207,14 +216,8 @@ class ExpressionTestCase(unittest.TestCase):
     def test_call_dstar_args(self):
         def foo(x):
             return x
-        self.assertEqual(42, Expression("foo(**bar)").evaluate({'foo': foo,
-                                                                'bar': {"x": 42}}))
-
-    def test_call_function_without_params(self):
-        self.assertEqual(42, Expression("foo").evaluate({'foo': lambda: 42}))
-        data = {'foo': 'bar'}
-        self.assertEqual('BAR', Expression("foo.upper").evaluate(data))
-        data = {'foo': {'bar': range(42)}}
+        expr = Expression("foo(**bar)")
+        self.assertEqual(42, expr.evaluate({'foo': foo, 'bar': {"x": 42}}))
 
     def test_lambda(self):
         # Define a custom `sorted` function cause the builtin isn't available
@@ -381,8 +384,8 @@ class ExpressionTestCase(unittest.TestCase):
 
 def suite():
     suite = unittest.TestSuite()
-    suite.addTest(unittest.makeSuite(ExpressionTestCase, 'test'))
     suite.addTest(doctest.DocTestSuite(Expression.__module__))
+    suite.addTest(unittest.makeSuite(ExpressionTestCase, 'test'))
     return suite
 
 if __name__ == '__main__':

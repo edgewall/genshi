@@ -11,13 +11,21 @@
 # individuals. For the exact contribution history, see the revision
 # history and logs, available at http://genshi.edgewall.org/log/.
 
-"""This package provides various means for generating and processing web markup
-(XML or HTML).
+import doctest
+import unittest
 
-The design is centered around the concept of streams of markup events (similar
-in concept to SAX parsing events) which can be processed in a uniform manner
-independently of where or how they are produced.
-"""
 
-from genshi.core import *
-from genshi.input import ParseError, XML, HTML
+def suite():
+    from genshi.template.tests import core, directives, eval, loader, markup, \
+                                      text
+    suite = unittest.TestSuite()
+    suite.addTest(core.suite())
+    suite.addTest(directives.suite())
+    suite.addTest(eval.suite())
+    suite.addTest(loader.suite())
+    suite.addTest(markup.suite())
+    suite.addTest(text.suite())
+    return suite
+
+if __name__ == '__main__':
+    unittest.main(defaultTest='suite')

@@ -11,13 +11,11 @@
 # individuals. For the exact contribution history, see the revision
 # history and logs, available at http://genshi.edgewall.org/log/.
 
-"""This package provides various means for generating and processing web markup
-(XML or HTML).
+"""Implementation of the template engine."""
 
-The design is centered around the concept of streams of markup events (similar
-in concept to SAX parsing events) which can be processed in a uniform manner
-independently of where or how they are produced.
-"""
-
-from genshi.core import *
-from genshi.input import ParseError, XML, HTML
+from genshi.template.core import Context, Template, TemplateError, \
+                                 TemplateRuntimeError, TemplateSyntaxError, \
+                                 BadDirectiveError
+from genshi.template.loader import TemplateLoader, TemplateNotFound
+from genshi.template.markup import MarkupTemplate
+from genshi.template.text import TextTemplate

@@ -46,15 +46,15 @@ is heavily inspired by Kid.""",
         'Topic :: Text Processing :: Markup :: XML'
     ],
     keywords = ['python.templating.engines'],
-    packages = ['genshi'],
+    packages = ['genshi', 'genshi.template'],
     ext_modules=[Extension('genshi._speedups', ['genshi/_speedups.c'])],
     test_suite = 'genshi.tests.suite',
 
     extras_require = {'plugin': ['setuptools>=0.6a2']},
     entry_points = """
     [python.templating.engines]
-    genshi = genshi.plugin:MarkupTemplateEnginePlugin[plugin]
-    genshi-markup = genshi.plugin:MarkupTemplateEnginePlugin[plugin]
-    genshi-text = genshi.plugin:TextTemplateEnginePlugin[plugin]
+    genshi = genshi.template.plugin:MarkupTemplateEnginePlugin[plugin]
+    genshi-markup = genshi.template.plugin:MarkupTemplateEnginePlugin[plugin]
+    genshi-text = genshi.template.plugin:TextTemplateEnginePlugin[plugin]
     """,
 )

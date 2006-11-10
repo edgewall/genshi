@@ -16,7 +16,7 @@ from HTMLParser import HTMLParseError
 import unittest
 
 from genshi.builder import Element, tag
-from genshi.core import Stream
+from genshi.core import Attrs, Stream
 
 
 class ElementFactoryTestCase(unittest.TestCase):
@@ -24,7 +24,8 @@ class ElementFactoryTestCase(unittest.TestCase):
     def test_link(self):
         link = tag.a(href='#', title='Foo', accesskey=None)('Bar')
         bits = iter(link.generate())
-        self.assertEqual((Stream.START, ('a', [('href', "#"), ('title', "Foo")]),
+        self.assertEqual((Stream.START,
+                          ('a', Attrs([('href', "#"), ('title', "Foo")])),
                           (None, -1, -1)), bits.next())
         self.assertEqual((Stream.TEXT, u'Bar', (None, -1, -1)), bits.next())
         self.assertEqual((Stream.END, 'a', (None, -1, -1)), bits.next())
@@ -36,7 +37,8 @@ class ElementFactoryTestCase(unittest.TestCase):
         generated.
         """
         event = iter(tag.foo(id=3)).next()
-        self.assertEqual((Stream.START, ('foo', [('id', '3')]), (None, -1, -1)),
+        self.assertEqual((Stream.START, ('foo', Attrs([('id', '3')])),
+                          (None, -1, -1)),
                          event)
 
 

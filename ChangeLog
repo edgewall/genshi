@@ -28,6 +28,11 @@ http://svn.edgewall.org/repos/genshi/tags/0.4.0/
    `genshi.template` package.
  * Results of expression evaluation are no longer implicitly called if they
    are callable.
+ * Instances of the `genshi.core.Attrs` class are now immutable (they are
+   subclasses of `tuple` instead of `list`).
+ * Preserve whitespace in HTML `<pre>` elements also when they contained any
+   child elements.
+
 
 Version 0.3.4
 http://svn.edgewall.org/repos/genshi/tags/0.3.4/

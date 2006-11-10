@@ -10,6 +10,10 @@ continue to work without problems, you should make sure to remove any
 leftover traces of the `template.py` file on the installation path.
 This is not necessary when Genshi was installed as a Python egg.
 
+Results of evaluating template expressions are no longer implicitly
+called if they are callable. If you have been using that feature, you
+will need to add the parenthesis to actually call the function.
+
 
 Upgrading from Markup
 ---------------------

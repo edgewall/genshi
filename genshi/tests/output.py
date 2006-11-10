@@ -141,6 +141,12 @@ class XHTMLSerializerTestCase(unittest.TestCase):
         output = stream.render(XHTMLSerializer)
         self.assertEqual('<textarea name="foo">%s</textarea>' % content, output)
 
+    def test_pre_whitespace(self):
+        content = '\nHey <em>there</em>.  \n\n    I am indented.\n'
+        stream = XML('<pre>%s</pre>' % content)
+        output = stream.render(XHTMLSerializer)
+        self.assertEqual('<pre>%s</pre>' % content, output)
+
     def test_xml_space(self):
         text = '<foo xml:space="preserve"> Do not mess  \n\n with me </foo>'
         output = XML(text).render(XHTMLSerializer)
@@ -253,6 +259,18 @@ class XHTMLSerializerTestCase(unittest.TestCase):
 
 
 class HTMLSerializerTestCase(unittest.TestCase):
+
+    def test_textarea_whitespace(self):
+        content = '\nHey there.  \n\n    I am indented.\n'
+        stream = XML('<textarea name="foo">%s</textarea>' % content)
+        output = stream.render(HTMLSerializer)
+        self.assertEqual('<textarea name="foo">%s</textarea>' % content, output)
+
+    def test_pre_whitespace(self):
+        content = '\nHey <em>there</em>.  \n\n    I am indented.\n'
+        stream = XML('<pre>%s</pre>' % content)
+        output = stream.render(HTMLSerializer)
+        self.assertEqual('<pre>%s</pre>' % content, output)
 
     def test_xml_space(self):
         text = '<foo xml:space="preserve"> Do not mess  \n\n with me </foo>'

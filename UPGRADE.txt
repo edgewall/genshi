@@ -14,6 +14,10 @@ Results of evaluating template expressions are no longer implicitly
 called if they are callable. If you have been using that feature, you
 will need to add the parenthesis to actually call the function.
 
+Instances of `genshi.core.Attrs` are now immutable. Filters
+manipulating the attributes in a stream may need to be updated. See
+the docstring of the `Attrs` for more information.
+
 
 Upgrading from Markup
 ---------------------

@@ -340,9 +340,9 @@ class Template(object):
             if kind is START and data[1]:
                 # Attributes may still contain expressions in start tags at
                 # this point, so do some evaluation
-                tag, attrib = data
-                new_attrib = []
-                for name, substream in attrib:
+                tag, attrs = data
+                new_attrs = []
+                for name, substream in attrs:
                     if isinstance(substream, basestring):
                         value = substream
                     else:
@@ -354,8 +354,8 @@ class Template(object):
                         value = [x for x in values if x is not None]
                         if not value:
                             continue
-                    new_attrib.append((name, u''.join(value)))
-                yield kind, (tag, Attrs(new_attrib)), pos
+                    new_attrs.append((name, u''.join(value)))
+                yield kind, (tag, Attrs(new_attrs)), pos
 
             elif kind is EXPR:
                 result = data.evaluate(ctxt)

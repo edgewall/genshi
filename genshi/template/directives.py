@@ -80,7 +80,6 @@ class AttrsDirective(Directive):
             kind, (tag, attrib), pos  = stream.next()
             attrs = self.expr.evaluate(ctxt)
             if attrs:
-                attrib = Attrs(attrib[:])
                 if isinstance(attrs, Stream):
                     try:
                         attrs = iter(attrs).next()
@@ -88,11 +87,9 @@ class AttrsDirective(Directive):
                         attrs = []
                 elif not isinstance(attrs, list): # assume it's a dict
                     attrs = attrs.items()
-                for name, value in attrs:
-                    if value is None:
-                        attrib.remove(name)
-                    else:
-                        attrib.set(name, unicode(value).strip())
+                attrib -= [name for name, val in attrs if val is None]
+                attrib |= [(name, unicode(val).strip()) for name, val in attrs
+                           if val is not None]
             yield kind, (tag, attrib), pos
             for event in stream:
                 yield event

@@ -213,11 +213,11 @@ def _ensure(stream):
         yield event
 
 
-class Attrs(list):
-    """Sequence type that stores the attributes of an element.
+class Attrs(tuple):
+    """Immutable sequence type that stores the attributes of an element.
     
-    The order of the attributes is preserved, while accessing and manipulating
-    attributes by name is also supported.
+    Ordering of the attributes is preserved, while accessing by name is also
+    supported.
     
     >>> attrs = Attrs([('href', '#'), ('title', 'Foo')])
     >>> attrs
@@ -227,58 +227,53 @@ class Attrs(list):
     True
     >>> 'tabindex' in attrs
     False
-    
     >>> attrs.get(u'title')
     'Foo'
-    >>> attrs.set(u'title', 'Bar')
+    
+    Instances may not be manipulated directly. Instead, the operators `|` and
+    `-` can be used to produce new instances that have specific attributes
+    added, replaced or removed.
+    
+    To remove an attribute, use the `-` operator. The right hand side can be
+    either a string or a set/sequence of strings, identifying the name(s) of
+    the attribute(s) to remove:
+    
+    >>> attrs - 'title'
+    Attrs([(QName(u'href'), '#')])
+    >>> attrs - ('title', 'href')
+    Attrs()
+    
+    The original instance is not modified, but the operator can of course be
+    used with an assignment:
+
     >>> attrs
-    Attrs([(QName(u'href'), '#'), (QName(u'title'), 'Bar')])
-    >>> attrs.remove(u'title')
+    Attrs([(QName(u'href'), '#'), (QName(u'title'), 'Foo')])
+    >>> attrs -= 'title'
     >>> attrs
     Attrs([(QName(u'href'), '#')])
     
-    New attributes added using the `set()` method are appended to the end of
-    the list:
+    To add a new attribute, use the `|` operator, where the right hand value
+    is a sequence of `(name, value)` tuples (which includes `Attrs` instances):
     
-    >>> attrs.set(u'accesskey', 'k')
-    >>> attrs
-    Attrs([(QName(u'href'), '#'), (QName(u'accesskey'), 'k')])
+    >>> attrs | [(u'title', 'Bar')]
+    Attrs([(QName(u'href'), '#'), (QName(u'title'), 'Bar')])
     
-    An `Attrs` instance can also be initialized with keyword arguments.
+    If the attributes already contain an attribute with a given name, the value
+    of that attribute is replaced:
     
-    >>> attrs = Attrs(class_='bar', href='#', title='Foo')
-    >>> attrs.get('class')
-    'bar'
-    >>> attrs.get('href')
-    '#'
-    >>> attrs.get('title')
-    'Foo'
+    >>> attrs | [(u'href', 'http://example.org/')]
+    Attrs([(QName(u'href'), 'http://example.org/')])
     
-    Reserved words can be used by appending a trailing underscore to the name,
-    and any other underscore is replaced by a dash:
-    
-    >>> attrs = Attrs(class_='bar', accept_charset='utf-8')
-    >>> attrs.get('class')
-    'bar'
-    >>> attrs.get('accept-charset')
-    'utf-8'
-    
-    Thus this shorthand can not be used if attribute names should contain
-    actual underscore characters.
     """
     __slots__ = []
 
-    def __init__(self, attrib=None, **kwargs):
+    def __new__(cls, items=()):
         """Create the `Attrs` instance.
         
-        If the `attrib` parameter is provided, it is expected to be a sequence
+        If the `items` parameter is provided, it is expected to be a sequence
         of `(name, value)` tuples.
         """
-        if attrib is None:
-            attrib = []
-        list.__init__(self, [(QName(name), value) for name, value in attrib])
-        for name, value in kwargs.items():
-            self.set(name.rstrip('_').replace('_', '-'), value)
+        return tuple.__new__(cls, [(QName(name), val) for name, val in items])
 
     def __contains__(self, name):
         """Return whether the list includes an attribute with the specified
@@ -288,10 +283,29 @@ class Attrs(list):
             if attr == name:
                 return True
 
+    def __getslice__(self, i, j):
+        return Attrs(tuple.__getslice__(self, i, j))
+
+    def __or__(self, attrs):
+        """Return a new instance that contains the attributes in `attrs` in
+        addition to any already existing attributes.
+        """
+        repl = dict([(an, av) for an, av in attrs if an in self])
+        return Attrs([(sn, repl.get(sn, sv)) for sn, sv in self] +
+                     [(an, av) for an, av in attrs if an not in self])
+
     def __repr__(self):
         if not self:
             return 'Attrs()'
-        return 'Attrs(%s)' % list.__repr__(self)
+        return 'Attrs([%s])' % ', '.join([repr(item) for item in self])
+
+    def __sub__(self, names):
+        """Return a new instance with all attributes with a name in `names` are
+        removed.
+        """
+        if isinstance(names, basestring):
+            names = (names,)
+        return Attrs([(name, val) for name, val in self if name not in names])
 
     def get(self, name, default=None):
         """Return the value of the attribute with the specified name, or the
@@ -301,30 +315,6 @@ class Attrs(list):
             if attr == name:
                 return value
         return default
-
-    def remove(self, name):
-        """Remove the attribute with the specified name.
-        
-        If no such attribute is found, this method does nothing.
-        """
-        for idx, (attr, _) in enumerate(self):
-            if attr == name:
-                del self[idx]
-                break
-
-    def set(self, name, value):
-        """Set the specified attribute to the given value.
-        
-        If an attribute with the specified name is already in the list, the
-        value of the existing entry is updated. Otherwise, a new attribute is
-        appended to the end of the list.
-        """
-        for idx, (attr, _) in enumerate(self):
-            if attr == name:
-                self[idx] = (QName(attr), value)
-                break
-        else:
-            self.append((QName(name), value))
 
     def totuple(self):
         """Return the attributes as a markup event.

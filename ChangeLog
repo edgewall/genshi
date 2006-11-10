@@ -26,6 +26,8 @@ http://svn.edgewall.org/repos/genshi/tags/0.4.0/
    immediate children.
  * Split up the `genshi.template` module into multiple modules inside the new
    `genshi.template` package.
+ * Results of expression evaluation are no longer implicitly called if they
+   are callable.
 
 Version 0.3.4
 http://svn.edgewall.org/repos/genshi/tags/0.3.4/

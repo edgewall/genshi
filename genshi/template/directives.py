@@ -155,13 +155,13 @@ class DefDirective(Directive):
     </div>
     
     If a function does not require parameters, the parenthesis can be omitted
-    both when defining and when calling it:
+    in the definition:
     
     >>> tmpl = MarkupTemplate('''<div xmlns:py="http://genshi.edgewall.org/">
     ...   <p py:def="helloworld" class="message">
     ...     Hello, world!
     ...   </p>
-    ...   ${helloworld}
+    ...   ${helloworld()}
     ... </div>''')
     >>> print tmpl.generate(bar='Bye')
     <div>
@@ -590,7 +590,7 @@ class WithDirective(Directive):
         frame = {}
         ctxt.push(frame)
         for targets, expr in self.vars:
-            value = expr.evaluate(ctxt, nocall=True)
+            value = expr.evaluate(ctxt)
             for _, assign in targets:
                 assign(frame, value)
         for event in _apply_directives(stream, ctxt, directives):

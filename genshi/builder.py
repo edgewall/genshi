@@ -73,6 +73,16 @@ class Fragment(object):
         return Stream(self._generate())
 
 
+def _value_to_unicode(value):
+    if isinstance(value, unicode):
+        return value
+    return unicode(value)
+
+def _kwargs_to_attrs(kwargs):
+    return [(k.rstrip('_').replace('_', '-'), _value_to_unicode(v))
+            for k, v in kwargs.items() if v is not None]
+
+
 class Element(Fragment):
     """Simple XML output generator based on the builder pattern.
 
@@ -157,20 +167,10 @@ class Element(Fragment):
     def __init__(self, tag_, **attrib):
         Fragment.__init__(self)
         self.tag = QName(tag_)
-        self.attrib = Attrs()
-        for attr, value in attrib.items():
-            if value is not None:
-                if not isinstance(value, basestring):
-                    value = unicode(value)
-                self.attrib.append((QName(attr.rstrip('_').replace('_', '-')),
-                                    value))
+        self.attrib = Attrs(_kwargs_to_attrs(attrib))
 
     def __call__(self, *args, **kwargs):
-        for attr, value in kwargs.items():
-            if value is not None:
-                if not isinstance(value, basestring):
-                    value = unicode(value)
-                self.attrib.set(attr.rstrip('_').replace('_', '-'), value)
+        self.attrib |= Attrs(_kwargs_to_attrs(kwargs))
         Fragment.__call__(self, *args)
         return self
 

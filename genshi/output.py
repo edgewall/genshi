@@ -98,7 +98,7 @@ class XMLSerializer(object):
                         ns_attrib.append((QName('xmlns'), namespace))
                 buf = ['<', tagname]
 
-                for attr, value in attrib + ns_attrib:
+                for attr, value in attrib + tuple(ns_attrib):
                     attrname = attr.localname
                     if attr.namespace:
                         prefix = ns_mapping.get(attr.namespace)
@@ -213,7 +213,7 @@ class XHTMLSerializer(XMLSerializer):
                         ns_attrib.append((QName('xmlns'), tagns))
                 buf = ['<', tagname]
 
-                for attr, value in attrib + ns_attrib:
+                for attr, value in chain(attrib, ns_attrib):
                     attrname = attr.localname
                     if attr.namespace:
                         prefix = ns_mapping.get(attr.namespace)

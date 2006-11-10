@@ -73,23 +73,23 @@ class HTMLFormFiller(object):
         for kind, data, pos in stream:
 
             if kind is START:
-                tag, attrib = data
+                tag, attrs = data
                 tagname = tag.localname
 
                 if tagname == 'form' and (
-                        self.name and attrib.get('name') == self.name or
-                        self.id and attrib.get('id') == self.id or
+                        self.name and attrs.get('name') == self.name or
+                        self.id and attrs.get('id') == self.id or
                         not (self.id or self.name)):
                     in_form = True
 
                 elif in_form:
                     if tagname == 'input':
-                        type = attrib.get('type')
+                        type = attrs.get('type')
                         if type in ('checkbox', 'radio'):
-                            name = attrib.get('name')
+                            name = attrs.get('name')
                             if name:
                                 value = self.data.get(name)
-                                declval = attrib.get('value')
+                                declval = attrs.get('value')
                                 checked = False
                                 if isinstance(value, (list, tuple)):
                                     if declval:
@@ -102,32 +102,34 @@ class HTMLFormFiller(object):
                                     elif type == 'checkbox':
                                         checked = bool(value)
                                 if checked:
-                                    attrib.set('checked', 'checked')
-                                else:
-                                    attrib.remove('checked')
+                                    attrs |= [('checked', 'checked')]
+                                elif 'checked' in attrs:
+                                    attrs -= 'checked'
                         elif type in (None, 'hidden', 'text'):
-                            name = attrib.get('name')
+                            name = attrs.get('name')
                             if name:
                                 value = self.data.get(name)
                                 if isinstance(value, (list, tuple)):
                                     value = value[0]
                                 if value is not None:
-                                    attrib.set('value', unicode(value))
+                                    attrs |= [('value', unicode(value))]
                     elif tagname == 'select':
-                        name = attrib.get('name')
+                        name = attrs.get('name')
                         select_value = self.data.get(name)
                         in_select = True
                     elif tagname == 'textarea':
-                        name = attrib.get('name')
+                        name = attrs.get('name')
                         textarea_value = self.data.get(name)
                         if isinstance(textarea_value, (list, tuple)):
                             textarea_value = textarea_value[0]
                         in_textarea = True
                     elif in_select and tagname == 'option':
                         option_start = kind, data, pos
-                        option_value = attrib.get('value')
+                        option_value = attrs.get('value')
                         in_option = True
                         continue
+                yield kind, (tag, attrs), pos
+
 
             elif in_form and kind is TEXT:
                 if in_select and in_option:
@@ -137,6 +139,7 @@ class HTMLFormFiller(object):
                     continue
                 elif in_textarea:
                     continue
+                yield kind, data, pos
 
             elif in_form and kind is END:
                 tagname = data.localname
@@ -150,12 +153,12 @@ class HTMLFormFiller(object):
                         selected = option_value in select_value
                     else:
                         selected = option_value == select_value
-                    attrib = option_start[1][1]
+                    okind, (tag, attrs), opos = option_start
                     if selected:
-                        attrib.set('selected', 'selected')
-                    else:
-                        attrib.remove('selected')
-                    yield option_start
+                        attrs |= [('selected', 'selected')]
+                    elif 'selected' in attrs:
+                        attrs -= 'selected'
+                    yield okind, (tag, attrs), opos
                     if option_text:
                         yield option_text
                     in_option = False
@@ -164,8 +167,10 @@ class HTMLFormFiller(object):
                     if textarea_value:
                         yield TEXT, unicode(textarea_value), pos
                     in_textarea = False
+                yield kind, data, pos
 
-            yield kind, data, pos
+            else:
+                yield kind, data, pos
 
 
 class HTMLSanitizer(object):
@@ -234,13 +239,13 @@ class HTMLSanitizer(object):
             if kind is START:
                 if waiting_for:
                     continue
-                tag, attrib = data
+                tag, attrs = data
                 if tag not in self.safe_tags:
                     waiting_for = tag
                     continue
 
-                new_attrib = Attrs()
-                for attr, value in attrib:
+                new_attrs = []
+                for attr, value in attrs:
                     value = stripentities(value)
                     if attr not in self.safe_attrs:
                         continue
@@ -264,9 +269,9 @@ class HTMLSanitizer(object):
                         if not decls:
                             continue
                         value = '; '.join(decls)
-                    new_attrib.append((attr, value))
+                    new_attrs.append((attr, value))
 
-                yield kind, (tag, new_attrib), pos
+                yield kind, (tag, Attrs(new_attrs)), pos
 
             elif kind is END:
                 tag = data
@@ -313,9 +318,9 @@ class IncludeFilter(object):
         for kind, data, pos in stream:
 
             if kind is START and not in_fallback and data[0] in namespace:
-                tag, attrib = data
+                tag, attrs = data
                 if tag.localname == 'include':
-                    include_href = attrib.get('href')
+                    include_href = attrs.get('href')
                 elif tag.localname == 'fallback':
                     in_fallback = True
                     fallback_stream = []

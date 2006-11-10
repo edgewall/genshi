@@ -96,17 +96,16 @@ def inline(template):
                     yield w('Q%d = %r', qi[0], tagname)
                     p_qnames[tagname] = qi[0]
 
-                sattrs = Attrs()
-                for name, substream in attrs:
-                    if isinstance(substream, basestring):
-                        sattrs.set(name, substream)
-                    else:
-                        for subkind, subdata, subpos in substream:
-                            if subkind is EXPR:
-                                if subdata not in p_exprs:
-                                    ei[0] += 1
-                                    yield w('E%d = %r', ei[0], subdata)
-                                    p_exprs[subdata] = ei[0]
+                sattrs = Attrs([(n, v) for n, v in attrs
+                                if isinstance(v, basestring)])
+                for name, val in [(n, v) for n, v in attrs
+                                  if not isinstance(v, basestring)]:
+                    for subkind, subdata, subpos in val:
+                        if subkind is EXPR:
+                            if subdata not in p_exprs:
+                                ei[0] += 1
+                                yield w('E%d = %r', ei[0], subdata)
+                                p_exprs[subdata] = ei[0]
 
                 if tuple(sattrs) not in p_attrs:
                     ai[0] += 1
@@ -146,14 +145,15 @@ def inline(template):
         for kind, data, pos in stream:
             if kind is SUB:
                 directives, substream = data
-                for directive in directives:
+                for idx, directive in enumerate(directives):
                     if isinstance(directive, DefDirective):
+                        defs.append(directive.name)
                         yield w('def %s:', directive.signature)
                         w.shift()
                         args = ['%r: %s' % (name, name) for name
                                 in directive.args]
                         yield w('ctxt.push({%s})', ', '.join(args))
-                        for line in _generate(substream):
+                        for line in _apply(directives[idx + 1:], substream):
                             yield line
                         yield w('ctxt.pop()')
                         w.unshift()
@@ -167,6 +167,9 @@ def inline(template):
 
         directive = directives[0]
         directives = directives[1:]
+
+        if isinstance(directive, DefDirective):
+            return
 
         yield w()
         yield w('# Applying %r', directive)
@@ -188,7 +191,7 @@ def inline(template):
             w.unshift()
 
         elif isinstance(directive, DefDirective):
-            yield w('ctxt.frames[-1][%r] = %s', directive.name, directive.name)
+            pass
 
         elif isinstance(directive, ForDirective):
             ei[0] += 1
@@ -241,10 +244,12 @@ def inline(template):
                 w.unshift()
             else: # always strip
                 lines = _apply(directives, stream)
+                yield w('# stripped %r', lines.next().strip())
                 previous = lines.next()
                 for line in lines:
                     yield previous
                     previous = line
+                yield w('# stripped %r', previous.strip())
 
         else:
             raise NotImplementedError
@@ -256,41 +261,40 @@ def inline(template):
         for kind, data, pos in stream:
 
             if kind is EXPR:
-                yield w('for e in _expand(E%d.evaluate(ctxt), %r): yield e',
-                        p_exprs[data], pos)
+                yield w('for e in _expand(E%d.evaluate(ctxt), (f, %d, %d)): yield e',
+                        p_exprs[data], *pos[1:])
 
             elif kind is START:
                 tagname, attrs = data
                 qn = p_qnames[tagname]
 
-                sattrs = Attrs()
-                for name, substream in attrs:
-                    if isinstance(substream, basestring):
-                        sattrs.set(name, substream)
+                sattrs = Attrs([(n, v) for n, v in attrs
+                                if isinstance(v, basestring)])
                 at = p_attrs[tuple(sattrs)]
                 if filter(None, [not isinstance(v, basestring) for n,v in attrs]):
-                    yield w('a = Attrs(A%d)', at)
-                    for name, value in attrs:
-                        if not isinstance(value, basestring):
-                            parts = []
-                            for subkind, subdata, subpos in value:
-                                if subkind is EXPR:
-                                    parts.append('list(_expand_text(E%d.evaluate(ctxt)))' %
-                                                 p_exprs[subdata])
-                                elif subkind is TEXT:
-                                    parts.append('[%r]' % subdata)
-                            yield w('v = [v for v in %s if v is not None]',
-                                    ' + '.join(parts))
-                            yield w('if v:')
-                            w.shift()
-                            yield w('a.append((%r, "".join(v)))', name)
-                            w.unshift()
-                    yield w('yield START, (Q%d, a), %r', qn, pos)
+                    yield w('a = []')
+                    for name, value in [(n, v) for n, v in attrs
+                                        if not isinstance(v, basestring)]:
+                        parts = []
+                        for subkind, subdata, subpos in value:
+                            if subkind is EXPR:
+                                parts.append('list(_expand_text(E%d.evaluate(ctxt)))' %
+                                             p_exprs[subdata])
+                            elif subkind is TEXT:
+                                parts.append('[%r]' % subdata)
+                        yield w('v = [v for v in %s if v is not None]',
+                                ' + '.join(parts))
+                        yield w('if v:')
+                        w.shift()
+                        yield w('a.append((%r, "".join(v)))', name)
+                        w.unshift()
+                    yield w('yield START, (Q%d, A%d | a), (f, %d, %d)', qn, at,
+                            *pos[1:])
                 else:
-                    yield w('yield START, (Q%d, A%d), %r', qn, at, pos)
+                    yield w('yield START, (Q%d, A%d), (f, %d, %d)', qn, at, *pos[1:])
 
             elif kind is END:
-                yield w('yield END, Q%d, %r', p_qnames[data], pos)
+                yield w('yield END, Q%d, (f, %d, %d)', p_qnames[data], *pos[1:])
 
             elif kind is SUB:
                 directives, substream = data
@@ -298,10 +302,14 @@ def inline(template):
                     yield line
 
             else:
-                yield w('yield %s, %r, %r', kind, data, pos)
+                yield w('yield %s, %r, (f, %d, %d)', kind, data, *pos[1:])
 
     p_attrs, p_qnames, p_exprs = {}, {}, {}
     ai, qi, ei, pi = [0], [0], [0], [0]
+    defs = []
+
+    yield w('FILE = %r', template.filename)
+    yield w()
 
     yield '# predeclare qnames, attributes, and expressions'
     lines = list(_predecl_vars(template.stream))
@@ -310,12 +318,15 @@ def inline(template):
         yield line
     yield w()
 
-    yield w('def generate(ctxt):')
+    yield w('def generate(ctxt, f=FILE):')
     yield w()
     w.shift()
 
+    # Define macro functions
     for line in _predecl_funcs(template.stream):
         yield line
+    yield w()
+    yield w('ctxt.push({%s})', ', '.join(['%r: %s' % (n, n) for n in defs]))
     yield w()
 
     ei, pi = [0], [0]
@@ -334,14 +345,13 @@ if __name__ == '__main__':
       xmlns:py="http://genshi.edgewall.org/"
       lang="en">
  <body>
-    <py:def function="sayhi(name='world')">
+    <h1 py:def="sayhi(name='world')" py:strip="">
       Hello, $name!
-    </py:def>
+    </h1>
     ${sayhi()}
     <ul py:if="items">
-      <li py:for="idx, item in enumerate(items)"
-          class="${idx % 2 and 'odd' or 'even'}">
-        <span py:content="item + 1">NUM</span>
+      <li py:for="idx, item in enumerate(items)">
+        <span py:replace="item + 1">NUM</span>
       </li>
     </ul>
  </body>
@@ -365,18 +375,18 @@ if __name__ == '__main__':
 
     print
     print
-    t = timeit.Timer('list(tmpl.generate(ctxt))', '''
+    t = timeit.Timer('list(tmpl.generate(**data))', '''
 from genshi.template import Context, MarkupTemplate
-ctxt = Context(hello='world', items=range(10))
+data = dict(hello='world', items=range(10))
 tmpl = MarkupTemplate("""%s""")''' % text)
-    print 'Interpreted: %.2f msec/pass' % (1000 * t.timeit(number=1000) / 1000)
+    print 'Interpreted: %.2f msec/pass' % (1000 * t.timeit(number=10000) / 10000)
     print
 
-    t = timeit.Timer('list(module.generate(ctxt))', '''
+    t = timeit.Timer('list(module.generate(Context(**data)))', '''
 from genshi.core import Stream
 from genshi.template import Context, MarkupTemplate
-ctxt = Context(hello='world', items=range(10))
+data = dict(hello='world', items=range(10))
 tmpl = MarkupTemplate("""%s""")
 module = tmpl.compile()''' % text)
-    print 'Compiled: %.2f msec/pass' % (1000 * t.timeit(number=1000) / 1000)
+    print 'Compiled: %.2f msec/pass' % (1000 * t.timeit(number=10000) / 10000)
     print

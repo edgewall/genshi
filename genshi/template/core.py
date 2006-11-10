@@ -178,11 +178,6 @@ class Directive(object):
             expr = ' "%s"' % self.expr.source
         return '<%s%s>' % (self.__class__.__name__, expr)
 
-    def optimize(self, stream, directives):
-        if not directives:
-            return stream
-        return directives[0].optimize(stream, directives[1:])
-
     def tagname(self):
         """Return the local tag name of the directive as it is used in
         templates.
@@ -236,7 +231,7 @@ class Template(object):
 
         self.filters = [self._flatten, self._eval]
 
-        self.stream = self._optimize(self._parse(encoding))
+        self.stream = self._parse(encoding)
 
     def __repr__(self):
         return '<%s "%s">' % (self.__class__.__name__, self.filename)
@@ -293,14 +288,6 @@ class Template(object):
                     offset += len(grp)
         return _interpolate(text, [cls._FULL_EXPR_RE, cls._SHORT_EXPR_RE])
     _interpolate = classmethod(_interpolate)
-
-    def _optimize(self, stream):
-        for kind, data, pos in stream:
-            if kind is SUB:
-                directives, substream = data
-                directives[0].optimize(substream, directives[1:])
-            else:
-                yield kind, data pos
 
     def compile(self):
         """Compile the template to a Python module, and return the module

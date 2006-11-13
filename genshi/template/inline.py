@@ -174,23 +174,7 @@ def inline(template):
         yield w()
         yield w('# Applying %r', directive)
 
-        if isinstance(directive, ContentDirective):
-            ei[0] += 1
-            yield w('for e in _expand(E%d.evaluate(ctxt), %r):',
-                    p_exprs[directive.expr], (None, -1, -1))
-            w.shift()
-            lines = _apply(directives, stream)
-            for line in lines:
-                yield line
-                break
-            yield w('yield e')
-            line = lines.next()
-            for next in lines:
-                line = next
-            yield line
-            w.unshift()
-
-        elif isinstance(directive, DefDirective):
+        if isinstance(directive, DefDirective):
             pass
 
         elif isinstance(directive, ForDirective):
@@ -211,12 +195,6 @@ def inline(template):
                 yield line
             w.unshift()
 
-        elif isinstance(directive, ReplaceDirective):
-            ei[0] += 1
-            yield w('for e in _expand(E%d.evaluate(ctxt), %r): yield e',
-                    p_exprs[directive.expr],
-                    (None, -1, -1))
-
         elif isinstance(directive, WithDirective):
             for targets, expr in directive.vars:
                 ei[0] += 1
@@ -228,28 +206,19 @@ def inline(template):
             yield w('ctxt.pop()')
 
         elif isinstance(directive, StripDirective):
-            if directive.expr:
-                yield w('if E%d.evaluate(ctxt):', p_exprs[directive.expr])
-                w.shift()
-                lines = _apply(directives, stream)
-                previous = lines.next()
-                for line in lines:
-                    yield previous
-                    previous = line
-                w.unshift()
-                yield w('else:')
-                w.shift()
-                for line in _apply(directives, stream):
-                    yield line
-                w.unshift()
-            else: # always strip
-                lines = _apply(directives, stream)
-                yield w('# stripped %r', lines.next().strip())
-                previous = lines.next()
-                for line in lines:
-                    yield previous
-                    previous = line
-                yield w('# stripped %r', previous.strip())
+            yield w('if E%d.evaluate(ctxt):', p_exprs[directive.expr])
+            w.shift()
+            lines = _apply(directives, stream)
+            previous = lines.next()
+            for line in lines:
+                yield previous
+                previous = line
+            w.unshift()
+            yield w('else:')
+            w.shift()
+            for line in _apply(directives, stream):
+                yield line
+            w.unshift()
 
         else:
             raise NotImplementedError

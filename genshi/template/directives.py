@@ -114,16 +114,9 @@ class ContentDirective(Directive):
     """
     __slots__ = []
 
-    def __call__(self, stream, ctxt, directives):
-        def _generate():
-            yield stream.next()
-            yield EXPR, self.expr, (None, -1, -1)
-            event = stream.next()
-            for next in stream:
-                event = next
-            yield event
-
-        return _apply_directives(_generate(), ctxt, directives)
+    def prepare(self, directives, stream):
+        directives.remove(self)
+        return [stream[0], (EXPR, self.expr, (None, -1, --1)),  stream[-1]]
 
 
 class DefDirective(Directive):
@@ -368,8 +361,9 @@ class ReplaceDirective(Directive):
     """
     __slots__ = []
 
-    def __call__(self, stream, ctxt, directives):
-        yield EXPR, self.expr, (None, -1, -1)
+    def prepare(self, directives, stream):
+        directives.remove(self)
+        return [(EXPR, self.expr, (None, -1, -1))]
 
 
 class StripDirective(Directive):
@@ -407,11 +401,7 @@ class StripDirective(Directive):
 
     def __call__(self, stream, ctxt, directives):
         def _generate():
-            if self.expr:
-                strip = self.expr.evaluate(ctxt)
-            else:
-                strip = True
-            if strip:
+            if self.expr.evaluate(ctxt):
                 stream.next() # skip start tag
                 previous = stream.next()
                 for event in stream:
@@ -420,8 +410,13 @@ class StripDirective(Directive):
             else:
                 for event in stream:
                     yield event
-
         return _apply_directives(_generate(), ctxt, directives)
+
+    def prepare(self, directives, stream):
+        if not self.expr:
+            directives.remove(self)
+            return stream[1:-1]
+        return stream
 
 
 class ChooseDirective(Directive):

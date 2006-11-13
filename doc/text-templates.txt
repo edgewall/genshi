@@ -116,7 +116,8 @@ need to know whether a variable is defined, you can check its type against the
 Template Directives
 -------------------
 
-Directives are lines starting with a ``#`` character followed immediately by the directive name. They can affect how the template is rendered in a number of
+Directives are lines starting with a ``#`` character followed immediately by
+the directive name. They can affect how the template is rendered in a number of
 ways: Genshi provides directives for conditionals and looping, among others.
 
 Directives must be on separate lines, and the ``#`` character must be be the

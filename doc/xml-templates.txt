@@ -104,7 +104,7 @@ won't get a ``NameError`` exception::
 You **will** however get a ``NameError`` if you try to call an undefined 
 variable, or do anything else with it, such as accessing its attributes. If you
 need to know whether a variable is defined, you can check its type against the
-``Undefined`` class, for example in an `py:if`_ directive::
+``Undefined`` class, for example in a `py:if`_ directive::
 
   >>> from genshi.template import TextTemplate
   >>> tmpl = TextTemplate('${type(doh) is Undefined}')

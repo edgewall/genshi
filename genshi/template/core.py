@@ -178,6 +178,15 @@ class Directive(object):
             expr = ' "%s"' % self.expr.source
         return '<%s%s>' % (self.__class__.__name__, expr)
 
+    def prepare(self, directives, stream):
+        """Called after the template stream has been completely parsed.
+        
+        The part of the template stream associated with the directive will be
+        replaced by what this function returns. This allows the directive to
+        optimize the template or validate the way the directive is used.
+        """
+        return stream
+
     def tagname(self):
         """Return the local tag name of the directive as it is used in
         templates.
@@ -231,7 +240,7 @@ class Template(object):
 
         self.filters = [self._flatten, self._eval]
 
-        self.stream = self._parse(encoding)
+        self.stream = list(self._prepare(self._parse(encoding)))
 
     def __repr__(self):
         return '<%s "%s">' % (self.__class__.__name__, self.filename)
@@ -288,6 +297,25 @@ class Template(object):
                     offset += len(grp)
         return _interpolate(text, [cls._FULL_EXPR_RE, cls._SHORT_EXPR_RE])
     _interpolate = classmethod(_interpolate)
+
+    def _prepare(self, stream):
+        """Call the `prepare` method of every directive instance in the
+        template so that various optimization and validation tasks can be
+        performed.
+        """
+        for kind, data, pos in stream:
+            if kind is SUB:
+                directives, substream = data
+                for directive in directives[:]:
+                    substream = directive.prepare(directives, substream)
+                substream = self._prepare(substream)
+                if directives:
+                    yield kind, (directives, list(substream)), pos
+                else:
+                    for event in substream:
+                        yield event
+            else:
+                yield kind, data, pos
 
     def compile(self):
         """Compile the template to a Python module, and return the module

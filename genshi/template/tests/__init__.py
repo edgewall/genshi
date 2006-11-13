@@ -17,13 +17,14 @@ import unittest
 
 def suite():
     from genshi.template.tests import core, directives, eval, loader, markup, \
-                                      text
+                                      plugin, text
     suite = unittest.TestSuite()
     suite.addTest(core.suite())
     suite.addTest(directives.suite())
     suite.addTest(eval.suite())
     suite.addTest(loader.suite())
     suite.addTest(markup.suite())
+    suite.addTest(plugin.suite())
     suite.addTest(text.suite())
     return suite
 

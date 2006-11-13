@@ -152,11 +152,3 @@ class TextTemplateEnginePlugin(AbstractTemplateEnginePlugin):
     template_class = TextTemplate
     extension = '.txt'
     default_format = 'text'
-
-    def transform(self, info, template):
-        """Render the output to an event stream."""
-        data = {}
-        if self.get_extra_vars:
-            data.update(self.get_extra_vars())
-        data.update(info)
-        return super(TextTemplateEnginePlugin, self).transform(data, template)

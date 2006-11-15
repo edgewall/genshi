@@ -53,17 +53,13 @@ def _expand(obj, pos):
 
 def _expand_text(obj):
     if obj is not None:
-        # First check for a string, otherwise the iterable test below
-        # succeeds, and the string will be chopped up into individual
-        # characters
         if isinstance(obj, basestring):
-            yield obj
+            return [obj]
         elif hasattr(obj, '__iter__'):
-            for event in _ensure(obj):
-                if event[0] is TEXT:
-                    yield event[1]
+            return [e[1] for e in _ensure(obj) if e[0] is TEXT]
         else:
-            yield unicode(obj)
+            return [unicode(obj)]
+    return []
 
 def _assign(ast):
     buf = []
@@ -100,6 +96,10 @@ def inline(template):
                                 if isinstance(v, basestring)])
                 for name, val in [(n, v) for n, v in attrs
                                   if not isinstance(v, basestring)]:
+                    if name not in p_qnames:
+                        qi[0] += 1
+                        yield w('Q%d = %r', qi[0], name)
+                        p_qnames[name] = qi[0]
                     for subkind, subdata, subpos in val:
                         if subkind is EXPR:
                             if subdata not in p_exprs:
@@ -174,10 +174,7 @@ def inline(template):
         yield w()
         yield w('# Applying %r', directive)
 
-        if isinstance(directive, DefDirective):
-            pass
-
-        elif isinstance(directive, ForDirective):
+        if isinstance(directive, ForDirective):
             ei[0] += 1
             yield w('for v in E%d.evaluate(ctxt):', p_exprs[directive.expr])
             w.shift()
@@ -190,31 +187,6 @@ def inline(template):
         elif isinstance(directive, IfDirective):
             ei[0] += 1
             yield w('if E%d.evaluate(ctxt):', p_exprs[directive.expr])
-            w.shift()
-            for line in _apply(directives, stream):
-                yield line
-            w.unshift()
-
-        elif isinstance(directive, WithDirective):
-            for targets, expr in directive.vars:
-                ei[0] += 1
-                yield w('v = E%d.evaluate(ctxt)', p_exprs[directive.expr])
-                for node, _ in targets:
-                    yield w('ctxt.push(%s)', _assign(node))
-            for line in _apply(directives, stream):
-                yield line
-            yield w('ctxt.pop()')
-
-        elif isinstance(directive, StripDirective):
-            yield w('if E%d.evaluate(ctxt):', p_exprs[directive.expr])
-            w.shift()
-            lines = _apply(directives, stream)
-            previous = lines.next()
-            for line in lines:
-                yield previous
-                previous = line
-            w.unshift()
-            yield w('else:')
             w.shift()
             for line in _apply(directives, stream):
                 yield line
@@ -241,22 +213,22 @@ def inline(template):
                                 if isinstance(v, basestring)])
                 at = p_attrs[tuple(sattrs)]
                 if filter(None, [not isinstance(v, basestring) for n,v in attrs]):
-                    yield w('a = []')
+                    yield w('a = [(an, "".join(av)) for an, av in ([')
+                    w.shift()
                     for name, value in [(n, v) for n, v in attrs
                                         if not isinstance(v, basestring)]:
-                        parts = []
+                        values = []
                         for subkind, subdata, subpos in value:
                             if subkind is EXPR:
-                                parts.append('list(_expand_text(E%d.evaluate(ctxt)))' %
+                                values.append('_expand_text(E%d.evaluate(ctxt))' %
                                              p_exprs[subdata])
                             elif subkind is TEXT:
-                                parts.append('[%r]' % subdata)
-                        yield w('v = [v for v in %s if v is not None]',
-                                ' + '.join(parts))
-                        yield w('if v:')
-                        w.shift()
-                        yield w('a.append((%r, "".join(v)))', name)
-                        w.unshift()
+                                values.append('[%r]' % subdata)
+                        yield w('(Q%d, [v for v in %s if v is not None]),' % (
+                            p_qnames[name], ' + '.join(values)
+                        ))
+                    w.unshift()
+                    yield w(']) if av]')
                     yield w('yield START, (Q%d, A%d | a), (f, %d, %d)', qn, at,
                             *pos[1:])
                 else:
@@ -319,7 +291,8 @@ if __name__ == '__main__':
     </h1>
     ${sayhi()}
     <ul py:if="items">
-      <li py:for="idx, item in enumerate(items)">
+      <li py:for="idx, item in enumerate(items)"
+          class="${idx % 2 and 'odd' or 'even'}">
         <span py:replace="item + 1">NUM</span>
       </li>
     </ul>

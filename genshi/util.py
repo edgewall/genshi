@@ -131,3 +131,22 @@ class LRUCache(dict):
         item.previous = None
         item.next = self.head
         self.head.previous = self.head = item
+
+
+def flatten(items):
+    """Flattens a potentially nested sequence into a flat list:
+    
+    >>> flatten((1, 2))
+    [1, 2]
+    >>> flatten([1, (2, 3), 4])
+    [1, 2, 3, 4]
+    >>> flatten([1, (2, [3, 4]), 5])
+    [1, 2, 3, 4, 5]
+    """
+    retval = []
+    for item in items:
+        if isinstance(item, (list, tuple)):
+            retval += flatten(item)
+        else:
+            retval.append(item)
+    return retval

@@ -138,6 +138,15 @@ class Context(object):
         """Pop the top-most scope from the stack."""
 
 
+class DirectiveMeta(type):
+    """Meta class for template directives."""
+
+    def __new__(cls, name, bases, d):
+        d['tagname'] = name.lower().rstrip('directive')
+        return type.__new__(cls, name, bases, d)
+
+
+
 class Directive(object):
     """Abstract base class for template directives.
     
@@ -156,6 +165,7 @@ class Directive(object):
     described above, and can only be applied programmatically (for example by
     template filters).
     """
+    __metaclass__ = DirectiveMeta
     __slots__ = ['expr']
 
     def __init__(self, value, namespaces=None, filename=None, lineno=-1,
@@ -169,6 +179,13 @@ class Directive(object):
                                       offset + (err.offset or 0))
 
     def __call__(self, stream, ctxt, directives):
+        """Apply the directive to the given stream.
+        
+        @param stream: the event stream
+        @param ctxt: the context data
+        @param directives: a list of the remaining directives that should
+            process the stream
+        """
         raise NotImplementedError
 
     def __repr__(self):
@@ -185,13 +202,6 @@ class Directive(object):
         optimize the template or validate the way the directive is used.
         """
         return stream
-
-    def tagname(self):
-        """Return the local tag name of the directive as it is used in
-        templates.
-        """
-        return self.__class__.__name__.lower().replace('directive', '')
-    tagname = property(tagname)
 
 
 def _apply_directives(stream, ctxt, directives):
@@ -238,7 +248,6 @@ class Template(object):
             self.filepath = filename
 
         self.filters = [self._flatten, self._eval]
-
         self.stream = list(self._prepare(self._parse(encoding)))
 
     def __repr__(self):

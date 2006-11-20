@@ -142,7 +142,7 @@ class DirectiveMeta(type):
     """Meta class for template directives."""
 
     def __new__(cls, name, bases, d):
-        d['tagname'] = name.lower().rstrip('directive')
+        d['tagname'] = name.lower().replace('directive', '')
         return type.__new__(cls, name, bases, d)
 
 

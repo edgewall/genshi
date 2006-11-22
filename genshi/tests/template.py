@@ -371,7 +371,8 @@ class DefDirectiveTestCase(unittest.TestCase):
           #end
           ${echo('Hi', name='you')}
         """)
-        self.assertEqual("""                      Hi, you!
+        self.assertEqual("""
+                      Hi, you!
         """, str(tmpl.generate()))
 
 
@@ -1168,12 +1169,43 @@ class TextTemplateTestCase(unittest.TestCase):
         #if foo
           bar
         #end 'if foo'""")
-        self.assertEqual('', str(tmpl.generate()))
+        self.assertEqual('\n', str(tmpl.generate()))
 
     def test_latin1_encoded(self):
         text = u'$foo\xf6$bar'.encode('iso-8859-1')
         tmpl = TextTemplate(text, encoding='iso-8859-1')
         self.assertEqual(u'x\xf6y', unicode(tmpl.generate(foo='x', bar='y')))
+
+    def test_empty_lines1(self):
+        tmpl = TextTemplate("""Your items:
+
+        #for item in items
+          * ${item}
+        #end""")
+        self.assertEqual("""Your items:
+
+          * 0
+          * 1
+          * 2
+""", tmpl.generate(items=range(3)).render('text'))
+
+    def test_empty_lines2(self):
+        tmpl = TextTemplate("""Your items:
+
+        #for item in items
+          * ${item}
+
+        #end""")
+        self.assertEqual("""Your items:
+
+          * 0
+
+          * 1
+
+          * 2
+
+""", tmpl.generate(items=range(3)).render('text'))
+
 
 class TemplateLoaderTestCase(unittest.TestCase):
     """Tests for the template loader."""

@@ -1205,7 +1205,9 @@ class TextTemplate(Template):
                   ('choose', ChooseDirective),
                   ('with', WithDirective)]
 
-    _DIRECTIVE_RE = re.compile(r'^\s*(?<!\\)#((?:\w+|#).*)\n?', re.MULTILINE)
+    _DIRECTIVE_RE = re.compile(r'(?:^[ \t]*(?<!\\)#(end).*\n?)|'
+                               r'(?:^[ \t]*(?<!\\)#((?:\w+|#).*)\n?)',
+                               re.MULTILINE)
 
     def _parse(self, encoding):
         """Parse the template from text input."""

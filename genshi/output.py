@@ -183,7 +183,10 @@ class XHTMLSerializer(XMLSerializer):
     _BOOLEAN_ATTRS = frozenset(['selected', 'checked', 'compact', 'declare',
                                 'defer', 'disabled', 'ismap', 'multiple',
                                 'nohref', 'noresize', 'noshade', 'nowrap'])
-    _PRESERVE_SPACE = frozenset([QName('pre'), QName('textarea')])
+    _PRESERVE_SPACE = frozenset([
+        QName('pre'), QName('http://www.w3.org/1999/xhtml}pre'),
+        QName('textarea'), QName('http://www.w3.org/1999/xhtml}textarea')
+    ])
 
     def __call__(self, stream):
         namespace = self.NAMESPACE
@@ -461,8 +464,8 @@ class WhitespaceFilter(object):
         @param noescape: a set or sequence of tag names for which text content
             should not be escaped
         
-        Both the `preserve` and `noescape` sets are expected to refer to
-        elements that cannot contain further child elements.
+        The `noescape` set is expected to refer to elements that cannot contain
+        further child elements (such as <style> or <script> in HTML documents).
         """
         if preserve is None:
             preserve = []
@@ -477,7 +480,7 @@ class WhitespaceFilter(object):
                  collapse_lines=re.compile('\n{2,}').sub):
         mjoin = Markup('').join
         preserve_elems = self.preserve
-        preserve = False
+        preserve = 0
         noescape_elems = self.noescape
         noescape = False
         escape_cdata = self.escape_cdata
@@ -502,15 +505,17 @@ class WhitespaceFilter(object):
                     yield TEXT, Markup(text), pos
 
                 if kind is START:
-                    tag, attrib = data
-                    if not preserve and (tag in preserve_elems or
-                                         attrib.get(space) == 'preserve'):
-                        preserve = True
+                    tag, attrs = data
+                    if preserve or (tag in preserve_elems or
+                                    attrs.get(space) == 'preserve'):
+                        preserve += 1
                     if not noescape and tag in noescape_elems:
                         noescape = True
 
                 elif kind is END:
-                    preserve = noescape = False
+                    noescape = False
+                    if preserve:
+                        preserve -= 1
 
                 elif kind is START_CDATA and not escape_cdata:
                     noescape = True

@@ -380,7 +380,8 @@ class DefDirectiveTestCase(unittest.TestCase):
           #end
           ${echo('Hi', name='you')}
         """)
-        self.assertEqual("""                      Hi, you!
+        self.assertEqual("""
+                      Hi, you!
         """, str(tmpl.generate()))
 
 

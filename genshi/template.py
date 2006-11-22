@@ -1140,8 +1140,9 @@ class MarkupTemplate(Template):
 
                     # Consume and store all events until an end event
                     # corresponding to this start event is encountered
-                    content = chain([(kind, data, pos)],
-                                    self._match(_strip(stream), ctxt),
+                    content = chain([(kind, data, pos)], 
+                                    self._match(_strip(stream), ctxt, 
+                                    [match_templates[idx]]),
                                     tail)
                     for filter_ in self.filters[3:]:
                         content = filter_(content, ctxt)

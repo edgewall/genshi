@@ -545,7 +545,7 @@ class QualifiedPrincipalTypeTest(object):
         return '%s:*' % self.prefix
 
 class LocalNameTest(object):
-    """Node test that matches any event with the given prinipal type and
+    """Node test that matches any event with the given principal type and
     local name.
     """
     __slots__ = ['principal_type', 'name']
@@ -562,7 +562,7 @@ class LocalNameTest(object):
         return self.name
 
 class QualifiedNameTest(object):
-    """Node test that matches any event with the given prinipal type and
+    """Node test that matches any event with the given principal type and
     qualified name.
     """
     __slots__ = ['principal_type', 'prefix', 'name']

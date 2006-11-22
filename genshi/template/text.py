@@ -92,7 +92,7 @@ class TextTemplate(Template):
                 cls = self._dir_by_name.get(command)
                 if cls is None:
                     raise BadDirectiveError(command)
-                directive = cls(value, None, self.filepath, lineno, 0)
+                directive = cls, value, None, (self.filepath, lineno, 0)
                 dirmap[depth] = (directive, len(stream))
                 depth += 1
 

@@ -94,8 +94,7 @@ class MarkupTemplate(Template):
                         raise BadDirectiveError(tag.localname, self.filepath,
                                                 pos[1])
                     value = attrib.get(getattr(cls, 'ATTRIBUTE', None), '')
-                    directives.append(cls(value, ns_prefix, self.filepath,
-                                          pos[1], pos[2]))
+                    directives.append((cls, value, ns_prefix.copy(), pos))
                     strip = True
 
                 new_attrib = []
@@ -105,8 +104,7 @@ class MarkupTemplate(Template):
                         if cls is None:
                             raise BadDirectiveError(name.localname,
                                                     self.filepath, pos[1])
-                        directives.append(cls(value, ns_prefix, self.filepath,
-                                              pos[1], pos[2]))
+                        directives.append((cls, value, ns_prefix.copy(), pos))
                     else:
                         if value:
                             value = list(self._interpolate(value, self.basedir,
@@ -119,8 +117,7 @@ class MarkupTemplate(Template):
 
                 if directives:
                     index = self._dir_order.index
-                    directives.sort(lambda a, b: cmp(index(a.__class__),
-                                                     index(b.__class__)))
+                    directives.sort(lambda a, b: cmp(index(a[0]), index(b[0])))
                     dirmap[(depth, tag)] = (directives, len(stream), strip)
 
                 stream.append((kind, (tag, Attrs(new_attrib)), pos))

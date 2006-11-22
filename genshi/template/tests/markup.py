@@ -12,11 +12,15 @@
 # history and logs, available at http://genshi.edgewall.org/log/.
 
 import doctest
+import os
+import shutil
 import sys
+import tempfile
 import unittest
 
 from genshi.core import Markup
 from genshi.template.core import BadDirectiveError, TemplateSyntaxError
+from genshi.template.loader import TemplateLoader
 from genshi.template.markup import MarkupTemplate
 
 
@@ -178,6 +182,87 @@ class MarkupTemplateTestCase(unittest.TestCase):
         self.assertEqual(u"""<div>
           \xf6
         </div>""", unicode(tmpl.generate()))
+
+    def test_include_in_loop(self):
+        dirname = tempfile.mkdtemp(suffix='genshi_test')
+        try:
+            file1 = open(os.path.join(dirname, 'tmpl1.html'), 'w')
+            try:
+                file1.write("""<div>Included $idx</div>""")
+            finally:
+                file1.close()
+
+            file2 = open(os.path.join(dirname, 'tmpl2.html'), 'w')
+            try:
+                file2.write("""<html xmlns:xi="http://www.w3.org/2001/XInclude"
+                                     xmlns:py="http://genshi.edgewall.org/">
+                  <xi:include href="${name}.html" py:for="idx in range(3)" />
+                </html>""")
+            finally:
+                file2.close()
+
+            loader = TemplateLoader([dirname])
+            tmpl = loader.load('tmpl2.html')
+            self.assertEqual("""<html>
+                  <div>Included 0</div><div>Included 1</div><div>Included 2</div>
+                </html>""", tmpl.generate(name='tmpl1').render())
+        finally:
+            shutil.rmtree(dirname)
+
+    def test_dynamic_inlude_href(self):
+        dirname = tempfile.mkdtemp(suffix='genshi_test')
+        try:
+            file1 = open(os.path.join(dirname, 'tmpl1.html'), 'w')
+            try:
+                file1.write("""<div>Included</div>""")
+            finally:
+                file1.close()
+
+            file2 = open(os.path.join(dirname, 'tmpl2.html'), 'w')
+            try:
+                file2.write("""<html xmlns:xi="http://www.w3.org/2001/XInclude"
+                                     xmlns:py="http://genshi.edgewall.org/">
+                  <xi:include href="${name}.html" />
+                </html>""")
+            finally:
+                file2.close()
+
+            loader = TemplateLoader([dirname])
+            tmpl = loader.load('tmpl2.html')
+            self.assertEqual("""<html>
+                  <div>Included</div>
+                </html>""", tmpl.generate(name='tmpl1').render())
+        finally:
+            shutil.rmtree(dirname)
+
+    def test_select_inluded_elements(self):
+        dirname = tempfile.mkdtemp(suffix='genshi_test')
+        try:
+            file1 = open(os.path.join(dirname, 'tmpl1.html'), 'w')
+            try:
+                file1.write("""<li>$item</li>""")
+            finally:
+                file1.close()
+
+            file2 = open(os.path.join(dirname, 'tmpl2.html'), 'w')
+            try:
+                file2.write("""<html xmlns:xi="http://www.w3.org/2001/XInclude"
+                                     xmlns:py="http://genshi.edgewall.org/">
+                  <ul py:match="ul">${select('li')}</ul>
+                  <ul py:with="items=(1, 2, 3)">
+                    <xi:include href="tmpl1.html" py:for="item in items" />
+                  </ul>
+                </html>""")
+            finally:
+                file2.close()
+
+            loader = TemplateLoader([dirname])
+            tmpl = loader.load('tmpl2.html')
+            self.assertEqual("""<html>
+                  <ul><li>1</li><li>2</li><li>3</li></ul>
+                </html>""", tmpl.generate().render())
+        finally:
+            shutil.rmtree(dirname)
 
 
 def suite():

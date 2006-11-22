@@ -237,9 +237,9 @@ class Path(object):
 
                         elif steps[cursor][0] is ATTRIBUTE:
                             # If the axis of the next location step is the
-                            # attribute axis, we need to move on to
-                            # processing that step without waiting for the
-                            # next markup event
+                            # attribute axis, we need to move on to processing
+                            # that step without waiting for the next markup
+                            # event
                             continue
 
                     # We're done with this step if it's the last step or the

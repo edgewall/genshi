@@ -180,6 +180,7 @@ class Template(object):
             self.filepath = os.path.join(basedir, filename)
         else:
             self.filepath = filename
+        self.loader = loader
 
         self.filters = [self._flatten, self._eval]
         self.stream = list(self._prepare(self._parse(encoding)))

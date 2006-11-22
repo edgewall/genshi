@@ -12,16 +12,11 @@
 # history and logs, available at http://genshi.edgewall.org/log/.
 
 import doctest
-import os
-import shutil
-import tempfile
 import unittest
 
 from genshi import filters
-from genshi.core import Stream
 from genshi.input import HTML, ParseError
 from genshi.filters import HTMLFormFiller, HTMLSanitizer
-from genshi.template import TemplateLoader
 
 
 class HTMLFormFillerTestCase(unittest.TestCase):
@@ -374,46 +369,11 @@ class HTMLSanitizerTestCase(unittest.TestCase):
         self.assertEquals(u'<img/>', unicode(html | HTMLSanitizer()))
 
 
-class IncludeFilterTestCase(unittest.TestCase):
-
-    def setUp(self):
-        self.dirname = tempfile.mkdtemp(suffix='markup_test')
-
-    def tearDown(self):
-        shutil.rmtree(self.dirname)
-
-    def test_select_inluded_elements(self):
-        file1 = open(os.path.join(self.dirname, 'tmpl1.html'), 'w')
-        try:
-            file1.write("""<li>$item</li>""")
-        finally:
-            file1.close()
-
-        file2 = open(os.path.join(self.dirname, 'tmpl2.html'), 'w')
-        try:
-            file2.write("""<html xmlns:xi="http://www.w3.org/2001/XInclude"
-                                 xmlns:py="http://genshi.edgewall.org/">
-              <ul py:match="ul">${select('li')}</ul>
-              <ul py:with="items=(1, 2, 3)">
-                <xi:include href="tmpl1.html" py:for="item in items" />
-              </ul>
-            </html>""")
-        finally:
-            file2.close()
-
-        loader = TemplateLoader([self.dirname])
-        tmpl = loader.load('tmpl2.html')
-        self.assertEqual("""<html>
-              <ul><li>1</li><li>2</li><li>3</li></ul>
-            </html>""", tmpl.generate().render())
-
-
 def suite():
     suite = unittest.TestSuite()
     suite.addTest(doctest.DocTestSuite(filters))
     suite.addTest(unittest.makeSuite(HTMLFormFillerTestCase, 'test'))
     suite.addTest(unittest.makeSuite(HTMLSanitizerTestCase, 'test'))
-    suite.addTest(unittest.makeSuite(IncludeFilterTestCase, 'test'))
     return suite
 
 if __name__ == '__main__':

@@ -20,7 +20,6 @@ except ImportError:
     import dummy_threading as threading
 
 from genshi.template.core import TemplateError
-from genshi.template.markup import MarkupTemplate
 from genshi.util import LRUCache
 
 __all__ = ['TemplateLoader', 'TemplateNotFound']
@@ -53,6 +52,7 @@ class TemplateLoader(object):
     template has already been loaded. If not, it attempts to locate the
     template file, and returns the corresponding `Template` object:
     
+    >>> from genshi.template import MarkupTemplate
     >>> template = loader.load(os.path.basename(path))
     >>> isinstance(template, MarkupTemplate)
     True
@@ -66,7 +66,7 @@ class TemplateLoader(object):
     >>> os.remove(path)
     """
     def __init__(self, search_path=None, auto_reload=False,
-                 default_encoding=None, max_cache_size=25):
+                 default_encoding=None, max_cache_size=25, default_class=None):
         """Create the template laoder.
         
         @param search_path: a list of absolute path names that should be
@@ -78,7 +78,11 @@ class TemplateLoader(object):
             templates; defaults to UTF-8
         @param max_cache_size: the maximum number of templates to keep in the
             cache
+        @param default_class: the default `Template` subclass to use when
+            instantiating templates
         """
+        from genshi.template.markup import MarkupTemplate
+
         self.search_path = search_path
         if self.search_path is None:
             self.search_path = []
@@ -86,12 +90,12 @@ class TemplateLoader(object):
             self.search_path = [self.search_path]
         self.auto_reload = auto_reload
         self.default_encoding = default_encoding
+        self.default_class = default_class or MarkupTemplate
         self._cache = LRUCache(max_cache_size)
         self._mtime = {}
         self._lock = threading.Lock()
 
-    def load(self, filename, relative_to=None, cls=MarkupTemplate,
-             encoding=None):
+    def load(self, filename, relative_to=None, cls=None, encoding=None):
         """Load the template with the given name.
         
         If the `filename` parameter is relative, this method searches the search
@@ -119,6 +123,8 @@ class TemplateLoader(object):
         @param encoding: the encoding of the template to load; defaults to the
             `default_encoding` of the loader instance
         """
+        if cls is None:
+            cls = self.default_class
         if encoding is None:
             encoding = self.default_encoding
         if relative_to and not os.path.isabs(relative_to):

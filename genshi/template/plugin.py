@@ -59,7 +59,8 @@ class AbstractTemplateEnginePlugin(object):
 
         self.loader = TemplateLoader(filter(None, search_path),
                                      auto_reload=auto_reload,
-                                     max_cache_size=max_cache_size)
+                                     max_cache_size=max_cache_size,
+                                     default_class=self.template_class)
 
     def load_template(self, templatename, template_string=None):
         """Find a template specified in python 'dot' notation, or load one from
@@ -74,7 +75,7 @@ class AbstractTemplateEnginePlugin(object):
             basename = templatename[divider + 1:] + self.extension
             templatename = resource_filename(package, basename)
 
-        return self.loader.load(templatename, cls=self.template_class)
+        return self.loader.load(templatename)
 
     def _get_render_options(self, format=None):
         if format is None:

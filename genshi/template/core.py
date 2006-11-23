@@ -170,10 +170,6 @@ class Template(object):
     def __init__(self, source, basedir=None, filename=None, loader=None,
                  encoding=None):
         """Initialize a template from either a string or a file-like object."""
-        if isinstance(source, basestring):
-            self.source = StringIO(source)
-        else:
-            self.source = source
         self.basedir = basedir
         self.filename = filename
         if basedir and filename:
@@ -182,13 +178,17 @@ class Template(object):
             self.filepath = filename
         self.loader = loader
 
+        if isinstance(source, basestring):
+            source = StringIO(source)
+        else:
+            source = source
+        self.stream = list(self._prepare(self._parse(source, encoding)))
         self.filters = [self._flatten, self._eval]
-        self.stream = list(self._prepare(self._parse(encoding)))
 
     def __repr__(self):
         return '<%s "%s">' % (self.__class__.__name__, self.filename)
 
-    def _parse(self, encoding):
+    def _parse(self, source, encoding):
         """Parse the template.
         
         The parsing stage parses the template and constructs a list of

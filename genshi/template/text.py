@@ -54,7 +54,7 @@ class TextTemplate(Template):
                                r'(?:^[ \t]*(?<!\\)#((?:\w+|#).*)\n?)',
                                re.MULTILINE)
 
-    def _parse(self, encoding):
+    def _parse(self, source, encoding):
         """Parse the template from text input."""
         stream = [] # list of events of the "compiled" template
         dirmap = {} # temporary mapping of directives to elements
@@ -62,7 +62,7 @@ class TextTemplate(Template):
         if not encoding:
             encoding = 'utf-8'
 
-        source = self.source.read().decode(encoding, 'replace')
+        source = source.read().decode(encoding, 'replace')
         offset = 0
         lineno = 1
 

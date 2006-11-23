@@ -63,7 +63,7 @@ class MarkupTemplate(Template):
         if loader:
             self.filters.append(self._include)
 
-    def _parse(self, encoding):
+    def _parse(self, source, encoding):
         """Parse the template from an XML document."""
         stream = [] # list of events of the "compiled" template
         dirmap = {} # temporary mapping of directives to elements
@@ -73,8 +73,11 @@ class MarkupTemplate(Template):
         fallback_stream = None
         include_href = None
 
-        for kind, data, pos in XMLParser(self.source, filename=self.filename,
-                                         encoding=encoding):
+        if not isinstance(source, Stream):
+            source = XMLParser(source, filename=self.filename,
+                               encoding=encoding)
+
+        for kind, data, pos in source:
 
             if kind is START_NS:
                 # Strip out the namespace declaration for template directives

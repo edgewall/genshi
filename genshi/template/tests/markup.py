@@ -14,11 +14,13 @@
 import doctest
 import os
 import shutil
+from StringIO import StringIO
 import sys
 import tempfile
 import unittest
 
 from genshi.core import Markup
+from genshi.input import XML
 from genshi.template.core import BadDirectiveError, TemplateSyntaxError
 from genshi.template.loader import TemplateLoader
 from genshi.template.markup import MarkupTemplate
@@ -26,6 +28,16 @@ from genshi.template.markup import MarkupTemplate
 
 class MarkupTemplateTestCase(unittest.TestCase):
     """Tests for markup template processing."""
+
+    def test_parse_fileobj(self):
+        fileobj = StringIO('<root> ${var} $var</root>')
+        tmpl = MarkupTemplate(fileobj)
+        self.assertEqual('<root> 42 42</root>', str(tmpl.generate(var=42)))
+
+    def test_parse_stream(self):
+        stream = XML('<root> ${var} $var</root>')
+        tmpl = MarkupTemplate(stream)
+        self.assertEqual('<root> 42 42</root>', str(tmpl.generate(var=42)))
 
     def test_interpolate_mixed3(self):
         tmpl = MarkupTemplate('<root> ${var} $var</root>')

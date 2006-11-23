@@ -173,6 +173,22 @@ bar</elem>'''
         self.assertEqual(Stream.TEXT, kind)
         self.assertEqual(u'\xa0', data)
 
+    def test_processing_instruction(self):
+        text = '<?php echo "Foobar" ?>'
+        events = list(HTMLParser(StringIO(text)))
+        kind, (target, data), pos = events[0]
+        self.assertEqual(Stream.PI, kind)
+        self.assertEqual(u'php', target)
+        self.assertEqual(u'echo "Foobar"', data)
+
+    def test_processing_instruction_trailing_qmark(self):
+        text = '<?php echo "Foobar" ??>'
+        events = list(HTMLParser(StringIO(text)))
+        kind, (target, data), pos = events[0]
+        self.assertEqual(Stream.PI, kind)
+        self.assertEqual(u'php', target)
+        self.assertEqual(u'echo "Foobar" ?', data)
+
 
 def suite():
     suite = unittest.TestSuite()

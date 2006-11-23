@@ -349,8 +349,9 @@ class HTMLParser(html.HTMLParser, object):
         self._enqueue(TEXT, text)
 
     def handle_pi(self, data):
-        target, data = data.split(maxsplit=1)
-        data = data.rstrip('?')
+        target, data = data.split(None, 1)
+        if data.endswith('?'):
+            data = data[:-1]
         self._enqueue(PI, (target.strip(), data.strip()))
 
     def handle_comment(self, text):

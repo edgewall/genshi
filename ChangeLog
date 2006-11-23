@@ -30,6 +30,7 @@ http://svn.edgewall.org/repos/genshi/tags/0.4.0/
  * `MarkupTemplate`s can now be instantiated from markup streams, in addition
    to strings and file-like objects (ticket #69).
  * Improve handling of incorrectly nested tags in the HTML parser.
+ * The builder API now accepts streams as children of elements and fragments.
 
 
 Version 0.3.5

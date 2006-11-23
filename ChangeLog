@@ -29,6 +29,7 @@ http://svn.edgewall.org/repos/genshi/tags/0.4.0/
    subclasses of `tuple` instead of `list`).
  * `MarkupTemplate`s can now be instantiated from markup streams, in addition
    to strings and file-like objects (ticket #69).
+ * Improve handling of incorrectly nested tags in the HTML parser.
 
 
 Version 0.3.5

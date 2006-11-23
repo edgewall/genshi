@@ -327,10 +327,9 @@ class HTMLParser(html.HTMLParser, object):
         if tag not in self._EMPTY_ELEMS:
             while self._open_tags:
                 open_tag = self._open_tags.pop()
+                self._enqueue(END, QName(open_tag))
                 if open_tag.lower() == tag.lower():
                     break
-                self._enqueue(END, QName(open_tag))
-            self._enqueue(END, QName(tag))
 
     def handle_data(self, text):
         if not isinstance(text, unicode):

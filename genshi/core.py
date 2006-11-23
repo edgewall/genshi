@@ -17,7 +17,8 @@ import htmlentitydefs
 import operator
 import re
 
-__all__ = ['Stream', 'Markup', 'escape', 'unescape', 'Namespace', 'QName']
+__all__ = ['Stream', 'Markup', 'escape', 'unescape', 'Attrs', 'Namespace',
+           'QName']
 
 
 class StreamEventKind(str):

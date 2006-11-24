@@ -91,7 +91,7 @@ class Directive(object):
 
     def __repr__(self):
         expr = ''
-        if self.expr is not None:
+        if getattr(self, 'expr', None) is not None:
             expr = ' "%s"' % self.expr.source
         return '<%s%s>' % (self.__class__.__name__, expr)
 

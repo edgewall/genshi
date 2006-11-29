@@ -65,12 +65,11 @@ class MarkupTemplate(Template):
 
     def _parse(self, source, encoding):
         """Parse the template from an XML document."""
-        stream = [] # list of events of the "compiled" template
+        streams = [[]] # stacked lists of events of the "compiled" template
         dirmap = {} # temporary mapping of directives to elements
         ns_prefix = {}
         depth = 0
-        in_fallback = False
-        fallback_stream = None
+        in_fallback = 0
         include_href = None
 
         if not isinstance(source, Stream):
@@ -78,6 +77,7 @@ class MarkupTemplate(Template):
                                encoding=encoding)
 
         for kind, data, pos in source:
+            stream = streams[-1]
 
             if kind is START_NS:
                 # Strip out the namespace declaration for template directives
@@ -138,9 +138,9 @@ class MarkupTemplate(Template):
                         if not include_href:
                             raise TemplateSyntaxError('Include misses required '
                                                       'attribute "href"', *pos)
+                        streams.append([])
                     elif tag.localname == 'fallback':
-                        in_fallback = True
-                        fallback_stream = []
+                        in_fallback += 1
 
                 else:
                     stream.append((kind, (tag, new_attrs), pos))
@@ -150,13 +150,12 @@ class MarkupTemplate(Template):
             elif kind is END:
                 depth -= 1
 
-                if in_fallback:
-                    if data == self.XINCLUDE_NAMESPACE['fallback']:
-                        in_fallback = False
-                    else:
-                        fallback_stream.append((kind, data, pos))
+                if in_fallback and data == self.XINCLUDE_NAMESPACE['fallback']:
+                    in_fallback -= 1
                 elif data == self.XINCLUDE_NAMESPACE['include']:
-                    stream.append((INCLUDE, (include_href, fallback_stream), pos))
+                    fallback = streams.pop()
+                    stream = streams[-1]
+                    stream.append((INCLUDE, (include_href, fallback), pos))
                 else:
                     stream.append((kind, data, pos))
 
@@ -182,7 +181,14 @@ class MarkupTemplate(Template):
             else:
                 stream.append((kind, data, pos))
 
-        return stream
+        assert len(streams) == 1
+        return streams[0]
+
+    def _prepare(self, stream):
+        for kind, data, pos in Template._prepare(self, stream):
+            if kind is INCLUDE:
+                data = data[0], list(self._prepare(data[1]))
+            yield kind, data, pos
 
     def _include(self, stream, ctxt):
         """Internal stream filter that performs inclusion of external
@@ -204,6 +210,8 @@ class MarkupTemplate(Template):
                 except TemplateNotFound:
                     if fallback is None:
                         raise
+                    for filter_ in self.filters:
+                        fallback = filter_(iter(fallback), ctxt)
                     for event in fallback:
                         yield event
             else:

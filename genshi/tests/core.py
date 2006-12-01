@@ -48,7 +48,7 @@ class MarkupTestCase(unittest.TestCase):
 
     def test_repr(self):
         markup = Markup('foo')
-        self.assertEquals('<Markup "foo">', repr(markup))
+        self.assertEquals("<Markup u'foo'>", repr(markup))
 
     def test_escape(self):
         markup = escape('<b>"&"</b>')
@@ -131,7 +131,7 @@ class MarkupTestCase(unittest.TestCase):
         buf = StringIO()
         pickle.dump(markup, buf, 2)
         buf.seek(0)
-        self.assertEquals('<Markup "foo">', repr(pickle.load(buf)))
+        self.assertEquals("<Markup u'foo'>", repr(pickle.load(buf)))
 
 
 class NamespaceTestCase(unittest.TestCase):

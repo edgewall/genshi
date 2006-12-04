@@ -438,6 +438,19 @@ class PathTestCase(unittest.TestCase):
         self.assertEqual('<foo xmlns="FOO">bar</foo>',
                          path.select(xml, namespaces=namespaces).render())
 
+    def test_predicate_termination(self):
+        """
+        Verify that a patch matching the self axis with a predicate doesn't
+        cause an infinite loop. See <http://genshi.edgewall.org/ticket/82>.
+        """
+        xml = XML('<ul flag="1"><li>a</li><li>b</li></ul>')
+        path = Path('.[@flag="1"]/*')
+        self.assertEqual('<li>a</li><li>b</li>', path.select(xml).render())
+
+        xml = XML('<ul flag="1"><li>a</li><li>b</li></ul>')
+        path = Path('.[@flag="0"]/*')
+        self.assertEqual('', path.select(xml).render())
+
     # FIXME: the following two don't work due to a problem in XML serialization:
     #        attributes that would need a namespace prefix that isn't in the
     #        prefix map would need to get an artificial prefix, but currently

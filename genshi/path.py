@@ -244,8 +244,8 @@ class Path(object):
 
                     # We're done with this step if it's the last step or the
                     # axis isn't "self"
-                    if last_step or not (axis is SELF or
-                                         axis is DESCENDANT_OR_SELF):
+                    if not matched or last_step or not (
+                            axis is SELF or axis is DESCENDANT_OR_SELF):
                         break
 
                 if (retval or not matched) and kind is START and \

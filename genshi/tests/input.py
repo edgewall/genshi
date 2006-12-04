@@ -212,7 +212,7 @@ bar</elem>'''
         self.assertEqual((Stream.END, 'b'), events[5][:2])
         self.assertEqual((Stream.END, 'span'), events[6][:2])
 
-    def test_out_of_order_tags1(self):
+    def test_out_of_order_tags3(self):
         text = '<span><b>Foobar</i>'
         events = list(HTMLParser(StringIO(text)))
         self.assertEqual(5, len(events))

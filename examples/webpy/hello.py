@@ -23,5 +23,5 @@ class hello(object):
 
 
 if __name__ == '__main__':
-    web.internalerror = web.debugerror
-    web.run(urls)
+    web.webapi.internalerror = web.debugerror
+    web.run(urls, globals())

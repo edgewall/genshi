@@ -156,8 +156,8 @@ class Path(object):
         >>> test = Path('child').test()
         >>> for event in xml:
         ...     if test(event, {}, {}):
-        ...         print event
-        ('START', (QName(u'child'), Attrs([(QName(u'id'), u'2')])), (None, 1, 34))
+        ...         print event[0], repr(event[1])
+        START (QName(u'child'), Attrs([(QName(u'id'), u'2')]))
         """
         paths = [(p, len(p), [0], [], [0] * len(p)) for p in [
             (ignore_context and [_DOTSLASHSLASH] or []) + p for p in self.paths

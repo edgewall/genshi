@@ -61,6 +61,15 @@ class Expression(object):
     >>> data = dict(items=[1, 2, 3])
     >>> Expression('len(items)').evaluate(data)
     3
+    
+    Undefined variables can be accessed in expressions, and evaluate to a
+    non-truth value for tests. To check whether a particular variable is
+    defined, its type can be compared to the special builtin class `Undefined`:
+    
+    >>> Expression('foo').evaluate({})
+    undefined
+    >>> Expression('type(foo) is Undefined').evaluate({})
+    True
     """
     __slots__ = ['source', 'code']
 

@@ -310,6 +310,12 @@ class ASTTransformer(object):
     visitUnaryAdd = visitUnarySub = visitNot = visitInvert = _visitUnaryOp
     visitBackquote = _visitUnaryOp
 
+    def visitIfExp(self, node):
+        node.test = self.visit(node.test)
+        node.then = self.visit(node.then)
+        node.else_ = self.visit(node.else_)
+        return node
+
     # Identifiers, Literals and Comprehensions
 
     def _visitDefault(self, node):

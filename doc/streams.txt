@@ -202,7 +202,7 @@ Every event in a stream is of one of several *kinds*, which also determines
 what the ``data`` item of the event tuple looks like. The different kinds of
 events are documented below.
 
-.. note:: The ``data`` item is generally immutable. It the data is to be
+.. note:: The ``data`` item is generally immutable. If the data is to be
    modified when processing a stream, it must be replaced by a new tuple.
    Effectively, this means the entire event tuple is immutable.
 
@@ -229,7 +229,7 @@ describing the qualified name of the tag::
 
 TEXT
 ----
-Character data outside of elements and other nodes.
+Character data outside of elements and comments.
 
 For text events, the ``data`` item should be a unicode object::
 

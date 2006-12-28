@@ -22,22 +22,6 @@ except ImportError:
     from distutils.core import setup
 
 
-class test_doc(Command):
-    description = 'Tests the code examples in the documentation'
-    user_options = []
-
-    def initialize_options(self):
-        pass
-
-    def finalize_options(self):
-        pass
-
-    def run(self):
-        for filename in glob('doc/*.txt'):
-            print 'testing documentation file %s' % filename
-            doctest.testfile(filename, False, optionflags=doctest.ELLIPSIS)
-
-
 class build_doc(Command):
     description = 'Builds the documentation'
     user_options = []
@@ -59,6 +43,22 @@ class build_doc(Command):
                 print 'building documentation file %s' % dest
                 publish_cmdline(writer_name='html',
                                 argv=['--config=%s' % conf, source, dest])
+
+
+class test_doc(Command):
+    description = 'Tests the code examples in the documentation'
+    user_options = []
+
+    def initialize_options(self):
+        pass
+
+    def finalize_options(self):
+        pass
+
+    def run(self):
+        for filename in glob('doc/*.txt'):
+            print 'testing documentation file %s' % filename
+            doctest.testfile(filename, False, optionflags=doctest.ELLIPSIS)
 
 
 setup(

@@ -46,7 +46,7 @@ class Fragment(object):
 
     def append(self, node):
         """Append an element or string as child node."""
-        if isinstance(node, (Element, basestring, int, float, long)):
+        if isinstance(node, (Stream, Element, basestring, int, float, long)):
             # For objects of a known/primitive type, we avoid the check for
             # whether it is iterable for better performance
             self.children.append(node)
@@ -62,6 +62,9 @@ class Fragment(object):
         for child in self.children:
             if isinstance(child, Fragment):
                 for event in child._generate():
+                    yield event
+            elif isinstance(child, Stream):
+                for event in child:
                     yield event
             else:
                 if not isinstance(child, basestring):

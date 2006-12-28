@@ -278,6 +278,12 @@ class ExpressionTestCase(unittest.TestCase):
             expr = Expression("list(i['name'] for i in items if i['value'] > 1)")
             self.assertEqual(['b'], expr.evaluate({'items': items}))
 
+    if sys.version_info >= (2, 5):
+        def test_conditional_expression(self):
+            expr = Expression("'T' if foo else 'F'")
+            self.assertEqual('T', expr.evaluate({'foo': True}))
+            self.assertEqual('F', expr.evaluate({'foo': False}))
+
     def test_slice(self):
         expr = Expression("numbers[0:2]")
         self.assertEqual([0, 1], expr.evaluate({'numbers': range(5)}))

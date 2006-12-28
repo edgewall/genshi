@@ -156,8 +156,8 @@ class Path(object):
         >>> test = Path('child').test()
         >>> for event in xml:
         ...     if test(event, {}, {}):
-        ...         print event
-        ('START', (QName(u'child'), Attrs([(QName(u'id'), u'2')])), (None, 1, 34))
+        ...         print event[0], repr(event[1])
+        START (QName(u'child'), Attrs([(QName(u'id'), u'2')]))
         """
         paths = [(p, len(p), [0], [], [0] * len(p)) for p in [
             (ignore_context and [_DOTSLASHSLASH] or []) + p for p in self.paths
@@ -237,15 +237,15 @@ class Path(object):
 
                         elif steps[cursor][0] is ATTRIBUTE:
                             # If the axis of the next location step is the
-                            # attribute axis, we need to move on to
-                            # processing that step without waiting for the
-                            # next markup event
+                            # attribute axis, we need to move on to processing
+                            # that step without waiting for the next markup
+                            # event
                             continue
 
                     # We're done with this step if it's the last step or the
                     # axis isn't "self"
-                    if last_step or not (axis is SELF or
-                                         axis is DESCENDANT_OR_SELF):
+                    if not matched or last_step or not (
+                            axis is SELF or axis is DESCENDANT_OR_SELF):
                         break
 
                 if (retval or not matched) and kind is START and \
@@ -550,7 +550,7 @@ class QualifiedPrincipalTypeTest(object):
         return '%s:*' % self.prefix
 
 class LocalNameTest(object):
-    """Node test that matches any event with the given prinipal type and
+    """Node test that matches any event with the given principal type and
     local name.
     """
     __slots__ = ['principal_type', 'name']
@@ -567,7 +567,7 @@ class LocalNameTest(object):
         return self.name
 
 class QualifiedNameTest(object):
-    """Node test that matches any event with the given prinipal type and
+    """Node test that matches any event with the given principal type and
     qualified name.
     """
     __slots__ = ['principal_type', 'prefix', 'name']

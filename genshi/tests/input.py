@@ -16,7 +16,7 @@ from StringIO import StringIO
 import sys
 import unittest
 
-from genshi.core import Stream
+from genshi.core import Attrs, Stream
 from genshi.input import XMLParser, HTMLParser, ParseError
 
 
@@ -172,6 +172,55 @@ bar</elem>'''
         kind, data, pos = events[1]
         self.assertEqual(Stream.TEXT, kind)
         self.assertEqual(u'\xa0', data)
+
+    def test_processing_instruction(self):
+        text = '<?php echo "Foobar" ?>'
+        events = list(HTMLParser(StringIO(text)))
+        kind, (target, data), pos = events[0]
+        self.assertEqual(Stream.PI, kind)
+        self.assertEqual(u'php', target)
+        self.assertEqual(u'echo "Foobar"', data)
+
+    def test_processing_instruction_trailing_qmark(self):
+        text = '<?php echo "Foobar" ??>'
+        events = list(HTMLParser(StringIO(text)))
+        kind, (target, data), pos = events[0]
+        self.assertEqual(Stream.PI, kind)
+        self.assertEqual(u'php', target)
+        self.assertEqual(u'echo "Foobar" ?', data)
+
+    def test_out_of_order_tags1(self):
+        text = '<span><b>Foobar</span></b>'
+        events = list(HTMLParser(StringIO(text)))
+        self.assertEqual(5, len(events))
+        self.assertEqual((Stream.START, ('span', ())), events[0][:2])
+        self.assertEqual((Stream.START, ('b', ())), events[1][:2])
+        self.assertEqual((Stream.TEXT, 'Foobar'), events[2][:2])
+        self.assertEqual((Stream.END, 'b'), events[3][:2])
+        self.assertEqual((Stream.END, 'span'), events[4][:2])
+
+    def test_out_of_order_tags2(self):
+        text = '<span class="baz"><b><i>Foobar</span></b></i>'
+        events = list(HTMLParser(StringIO(text)))
+        self.assertEqual(7, len(events))
+        self.assertEqual((Stream.START, ('span', Attrs([('class', 'baz')]))),
+                         events[0][:2])
+        self.assertEqual((Stream.START, ('b', ())), events[1][:2])
+        self.assertEqual((Stream.START, ('i', ())), events[2][:2])
+        self.assertEqual((Stream.TEXT, 'Foobar'), events[3][:2])
+        self.assertEqual((Stream.END, 'i'), events[4][:2])
+        self.assertEqual((Stream.END, 'b'), events[5][:2])
+        self.assertEqual((Stream.END, 'span'), events[6][:2])
+
+    def test_out_of_order_tags3(self):
+        text = '<span><b>Foobar</i>'
+        events = list(HTMLParser(StringIO(text)))
+        self.assertEqual(5, len(events))
+        self.assertEqual((Stream.START, ('span', ())), events[0][:2])
+        self.assertEqual((Stream.START, ('b', ())), events[1][:2])
+        self.assertEqual((Stream.TEXT, 'Foobar'), events[2][:2])
+        self.assertEqual((Stream.END, 'b'), events[3][:2])
+        self.assertEqual((Stream.END, 'span'), events[4][:2])
 
 
 def suite():

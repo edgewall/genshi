@@ -21,17 +21,37 @@ http://svn.edgewall.org/repos/genshi/tags/0.4.0/
    value.
  * Unsuccessful attribute or item lookups now return `Undefined` objects for
    nicer error messages.
- * Fix XPath traversal in match templates. Previously, `div/p` would be treated 
-   the same as `div//p`, i.e. it would match all descendants and not just the
-   immediate children.
  * Split up the `genshi.template` module into multiple modules inside the new
    `genshi.template` package.
  * Results of expression evaluation are no longer implicitly called if they
    are callable.
  * Instances of the `genshi.core.Attrs` class are now immutable (they are
    subclasses of `tuple` instead of `list`).
- * Preserve whitespace in HTML `<pre>` elements also when they contained any
-   child elements.
+ * `MarkupTemplate`s can now be instantiated from markup streams, in addition
+   to strings and file-like objects (ticket #69).
+ * Improve handling of incorrectly nested tags in the HTML parser.
+ * Template includes can you be nested inside fallback content.
+
+
+Version 0.3.6
+http://svn.edgewall.org/repos/genshi/tags/0.3.6/
+(Dec 11 2006, from branches/stable/0.3.x)
+
+ * The builder API now accepts streams as children of elements and fragments.
+
+
+Version 0.3.5
+http://svn.edgewall.org/repos/genshi/tags/0.3.5/
+(Nov 22 2006, from branches/stable/0.3.x)
+
+ * Fix XPath traversal in match templates. Previously, `div/p` would be treated 
+   the same as `div//p`, i.e. it would match all descendants and not just the
+   immediate children.
+ * Preserve whitespace in HTML `<pre>` elements also when they contain child
+   elements.
+ * Match templates no longer match their own output (ticket #77).
+ * Blank lines before directives in text templates are now preserved as
+   expected (ticket #62).
 
 
 Version 0.3.4

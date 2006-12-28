@@ -12,16 +12,32 @@
 # history and logs, available at http://genshi.edgewall.org/log/.
 
 import doctest
+import os
+import shutil
+from StringIO import StringIO
 import sys
+import tempfile
 import unittest
 
 from genshi.core import Markup
+from genshi.input import XML
 from genshi.template.core import BadDirectiveError, TemplateSyntaxError
+from genshi.template.loader import TemplateLoader
 from genshi.template.markup import MarkupTemplate
 
 
 class MarkupTemplateTestCase(unittest.TestCase):
     """Tests for markup template processing."""
+
+    def test_parse_fileobj(self):
+        fileobj = StringIO('<root> ${var} $var</root>')
+        tmpl = MarkupTemplate(fileobj)
+        self.assertEqual('<root> 42 42</root>', str(tmpl.generate(var=42)))
+
+    def test_parse_stream(self):
+        stream = XML('<root> ${var} $var</root>')
+        tmpl = MarkupTemplate(stream)
+        self.assertEqual('<root> 42 42</root>', str(tmpl.generate(var=42)))
 
     def test_interpolate_mixed3(self):
         tmpl = MarkupTemplate('<root> ${var} $var</root>')
@@ -178,6 +194,211 @@ class MarkupTemplateTestCase(unittest.TestCase):
         self.assertEqual(u"""<div>
           \xf6
         </div>""", unicode(tmpl.generate()))
+
+    def test_include_in_loop(self):
+        dirname = tempfile.mkdtemp(suffix='genshi_test')
+        try:
+            file1 = open(os.path.join(dirname, 'tmpl1.html'), 'w')
+            try:
+                file1.write("""<div>Included $idx</div>""")
+            finally:
+                file1.close()
+
+            file2 = open(os.path.join(dirname, 'tmpl2.html'), 'w')
+            try:
+                file2.write("""<html xmlns:xi="http://www.w3.org/2001/XInclude"
+                                     xmlns:py="http://genshi.edgewall.org/">
+                  <xi:include href="${name}.html" py:for="idx in range(3)" />
+                </html>""")
+            finally:
+                file2.close()
+
+            loader = TemplateLoader([dirname])
+            tmpl = loader.load('tmpl2.html')
+            self.assertEqual("""<html>
+                  <div>Included 0</div><div>Included 1</div><div>Included 2</div>
+                </html>""", tmpl.generate(name='tmpl1').render())
+        finally:
+            shutil.rmtree(dirname)
+
+    def test_dynamic_inlude_href(self):
+        dirname = tempfile.mkdtemp(suffix='genshi_test')
+        try:
+            file1 = open(os.path.join(dirname, 'tmpl1.html'), 'w')
+            try:
+                file1.write("""<div>Included</div>""")
+            finally:
+                file1.close()
+
+            file2 = open(os.path.join(dirname, 'tmpl2.html'), 'w')
+            try:
+                file2.write("""<html xmlns:xi="http://www.w3.org/2001/XInclude"
+                                     xmlns:py="http://genshi.edgewall.org/">
+                  <xi:include href="${name}.html" />
+                </html>""")
+            finally:
+                file2.close()
+
+            loader = TemplateLoader([dirname])
+            tmpl = loader.load('tmpl2.html')
+            self.assertEqual("""<html>
+                  <div>Included</div>
+                </html>""", tmpl.generate(name='tmpl1').render())
+        finally:
+            shutil.rmtree(dirname)
+
+    def test_select_inluded_elements(self):
+        dirname = tempfile.mkdtemp(suffix='genshi_test')
+        try:
+            file1 = open(os.path.join(dirname, 'tmpl1.html'), 'w')
+            try:
+                file1.write("""<li>$item</li>""")
+            finally:
+                file1.close()
+
+            file2 = open(os.path.join(dirname, 'tmpl2.html'), 'w')
+            try:
+                file2.write("""<html xmlns:xi="http://www.w3.org/2001/XInclude"
+                                     xmlns:py="http://genshi.edgewall.org/">
+                  <ul py:match="ul">${select('li')}</ul>
+                  <ul py:with="items=(1, 2, 3)">
+                    <xi:include href="tmpl1.html" py:for="item in items" />
+                  </ul>
+                </html>""")
+            finally:
+                file2.close()
+
+            loader = TemplateLoader([dirname])
+            tmpl = loader.load('tmpl2.html')
+            self.assertEqual("""<html>
+                  <ul><li>1</li><li>2</li><li>3</li></ul>
+                </html>""", tmpl.generate().render())
+        finally:
+            shutil.rmtree(dirname)
+
+    def test_fallback_when_include_found(self):
+        dirname = tempfile.mkdtemp(suffix='genshi_test')
+        try:
+            file1 = open(os.path.join(dirname, 'tmpl1.html'), 'w')
+            try:
+                file1.write("""<div>Included</div>""")
+            finally:
+                file1.close()
+
+            file2 = open(os.path.join(dirname, 'tmpl2.html'), 'w')
+            try:
+                file2.write("""<html xmlns:xi="http://www.w3.org/2001/XInclude">
+                  <xi:include href="tmpl1.html"><xi:fallback>
+                    Missing</xi:fallback></xi:include>
+                </html>""")
+            finally:
+                file2.close()
+
+            loader = TemplateLoader([dirname])
+            tmpl = loader.load('tmpl2.html')
+            self.assertEqual("""<html>
+                  <div>Included</div>
+                </html>""", tmpl.generate().render())
+        finally:
+            shutil.rmtree(dirname)
+
+    def test_fallback_when_include_not_found(self):
+        dirname = tempfile.mkdtemp(suffix='genshi_test')
+        try:
+            file2 = open(os.path.join(dirname, 'tmpl2.html'), 'w')
+            try:
+                file2.write("""<html xmlns:xi="http://www.w3.org/2001/XInclude">
+                  <xi:include href="tmpl1.html"><xi:fallback>
+                  Missing</xi:fallback></xi:include>
+                </html>""")
+            finally:
+                file2.close()
+
+            loader = TemplateLoader([dirname])
+            tmpl = loader.load('tmpl2.html')
+            self.assertEqual("""<html>
+                  Missing
+                </html>""", tmpl.generate().render())
+        finally:
+            shutil.rmtree(dirname)
+
+    def test_include_in_fallback(self):
+        dirname = tempfile.mkdtemp(suffix='genshi_test')
+        try:
+            file1 = open(os.path.join(dirname, 'tmpl1.html'), 'w')
+            try:
+                file1.write("""<div>Included</div>""")
+            finally:
+                file1.close()
+
+            file2 = open(os.path.join(dirname, 'tmpl3.html'), 'w')
+            try:
+                file2.write("""<html xmlns:xi="http://www.w3.org/2001/XInclude">
+                  <xi:include href="tmpl2.html">
+                    <xi:fallback>
+                      <xi:include href="tmpl1.html">
+                        <xi:fallback>Missing</xi:fallback>
+                      </xi:include>
+                    </xi:fallback>
+                  </xi:include>
+                </html>""")
+            finally:
+                file2.close()
+
+            loader = TemplateLoader([dirname])
+            tmpl = loader.load('tmpl3.html')
+            self.assertEqual("""<html>
+                  <div>Included</div>
+                </html>""", tmpl.generate().render())
+        finally:
+            shutil.rmtree(dirname)
+
+    def test_nested_include_fallback(self):
+        dirname = tempfile.mkdtemp(suffix='genshi_test')
+        try:
+            file2 = open(os.path.join(dirname, 'tmpl3.html'), 'w')
+            try:
+                file2.write("""<html xmlns:xi="http://www.w3.org/2001/XInclude">
+                  <xi:include href="tmpl2.html">
+                    <xi:fallback>
+                      <xi:include href="tmpl1.html">
+                        <xi:fallback>Missing</xi:fallback>
+                      </xi:include>
+                    </xi:fallback>
+                  </xi:include>
+                </html>""")
+            finally:
+                file2.close()
+
+            loader = TemplateLoader([dirname])
+            tmpl = loader.load('tmpl3.html')
+            self.assertEqual("""<html>
+                        Missing
+                </html>""", tmpl.generate().render())
+        finally:
+            shutil.rmtree(dirname)
+
+    def test_include_fallback_with_directive(self):
+        dirname = tempfile.mkdtemp(suffix='genshi_test')
+        try:
+            file2 = open(os.path.join(dirname, 'tmpl2.html'), 'w')
+            try:
+                file2.write("""<html xmlns:xi="http://www.w3.org/2001/XInclude"
+                      xmlns:py="http://genshi.edgewall.org/">
+                  <xi:include href="tmpl1.html"><xi:fallback>
+                    <py:if test="True">tmpl1.html not found</py:if>
+                  </xi:fallback></xi:include>
+                </html>""")
+            finally:
+                file2.close()
+
+            loader = TemplateLoader([dirname])
+            tmpl = loader.load('tmpl2.html')
+            self.assertEqual("""<html>
+                    tmpl1.html not found
+                </html>""", tmpl.generate(debug=True).render())
+        finally:
+            shutil.rmtree(dirname)
 
 
 def suite():

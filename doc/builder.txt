@@ -52,7 +52,7 @@ stream::
 
   >>> stream = doc.generate()
   >>> stream
-  <genshi.core.Stream object at 0x72d230>
+  <genshi.core.Stream object at ...>
   >>> print stream
   <p class="intro">Some text and <a href="http://example.org/">a link</a>.<br/></p>
 
@@ -65,7 +65,7 @@ of nodes (elements or text) that don't have a parent element. This can be useful
 for creating snippets of markup that are attached to a parent element later (for
 example in a template). Fragments are created by calling the ``tag`` object::
 
-  >>> fragment = tag('Hello, ', tag.em('word'), '!')
+  >>> fragment = tag('Hello, ', tag.em('world'), '!')
   >>> fragment
   <Fragment>
   >>> print fragment

@@ -19,10 +19,10 @@ except NameError:
     from sets import ImmutableSet as frozenset
 import re
 
-from genshi.core import Attrs, Namespace, stripentities
-from genshi.core import END, END_NS, START, START_NS, TEXT
+from genshi.core import Attrs, stripentities
+from genshi.core import END, START, TEXT
 
-__all__ = ['HTMLFormFiller', 'HTMLSanitizer', 'IncludeFilter']
+__all__ = ['HTMLFormFiller', 'HTMLSanitizer']
 
 
 class HTMLFormFiller(object):
@@ -284,78 +284,3 @@ class HTMLSanitizer(object):
             else:
                 if not waiting_for:
                     yield kind, data, pos
-
-
-class IncludeFilter(object):
-    """Template filter providing (very) basic XInclude support
-    (see http://www.w3.org/TR/xinclude/) in templates.
-    """
-
-    NAMESPACE = Namespace('http://www.w3.org/2001/XInclude')
-
-    def __init__(self, loader):
-        """Initialize the filter.
-        
-        @param loader: the `TemplateLoader` to use for resolving references to
-            external template files
-        """
-        self.loader = loader
-
-    def __call__(self, stream, ctxt=None):
-        """Filter the stream, processing any XInclude directives it may
-        contain.
-        
-        @param stream: the markup event stream to filter
-        @param ctxt: the template context
-        """
-        from genshi.template import TemplateError, TemplateNotFound
-
-        namespace = self.NAMESPACE
-        ns_prefixes = []
-        in_fallback = False
-        include_href = fallback_stream = None
-
-        for kind, data, pos in stream:
-
-            if kind is START and not in_fallback and data[0] in namespace:
-                tag, attrs = data
-                if tag.localname == 'include':
-                    include_href = attrs.get('href')
-                elif tag.localname == 'fallback':
-                    in_fallback = True
-                    fallback_stream = []
-
-            elif kind is END and data in namespace:
-                if data.localname == 'include':
-                    try:
-                        if not include_href:
-                            raise TemplateError('Include misses required '
-                                                'attribute "href"')
-                        template = self.loader.load(include_href,
-                                                    relative_to=pos[0])
-                        for event in template.generate(ctxt):
-                            yield event
-
-                    except TemplateNotFound:
-                        if fallback_stream is None:
-                            raise
-                        for event in fallback_stream:
-                            yield event
-
-                    include_href = None
-                    fallback_stream = None
-
-                elif data.localname == 'fallback':
-                    in_fallback = False
-
-            elif in_fallback:
-                fallback_stream.append((kind, data, pos))
-
-            elif kind is START_NS and data[1] == namespace:
-                ns_prefixes.append(data[0])
-
-            elif kind is END_NS and data in ns_prefixes:
-                ns_prefixes.pop()
-
-            else:
-                yield kind, data, pos

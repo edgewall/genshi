@@ -50,9 +50,11 @@ class TextTemplate(Template):
                   ('choose', ChooseDirective),
                   ('with', WithDirective)]
 
-    _DIRECTIVE_RE = re.compile(r'^\s*(?<!\\)#((?:\w+|#).*)\n?', re.MULTILINE)
+    _DIRECTIVE_RE = re.compile(r'(?:^[ \t]*(?<!\\)#(end).*\n?)|'
+                               r'(?:^[ \t]*(?<!\\)#((?:\w+|#).*)\n?)',
+                               re.MULTILINE)
 
-    def _parse(self, encoding):
+    def _parse(self, source, encoding):
         """Parse the template from text input."""
         stream = [] # list of events of the "compiled" template
         dirmap = {} # temporary mapping of directives to elements
@@ -60,7 +62,7 @@ class TextTemplate(Template):
         if not encoding:
             encoding = 'utf-8'
 
-        source = self.source.read().decode(encoding, 'replace')
+        source = source.read().decode(encoding, 'replace')
         offset = 0
         lineno = 1
 
@@ -92,7 +94,7 @@ class TextTemplate(Template):
                 cls = self._dir_by_name.get(command)
                 if cls is None:
                     raise BadDirectiveError(command)
-                directive = cls(value, None, self.filepath, lineno, 0)
+                directive = cls, value, None, (self.filepath, lineno, 0)
                 dirmap[depth] = (directive, len(stream))
                 depth += 1
 

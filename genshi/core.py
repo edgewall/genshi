@@ -17,7 +17,8 @@ import htmlentitydefs
 import operator
 import re
 
-__all__ = ['Stream', 'Markup', 'escape', 'unescape', 'Namespace', 'QName']
+__all__ = ['Stream', 'Markup', 'escape', 'unescape', 'Attrs', 'Namespace',
+           'QName']
 
 
 class StreamEventKind(str):
@@ -399,7 +400,7 @@ class Markup(unicode):
         return Markup(num * unicode(self))
 
     def __repr__(self):
-        return '<%s "%s">' % (self.__class__.__name__, self)
+        return '<%s %r>' % (self.__class__.__name__, unicode(self))
 
     def join(self, seq, escape_quotes=True):
         return Markup(unicode(self).join([escape(item, quotes=escape_quotes)

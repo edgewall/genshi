@@ -17,14 +17,96 @@ import compiler
 
 from genshi.core import Attrs, Stream
 from genshi.path import Path
-from genshi.template.core import EXPR, Directive, TemplateRuntimeError, \
-                                 TemplateSyntaxError, _apply_directives
+from genshi.template.core import TemplateRuntimeError, TemplateSyntaxError, \
+                                 EXPR, _apply_directives
 from genshi.template.eval import Expression, _parse
 
 __all__ = ['AttrsDirective', 'ChooseDirective', 'ContentDirective',
            'DefDirective', 'ForDirective', 'IfDirective', 'MatchDirective',
            'OtherwiseDirective', 'ReplaceDirective', 'StripDirective',
            'WhenDirective', 'WithDirective']
+
+
+class DirectiveMeta(type):
+    """Meta class for template directives."""
+
+    def __new__(cls, name, bases, d):
+        d['tagname'] = name.lower().replace('directive', '')
+        return type.__new__(cls, name, bases, d)
+
+
+class Directive(object):
+    """Abstract base class for template directives.
+    
+    A directive is basically a callable that takes three positional arguments:
+    `ctxt` is the template data context, `stream` is an iterable over the
+    events that the directive applies to, and `directives` is is a list of
+    other directives on the same stream that need to be applied.
+    
+    Directives can be "anonymous" or "registered". Registered directives can be
+    applied by the template author using an XML attribute with the
+    corresponding name in the template. Such directives should be subclasses of
+    this base class that can  be instantiated with the value of the directive
+    attribute as parameter.
+    
+    Anonymous directives are simply functions conforming to the protocol
+    described above, and can only be applied programmatically (for example by
+    template filters).
+    """
+    __metaclass__ = DirectiveMeta
+    __slots__ = ['expr']
+
+    def __init__(self, value, namespaces=None, filename=None, lineno=-1,
+                 offset=-1):
+        self.expr = self._parse_expr(value, filename, lineno, offset)
+
+    def attach(cls, template, stream, value, namespaces, pos):
+        """Called after the template stream has been completely parsed.
+        
+        @param template: the `Template` object
+        @param stream: the event stream associated with the directive
+        @param value: the argument value for the directive
+        @param namespaces: a mapping of namespace URIs to prefixes
+        @param pos: a `(filename, lineno, offset)` tuple describing the location
+            where the directive was found in the source
+        
+        This class method should return a `(directive, stream)` tuple. If
+        `directive` is not `None`, it should be an instance of the `Directive`
+        class, and gets added to the list of directives applied to the substream
+        at runtime. `stream` is an event stream that replaces the original
+        stream associated with the directive.
+        """
+        return cls(value, namespaces, template.filename, *pos[1:]), stream
+    attach = classmethod(attach)
+
+    def __call__(self, stream, ctxt, directives):
+        """Apply the directive to the given stream.
+        
+        @param stream: the event stream
+        @param ctxt: the context data
+        @param directives: a list of the remaining directives that should
+            process the stream
+        """
+        raise NotImplementedError
+
+    def __repr__(self):
+        expr = ''
+        if getattr(self, 'expr', None) is not None:
+            expr = ' "%s"' % self.expr.source
+        return '<%s%s>' % (self.__class__.__name__, expr)
+
+    def _parse_expr(cls, expr, filename=None, lineno=-1, offset=-1):
+        """Parses the given expression, raising a useful error message when a
+        syntax error is encountered.
+        """
+        try:
+            return expr and Expression(expr, filename, lineno) or None
+        except SyntaxError, err:
+            err.msg += ' in expression "%s" of "%s" directive' % (expr,
+                                                                  cls.tagname)
+            raise TemplateSyntaxError(err, filename, lineno,
+                                      offset + (err.offset or 0))
+    _parse_expr = classmethod(_parse_expr)
 
 
 def _assignment(ast):
@@ -114,9 +196,10 @@ class ContentDirective(Directive):
     """
     __slots__ = []
 
-    def prepare(self, directives, stream):
-        directives.remove(self)
-        return [stream[0], (EXPR, self.expr, (None, -1, --1)),  stream[-1]]
+    def attach(cls, template, stream, value, namespaces, pos):
+        expr = cls._parse_expr(value, template.filename, *pos[1:])
+        return None, [stream[0], (EXPR, expr, pos),  stream[-1]]
+    attach = classmethod(attach)
 
 
 class DefDirective(Directive):
@@ -319,9 +402,7 @@ class MatchDirective(Directive):
                  offset=-1):
         Directive.__init__(self, None, namespaces, filename, lineno, offset)
         self.path = Path(value, filename, lineno)
-        if namespaces is None:
-            namespaces = {}
-        self.namespaces = namespaces.copy()
+        self.namespaces = namespaces or {}
 
     def __call__(self, stream, ctxt, directives):
         ctxt._match_templates.append((self.path.test(ignore_context=True),
@@ -361,9 +442,10 @@ class ReplaceDirective(Directive):
     """
     __slots__ = []
 
-    def prepare(self, directives, stream):
-        directives.remove(self)
-        return [(EXPR, self.expr, (None, -1, -1))]
+    def attach(cls, template, stream, value, namespaces, pos):
+        expr = cls._parse_expr(value, template.filename, *pos[1:])
+        return None, [(EXPR, expr, pos)]
+    attach = classmethod(attach)
 
 
 class StripDirective(Directive):
@@ -412,11 +494,12 @@ class StripDirective(Directive):
                     yield event
         return _apply_directives(_generate(), ctxt, directives)
 
-    def prepare(self, directives, stream):
-        if not self.expr:
-            directives.remove(self)
-            return stream[1:-1]
-        return stream
+    def attach(cls, template, stream, value, namespaces, pos):
+        if not value:
+            return None, stream[1:-1]
+        return super(StripDirective, cls).attach(template, stream, value,
+                                                 namespaces, pos)
+    attach = classmethod(attach)
 
 
 class ChooseDirective(Directive):

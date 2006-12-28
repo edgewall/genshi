@@ -72,9 +72,10 @@ usually enclosed in curly braces (``{…}``).
 
 .. _python: http://www.python.org/
 
-If the expression starts with a letter and contains only letters and digits,
-the curly braces may be omitted. In all other cases, the braces are required
-so that the template processors knows where the expression ends::
+If the expression starts with a letter and contains only letters, digits, dots,
+and underscores, the curly braces may be omitted. In all other cases, the
+braces are required so that the template processor knows where the expression
+ends::
 
   >>> from genshi.template import TextTemplate
   >>> tmpl = TextTemplate('${items[0].capitalize()} item')

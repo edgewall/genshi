@@ -74,9 +74,10 @@ substituted with the result of its evaluation against the template data.
 Expressions need to prefixed with a dollar sign (``$``) and usually enclosed in
 curly braces (``{…}``).
 
-If the expression starts with a letter and contains only letters and digits,
-the curly braces may be omitted. In all other cases, the braces are required so
-that the template processors knows where the expression ends::
+If the expression starts with a letter and contains only letters, digits, dots,
+and underscores, the curly braces may be omitted. In all other cases, the
+braces are required so that the template processor knows where the expression
+ends::
 
   >>> from genshi.template import MarkupTemplate
   >>> tmpl = MarkupTemplate('<em>${items[0].capitalize()} item</em>')
@@ -123,7 +124,7 @@ by the namespace ``http://genshi.edgewall.org/``. They can affect how the
 template is rendered in a number of ways: Genshi provides directives for
 conditionals and looping, among others.
 
-To use directives in a template, the namespace should be declared, which is
+To use directives in a template, the namespace must be declared, which is
 usually done on the root element::
 
   <html xmlns="http://www.w3.org/1999/xhtml"
@@ -302,14 +303,14 @@ The above would be rendered to::
     </p>
   </div>
 
-If a macro doesn't require parameters, it can be defined as well as called
-without the parenthesis. For example::
+If a macro doesn't require parameters, it can be defined without the 
+parenthesis. For example::
 
   <div>
     <p py:def="greeting" class="greeting">
       Hello, world!
     </p>
-    ${greeting}
+    ${greeting()}
   </div>
 
 The above would be rendered to::

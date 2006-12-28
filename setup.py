@@ -12,10 +12,54 @@
 # individuals. For the exact contribution history, see the revision
 # history and logs, available at http://genshi.edgewall.org/log/.
 
+from distutils.cmd import Command
+import doctest
+from glob import glob
+import os
 try:
     from setuptools import setup
 except ImportError:
     from distutils.core import setup
+
+
+class build_doc(Command):
+    description = 'Builds the documentation'
+    user_options = []
+
+    def initialize_options(self):
+        pass
+
+    def finalize_options(self):
+        pass
+
+    def run(self):
+        from docutils.core import publish_cmdline
+        conf = os.path.join('doc', 'docutils.conf')
+
+        for source in glob('doc/*.txt'):
+            dest = os.path.splitext(source)[0] + '.html'
+            if not os.path.exists(dest) or \
+                   os.path.getmtime(dest) < os.path.getmtime(source):
+                print 'building documentation file %s' % dest
+                publish_cmdline(writer_name='html',
+                                argv=['--config=%s' % conf, source, dest])
+
+
+class test_doc(Command):
+    description = 'Tests the code examples in the documentation'
+    user_options = []
+
+    def initialize_options(self):
+        pass
+
+    def finalize_options(self):
+        pass
+
+    def run(self):
+        for filename in glob('doc/*.txt'):
+            print 'testing documentation file %s' % filename
+            doctest.testfile(filename, False, optionflags=doctest.ELLIPSIS)
+
 
 setup(
     name = 'Genshi',
@@ -56,4 +100,6 @@ is heavily inspired by Kid.""",
     genshi-markup = genshi.template.plugin:MarkupTemplateEnginePlugin[plugin]
     genshi-text = genshi.template.plugin:TextTemplateEnginePlugin[plugin]
     """,
+
+    cmdclass={'build_doc': build_doc, 'test_doc': test_doc}
 )

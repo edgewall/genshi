@@ -36,7 +36,7 @@ This means you can't use the ``parent``, ancestor, or sibling axes in Genshi
 for I don't know). Basically, any path expression that would require buffering
 of the stream is not supported.
 
-Predicates are of course supported, but Path expressions *inside* predicates
+Predicates are of course supported, but path expressions *inside* predicates
 are restricted to attribute lookups (again due to the lack of buffering).
 
 Most of the XPath functions and operators are supported, however they

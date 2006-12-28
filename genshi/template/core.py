@@ -139,62 +139,6 @@ class Context(object):
         """Pop the top-most scope from the stack."""
 
 
-class Directive(object):
-    """Abstract base class for template directives.
-    
-    A directive is basically a callable that takes three positional arguments:
-    `ctxt` is the template data context, `stream` is an iterable over the
-    events that the directive applies to, and `directives` is is a list of
-    other directives on the same stream that need to be applied.
-    
-    Directives can be "anonymous" or "registered". Registered directives can be
-    applied by the template author using an XML attribute with the
-    corresponding name in the template. Such directives should be subclasses of
-    this base class that can  be instantiated with the value of the directive
-    attribute as parameter.
-    
-    Anonymous directives are simply functions conforming to the protocol
-    described above, and can only be applied programmatically (for example by
-    template filters).
-    """
-    __slots__ = ['expr']
-
-    def __init__(self, value, namespaces=None, filename=None, lineno=-1,
-                 offset=-1):
-        try:
-            self.expr = value and Expression(value, filename, lineno) or None
-        except SyntaxError, err:
-            err.msg += ' in expression "%s" of "%s" directive' % (value,
-                                                                  self.tagname)
-            raise TemplateSyntaxError(err, filename, lineno,
-                                      offset + (err.offset or 0))
-
-    def __call__(self, stream, ctxt, directives):
-        raise NotImplementedError
-
-    def __repr__(self):
-        expr = ''
-        if self.expr is not None:
-            expr = ' "%s"' % self.expr.source
-        return '<%s%s>' % (self.__class__.__name__, expr)
-
-    def prepare(self, directives, stream):
-        """Called after the template stream has been completely parsed.
-        
-        The part of the template stream associated with the directive will be
-        replaced by what this function returns. This allows the directive to
-        optimize the template or validate the way the directive is used.
-        """
-        return stream
-
-    def tagname(self):
-        """Return the local tag name of the directive as it is used in
-        templates.
-        """
-        return self.__class__.__name__.lower().replace('directive', '')
-    tagname = property(tagname)
-
-
 def _apply_directives(stream, ctxt, directives):
     """Apply the given directives to the stream."""
     if directives:
@@ -227,25 +171,25 @@ class Template(object):
     def __init__(self, source, basedir=None, filename=None, loader=None,
                  encoding=None):
         """Initialize a template from either a string or a file-like object."""
-        if isinstance(source, basestring):
-            self.source = StringIO(source)
-        else:
-            self.source = source
         self.basedir = basedir
         self.filename = filename
         if basedir and filename:
             self.filepath = os.path.join(basedir, filename)
         else:
             self.filepath = filename
+        self.loader = loader
 
+        if isinstance(source, basestring):
+            source = StringIO(source)
+        else:
+            source = source
+        self.stream = list(self._prepare(self._parse(source, encoding)))
         self.filters = [self._flatten, self._eval]
-
-        self.stream = list(self._prepare(self._parse(encoding)))
 
     def __repr__(self):
         return '<%s "%s">' % (self.__class__.__name__, self.filename)
 
-    def _parse(self, encoding):
+    def _parse(self, source, encoding):
         """Parse the template.
         
         The parsing stage parses the template and constructs a list of
@@ -299,15 +243,16 @@ class Template(object):
     _interpolate = classmethod(_interpolate)
 
     def _prepare(self, stream):
-        """Call the `prepare` method of every directive instance in the
-        template so that various optimization and validation tasks can be
-        performed.
-        """
+        """Call the `attach` method of every directive found in the template."""
         for kind, data, pos in stream:
             if kind is SUB:
-                directives, substream = data
-                for directive in directives[:]:
-                    substream = directive.prepare(directives, substream)
+                directives = []
+                substream = data[1]
+                for cls, value, namespaces, pos in data[0]:
+                    directive, substream = cls.attach(self, substream, value,
+                                                      namespaces, pos)
+                    if directive:
+                        directives.append(directive)
                 substream = self._prepare(substream)
                 if directives:
                     yield kind, (directives, list(substream)), pos

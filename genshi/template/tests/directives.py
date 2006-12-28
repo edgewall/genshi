@@ -380,7 +380,8 @@ class DefDirectiveTestCase(unittest.TestCase):
           #end
           ${echo('Hi', name='you')}
         """)
-        self.assertEqual("""                      Hi, you!
+        self.assertEqual("""
+                      Hi, you!
         """, str(tmpl.generate()))
 
 
@@ -597,6 +598,54 @@ class MatchDirectiveTestCase(unittest.TestCase):
             <div id="header"/><h1>Foo</h1>
             <div id="footer"/>
           </body>
+        </html>""", str(tmpl.generate()))
+
+    def test_not_match_self(self):
+        """
+        See http://genshi.edgewall.org/ticket/77
+        """
+        tmpl = MarkupTemplate("""<html xmlns="http://www.w3.org/1999/xhtml"
+              xmlns:py="http://genshi.edgewall.org/">
+          <body py:match="body" py:content="select('*')" />
+          <h1 py:match="h1">
+            ${select('text()')}
+            Goodbye!
+          </h1>
+          <body>
+            <h1>Hello!</h1>
+          </body>
+        </html>""")
+        self.assertEqual("""<html xmlns="http://www.w3.org/1999/xhtml">
+          <body><h1>
+            Hello!
+            Goodbye!
+          </h1></body>
+        </html>""", str(tmpl.generate()))
+
+    def test_select_text_in_element(self):
+        """
+        See http://genshi.edgewall.org/ticket/77#comment:1
+        """
+        tmpl = MarkupTemplate("""<html xmlns="http://www.w3.org/1999/xhtml"
+              xmlns:py="http://genshi.edgewall.org/">
+          <body py:match="body" py:content="select('*')" />
+          <h1 py:match="h1">
+            <text>
+              ${select('text()')}
+            </text>
+            Goodbye!
+          </h1>
+          <body>
+            <h1>Hello!</h1>
+          </body>
+        </html>""")
+        self.assertEqual("""<html xmlns="http://www.w3.org/1999/xhtml">
+          <body><h1>
+            <text>
+              Hello!
+            </text>
+            Goodbye!
+          </h1></body>
         </html>""", str(tmpl.generate()))
 
     def test_select_all_attrs(self):

@@ -8,7 +8,7 @@ A stream is the common representation of markup as a *stream of events*.
 
 
 .. contents:: Contents
-   :depth: 2
+   :depth: 1
 .. sectnum::
 
 
@@ -30,7 +30,7 @@ literal XML or HTML text to a markup stream::
   ...              '<a href="http://example.org/">a link</a>.'
   ...              '<br/></p>')
   >>> stream
-  <genshi.core.Stream object at 0x6bef0>
+  <genshi.core.Stream object at ...>
 
 The stream is the result of parsing the text into events. Each event is a tuple
 of the form ``(kind, data, pos)``, where:
@@ -38,7 +38,7 @@ of the form ``(kind, data, pos)``, where:
 * ``kind`` defines what kind of event it is (such as the start of an element,
   text, a comment, etc).
 * ``data`` is the actual data associated with the event. How this looks depends
-  on the event kind.
+  on the event kind (see  `event kinds`_)
 * ``pos`` is a ``(filename, lineno, column)`` tuple that describes where the
   event “comes from”.
 
@@ -47,15 +47,15 @@ of the form ``(kind, data, pos)``, where:
   >>> for kind, data, pos in stream:
   ...     print kind, `data`, pos
   ... 
-  START (u'p', [(u'class', u'intro')]) ('<string>', 1, 0)
-  TEXT u'Some text and ' ('<string>', 1, 31)
-  START (u'a', [(u'href', u'http://example.org/')]) ('<string>', 1, 31)
-  TEXT u'a link' ('<string>', 1, 67)
-  END u'a' ('<string>', 1, 67)
-  TEXT u'.' ('<string>', 1, 72)
-  START (u'br', []) ('<string>', 1, 72)
-  END u'br' ('<string>', 1, 77)
-  END u'p' ('<string>', 1, 77)
+  START (QName(u'p'), Attrs([(QName(u'class'), u'intro')])) (None, 1, 0)
+  TEXT u'Some text and ' (None, 1, 17)
+  START (QName(u'a'), Attrs([(QName(u'href'), u'http://example.org/')])) (None, 1, 31)
+  TEXT u'a link' (None, 1, 61)
+  END QName(u'a') (None, 1, 67)
+  TEXT u'.' (None, 1, 71)
+  START (QName(u'br'), Attrs()) (None, 1, 72)
+  END QName(u'br') (None, 1, 77)
+  END QName(u'p') (None, 1, 77)
 
 
 Filtering
@@ -150,13 +150,14 @@ directly::
 
   >>> from genshi.filters import HTMLSanitizer
   >>> from genshi.output import TextSerializer
-  >>> print TextSerializer()(HTMLSanitizer()(stream))
+  >>> print ''.join(TextSerializer()(HTMLSanitizer()(stream)))
   Some text and a link.
 
 The pipe operator allows a nicer syntax::
 
   >>> print stream | HTMLSanitizer() | TextSerializer()
   Some text and a link.
+
 
 Using XPath
 ===========
@@ -166,7 +167,7 @@ XPath can be used to extract a specific subset of the stream via the
 
   >>> substream = stream.select('a')
   >>> substream
-  <genshi.core.Stream object at 0x7118b0>
+  <genshi.core.Stream object at ...>
   >>> print substream
   <a href="http://example.org/">a link</a>
 
@@ -178,10 +179,126 @@ in a ``list``::
   >>> from genshi import Stream
   >>> substream = Stream(list(stream.select('a')))
   >>> substream
-  <genshi.core.Stream object at 0x7118b0>
+  <genshi.core.Stream object at ...>
   >>> print substream
   <a href="http://example.org/">a link</a>
   >>> print substream.select('@href')
   http://example.org/
   >>> print substream.select('text()')
   a link
+
+See `Using XPath in Genshi`_ for more information about the XPath support in
+Genshi.
+
+.. _`Using XPath in Genshi`: xpath.html
+
+
+.. _`event kinds`:
+
+Event Kinds
+===========
+
+Every event in a stream is of one of several *kinds*, which also determines
+what the ``data`` item of the event tuple looks like. The different kinds of
+events are documented below.
+
+.. note:: The ``data`` item is generally immutable. If the data is to be
+   modified when processing a stream, it must be replaced by a new tuple.
+   Effectively, this means the entire event tuple is immutable.
+
+START
+-----
+The opening tag of an element.
+
+For this kind of event, the ``data`` item is a tuple of the form
+``(tagname, attrs)``, where ``tagname`` is a ``QName`` instance describing the
+qualified name of the tag, and ``attrs`` is an ``Attrs`` instance containing
+the attribute names and values associated with the tag (excluding namespace
+declarations)::
+
+  START, (QName(u'p'), Attrs([(u'class', u'intro')])), pos
+
+END
+---
+The closing tag of an element.
+
+The ``data`` item of end events consists of just a ``QName`` instance
+describing the qualified name of the tag::
+
+  END, QName(u'p'), pos
+
+TEXT
+----
+Character data outside of elements and comments.
+
+For text events, the ``data`` item should be a unicode object::
+
+  TEXT, u'Hello, world!', pos
+
+START_NS
+--------
+The start of a namespace mapping, binding a namespace prefix to a URI.
+
+The ``data`` item of this kind of event is a tuple of the form
+``(prefix, uri)``, where ``prefix`` is the namespace prefix and ``uri`` is the
+full URI to which the prefix is bound. Both should be unicode objects. If the
+namespace is not bound to any prefix, the ``prefix`` item is an empty string::
+
+  START_NS, (u'svg', u'http://www.w3.org/2000/svg'), pos
+
+END_NS
+------
+The end of a namespace mapping.
+
+The ``data`` item of such events consists of only the namespace prefix (a
+unicode object)::
+
+  END_NS, u'svg', pos
+
+DOCTYPE
+-------
+A document type declaration.
+
+For this type of event, the ``data`` item is a tuple of the form
+``(name, pubid, sysid)``, where ``name`` is the name of the root element,
+``pubid`` is the public identifier of the DTD (or ``None``), and ``sysid`` is
+the system identifier of the DTD (or ``None``)::
+
+  DOCTYPE, (u'html', u'-//W3C//DTD XHTML 1.0 Transitional//EN', \
+            u'http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd'), pos
+
+COMMENT
+-------
+A comment.
+
+For such events, the ``data`` item is a unicode object containing all character
+data between the comment delimiters::
+
+  COMMENT, u'Commented out', pos
+
+PI
+--
+A processing instruction.
+
+The ``data`` item is a tuple of the form ``(target, data)`` for processing
+instructions, where ``target`` is the target of the PI (used to identify the
+application by which the instruction should be processed), and ``data`` is text
+following the target (excluding the terminating question mark)::
+
+  PI, (u'php', u'echo "Yo" '), pos
+
+START_CDATA
+-----------
+Marks the beginning of a ``CDATA`` section.
+
+The ``data`` item for such events is always ``None``::
+
+  START_CDATA, None, pos
+
+END_CDATA
+---------
+Marks the end of a ``CDATA`` section.
+
+The ``data`` item for such events is always ``None``::
+
+  END_CDATA, None, pos

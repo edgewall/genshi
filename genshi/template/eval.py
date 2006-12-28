@@ -201,14 +201,15 @@ def _compile(node, source=None, filename=None, lineno=-1):
 
 BUILTINS = __builtin__.__dict__.copy()
 BUILTINS['Undefined'] = Undefined
+_UNDEF = Undefined(None)
 
 def _lookup_name(data, name):
     __traceback_hide__ = True
-    val = data.get(name, Undefined)
-    if val is Undefined:
+    val = data.get(name, _UNDEF)
+    if val is _UNDEF:
         val = BUILTINS.get(name, val)
-        if val is Undefined:
-            return val(name)
+        if val is _UNDEF:
+            return Undefined(name)
     return val
 
 def _lookup_attr(data, obj, key):
@@ -232,8 +233,8 @@ def _lookup_item(data, obj, key):
         return obj[key]
     except (KeyError, IndexError, TypeError), e:
         if isinstance(key, basestring):
-            val = getattr(obj, key, Undefined)
-            if val is Undefined:
+            val = getattr(obj, key, _UNDEF)
+            if val is _UNDEF:
                 val = Undefined(key)
             return val
         raise
@@ -308,6 +309,12 @@ class ASTTransformer(object):
         return node
     visitUnaryAdd = visitUnarySub = visitNot = visitInvert = _visitUnaryOp
     visitBackquote = _visitUnaryOp
+
+    def visitIfExp(self, node):
+        node.test = self.visit(node.test)
+        node.then = self.visit(node.then)
+        node.else_ = self.visit(node.else_)
+        return node
 
     # Identifiers, Literals and Comprehensions
 

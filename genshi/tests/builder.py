@@ -17,6 +17,7 @@ import unittest
 
 from genshi.builder import Element, tag
 from genshi.core import Attrs, Stream
+from genshi.input import XML
 
 
 class ElementFactoryTestCase(unittest.TestCase):
@@ -40,6 +41,15 @@ class ElementFactoryTestCase(unittest.TestCase):
         self.assertEqual((Stream.START, ('foo', Attrs([('id', '3')])),
                           (None, -1, -1)),
                          event)
+
+    def test_stream_as_child(self):
+        xml = list(tag.span(XML('<b>Foo</b>')).generate())
+        self.assertEqual(5, len(xml))
+        self.assertEqual((Stream.START, ('span', ())), xml[0][:2])
+        self.assertEqual((Stream.START, ('b', ())), xml[1][:2])
+        self.assertEqual((Stream.TEXT, 'Foo'), xml[2][:2])
+        self.assertEqual((Stream.END, 'b'), xml[3][:2])
+        self.assertEqual((Stream.END, 'span'), xml[4][:2])
 
 
 def suite():

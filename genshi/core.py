@@ -13,16 +13,16 @@
 
 """Core classes for markup processing."""
 
-import htmlentitydefs
 import operator
-import re
+
+from genshi.util import plaintext, stripentities, striptags
 
 __all__ = ['Stream', 'Markup', 'escape', 'unescape', 'Attrs', 'Namespace',
            'QName']
 
 
 class StreamEventKind(str):
-    """A kind of event on an XML stream."""
+    """A kind of event on a markup stream."""
     __slots__ = []
     _instances = {}
 
@@ -35,19 +35,19 @@ class Stream(object):
     
     This class is basically an iterator over the events.
     
-    Also provided are ways to serialize the stream to text. The `serialize()`
-    method will return an iterator over generated strings, while `render()`
-    returns the complete generated text at once. Both accept various parameters
-    that impact the way the stream is serialized.
-    
     Stream events are tuples of the form:
-
+    
       (kind, data, position)
-
+    
     where `kind` is the event kind (such as `START`, `END`, `TEXT`, etc), `data`
     depends on the kind of event, and `position` is a `(filename, line, offset)`
     tuple that contains the location of the original element or text in the
     input. If the original location is unknown, `position` is `(None, -1, -1)`.
+    
+    Also provided are ways to serialize the stream to text. The `serialize()`
+    method will return an iterator over generated strings, while `render()`
+    returns the complete generated text at once. Both accept various parameters
+    that impact the way the stream is serialized.
     """
     __slots__ = ['events']
 
@@ -92,7 +92,7 @@ class Stream(object):
         <p>Hello, world!</p>
         
         Filters can be any function that accepts and produces a stream (where
-        a stream is anything that iterators over events):
+        a stream is anything that iterates over events):
         
         >>> def uppercase(stream):
         ...     for kind, data, pos in stream:
@@ -324,51 +324,6 @@ class Attrs(tuple):
         attributes joined together.
         """
         return TEXT, u''.join([x[1] for x in self]), (None, -1, -1)
-
-
-def plaintext(text, keeplinebreaks=True):
-    """Returns the text as a `unicode` string with all entities and tags
-    removed.
-    """
-    text = stripentities(striptags(text))
-    if not keeplinebreaks:
-        text = text.replace(u'\n', u' ')
-    return text
-
-def stripentities(text, keepxmlentities=False):
-    """Return a copy of the given text with any character or numeric entities
-    replaced by the equivalent UTF-8 characters.
-    
-    If the `keepxmlentities` parameter is provided and evaluates to `True`,
-    the core XML entities (&amp;, &apos;, &gt;, &lt; and &quot;) are not
-    stripped.
-    """
-    def _replace_entity(match):
-        if match.group(1): # numeric entity
-            ref = match.group(1)
-            if ref.startswith('x'):
-                ref = int(ref[1:], 16)
-            else:
-                ref = int(ref, 10)
-            return unichr(ref)
-        else: # character entity
-            ref = match.group(2)
-            if keepxmlentities and ref in ('amp', 'apos', 'gt', 'lt', 'quot'):
-                return '&%s;' % ref
-            try:
-                codepoint = htmlentitydefs.name2codepoint[ref]
-                return unichr(codepoint)
-            except KeyError:
-                if keepxmlentities:
-                    return '&amp;%s;' % ref
-                else:
-                    return ref
-    return re.sub(r'&(?:#((?:\d+)|(?:[xX][0-9a-fA-F]+));?|(\w+);)',
-                  _replace_entity, text)
-
-def striptags(text):
-    """Return a copy of the text with all XML/HTML tags removed."""
-    return re.sub(r'<[^>]*?>', '', text)
 
 
 class Markup(unicode):

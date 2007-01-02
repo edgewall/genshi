@@ -16,7 +16,7 @@ will need to add the parenthesis to actually call the function.
 
 Instances of `genshi.core.Attrs` are now immutable. Filters
 manipulating the attributes in a stream may need to be updated. See
-the docstring of the `Attrs` for more information.
+the documentation of the `Attrs` class for more information.
 
 
 Upgrading from Markup

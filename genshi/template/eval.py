@@ -289,7 +289,8 @@ class ASTTransformer(object):
     def _visitBoolOp(self, node):
         node.nodes = [self.visit(x) for x in node.nodes]
         return node
-    visitAnd = visitOr = visitBitand = visitBitor = visitAssTuple = _visitBoolOp
+    visitAnd = visitOr = visitBitand = visitBitor = visitBitxor = _visitBoolOp
+    visitAssTuple = _visitBoolOp
 
     def _visitBinOp(self, node):
         node.left = self.visit(node.left)

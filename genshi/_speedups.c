@@ -14,21 +14,17 @@
 #include <Python.h>
 #include <structmember.h>
 
-/* Markup class */
-
-static PyObject *escape(PyObject *text, int quotes);
-
-PyAPI_DATA(PyTypeObject) MarkupType;
-
-PyDoc_STRVAR(Markup__doc__,
-"Marks a string as being safe for inclusion in HTML/XML output without\n\
-needing to be escaped.");
-
 static PyObject *amp1, *amp2, *lt1, *lt2, *gt1, *gt2, *qt1, *qt2;
+static PyObject *stripentities, *striptags;
 
 static void
 init_constants(void)
 {
+    PyObject *util = PyImport_ImportModule("genshi.util");
+    stripentities = PyObject_GetAttrString(util, "stripentities");
+    striptags = PyObject_GetAttrString(util, "striptags");
+    Py_DECREF(util);
+
     amp1 = PyUnicode_DecodeASCII("&", 1, NULL);
     amp2 = PyUnicode_DecodeASCII("&amp;", 5, NULL);
     lt1 = PyUnicode_DecodeASCII("<", 1, NULL);
@@ -39,45 +35,13 @@ init_constants(void)
     qt2 = PyUnicode_DecodeASCII("&#34;", 5, NULL);
 }
 
-static PyObject *
-Markup_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
-{
-    PyObject *self, *text, *tmp, *args2;
-    int nargs, i;
+/* Markup class */
 
-    nargs = PyTuple_GET_SIZE(args);
-    if (nargs < 2) {
-        return PyUnicode_Type.tp_new(type, args, NULL);
-    }
+PyAPI_DATA(PyTypeObject) MarkupType;
 
-    text = PyTuple_GET_ITEM(args, 0);
-    args2 = PyTuple_New(nargs - 1);
-    if (args2 == NULL) {
-        return NULL;
-    }
-    for (i = 1; i < nargs; i++) {
-        tmp = escape(PyTuple_GET_ITEM(args, i), 1);
-        if (tmp == NULL) {
-            Py_DECREF(args2);
-            return NULL;
-        }
-        PyTuple_SET_ITEM(args2, i - 1, tmp);
-    }
-    tmp = PyUnicode_Format(text, args2);
-    Py_DECREF(args2);
-    if (tmp == NULL) {
-        return NULL;
-    }
-    args = PyTuple_New(1);
-    if (args == NULL) {
-        Py_DECREF(tmp);
-        return NULL;
-    }
-    PyTuple_SET_ITEM(args, 0, tmp);
-    self = PyUnicode_Type.tp_new(type, args, NULL);
-    Py_DECREF(args);
-    return self;
-}
+PyDoc_STRVAR(Markup__doc__,
+"Marks a string as being safe for inclusion in HTML/XML output without\n\
+needing to be escaped.");
 
 static PyObject *
 escape(PyObject *text, int quotes)
@@ -158,6 +122,46 @@ escape(PyObject *text, int quotes)
     ret = MarkupType.tp_new(&MarkupType, args, NULL);
     Py_DECREF(args);
     return ret;
+}
+
+static PyObject *
+Markup_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
+{
+    PyObject *self, *text, *tmp, *args2;
+    int nargs, i;
+
+    nargs = PyTuple_GET_SIZE(args);
+    if (nargs < 2) {
+        return PyUnicode_Type.tp_new(type, args, NULL);
+    }
+
+    text = PyTuple_GET_ITEM(args, 0);
+    args2 = PyTuple_New(nargs - 1);
+    if (args2 == NULL) {
+        return NULL;
+    }
+    for (i = 1; i < nargs; i++) {
+        tmp = escape(PyTuple_GET_ITEM(args, i), 1);
+        if (tmp == NULL) {
+            Py_DECREF(args2);
+            return NULL;
+        }
+        PyTuple_SET_ITEM(args2, i - 1, tmp);
+    }
+    tmp = PyUnicode_Format(text, args2);
+    Py_DECREF(args2);
+    if (tmp == NULL) {
+        return NULL;
+    }
+    args = PyTuple_New(1);
+    if (args == NULL) {
+        Py_DECREF(tmp);
+        return NULL;
+    }
+    PyTuple_SET_ITEM(args, 0, tmp);
+    self = PyUnicode_Type.tp_new(type, args, NULL);
+    Py_DECREF(args);
+    return self;
 }
 
 PyDoc_STRVAR(escape__doc__,
@@ -389,13 +393,8 @@ Markup_stripentities(PyObject* self, PyObject *args, PyObject *kwds)
         return NULL;
     }
 
-    module = PyImport_ImportModule("genshi.core");
-    if (module == NULL) return NULL;
-    func = PyObject_GetAttrString(module, "stripentities");
-    Py_DECREF(module);
-    if (func == NULL) return NULL;
-    result = PyObject_CallFunction(func, "Ob", self, keepxml);
-    Py_DECREF(func);
+    if (stripentities == NULL) return NULL;
+    result = PyObject_CallFunction(stripentities, "Ob", self, keepxml);
     if (result == NULL) return NULL;
     args2 = PyTuple_New(1);
     if (args2 == NULL) {
@@ -416,13 +415,8 @@ Markup_striptags(PyObject* self)
 {
     PyObject *module, *func, *result, *args;
 
-    module = PyImport_ImportModule("genshi.core");
-    if (module == NULL) return NULL;
-    func = PyObject_GetAttrString(module, "striptags");
-    Py_DECREF(module);
-    if (func == NULL) return NULL;
-    result = PyObject_CallFunction(func, "O", self);
-    Py_DECREF(func);
+    if (striptags == NULL) return NULL;
+    result = PyObject_CallFunction(striptags, "O", self);
     if (result == NULL) return NULL;
     args = PyTuple_New(1);
     if (args == NULL) {

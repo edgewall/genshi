@@ -133,6 +133,10 @@ class ExpressionTestCase(unittest.TestCase):
         self.assertEqual(1, Expression("1 | 0").evaluate({}))
         self.assertEqual(1, Expression("x | y").evaluate({'x': 1, 'y': 0}))
 
+    def test_binop_xor(self):
+        self.assertEqual(1, Expression("1 ^ 0").evaluate({}))
+        self.assertEqual(1, Expression("x ^ y").evaluate({'x': 1, 'y': 0}))
+
     def test_binop_contains(self):
         self.assertEqual(True, Expression("1 in (1, 2, 3)").evaluate({}))
         self.assertEqual(True, Expression("x in y").evaluate({'x': 1,

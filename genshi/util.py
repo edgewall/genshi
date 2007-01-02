@@ -13,6 +13,9 @@
 
 """Various utility classes and functions."""
 
+import htmlentitydefs
+import re
+
 
 class LRUCache(dict):
     """A dictionary-like object that stores only a certain number of items, and
@@ -150,3 +153,66 @@ def flatten(items):
         else:
             retval.append(item)
     return retval
+
+def plaintext(text, keeplinebreaks=True):
+    """Returns the text as a `unicode` string with all entities and tags
+    removed.
+    """
+    text = stripentities(striptags(text))
+    if not keeplinebreaks:
+        text = text.replace(u'\n', u' ')
+    return text
+
+_STRIPENTITIES_RE = re.compile(r'&(?:#((?:\d+)|(?:[xX][0-9a-fA-F]+));?|(\w+);)')
+def stripentities(text, keepxmlentities=False):
+    """Return a copy of the given text with any character or numeric entities
+    replaced by the equivalent UTF-8 characters.
+    
+    >>> stripentities('1 &lt; 2')
+    u'1 < 2'
+    >>> stripentities('more &hellip;')
+    u'more \u2026'
+    >>> stripentities('&#8230;')
+    u'\u2026'
+    >>> stripentities('&#x2026;')
+    u'\u2026'
+    
+    If the `keepxmlentities` parameter is provided and is a truth value, the
+    core XML entities (&amp;, &apos;, &gt;, &lt; and &quot;) are left intact.
+
+    >>> stripentities('1 &lt; 2 &hellip;', keepxmlentities=True)
+    u'1 &lt; 2 \u2026'
+    """
+    def _replace_entity(match):
+        if match.group(1): # numeric entity
+            ref = match.group(1)
+            if ref.startswith('x'):
+                ref = int(ref[1:], 16)
+            else:
+                ref = int(ref, 10)
+            return unichr(ref)
+        else: # character entity
+            ref = match.group(2)
+            if keepxmlentities and ref in ('amp', 'apos', 'gt', 'lt', 'quot'):
+                return u'&%s;' % ref
+            try:
+                return unichr(htmlentitydefs.name2codepoint[ref])
+            except KeyError:
+                if keepxmlentities:
+                    return u'&amp;%s;' % ref
+                else:
+                    return ref
+    return _STRIPENTITIES_RE.sub(_replace_entity, text)
+
+_STRIPTAGS_RE = re.compile(r'<[^>]*?>')
+def striptags(text):
+    """Return a copy of the text with all XML/HTML tags removed.
+    
+    >>> striptags('<span>Foo</span> bar')
+    'Foo bar'
+    >>> striptags('<span class="bar">Foo</span>')
+    'Foo'
+    >>> striptags('Foo<br />')
+    'Foo'
+    """
+    return _STRIPTAGS_RE.sub('', text)

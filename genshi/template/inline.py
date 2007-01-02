@@ -68,7 +68,7 @@ def _assign(ast):
             for idx, child in enumerate(node.nodes):
                 _build(child, indices + (idx,))
         elif isinstance(node, (compiler.ast.AssName, compiler.ast.Name)):
-            buf.append('"%s": v%s' % (node.name, ''.join(['[%s]' % i for i in indices])))
+            buf.append('%r: v%s' % (node.name, ''.join(['[%s]' % i for i in indices])))
     _build(ast, ())
     return '{%s}' % ', '.join(buf)
 
@@ -120,7 +120,7 @@ def inline(template):
                 for line in _predecl_vars(substream):
                     yield line
 
-    def _predecl_funcs(stream):
+    def _predecl_defs(stream):
         for kind, data, pos in stream:
             if kind is SUB:
                 directives, substream = data
@@ -144,28 +144,28 @@ def inline(template):
                 yield line
             return
 
-        directive = directives[0]
-        directives = directives[1:]
+        d = directives[0]
+        rest = directives[1:]
 
-        if isinstance(directive, DefDirective):
-            return
+        if isinstance(d, DefDirective):
+            return # already added
 
         yield w()
-        yield w('# Applying %r', directive)
+        yield w('# Applying %r', d)
 
-        if isinstance(directive, ForDirective):
-            yield w('for v in e[%d].evaluate(ctxt):', index['E'][directive.expr])
+        if isinstance(d, ForDirective):
+            yield w('for v in e[%d].evaluate(ctxt):', index['E'][d.expr])
             w.shift()
-            yield w('ctxt.push(%s)', _assign(directive.target))
-            for line in _apply(directives, stream):
+            yield w('ctxt.push(%s)', _assign(d.target))
+            for line in _apply(rest, stream):
                 yield line
             yield w('ctxt.pop()')
             w.unshift()
 
-        elif isinstance(directive, IfDirective):
-            yield w('if e[%d].evaluate(ctxt):', index['E'][directive.expr])
+        elif isinstance(d, IfDirective):
+            yield w('if e[%d].evaluate(ctxt):', index['E'][d.expr])
             w.shift()
-            for line in _apply(directives, stream):
+            for line in _apply(rest, stream):
                 yield line
             w.unshift()
 
@@ -248,7 +248,7 @@ def inline(template):
 
     # Define macro functions
     defs = []
-    for line in _predecl_funcs(template.stream):
+    for line in _predecl_defs(template.stream):
         yield line
     if defs:
         yield w()

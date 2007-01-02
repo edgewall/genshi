@@ -98,21 +98,21 @@ class XMLSerializer(object):
                         ns_attrib.append((QName('xmlns'), namespace))
                 buf = ['<', tagname]
 
-                for attr, value in attrib + tuple(ns_attrib):
+                if ns_attrib:
+                    attrib += tuple(ns_attrib)
+                for attr, value in attrib:
                     attrname = attr.localname
-                    if attr.namespace:
-                        prefix = ns_mapping.get(attr.namespace)
+                    attrns = attr.namespace
+                    if attrns:
+                        prefix = ns_mapping.get(attrns)
                         if prefix:
                             attrname = '%s:%s' % (prefix, attrname)
                     buf += [' ', attrname, '="', escape(value), '"']
                 ns_attrib = []
 
-                if kind is EMPTY:
-                    buf += ['/>']
-                else:
-                    buf += ['>']
+                buf.append(kind is EMPTY and '/>' or '>')
 
-                yield Markup(''.join(buf))
+                yield Markup(u''.join(buf))
 
             elif kind is END:
                 tag = data
@@ -136,13 +136,13 @@ class XMLSerializer(object):
                 name, pubid, sysid = data
                 buf = ['<!DOCTYPE %s']
                 if pubid:
-                    buf += [' PUBLIC "%s"']
+                    buf.append(' PUBLIC "%s"')
                 elif sysid:
-                    buf += [' SYSTEM']
+                    buf.append(' SYSTEM')
                 if sysid:
-                    buf += [' "%s"']
-                buf += ['>\n']
-                yield Markup(''.join(buf), *filter(None, data))
+                    buf.append(' "%s"')
+                buf.append('>\n')
+                yield Markup(u''.join(buf), *filter(None, data))
                 have_doctype = True
 
             elif kind is START_NS:
@@ -216,10 +216,13 @@ class XHTMLSerializer(XMLSerializer):
                         ns_attrib.append((QName('xmlns'), tagns))
                 buf = ['<', tagname]
 
-                for attr, value in chain(attrib, ns_attrib):
+                if ns_attrib:
+                    attrib += tuple(ns_attrib)
+                for attr, value in attrib:
                     attrname = attr.localname
-                    if attr.namespace:
-                        prefix = ns_mapping.get(attr.namespace)
+                    attrns = attr.namespace
+                    if attrns:
+                        prefix = ns_mapping.get(attrns)
                         if prefix:
                             attrname = '%s:%s' % (prefix, attrname)
                     if attrname in boolean_attrs:
@@ -231,14 +234,14 @@ class XHTMLSerializer(XMLSerializer):
 
                 if kind is EMPTY:
                     if (tagns and tagns != namespace.uri) \
-                            or tag.localname in empty_elems:
-                        buf += [' />']
+                            or tagname in empty_elems:
+                        buf.append(' />')
                     else:
-                        buf += ['></%s>' % tagname]
+                        buf.append('></%s>' % tagname)
                 else:
-                    buf += ['>']
+                    buf.append('>')
 
-                yield Markup(''.join(buf))
+                yield Markup(u''.join(buf))
 
             elif kind is END:
                 tag = data
@@ -262,13 +265,13 @@ class XHTMLSerializer(XMLSerializer):
                 name, pubid, sysid = data
                 buf = ['<!DOCTYPE %s']
                 if pubid:
-                    buf += [' PUBLIC "%s"']
+                    buf.append(' PUBLIC "%s"')
                 elif sysid:
-                    buf += [' SYSTEM']
+                    buf.append(' SYSTEM')
                 if sysid:
-                    buf += [' "%s"']
-                buf += ['>\n']
-                yield Markup(''.join(buf), *filter(None, data))
+                    buf.append(' "%s"')
+                buf.append('>\n')
+                yield Markup(u''.join(buf), *filter(None, data))
                 have_doctype = True
 
             elif kind is START_NS:
@@ -349,13 +352,13 @@ class HTMLSerializer(XHTMLSerializer):
                             else:
                                 buf += [' ', attrname, '="', escape(value), '"']
 
-                    buf += ['>']
+                    buf.append('>')
 
                     if kind is EMPTY:
                         if tagname not in empty_elems:
-                            buf += ['</%s>' % tagname]
+                            buf.append('</%s>' % tagname)
 
-                    yield Markup(''.join(buf))
+                    yield Markup(u''.join(buf))
 
                     if tagname in noescape_elems:
                         noescape = True
@@ -380,13 +383,13 @@ class HTMLSerializer(XHTMLSerializer):
                 name, pubid, sysid = data
                 buf = ['<!DOCTYPE %s']
                 if pubid:
-                    buf += [' PUBLIC "%s"']
+                    buf.append(' PUBLIC "%s"')
                 elif sysid:
-                    buf += [' SYSTEM']
+                    buf.append(' SYSTEM')
                 if sysid:
-                    buf += [' "%s"']
-                buf += ['>\n']
-                yield Markup(''.join(buf), *filter(None, data))
+                    buf.append(' "%s"')
+                buf.append('>\n')
+                yield Markup(u''.join(buf), *filter(None, data))
                 have_doctype = True
 
             elif kind is START_NS and data[1] not in ns_mapping:
@@ -460,7 +463,7 @@ class WhitespaceFilter(object):
         """Initialize the filter.
         
         @param preserve: a set or sequence of tag names for which white-space
-            should be ignored.
+            should be preserved
         @param noescape: a set or sequence of tag names for which text content
             should not be escaped
         

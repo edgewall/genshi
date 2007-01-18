@@ -15,6 +15,7 @@ import doctest
 import sys
 import unittest
 
+from genshi.core import Markup
 from genshi.template.eval import Expression, Undefined
 
 
@@ -35,6 +36,12 @@ class ExpressionTestCase(unittest.TestCase):
         self.assertEqual(id, Expression('id').evaluate({}))
         self.assertEqual('bar', Expression('id').evaluate({'id': 'bar'}))
         self.assertEqual(None, Expression('id').evaluate({'id': None}))
+
+    def test_builtins(self):
+        expr = Expression('Markup')
+        self.assertEqual(expr.evaluate({}), Markup)
+        expr = Expression('Undefined')
+        self.assertEqual(expr.evaluate({}), Undefined)
 
     def test_str_literal(self):
         self.assertEqual('foo', Expression('"foo"').evaluate({}))

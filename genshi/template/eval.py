@@ -22,6 +22,7 @@ try:
 except NameError:
     from sets import Set as set
 
+from genshi.core import Markup
 from genshi.util import flatten
 
 __all__ = ['Expression', 'Undefined']
@@ -200,7 +201,7 @@ def _compile(node, source=None, filename=None, lineno=-1):
                     lineno, code.co_lnotab, (), ())
 
 BUILTINS = __builtin__.__dict__.copy()
-BUILTINS['Undefined'] = Undefined
+BUILTINS.update({'Markup': Markup, 'Undefined': Undefined})
 _UNDEF = Undefined(None)
 
 def _lookup_name(data, name):

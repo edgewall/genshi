@@ -15,7 +15,7 @@
 
 import re
 
-from genshi.template.core import BadDirectiveError, Template, SUB
+from genshi.template.base import BadDirectiveError, Template, SUB
 from genshi.template.directives import *
 
 

@@ -20,7 +20,7 @@ from pkg_resources import resource_filename
 
 from genshi.input import ET, HTML, XML
 from genshi.output import DocType
-from genshi.template.core import Context, Template
+from genshi.template.base import Context, Template
 from genshi.template.eval import Undefined
 from genshi.template.loader import TemplateLoader
 from genshi.template.markup import MarkupTemplate

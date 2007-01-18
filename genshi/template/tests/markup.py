@@ -21,7 +21,7 @@ import unittest
 
 from genshi.core import Markup
 from genshi.input import XML
-from genshi.template.core import BadDirectiveError, TemplateSyntaxError
+from genshi.template.base import BadDirectiveError, TemplateSyntaxError
 from genshi.template.loader import TemplateLoader
 from genshi.template.markup import MarkupTemplate
 

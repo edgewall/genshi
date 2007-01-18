@@ -13,7 +13,7 @@
 
 """Implementation of the template engine."""
 
-from genshi.template.core import Context, Template, TemplateError, \
+from genshi.template.base import Context, Template, TemplateError, \
                                  TemplateRuntimeError, TemplateSyntaxError, \
                                  BadDirectiveError
 from genshi.template.loader import TemplateLoader, TemplateNotFound

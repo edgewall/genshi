@@ -15,7 +15,7 @@ import doctest
 import unittest
 
 from genshi.core import Stream
-from genshi.template.core import Template, TemplateSyntaxError
+from genshi.template.base import Template, TemplateSyntaxError
 
 
 class TemplateTestCase(unittest.TestCase):

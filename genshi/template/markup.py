@@ -18,7 +18,7 @@ from itertools import chain
 from genshi.core import Attrs, Namespace, Stream, StreamEventKind
 from genshi.core import START, END, START_NS, END_NS, TEXT, COMMENT
 from genshi.input import XMLParser
-from genshi.template.core import BadDirectiveError, Template, \
+from genshi.template.base import BadDirectiveError, Template, \
                                  _apply_directives, SUB
 from genshi.template.loader import TemplateNotFound
 from genshi.template.directives import *

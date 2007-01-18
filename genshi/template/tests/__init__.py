@@ -16,10 +16,10 @@ import unittest
 
 
 def suite():
-    from genshi.template.tests import core, directives, eval, loader, markup, \
+    from genshi.template.tests import base, directives, eval, loader, markup, \
                                       plugin, text
     suite = unittest.TestSuite()
-    suite.addTest(core.suite())
+    suite.addTest(base.suite())
     suite.addTest(directives.suite())
     suite.addTest(eval.suite())
     suite.addTest(loader.suite())

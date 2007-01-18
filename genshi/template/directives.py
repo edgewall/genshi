@@ -17,7 +17,7 @@ import compiler
 
 from genshi.core import Attrs, Stream
 from genshi.path import Path
-from genshi.template.core import TemplateRuntimeError, TemplateSyntaxError, \
+from genshi.template.base import TemplateRuntimeError, TemplateSyntaxError, \
                                  EXPR, _apply_directives
 from genshi.template.eval import Expression, _parse
 

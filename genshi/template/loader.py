@@ -19,7 +19,7 @@ try:
 except ImportError:
     import dummy_threading as threading
 
-from genshi.template.core import TemplateError
+from genshi.template.base import TemplateError
 from genshi.util import LRUCache
 
 __all__ = ['TemplateLoader', 'TemplateNotFound']

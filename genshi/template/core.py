@@ -17,9 +17,11 @@ except ImportError:
     class deque(list):
         def appendleft(self, x): self.insert(0, x)
         def popleft(self): return self.pop(0)
+from itertools import chain
 import os
 import re
 from StringIO import StringIO
+from tokenize import tokenprog
 
 from genshi.core import Attrs, Stream, StreamEventKind, START, TEXT, _ensure
 from genshi.template.eval import Expression
@@ -198,9 +200,6 @@ class Template(object):
         """
         raise NotImplementedError
 
-    _FULL_EXPR_RE = re.compile(r'(?<!\$)\$\{(.+?)\}', re.DOTALL)
-    _SHORT_EXPR_RE = re.compile(r'(?<!\$)\$([a-zA-Z_][a-zA-Z0-9_\.]*)')
-
     def _interpolate(cls, text, basedir=None, filename=None, lineno=-1,
                      offset=0):
         """Parse the given string and extract expressions.
@@ -216,29 +215,94 @@ class Template(object):
         filepath = filename
         if filepath and basedir:
             filepath = os.path.join(basedir, filepath)
-        def _interpolate(text, patterns, lineno=lineno, offset=offset):
-            for idx, grp in enumerate(patterns.pop(0).split(text)):
-                if idx % 2:
-                    try:
-                        yield EXPR, Expression(grp.strip(), filepath, lineno), \
-                              (filename, lineno, offset)
-                    except SyntaxError, err:
-                        raise TemplateSyntaxError(err, filepath, lineno,
-                                                  offset + (err.offset or 0))
-                elif grp:
-                    if patterns:
-                        for result in _interpolate(grp, patterns[:]):
-                            yield result
-                    else:
-                        yield TEXT, grp.replace('$$', '$'), \
-                              (filename, lineno, offset)
-                if '\n' in grp:
-                    lines = grp.splitlines()
-                    lineno += len(lines) - 1
-                    offset += len(lines[-1])
+
+        namestart = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_'
+        namechars = namestart + '.0123456789'
+
+        def _split():
+            pos = 0
+            end = len(text)
+            escaped = False
+
+            while 1:
+                if escaped:
+                    offset = text.find('$', offset + 2)
+                    escaped = False
                 else:
-                    offset += len(grp)
-        return _interpolate(text, [cls._FULL_EXPR_RE, cls._SHORT_EXPR_RE])
+                    offset = text.find('$', pos)
+                if offset < 0 or offset == end - 1:
+                    break
+                next = text[offset + 1]
+
+                if next == '{':
+                    if offset > pos:
+                        yield False, text[pos:offset]
+                    pos = offset + 2
+                    level = 1
+                    while level:
+                        match = tokenprog.match(text, pos)
+                        if match is None:
+                            raise TemplateSyntaxError('invalid syntax',
+                                                      filename, lineno, offset)
+                        pos = match.end()
+                        tstart, tend = match.regs[3]
+                        token = text[tstart:tend]
+                        if token == '{':
+                            level += 1
+                        elif token == '}':
+                            level -= 1
+                    yield True, text[offset + 2:pos - 1]
+
+                elif next in namestart:
+                    if offset > pos:
+                        yield False, text[pos:offset]
+                        pos = offset
+                    pos += 1
+                    while pos < end:
+                        char = text[pos]
+                        if char not in namechars:
+                            break
+                        pos += 1
+                    yield True, text[offset + 1:pos].strip()
+
+                elif not escaped and next == '$':
+                    escaped = True
+                    pos = offset + 1
+
+                else:
+                    yield False, text[pos:offset + 1]
+                    pos = offset + 1
+
+            if pos < end:
+                yield False, text[pos:]
+
+        textbuf = []
+        textpos = None
+        for is_expr, chunk in chain(_split(), [(True, '')]):
+            if is_expr:
+                if textbuf:
+                    yield TEXT, u''.join(textbuf), textpos
+                    del textbuf[:]
+                    textpos = None
+                if chunk:
+                    try:
+                        expr = Expression(chunk.strip(), filename, lineno)
+                        yield EXPR, expr, (filename, lineno, offset)
+                    except SyntaxError, err:
+                        raise TemplateSyntaxError(err, filename, lineno,
+                                                  offset + (err.offset or 0))
+            else:
+                textbuf.append(chunk)
+                if textpos is None:
+                    textpos = (filename, lineno, offset)
+
+            if '\n' in chunk:
+                lines = chunk.splitlines()
+                lineno += len(lines) - 1
+                offset += len(lines[-1])
+            else:
+                offset += len(chunk)
+
     _interpolate = classmethod(_interpolate)
 
     def _prepare(self, stream):

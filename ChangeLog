@@ -30,7 +30,10 @@ http://svn.edgewall.org/repos/genshi/tags/0.4.0/
  * `MarkupTemplate`s can now be instantiated from markup streams, in addition
    to strings and file-like objects (ticket #69).
  * Improve handling of incorrectly nested tags in the HTML parser.
- * Template includes can you be nested inside fallback content.
+ * Template includes can now be nested inside fallback content.
+ * Expressions can now contain dict literals (ticket #37).
+ * It is now possible to have one or more escaped dollar signs in front of a 
+   full expression (ticket #92).
 
 
 Version 0.3.6

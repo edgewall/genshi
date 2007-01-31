@@ -23,8 +23,8 @@ except NameError:
 import re
 
 from genshi.core import escape, Markup, Namespace, QName, StreamEventKind
-from genshi.core import DOCTYPE, START, END, START_NS, TEXT, START_CDATA, \
-                        END_CDATA, PI, COMMENT, XML_NAMESPACE
+from genshi.core import DOCTYPE, START, END, START_NS, END_NS, TEXT, \
+                        START_CDATA, END_CDATA, PI, COMMENT, XML_NAMESPACE
 
 __all__ = ['DocType', 'XMLSerializer', 'XHTMLSerializer', 'HTMLSerializer',
            'TextSerializer']
@@ -75,7 +75,7 @@ class XMLSerializer(object):
 
     def __call__(self, stream):
         ns_attrib = []
-        ns_mapping = {XML_NAMESPACE.uri: 'xml'}
+        ns_mapping = {XML_NAMESPACE.uri: ['xml']}
         have_doctype = False
         in_cdata = False
 
@@ -88,14 +88,14 @@ class XMLSerializer(object):
                 tag, attrib = data
 
                 tagname = tag.localname
-                namespace = tag.namespace
-                if namespace:
-                    if namespace in ns_mapping:
-                        prefix = ns_mapping[namespace]
-                        if prefix:
-                            tagname = '%s:%s' % (prefix, tagname)
+                tagns = tag.namespace
+                if tagns:
+                    if tagns in ns_mapping:
+                        prefix = ns_mapping.get(tagns)
+                        if prefix and prefix[-1]:
+                            tagname = '%s:%s' % (prefix[-1], tagname)
                     else:
-                        ns_attrib.append((QName('xmlns'), namespace))
+                        ns_attrib.append((QName('xmlns'), tagns))
                 buf = ['<', tagname]
 
                 if ns_attrib:
@@ -105,8 +105,8 @@ class XMLSerializer(object):
                     attrns = attr.namespace
                     if attrns:
                         prefix = ns_mapping.get(attrns)
-                        if prefix:
-                            attrname = '%s:%s' % (prefix, attrname)
+                        if prefix and prefix[-1]:
+                            attrname = '%s:%s' % (prefix[-1], attrname)
                     buf += [' ', attrname, '="', escape(value), '"']
                 ns_attrib = []
 
@@ -119,8 +119,8 @@ class XMLSerializer(object):
                 tagname = tag.localname
                 if tag.namespace:
                     prefix = ns_mapping.get(tag.namespace)
-                    if prefix:
-                        tagname = '%s:%s' % (prefix, tag.localname)
+                    if prefix and prefix[-1]:
+                        tagname = '%s:%s' % (prefix[-1], tagname)
                 yield Markup('</%s>' % tagname)
 
             elif kind is TEXT:
@@ -148,11 +148,18 @@ class XMLSerializer(object):
             elif kind is START_NS:
                 prefix, uri = data
                 if uri not in ns_mapping:
-                    ns_mapping[uri] = prefix
                     if not prefix:
                         ns_attrib.append((QName('xmlns'), uri))
                     else:
                         ns_attrib.append((QName('xmlns:%s' % prefix), uri))
+                ns_mapping.setdefault(uri, []).append(prefix)
+
+            elif kind is END_NS:
+                for uri, prefix in ns_mapping.items():
+                    if prefix[-1] == data:
+                        prefix.pop()
+                        if not prefix:
+                            del ns_mapping[uri]
 
             elif kind is START_CDATA:
                 yield Markup('<![CDATA[')
@@ -191,7 +198,7 @@ class XHTMLSerializer(XMLSerializer):
     def __call__(self, stream):
         namespace = self.NAMESPACE
         ns_attrib = []
-        ns_mapping = {XML_NAMESPACE.uri: 'xml'}
+        ns_mapping = {XML_NAMESPACE.uri: ['xml']}
         boolean_attrs = self._BOOLEAN_ATTRS
         empty_elems = self._EMPTY_ELEMS
         have_doctype = False
@@ -209,9 +216,9 @@ class XHTMLSerializer(XMLSerializer):
                 tagns = tag.namespace
                 if tagns:
                     if tagns in ns_mapping:
-                        prefix = ns_mapping[tagns]
-                        if prefix:
-                            tagname = '%s:%s' % (prefix, tagname)
+                        prefix = ns_mapping.get(tagns)
+                        if prefix and prefix[-1]:
+                            tagname = '%s:%s' % (prefix[-1], tagname)
                     else:
                         ns_attrib.append((QName('xmlns'), tagns))
                 buf = ['<', tagname]
@@ -223,8 +230,8 @@ class XHTMLSerializer(XMLSerializer):
                     attrns = attr.namespace
                     if attrns:
                         prefix = ns_mapping.get(attrns)
-                        if prefix:
-                            attrname = '%s:%s' % (prefix, attrname)
+                        if prefix and prefix[-1]:
+                            attrname = '%s:%s' % (prefix[-1], attrname)
                     if attrname in boolean_attrs:
                         if value:
                             buf += [' ', attrname, '="', attrname, '"']
@@ -248,8 +255,8 @@ class XHTMLSerializer(XMLSerializer):
                 tagname = tag.localname
                 if tag.namespace:
                     prefix = ns_mapping.get(tag.namespace)
-                    if prefix:
-                        tagname = '%s:%s' % (prefix, tagname)
+                    if prefix and prefix[-1]:
+                        tagname = '%s:%s' % (prefix[-1], tagname)
                 yield Markup('</%s>' % tagname)
 
             elif kind is TEXT:
@@ -277,11 +284,18 @@ class XHTMLSerializer(XMLSerializer):
             elif kind is START_NS:
                 prefix, uri = data
                 if uri not in ns_mapping:
-                    ns_mapping[uri] = prefix
                     if not prefix:
                         ns_attrib.append((QName('xmlns'), uri))
                     else:
                         ns_attrib.append((QName('xmlns:%s' % prefix), uri))
+                ns_mapping.setdefault(uri, []).append(prefix)
+
+            elif kind is END_NS:
+                for uri, prefix in ns_mapping.items():
+                    if prefix[-1] == data:
+                        prefix.pop()
+                        if not prefix:
+                            del ns_mapping[uri]
 
             elif kind is START_CDATA:
                 yield Markup('<![CDATA[')

@@ -87,19 +87,19 @@ class XMLSerializerTestCase(unittest.TestCase):
     def test_nested_default_namespaces(self):
         stream = Stream([
             (Stream.START_NS, ('', 'http://example.org/'), (None, -1, -1)),
-            (Stream.START, (QName('div'), Attrs()), (None, -1, -1)),
+            (Stream.START, (QName('http://example.org/}div'), Attrs()), (None, -1, -1)),
             (Stream.TEXT, '\n          ', (None, -1, -1)),
             (Stream.START_NS, ('', 'http://example.org/'), (None, -1, -1)),
-            (Stream.START, (QName('p'), Attrs()), (None, -1, -1)),
-            (Stream.END, QName('p'), (None, -1, -1)),
+            (Stream.START, (QName('http://example.org/}p'), Attrs()), (None, -1, -1)),
+            (Stream.END, QName('http://example.org/}p'), (None, -1, -1)),
             (Stream.END_NS, '', (None, -1, -1)),
             (Stream.TEXT, '\n          ', (None, -1, -1)),
             (Stream.START_NS, ('', 'http://example.org/'), (None, -1, -1)),
-            (Stream.START, (QName('p'), Attrs()), (None, -1, -1)),
-            (Stream.END, QName('p'), (None, -1, -1)),
+            (Stream.START, (QName('http://example.org/}p'), Attrs()), (None, -1, -1)),
+            (Stream.END, QName('http://example.org/}p'), (None, -1, -1)),
             (Stream.END_NS, '', (None, -1, -1)),
             (Stream.TEXT, '\n        ', (None, -1, -1)),
-            (Stream.END, QName('div'), (None, -1, -1)),
+            (Stream.END, QName('http://example.org/}div'), (None, -1, -1)),
             (Stream.END_NS, '', (None, -1, -1))
         ])
         output = stream.render(XMLSerializer)
@@ -111,25 +111,69 @@ class XMLSerializerTestCase(unittest.TestCase):
     def test_nested_bound_namespaces(self):
         stream = Stream([
             (Stream.START_NS, ('x', 'http://example.org/'), (None, -1, -1)),
-            (Stream.START, (QName('div'), Attrs()), (None, -1, -1)),
+            (Stream.START, (QName('http://example.org/}div'), Attrs()), (None, -1, -1)),
             (Stream.TEXT, '\n          ', (None, -1, -1)),
             (Stream.START_NS, ('x', 'http://example.org/'), (None, -1, -1)),
-            (Stream.START, (QName('p'), Attrs()), (None, -1, -1)),
-            (Stream.END, QName('p'), (None, -1, -1)),
+            (Stream.START, (QName('http://example.org/}p'), Attrs()), (None, -1, -1)),
+            (Stream.END, QName('http://example.org/}p'), (None, -1, -1)),
             (Stream.END_NS, 'x', (None, -1, -1)),
             (Stream.TEXT, '\n          ', (None, -1, -1)),
             (Stream.START_NS, ('x', 'http://example.org/'), (None, -1, -1)),
-            (Stream.START, (QName('p'), Attrs()), (None, -1, -1)),
-            (Stream.END, QName('p'), (None, -1, -1)),
+            (Stream.START, (QName('http://example.org/}p'), Attrs()), (None, -1, -1)),
+            (Stream.END, QName('http://example.org/}p'), (None, -1, -1)),
             (Stream.END_NS, 'x', (None, -1, -1)),
             (Stream.TEXT, '\n        ', (None, -1, -1)),
-            (Stream.END, QName('div'), (None, -1, -1)),
+            (Stream.END, QName('http://example.org/}div'), (None, -1, -1)),
             (Stream.END_NS, 'x', (None, -1, -1))
         ])
         output = stream.render(XMLSerializer)
-        self.assertEqual("""<div xmlns:x="http://example.org/">
-          <p/>
-          <p/>
+        self.assertEqual("""<x:div xmlns:x="http://example.org/">
+          <x:p/>
+          <x:p/>
+        </x:div>""", output)
+
+    def test_multiple_default_namespaces(self):
+        stream = Stream([
+            (Stream.START, (QName('div'), Attrs()), (None, -1, -1)),
+            (Stream.TEXT, '\n          ', (None, -1, -1)),
+            (Stream.START_NS, ('', 'http://example.org/'), (None, -1, -1)),
+            (Stream.START, (QName('http://example.org/}p'), Attrs()), (None, -1, -1)),
+            (Stream.END, QName('http://example.org/}p'), (None, -1, -1)),
+            (Stream.END_NS, '', (None, -1, -1)),
+            (Stream.TEXT, '\n          ', (None, -1, -1)),
+            (Stream.START_NS, ('', 'http://example.org/'), (None, -1, -1)),
+            (Stream.START, (QName('http://example.org/}p'), Attrs()), (None, -1, -1)),
+            (Stream.END, QName('http://example.org/}p'), (None, -1, -1)),
+            (Stream.END_NS, '', (None, -1, -1)),
+            (Stream.TEXT, '\n        ', (None, -1, -1)),
+            (Stream.END, QName('div'), (None, -1, -1)),
+        ])
+        output = stream.render(XMLSerializer)
+        self.assertEqual("""<div>
+          <p xmlns="http://example.org/"/>
+          <p xmlns="http://example.org/"/>
+        </div>""", output)
+
+    def test_multiple_bound_namespaces(self):
+        stream = Stream([
+            (Stream.START, (QName('div'), Attrs()), (None, -1, -1)),
+            (Stream.TEXT, '\n          ', (None, -1, -1)),
+            (Stream.START_NS, ('x', 'http://example.org/'), (None, -1, -1)),
+            (Stream.START, (QName('http://example.org/}p'), Attrs()), (None, -1, -1)),
+            (Stream.END, QName('http://example.org/}p'), (None, -1, -1)),
+            (Stream.END_NS, 'x', (None, -1, -1)),
+            (Stream.TEXT, '\n          ', (None, -1, -1)),
+            (Stream.START_NS, ('x', 'http://example.org/'), (None, -1, -1)),
+            (Stream.START, (QName('http://example.org/}p'), Attrs()), (None, -1, -1)),
+            (Stream.END, QName('http://example.org/}p'), (None, -1, -1)),
+            (Stream.END_NS, 'x', (None, -1, -1)),
+            (Stream.TEXT, '\n        ', (None, -1, -1)),
+            (Stream.END, QName('div'), (None, -1, -1)),
+        ])
+        output = stream.render(XMLSerializer)
+        self.assertEqual("""<div>
+          <x:p xmlns:x="http://example.org/"/>
+          <x:p xmlns:x="http://example.org/"/>
         </div>""", output)
 
 

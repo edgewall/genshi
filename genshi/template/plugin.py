@@ -21,7 +21,6 @@ from pkg_resources import resource_filename
 from genshi.input import ET, HTML, XML
 from genshi.output import DocType
 from genshi.template.base import Context, Template
-from genshi.template.eval import Undefined
 from genshi.template.loader import TemplateLoader
 from genshi.template.markup import MarkupTemplate
 from genshi.template.text import TextTemplate
@@ -98,7 +97,7 @@ class AbstractTemplateEnginePlugin(object):
 
         # Some functions for Kid compatibility
         def defined(name):
-            return ctxt.get(name, Undefined) is not Undefined
+            return name in ctxt
         ctxt['defined'] = defined
         def value_of(name, default=None):
             return ctxt.get(name, default)

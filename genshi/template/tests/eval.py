@@ -338,7 +338,7 @@ class ExpressionTestCase(unittest.TestCase):
                 frame = frame.tb_next
                 frames.append(frame)
             self.assertEqual('Variable "nothing" is not defined', str(e))
-            self.assertEqual('<Expression "nothing()">',
+            self.assertEqual("<Expression 'nothing()'>",
                              frames[-3].tb_frame.f_code.co_name)
             self.assertEqual('index.html',
                              frames[-3].tb_frame.f_code.co_filename)
@@ -357,7 +357,7 @@ class ExpressionTestCase(unittest.TestCase):
                 frame = frame.tb_next
                 frames.append(frame)
             self.assertEqual('Variable "nothing" is not defined', str(e))
-            self.assertEqual('<Expression "nothing.nil">',
+            self.assertEqual("<Expression 'nothing.nil'>",
                              frames[-3].tb_frame.f_code.co_name)
             self.assertEqual('index.html',
                              frames[-3].tb_frame.f_code.co_filename)
@@ -376,7 +376,7 @@ class ExpressionTestCase(unittest.TestCase):
                 frame = frame.tb_next
                 frames.append(frame)
             self.assertEqual('Variable "nothing" is not defined', str(e))
-            self.assertEqual('<Expression "nothing[0]">',
+            self.assertEqual("<Expression 'nothing[0]'>",
                              frames[-3].tb_frame.f_code.co_name)
             self.assertEqual('index.html',
                              frames[-3].tb_frame.f_code.co_filename)

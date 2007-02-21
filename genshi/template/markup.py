@@ -23,6 +23,7 @@ from genshi.input import XMLParser
 from genshi.template.base import BadDirectiveError, Template, \
                                  TemplateSyntaxError, _apply_directives, SUB
 from genshi.template.eval import Suite
+from genshi.template.interpolation import interpolate
 from genshi.template.loader import TemplateNotFound
 from genshi.template.directives import *
 
@@ -127,8 +128,7 @@ class MarkupTemplate(Template):
                         directives.append((cls, value, ns_prefix.copy(), pos))
                     else:
                         if value:
-                            value = list(self._interpolate(value, self.basedir,
-                                                           *pos))
+                            value = list(interpolate(value, self.basedir, *pos))
                             if len(value) == 1 and value[0][0] is TEXT:
                                 value = value[0][1]
                         else:
@@ -200,8 +200,7 @@ class MarkupTemplate(Template):
                 stream.append((EXEC, suite, pos))
 
             elif kind is TEXT:
-                for kind, data, pos in self._interpolate(data, self.basedir,
-                                                         *pos):
+                for kind, data, pos in interpolate(data, self.basedir, *pos):
                     stream.append((kind, data, pos))
 
             elif kind is COMMENT:

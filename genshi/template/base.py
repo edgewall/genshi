@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2006 Edgewall Software
+# Copyright (C) 2006-2007 Edgewall Software
 # All rights reserved.
 #
 # This software is licensed as described in the file COPYING, which
@@ -17,14 +17,10 @@ except ImportError:
     class deque(list):
         def appendleft(self, x): self.insert(0, x)
         def popleft(self): return self.pop(0)
-from itertools import chain
 import os
-import re
 from StringIO import StringIO
-from tokenize import tokenprog
 
 from genshi.core import Attrs, Stream, StreamEventKind, START, TEXT, _ensure
-from genshi.template.eval import Expression
 
 __all__ = ['Context', 'Template', 'TemplateError', 'TemplateRuntimeError',
            'TemplateSyntaxError', 'BadDirectiveError']
@@ -40,7 +36,8 @@ class TemplateRuntimeError(TemplateError):
 
     def __init__(self, message, filename='<string>', lineno=-1, offset=-1):
         self.msg = message
-        message = '%s (%s, line %d)' % (self.msg, filename, lineno)
+        if filename != '<string>' or lineno >= 0:
+            message = '%s (%s, line %d)' % (self.msg, filename, lineno)
         TemplateError.__init__(self, message)
         self.filename = filename
         self.lineno = lineno
@@ -228,111 +225,6 @@ class Template(object):
         data) and directives or expressions.
         """
         raise NotImplementedError
-
-    def _interpolate(cls, text, basedir=None, filename=None, lineno=-1,
-                     offset=0):
-        """Parse the given string and extract expressions.
-        
-        This method returns a list containing both literal text and `Expression`
-        objects.
-        
-        @param text: the text to parse
-        @param lineno: the line number at which the text was found (optional)
-        @param offset: the column number at which the text starts in the source
-            (optional)
-        """
-        filepath = filename
-        if filepath and basedir:
-            filepath = os.path.join(basedir, filepath)
-
-        namestart = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_'
-        namechars = namestart + '.0123456789'
-
-        def _split():
-            pos = 0
-            end = len(text)
-            escaped = False
-
-            while 1:
-                if escaped:
-                    offset = text.find('$', offset + 2)
-                    escaped = False
-                else:
-                    offset = text.find('$', pos)
-                if offset < 0 or offset == end - 1:
-                    break
-                next = text[offset + 1]
-
-                if next == '{':
-                    if offset > pos:
-                        yield False, text[pos:offset]
-                    pos = offset + 2
-                    level = 1
-                    while level:
-                        match = tokenprog.match(text, pos)
-                        if match is None:
-                            raise TemplateSyntaxError('invalid syntax',
-                                                      filename, lineno, offset)
-                        pos = match.end()
-                        tstart, tend = match.regs[3]
-                        token = text[tstart:tend]
-                        if token == '{':
-                            level += 1
-                        elif token == '}':
-                            level -= 1
-                    yield True, text[offset + 2:pos - 1]
-
-                elif next in namestart:
-                    if offset > pos:
-                        yield False, text[pos:offset]
-                        pos = offset
-                    pos += 1
-                    while pos < end:
-                        char = text[pos]
-                        if char not in namechars:
-                            break
-                        pos += 1
-                    yield True, text[offset + 1:pos].strip()
-
-                elif not escaped and next == '$':
-                    escaped = True
-                    pos = offset + 1
-
-                else:
-                    yield False, text[pos:offset + 1]
-                    pos = offset + 1
-
-            if pos < end:
-                yield False, text[pos:]
-
-        textbuf = []
-        textpos = None
-        for is_expr, chunk in chain(_split(), [(True, '')]):
-            if is_expr:
-                if textbuf:
-                    yield TEXT, u''.join(textbuf), textpos
-                    del textbuf[:]
-                    textpos = None
-                if chunk:
-                    try:
-                        expr = Expression(chunk.strip(), filename, lineno)
-                        yield EXPR, expr, (filename, lineno, offset)
-                    except SyntaxError, err:
-                        raise TemplateSyntaxError(err, filename, lineno,
-                                                  offset + (err.offset or 0))
-            else:
-                textbuf.append(chunk)
-                if textpos is None:
-                    textpos = (filename, lineno, offset)
-
-            if '\n' in chunk:
-                lines = chunk.splitlines()
-                lineno += len(lines) - 1
-                offset += len(lines[-1])
-            else:
-                offset += len(chunk)
-
-    _interpolate = classmethod(_interpolate)
 
     def _prepare(self, stream):
         """Call the `attach` method of every directive found in the template."""

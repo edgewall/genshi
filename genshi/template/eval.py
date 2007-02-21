@@ -223,7 +223,7 @@ def _compile(node, source=None, mode='eval', filename=None, lineno=-1):
 
     if mode == 'eval':
         gen = ExpressionCodeGenerator(tree)
-        name = '<Expression %s>' % (repr(source or '?').replace("'", '"'))
+        name = '<Expression %s>' % (repr(source or '?'))
     else:
         gen = ModuleCodeGenerator(tree)
         name = '<Suite>'
@@ -293,7 +293,7 @@ class ASTTransformer(object):
         if not v:
             v = getattr(self.__class__, 'visit%s' % node.__class__.__name__,
                         self.__class__._visitDefault)
-            #self._visitors[node.__class__] = v
+            self._visitors[node.__class__] = v
         return v(self, node)
 
     def _visitDefault(self, node):

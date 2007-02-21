@@ -19,7 +19,7 @@ except NameError:
     from sets import ImmutableSet as frozenset
 import re
 
-from genshi.core import Attrs, stripentities
+from genshi.core import Attrs, QName, stripentities
 from genshi.core import END, START, TEXT
 
 __all__ = ['HTMLFormFiller', 'HTMLSanitizer']
@@ -102,7 +102,7 @@ class HTMLFormFiller(object):
                                     elif type == 'checkbox':
                                         checked = bool(value)
                                 if checked:
-                                    attrs |= [('checked', 'checked')]
+                                    attrs |= [(QName('checked'), 'checked')]
                                 elif 'checked' in attrs:
                                     attrs -= 'checked'
                         elif type in (None, 'hidden', 'text'):
@@ -112,7 +112,7 @@ class HTMLFormFiller(object):
                                 if isinstance(value, (list, tuple)):
                                     value = value[0]
                                 if value is not None:
-                                    attrs |= [('value', unicode(value))]
+                                    attrs |= [(QName('value'), unicode(value))]
                     elif tagname == 'select':
                         name = attrs.get('name')
                         select_value = self.data.get(name)
@@ -155,7 +155,7 @@ class HTMLFormFiller(object):
                         selected = option_value == select_value
                     okind, (tag, attrs), opos = option_start
                     if selected:
-                        attrs |= [('selected', 'selected')]
+                        attrs |= [(QName('selected'), 'selected')]
                     elif 'selected' in attrs:
                         attrs -= 'selected'
                     yield okind, (tag, attrs), opos

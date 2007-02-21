@@ -82,7 +82,7 @@ def _value_to_unicode(value):
     return unicode(value)
 
 def _kwargs_to_attrs(kwargs):
-    return [(k.rstrip('_').replace('_', '-'), _value_to_unicode(v))
+    return [(QName(k.rstrip('_').replace('_', '-')), _value_to_unicode(v))
             for k, v in kwargs.items() if v is not None]
 
 

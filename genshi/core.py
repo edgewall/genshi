@@ -222,13 +222,13 @@ class Attrs(tuple):
     
     >>> attrs = Attrs([('href', '#'), ('title', 'Foo')])
     >>> attrs
-    Attrs([(QName(u'href'), '#'), (QName(u'title'), 'Foo')])
+    Attrs([('href', '#'), ('title', 'Foo')])
     
     >>> 'href' in attrs
     True
     >>> 'tabindex' in attrs
     False
-    >>> attrs.get(u'title')
+    >>> attrs.get('title')
     'Foo'
     
     Instances may not be manipulated directly. Instead, the operators `|` and
@@ -240,7 +240,7 @@ class Attrs(tuple):
     the attribute(s) to remove:
     
     >>> attrs - 'title'
-    Attrs([(QName(u'href'), '#')])
+    Attrs([('href', '#')])
     >>> attrs - ('title', 'href')
     Attrs()
     
@@ -248,33 +248,25 @@ class Attrs(tuple):
     used with an assignment:
 
     >>> attrs
-    Attrs([(QName(u'href'), '#'), (QName(u'title'), 'Foo')])
+    Attrs([('href', '#'), ('title', 'Foo')])
     >>> attrs -= 'title'
     >>> attrs
-    Attrs([(QName(u'href'), '#')])
+    Attrs([('href', '#')])
     
     To add a new attribute, use the `|` operator, where the right hand value
     is a sequence of `(name, value)` tuples (which includes `Attrs` instances):
     
-    >>> attrs | [(u'title', 'Bar')]
-    Attrs([(QName(u'href'), '#'), (QName(u'title'), 'Bar')])
+    >>> attrs | [('title', 'Bar')]
+    Attrs([('href', '#'), ('title', 'Bar')])
     
     If the attributes already contain an attribute with a given name, the value
     of that attribute is replaced:
     
-    >>> attrs | [(u'href', 'http://example.org/')]
-    Attrs([(QName(u'href'), 'http://example.org/')])
+    >>> attrs | [('href', 'http://example.org/')]
+    Attrs([('href', 'http://example.org/')])
     
     """
     __slots__ = []
-
-    def __new__(cls, items=()):
-        """Create the `Attrs` instance.
-        
-        If the `items` parameter is provided, it is expected to be a sequence
-        of `(name, value)` tuples.
-        """
-        return tuple.__new__(cls, [(QName(name), val) for name, val in items])
 
     def __contains__(self, name):
         """Return whether the list includes an attribute with the specified

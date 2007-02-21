@@ -15,7 +15,7 @@
 
 import compiler
 
-from genshi.core import Attrs, Stream
+from genshi.core import Attrs, QName, Stream
 from genshi.path import Path
 from genshi.template.base import TemplateRuntimeError, TemplateSyntaxError, \
                                  EXPR, _apply_directives
@@ -170,8 +170,8 @@ class AttrsDirective(Directive):
                 elif not isinstance(attrs, list): # assume it's a dict
                     attrs = attrs.items()
                 attrib -= [name for name, val in attrs if val is None]
-                attrib |= [(name, unicode(val).strip()) for name, val in attrs
-                           if val is not None]
+                attrib |= [(QName(name), unicode(val).strip()) for name, val
+                           in attrs if val is not None]
             yield kind, (tag, attrib), pos
             for event in stream:
                 yield event

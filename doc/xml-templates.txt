@@ -207,9 +207,9 @@ This directive can also be used as an element::
 -------------
 
 The ``py:choose`` directive, in combination with the directives ``py:when``
-and ``py:otherwise`` provides advanced contional processing for rendering one
+and ``py:otherwise`` provides advanced conditional processing for rendering one
 of several alternatives. The first matching ``py:when`` branch is rendered, or,
-if no ``py:when`` branch matches, the ``py:otherwise`` branch is be rendered.
+if no ``py:when`` branch matches, the ``py:otherwise`` branch is rendered.
 
 If the ``py:choose`` directive is empty the nested ``py:when`` directives will
 be tested for truth::

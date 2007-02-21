@@ -109,6 +109,27 @@ class Context(object):
     def __repr__(self):
         return repr(list(self.frames))
 
+    def __contains__(self, key):
+        """Return whether a variable exists in any of the scopes."""
+        return self._find(key)[1] is not None
+
+    def __delitem__(self, key):
+        """Set a variable in the current scope."""
+        for frame in self.frames:
+            if key in frame:
+                del frame[key]
+
+    def __getitem__(self, key):
+        """Get a variables's value, starting at the current scope and going
+        upward.
+        
+        Raises `KeyError` if the requested variable wasn't found in any scope.
+        """
+        value, frame = self._find(key)
+        if frame is None:
+            raise KeyError(key)
+        return value
+
     def __setitem__(self, key, value):
         """Set a variable in the current scope."""
         self.frames[0][key] = value
@@ -131,7 +152,15 @@ class Context(object):
             if key in frame:
                 return frame[key]
         return default
-    __getitem__ = get
+
+    def keys(self):
+        keys = []
+        for frame in self.frames:
+            keys += [key for key in frame if key not in keys]
+        return keys
+
+    def items(self):
+        return [(key, self.get(key)) for key in self.keys()]
 
     def push(self, data):
         """Push a new scope on the stack."""

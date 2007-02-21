@@ -195,6 +195,28 @@ class MarkupTemplateTestCase(unittest.TestCase):
           \xf6
         </div>""", unicode(tmpl.generate()))
 
+    def test_exec_import(self):
+        tmpl = MarkupTemplate(u"""<?python from datetime import timedelta ?>
+        <div xmlns:py="http://genshi.edgewall.org/">
+          ${timedelta(days=2)}
+        </div>""")
+        self.assertEqual(u"""<div>
+          2 days, 0:00:00
+        </div>""", str(tmpl.generate()))
+
+    def test_exec_def(self):
+        tmpl = MarkupTemplate(u"""
+        <?python
+        def foo():
+            return 42
+        ?>
+        <div xmlns:py="http://genshi.edgewall.org/">
+          ${foo()}
+        </div>""")
+        self.assertEqual(u"""<div>
+          42
+        </div>""", str(tmpl.generate()))
+
     def test_include_in_loop(self):
         dirname = tempfile.mkdtemp(suffix='genshi_test')
         try:

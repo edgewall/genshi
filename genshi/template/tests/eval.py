@@ -16,7 +16,7 @@ import sys
 import unittest
 
 from genshi.core import Markup
-from genshi.template.eval import Expression, Undefined
+from genshi.template.eval import Expression, Suite, Undefined
 
 
 class ExpressionTestCase(unittest.TestCase):
@@ -399,10 +399,100 @@ class ExpressionTestCase(unittest.TestCase):
         self.assertRaises(TypeError, expr.evaluate, {'nothing': object()})
 
 
+class SuiteTestCase(unittest.TestCase):
+
+    def test_assign(self):
+        suite = Suite("foo = 42")
+        data = {}
+        suite.execute(data)
+        self.assertEqual(42, data['foo'])
+
+    def test_def(self):
+        suite = Suite("def donothing(): pass")
+        data = {}
+        suite.execute(data)
+        assert 'donothing' in data
+        self.assertEqual(None, data['donothing']())
+
+    def test_delete(self):
+        suite = Suite("""foo = 42
+del foo
+""")
+        data = {}
+        suite.execute(data)
+        assert 'foo' not in data
+
+    def test_class(self):
+        suite = Suite("class plain(object): pass")
+        data = {}
+        suite.execute(data)
+        assert 'plain' in data
+
+    def test_import(self):
+        suite = Suite("from itertools import ifilter")
+        data = {}
+        suite.execute(data)
+        assert 'ifilter' in data
+
+    def test_for(self):
+        suite = Suite("""x = []
+for i in range(3):
+    x.append(i**2)
+""")
+        data = {}
+        suite.execute(data)
+        self.assertEqual([0, 1, 4], data['x'])
+
+    def test_if(self):
+        suite = Suite("""if foo == 42:
+    x = True
+""")
+        data = {'foo': 42}
+        suite.execute(data)
+        self.assertEqual(True, data['x'])
+
+    def test_raise(self):
+        suite = Suite("""raise NotImplementedError""")
+        self.assertRaises(NotImplementedError, suite.execute, {})
+
+    def test_try_except(self):
+        suite = Suite("""try:
+    import somemod
+except ImportError:
+    somemod = None
+else:
+    somemod.dosth()""")
+        data = {}
+        suite.execute(data)
+        self.assertEqual(None, data['somemod'])
+
+    def test_finally(self):
+        suite = Suite("""try:
+    x = 2
+finally:
+    x = None
+""")
+        data = {}
+        suite.execute(data)
+        self.assertEqual(None, data['x'])
+
+    def test_while_break(self):
+        suite = Suite("""x = 0
+while x < 5:
+    x += step
+    if x == 4:
+        break
+""")
+        data = {'step': 2}
+        suite.execute(data)
+        self.assertEqual(4, data['x'])
+
+
 def suite():
     suite = unittest.TestSuite()
     suite.addTest(doctest.DocTestSuite(Expression.__module__))
     suite.addTest(unittest.makeSuite(ExpressionTestCase, 'test'))
+    suite.addTest(unittest.makeSuite(SuiteTestCase, 'test'))
     return suite
 
 if __name__ == '__main__':

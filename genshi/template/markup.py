@@ -14,14 +14,22 @@
 """Markup templating engine."""
 
 from itertools import chain
+import sys
+from textwrap import dedent
 
 from genshi.core import Attrs, Namespace, Stream, StreamEventKind
-from genshi.core import START, END, START_NS, END_NS, TEXT, COMMENT
+from genshi.core import START, END, START_NS, END_NS, TEXT, PI, COMMENT
 from genshi.input import XMLParser
 from genshi.template.base import BadDirectiveError, Template, \
-                                 _apply_directives, SUB
+                                 TemplateSyntaxError, _apply_directives, SUB
+from genshi.template.eval import Suite
 from genshi.template.loader import TemplateNotFound
 from genshi.template.directives import *
+
+if sys.version_info < (2, 4):
+    _ctxt2dict = lambda ctxt: ctxt.frames[0]
+else:
+    _ctxt2dict = lambda ctxt: ctxt
 
 
 class MarkupTemplate(Template):
@@ -35,6 +43,7 @@ class MarkupTemplate(Template):
       <li>1</li><li>2</li><li>3</li>
     </ul>
     """
+    EXEC = StreamEventKind('EXEC')
     INCLUDE = StreamEventKind('INCLUDE')
 
     DIRECTIVE_NAMESPACE = Namespace('http://genshi.edgewall.org/')
@@ -59,7 +68,7 @@ class MarkupTemplate(Template):
         Template.__init__(self, source, basedir=basedir, filename=filename,
                           loader=loader, encoding=encoding)
 
-        self.filters.append(self._match)
+        self.filters += [self._exec, self._match]
         if loader:
             self.filters.append(self._include)
 
@@ -169,6 +178,27 @@ class MarkupTemplate(Template):
                     stream[start_offset:] = [(SUB, (directives, substream),
                                               pos)]
 
+            elif kind is PI and data[0] == 'python':
+                try:
+                    # As Expat doesn't report whitespace between the PI target
+                    # and the data, we have to jump through some hoops here to
+                    # get correctly indented Python code
+                    # Unfortunately, we'll still probably not get the line
+                    # number quite right
+                    lines = [line.expandtabs() for line in data[1].splitlines()]
+                    first = lines[0]
+                    rest = dedent('\n'.join(lines[1:]))
+                    if first.rstrip().endswith(':') and not rest[0].isspace():
+                        rest = '\n'.join(['    ' + line for line
+                                          in rest.splitlines()])
+                    source = '\n'.join([first, rest])
+                    suite = Suite(source, self.filepath, pos[1])
+                except SyntaxError, err:
+                    raise TemplateSyntaxError(err, self.filepath,
+                                              pos[1] + (err.lineno or 1) - 1,
+                                              pos[2] + (err.offset or 0))
+                stream.append((EXEC, suite, pos))
+
             elif kind is TEXT:
                 for kind, data, pos in self._interpolate(data, self.basedir,
                                                          *pos):
@@ -189,6 +219,16 @@ class MarkupTemplate(Template):
             if kind is INCLUDE:
                 data = data[0], list(self._prepare(data[1]))
             yield kind, data, pos
+
+    def _exec(self, stream, ctxt):
+        """Internal stream filter that executes code in <?python ?> processing
+        instructions.
+        """
+        for event in stream:
+            if event[0] is EXEC:
+                event[1].execute(_ctxt2dict(ctxt))
+            else:
+                yield event
 
     def _include(self, stream, ctxt):
         """Internal stream filter that performs inclusion of external
@@ -291,4 +331,5 @@ class MarkupTemplate(Template):
                 yield event
 
 
+EXEC = MarkupTemplate.EXEC
 INCLUDE = MarkupTemplate.INCLUDE

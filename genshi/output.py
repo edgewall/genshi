@@ -443,6 +443,7 @@ class NamespaceFlattener(object):
                         if attrns not in namespaces:
                             prefix = _gen_prefix()
                             _push_ns(prefix, attrns)
+                            _push_ns_attr(('xmlns:%s' % prefix, attrns))
                         else:
                             prefix = namespaces[attrns][-1]
                         if prefix:

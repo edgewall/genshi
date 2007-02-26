@@ -22,7 +22,6 @@ themselves. See the documentation of the `Attrs` class for more
 information.
 
 
-
 Upgrading from Markup
 ---------------------
 

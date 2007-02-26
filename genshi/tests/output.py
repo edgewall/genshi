@@ -176,6 +176,21 @@ class XMLSerializerTestCase(unittest.TestCase):
           <x:p xmlns:x="http://example.org/"/>
         </div>""", output)
 
+    def test_atom_with_xhtml(self):
+        text = """<feed xmlns="http://www.w3.org/2005/Atom" xml:lang="en">
+            <id>urn:uuid:c60843aa-0da8-4fa6-bbe5-98007bc6774e</id>
+            <updated>2007-01-28T11:36:02.807108-06:00</updated>
+            <title type="xhtml">
+                <div xmlns="http://www.w3.org/1999/xhtml">Example</div>
+            </title>
+            <subtitle type="xhtml">
+                <div xmlns="http://www.w3.org/1999/xhtml">Bla bla bla</div>
+            </subtitle>
+            <icon/>
+        </feed>"""
+        output = XML(text).render(XMLSerializer)
+        self.assertEqual(text, output)
+
 
 class XHTMLSerializerTestCase(unittest.TestCase):
 
@@ -238,7 +253,7 @@ class XHTMLSerializerTestCase(unittest.TestCase):
           <body>
             <button>
               <svg:svg width="600px" height="400px">
-                <svg:polygon id="triangle" points="50,50 50,300 300,300" />
+                <svg:polygon id="triangle" points="50,50 50,300 300,300"></svg:polygon>
               </svg:svg>
             </button>
           </body>
@@ -247,9 +262,9 @@ class XHTMLSerializerTestCase(unittest.TestCase):
         self.assertEqual(text, output)
 
     def test_xhtml_namespace_prefix(self):
-        text = """<html:div xmlns:html="http://www.w3.org/1999/xhtml">
-            <html:strong>Hello</html:strong>
-        </html:div>"""
+        text = """<div xmlns="http://www.w3.org/1999/xhtml">
+            <strong>Hello</strong>
+        </div>"""
         output = XML(text).render(XHTMLSerializer)
         self.assertEqual(text, output)
 

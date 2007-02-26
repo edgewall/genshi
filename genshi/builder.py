@@ -163,7 +163,7 @@ class Element(Fragment):
     >>> from genshi.core import Namespace
     >>> xhtml = Namespace('http://www.w3.org/1999/xhtml')
     >>> print Element(xhtml.html, lang='en')
-    <html lang="en" xmlns="http://www.w3.org/1999/xhtml"/>
+    <html xmlns="http://www.w3.org/1999/xhtml" lang="en"/>
     """
     __slots__ = ['tag', 'attrib']
 
@@ -213,14 +213,14 @@ class ElementFactory(object):
     
     >>> factory = ElementFactory('http://www.w3.org/1999/xhtml')
     >>> print factory.html(lang="en")
-    <html lang="en" xmlns="http://www.w3.org/1999/xhtml"/>
+    <html xmlns="http://www.w3.org/1999/xhtml" lang="en"/>
     
     The namespace for a specific element can be altered on an existing factory
     by specifying the new namespace using item access:
     
     >>> factory = ElementFactory()
     >>> print factory.html(factory['http://www.w3.org/2000/svg'].g(id=3))
-    <html><g id="3" xmlns="http://www.w3.org/2000/svg"/></html>
+    <html><g xmlns="http://www.w3.org/2000/svg" id="3"/></html>
     
     Usually, the `ElementFactory` class is not be used directly. Rather, the
     `tag` instance should be used to create elements.

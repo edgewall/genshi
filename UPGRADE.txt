@@ -15,8 +15,12 @@ called if they are callable. If you have been using that feature, you
 will need to add the parenthesis to actually call the function.
 
 Instances of `genshi.core.Attrs` are now immutable. Filters
-manipulating the attributes in a stream may need to be updated. See
-the documentation of the `Attrs` class for more information.
+manipulating the attributes in a stream may need to be updated. Also,
+the `Attrs` class no longer automatically wraps all attribute names
+in `QName` objects, so users of the `Attrs` class need to do this
+themselves. See the documentation of the `Attrs` class for more
+information.
+
 
 
 Upgrading from Markup

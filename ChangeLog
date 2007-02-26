@@ -36,6 +36,12 @@ http://svn.edgewall.org/repos/genshi/tags/0.4.0/
    full expression (ticket #92).
  * The `Markup` class is now available by default in template expressions
    (ticket #67).
+ * The handling of namespace declarations in XML/XHTML output has been improved.
+ * The `Attrs` class no longer automatically wraps all attribute names in
+   `QName` objects. This is now the responsibility of whoever is instantiating
+   `Attrs` objects (for example, stream filters and generators).
+ * Python code blocks are now supported using the `<?python ?>` processing
+   instruction (ticket #84).
 
 
 Version 0.3.6

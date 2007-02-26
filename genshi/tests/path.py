@@ -454,13 +454,13 @@ class PathTestCase(unittest.TestCase):
     def test_attrname_with_namespace(self):
         xml = XML('<root xmlns:f="FOO"><foo f:bar="baz"/></root>')
         path = Path('foo[@f:bar]')
-        self.assertEqual('<foo ns1:bar="baz"/>',
+        self.assertEqual('<foo xmlns:ns1="FOO" ns1:bar="baz"/>',
                          path.select(xml, namespaces={'f': 'FOO'}).render())
 
     def test_attrwildcard_with_namespace(self):
         xml = XML('<root xmlns:f="FOO"><foo f:bar="baz"/></root>')
         path = Path('foo[@f:*]')
-        self.assertEqual('<foo ns1:bar="baz"/>',
+        self.assertEqual('<foo xmlns:ns1="FOO" ns1:bar="baz"/>',
                          path.select(xml, namespaces={'f': 'FOO'}).render())
 
 

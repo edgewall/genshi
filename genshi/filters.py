@@ -93,12 +93,13 @@ class HTMLFormFiller(object):
                                 checked = False
                                 if isinstance(value, (list, tuple)):
                                     if declval:
-                                        checked = declval in value
+                                        checked = declval in [str(v) for v
+                                                              in value]
                                     else:
                                         checked = bool(filter(None, value))
                                 else:
                                     if declval:
-                                        checked = declval == value
+                                        checked = declval == str(value)
                                     elif type == 'checkbox':
                                         checked = bool(value)
                                 if checked:
@@ -150,9 +151,10 @@ class HTMLFormFiller(object):
                     select_value = None
                 elif in_select and tagname == 'option':
                     if isinstance(select_value, (tuple, list)):
-                        selected = option_value in select_value
+                        selected = option_value in [str(v) for v
+                                                    in select_value]
                     else:
-                        selected = option_value == select_value
+                        selected = option_value == str(select_value)
                     okind, (tag, attrs), opos = option_start
                     if selected:
                         attrs |= [(QName('selected'), 'selected')]

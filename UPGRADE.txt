@@ -43,7 +43,7 @@ the class:
 
 has been renamed to:
 
-  `markup.template.MarkupTemplate`
+  `genshi.template.MarkupTemplate`
 
 If you've been using the Template class directly, you'll need to
 update your code (a simple find/replace should do--the API itself

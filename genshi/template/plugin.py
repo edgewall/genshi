@@ -50,6 +50,7 @@ class AbstractTemplateEnginePlugin(object):
         if isinstance(auto_reload, basestring):
             auto_reload = auto_reload.lower() in ('1', 'on', 'yes', 'true')
         search_path = options.get('genshi.search_path', '').split(':')
+        self.use_package_naming = not search_path
         try:
             max_cache_size = int(options.get('genshi.max_cache_size', 25))
         except ValueError:
@@ -68,11 +69,12 @@ class AbstractTemplateEnginePlugin(object):
         if template_string is not None:
             return self.template_class(template_string)
 
-        divider = templatename.rfind('.')
-        if divider >= 0:
-            package = templatename[:divider]
-            basename = templatename[divider + 1:] + self.extension
-            templatename = resource_filename(package, basename)
+        if self.use_package_naming:
+            divider = templatename.rfind('.')
+            if divider >= 0:
+                package = templatename[:divider]
+                basename = templatename[divider + 1:] + self.extension
+                templatename = resource_filename(package, basename)
 
         return self.loader.load(templatename)
 

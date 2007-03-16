@@ -30,7 +30,7 @@ __all__ = ['ET', 'ParseError', 'XMLParser', 'XML', 'HTMLParser', 'HTML']
 def ET(element):
     """Convert a given ElementTree element to a markup stream."""
     tag_name = QName(element.tag.lstrip('{'))
-    attrs = Attrs(element.items())
+    attrs = Attrs([(QName(attr), value) for attr, value in element.items()])
 
     yield START, (tag_name, attrs), (None, -1, -1)
     if element.text:

@@ -16,7 +16,7 @@ import sys
 import unittest
 
 from genshi.core import Markup
-from genshi.template.eval import Expression, Suite, Undefined
+from genshi.template.eval import Expression, Suite, UndefinedError
 
 
 class ExpressionTestCase(unittest.TestCase):
@@ -40,8 +40,6 @@ class ExpressionTestCase(unittest.TestCase):
     def test_builtins(self):
         expr = Expression('Markup')
         self.assertEqual(expr.evaluate({}), Markup)
-        expr = Expression('Undefined')
-        self.assertEqual(expr.evaluate({}), Undefined)
 
     def test_str_literal(self):
         self.assertEqual('foo', Expression('"foo"').evaluate({}))
@@ -323,80 +321,68 @@ class ExpressionTestCase(unittest.TestCase):
 
     def test_error_access_undefined(self):
         expr = Expression("nothing", filename='index.html', lineno=50)
-        self.assertEqual(Undefined, type(expr.evaluate({})))
-
-    def test_error_call_undefined(self):
-        expr = Expression("nothing()", filename='index.html', lineno=50)
         try:
             expr.evaluate({})
-            self.fail('Expected NameError')
-        except NameError, e:
+            self.fail('Expected UndefinedError')
+        except UndefinedError, e:
             exc_type, exc_value, exc_traceback = sys.exc_info()
             frame = exc_traceback.tb_next
             frames = []
             while frame.tb_next:
                 frame = frame.tb_next
                 frames.append(frame)
-            self.assertEqual('Variable "nothing" is not defined', str(e))
-            self.assertEqual("<Expression 'nothing()'>",
-                             frames[-3].tb_frame.f_code.co_name)
+            self.assertEqual('"nothing" not defined', str(e))
+            self.assertEqual("<Expression 'nothing'>",
+                             frames[-2].tb_frame.f_code.co_name)
             self.assertEqual('index.html',
-                             frames[-3].tb_frame.f_code.co_filename)
-            self.assertEqual(50, frames[-3].tb_lineno)
+                             frames[-2].tb_frame.f_code.co_filename)
+            self.assertEqual(50, frames[-2].tb_lineno)
 
     def test_error_getattr_undefined(self):
-        expr = Expression("nothing.nil", filename='index.html', lineno=50)
+        class Something(object):
+            def __repr__(self):
+                return '<Something>'
+        expr = Expression('something.nil', filename='index.html', lineno=50)
         try:
-            expr.evaluate({})
-            self.fail('Expected NameError')
-        except NameError, e:
+            expr.evaluate({'something': Something()})
+            self.fail('Expected UndefinedError')
+        except UndefinedError, e:
             exc_type, exc_value, exc_traceback = sys.exc_info()
             frame = exc_traceback.tb_next
             frames = []
             while frame.tb_next:
                 frame = frame.tb_next
                 frames.append(frame)
-            self.assertEqual('Variable "nothing" is not defined', str(e))
-            self.assertEqual("<Expression 'nothing.nil'>",
-                             frames[-3].tb_frame.f_code.co_name)
+            self.assertEqual('Something (<Something>) has no member named "nil"',
+                             str(e))
+            self.assertEqual("<Expression 'something.nil'>",
+                             frames[-2].tb_frame.f_code.co_name)
             self.assertEqual('index.html',
-                             frames[-3].tb_frame.f_code.co_filename)
-            self.assertEqual(50, frames[-3].tb_lineno)
+                             frames[-2].tb_frame.f_code.co_filename)
+            self.assertEqual(50, frames[-2].tb_lineno)
 
-    def test_error_getitem_undefined(self):
-        expr = Expression("nothing[0]", filename='index.html', lineno=50)
+    def test_error_getitem_undefined_string(self):
+        class Something(object):
+            def __repr__(self):
+                return '<Something>'
+        expr = Expression('something["nil"]', filename='index.html', lineno=50)
         try:
-            expr.evaluate({})
-            self.fail('Expected NameError')
-        except NameError, e:
+            expr.evaluate({'something': Something()})
+            self.fail('Expected UndefinedError')
+        except UndefinedError, e:
             exc_type, exc_value, exc_traceback = sys.exc_info()
             frame = exc_traceback.tb_next
             frames = []
             while frame.tb_next:
                 frame = frame.tb_next
                 frames.append(frame)
-            self.assertEqual('Variable "nothing" is not defined', str(e))
-            self.assertEqual("<Expression 'nothing[0]'>",
-                             frames[-3].tb_frame.f_code.co_name)
+            self.assertEqual('Something (<Something>) has no member named "nil"',
+                             str(e))
+            self.assertEqual('''<Expression 'something["nil"]'>''',
+                             frames[-2].tb_frame.f_code.co_name)
             self.assertEqual('index.html',
-                             frames[-3].tb_frame.f_code.co_filename)
-            self.assertEqual(50, frames[-3].tb_lineno)
-
-    def test_error_getattr_nested_undefined(self):
-        expr = Expression("nothing.nil", filename='index.html', lineno=50)
-        val = expr.evaluate({'nothing': object()})
-        assert isinstance(val, Undefined)
-        self.assertEqual("nil", val._name)
-
-    def test_error_getitem_nested_undefined_string(self):
-        expr = Expression("nothing['bla']", filename='index.html', lineno=50)
-        val = expr.evaluate({'nothing': object()})
-        assert isinstance(val, Undefined)
-        self.assertEqual("bla", val._name)
-
-    def test_error_getitem_nested_undefined_int(self):
-        expr = Expression("nothing[0]", filename='index.html', lineno=50)
-        self.assertRaises(TypeError, expr.evaluate, {'nothing': object()})
+                             frames[-2].tb_frame.f_code.co_filename)
+            self.assertEqual(50, frames[-2].tb_lineno)
 
 
 class SuiteTestCase(unittest.TestCase):

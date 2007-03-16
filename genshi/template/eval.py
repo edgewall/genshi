@@ -24,9 +24,10 @@ except NameError:
 import sys
 
 from genshi.core import Markup
+from genshi.template.base import TemplateRuntimeError
 from genshi.util import flatten
 
-__all__ = ['Expression', 'Suite', 'Undefined']
+__all__ = ['Expression', 'Suite']
 
 
 class Code(object):
@@ -119,10 +120,13 @@ class Expression(Code):
         @param data: a mapping containing the data to evaluate against
         @return: the result of the evaluation
         """
+        __traceback_hide__ = 'before_and_this'
         return eval(self.code, {'data': data,
                                 '_lookup_name': _lookup_name,
                                 '_lookup_attr': _lookup_attr,
-                                '_lookup_item': _lookup_item},
+                                '_lookup_item': _lookup_item,
+                                'defined': _defined(data),
+                                'value_of': _value_of(data)},
                                {'data': data})
 
 
@@ -142,68 +146,30 @@ class Suite(Code):
         
         @param data: a mapping containing the data to execute in
         """
+        __traceback_hide__ = 'before_and_this'
         exec self.code in {'data': data,
                            '_lookup_name': _lookup_name,
                            '_lookup_attr': _lookup_attr,
-                           '_lookup_item': _lookup_item}, data
+                           '_lookup_item': _lookup_item,
+                           'defined': _defined(data),
+                           'value_of': _value_of(data)}, data
 
 
-class Undefined(object):
-    """Represents a reference to an undefined variable.
-    
-    Unlike the Python runtime, template expressions can refer to an undefined
-    variable without causing a `NameError` to be raised. The result will be an
-    instance of the `Undefined´ class, which is treated the same as `False` in
-    conditions, and acts as an empty collection in iterations:
-    
-    >>> foo = Undefined('foo')
-    >>> bool(foo)
-    False
-    >>> list(foo)
-    []
-    >>> print foo
-    undefined
-    
-    However, calling an undefined variable, or trying to access an attribute
-    of that variable, will raise an exception that includes the name used to
-    reference that undefined variable.
-    
-    >>> foo('bar')
-    Traceback (most recent call last):
-        ...
-    NameError: Variable "foo" is not defined
+def _defined(data):
+    def defined(name):
+        """Return whether a variable with the specified name exists in the
+        expression scope.
+        """
+        return name in data
+    return defined
 
-    >>> foo.bar
-    Traceback (most recent call last):
-        ...
-    NameError: Variable "foo" is not defined
-    """
-    __slots__ = ['_name']
-
-    def __init__(self, name):
-        self._name = name
-
-    def __call__(self, *args, **kwargs):
-        __traceback_hide__ = True
-        self.throw()
-
-    def __getattr__(self, name):
-        __traceback_hide__ = True
-        self.throw()
-
-    def __iter__(self):
-        return iter([])
-
-    def __nonzero__(self):
-        return False
-
-    def __repr__(self):
-        return 'undefined'
-
-    def throw(self):
-        __traceback_hide__ = True
-        raise NameError('Variable "%s" is not defined' % self._name)
-
+def _value_of(data):
+    def value_of(name, default=None):
+        """If a variable of the specified name is defined, return its value.
+        Otherwise, return the provided default value, or `None`.
+        """
+        return data.get(name, default)
+    return value_of
 
 def _parse(source, mode='eval'):
     if isinstance(source, unicode):
@@ -238,42 +204,56 @@ def _compile(node, source=None, mode='eval', filename=None, lineno=-1):
                     code.co_lnotab, (), ())
 
 BUILTINS = __builtin__.__dict__.copy()
-BUILTINS.update({'Markup': Markup, 'Undefined': Undefined})
-_UNDEF = Undefined(None)
+BUILTINS.update({'Markup': Markup})
+UNDEFINED = object()
+
+
+class UndefinedError(TemplateRuntimeError):
+    """Exception thrown when a template expression attempts to access a variable
+    not defined in the context.
+    """
+    def __init__(self, name, owner=UNDEFINED):
+        if owner is not UNDEFINED:
+            orepr = repr(owner)
+            if len(orepr) > 60:
+                orepr = orepr[:60] + '...'
+            message = '%s (%s) has no member named "%s"' % (
+                type(owner).__name__, orepr, name
+            )
+        else:
+            message = '"%s" not defined' % name
+        TemplateRuntimeError.__init__(self, message)
+
 
 def _lookup_name(data, name):
     __traceback_hide__ = True
-    val = data.get(name, _UNDEF)
-    if val is _UNDEF:
+    val = data.get(name, UNDEFINED)
+    if val is UNDEFINED:
         val = BUILTINS.get(name, val)
-        if val is _UNDEF:
-            return Undefined(name)
+        if val is UNDEFINED:
+            raise UndefinedError(name)
     return val
 
 def _lookup_attr(data, obj, key):
     __traceback_hide__ = True
-    if type(obj) is Undefined:
-        obj.throw()
     if hasattr(obj, key):
         return getattr(obj, key)
     try:
         return obj[key]
     except (KeyError, TypeError):
-        return Undefined(key)
+        raise UndefinedError(key, owner=obj)
 
 def _lookup_item(data, obj, key):
     __traceback_hide__ = True
-    if type(obj) is Undefined:
-        obj.throw()
     if len(key) == 1:
         key = key[0]
     try:
         return obj[key]
     except (AttributeError, KeyError, IndexError, TypeError), e:
         if isinstance(key, basestring):
-            val = getattr(obj, key, _UNDEF)
-            if val is _UNDEF:
-                val = Undefined(key)
+            val = getattr(obj, key, UNDEFINED)
+            if val is UNDEFINED:
+                raise UndefinedError(key, owner=obj)
             return val
         raise
 
@@ -523,7 +503,7 @@ class TemplateASTTransformer(ASTTransformer):
     """
 
     def __init__(self):
-        self.locals = []
+        self.locals = [set(['defined', 'value_of'])]
 
     def visitConst(self, node):
         if isinstance(node.value, str):

@@ -42,6 +42,11 @@ http://svn.edgewall.org/repos/genshi/tags/0.4.0/
    `Attrs` objects (for example, stream filters and generators).
  * Python code blocks are now supported using the `<?python ?>` processing
    instruction (ticket #84).
+ * Runtime error handling in template expressions has become more strict
+   (ticket #88). Where you previously could access undefined variables or
+   members, you now get an exception. If a variable is not necessarily defined
+   at the top level of the template data, the new built-in functions
+   `defined(name)` and `value_of(name, default)` need to be used.
 
 
 Version 0.3.6

@@ -37,7 +37,7 @@ class TextTemplateTestCase(unittest.TestCase):
         #if foo
           bar
         #end 'if foo'""")
-        self.assertEqual('\n', str(tmpl.generate()))
+        self.assertEqual('\n', str(tmpl.generate(foo=False)))
 
     def test_latin1_encoded(self):
         text = u'$foo\xf6$bar'.encode('iso-8859-1')

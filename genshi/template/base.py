@@ -127,6 +127,10 @@ class Context(object):
             raise KeyError(key)
         return value
 
+    def __len__(self):
+        """Return the number of distinctly named variables in the context."""
+        return len(self.items())
+
     def __setitem__(self, key, value):
         """Set a variable in the current scope."""
         self.frames[0][key] = value

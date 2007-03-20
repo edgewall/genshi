@@ -338,7 +338,10 @@ class HTMLParser(html.HTMLParser, object):
         self._enqueue(TEXT, text)
 
     def handle_charref(self, name):
-        text = unichr(int(name))
+        if name.lower().startswith('x'):
+            text = unichr(int(name[1:], 16))
+        else:
+            text = unichr(int(name))
         self._enqueue(TEXT, text)
 
     def handle_entityref(self, name):

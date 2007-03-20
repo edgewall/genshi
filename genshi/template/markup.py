@@ -146,7 +146,8 @@ class MarkupTemplate(Template):
                         include_href = new_attrs.get('href')
                         if not include_href:
                             raise TemplateSyntaxError('Include misses required '
-                                                      'attribute "href"', *pos)
+                                                      'attribute "href"',
+                                                      self.filepath, *pos[1:])
                         streams.append([])
                     elif tag.localname == 'fallback':
                         in_fallback += 1

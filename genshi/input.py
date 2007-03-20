@@ -19,6 +19,7 @@ except NameError:
     from sets import ImmutableSet as frozenset
 import HTMLParser as html
 import htmlentitydefs
+import os
 from StringIO import StringIO
 
 from genshi.core import Attrs, QName, Stream, stripentities
@@ -47,10 +48,12 @@ class ParseError(Exception):
     """Exception raised when fatal syntax errors are found in the input being
     parsed."""
 
-    def __init__(self, message, filename='<string>', lineno=-1, offset=-1):
-        Exception.__init__(self, message)
+    def __init__(self, message, filename=None, lineno=-1, offset=-1):
         self.msg = message
-        self.filename = filename
+        if filename:
+            message += ', in ' + os.path.basename(filename)
+        Exception.__init__(self, message)
+        self.filename = filename or '<string>'
         self.lineno = lineno
         self.offset = offset
 
@@ -142,8 +145,6 @@ class XMLParser(object):
                         break
             except expat.ExpatError, e:
                 msg = str(e)
-                if self.filename:
-                    msg += ', in ' + self.filename
                 raise ParseError(msg, self.filename, e.lineno, e.offset)
         return Stream(_generate()).filter(_coalesce)
 
@@ -293,8 +294,6 @@ class HTMLParser(html.HTMLParser, object):
                         break
             except html.HTMLParseError, e:
                 msg = '%s: line %d, column %d' % (e.msg, e.lineno, e.offset)
-                if self.filename:
-                    msg += ', in %s' % self.filename
                 raise ParseError(msg, self.filename, e.lineno, e.offset)
         return Stream(_generate()).filter(_coalesce)
 

@@ -55,7 +55,7 @@ def interpolate(text, basedir=None, filename=None, lineno=-1, offset=0):
 
     textbuf = []
     textpos = None
-    for is_expr, chunk in chain(lex(text, pos), [(True, '')]):
+    for is_expr, chunk in chain(lex(text, pos, filepath), [(True, '')]):
         if is_expr:
             if textbuf:
                 yield TEXT, u''.join(textbuf), textpos
@@ -66,7 +66,7 @@ def interpolate(text, basedir=None, filename=None, lineno=-1, offset=0):
                     expr = Expression(chunk.strip(), pos[0], pos[1])
                     yield EXPR, expr, tuple(pos)
                 except SyntaxError, err:
-                    raise TemplateSyntaxError(err, pos[0], pos[1],
+                    raise TemplateSyntaxError(err, filepath, pos[1],
                                               pos[2] + (err.offset or 0))
         else:
             textbuf.append(chunk)
@@ -80,7 +80,7 @@ def interpolate(text, basedir=None, filename=None, lineno=-1, offset=0):
         else:
             pos[2] += len(chunk)
 
-def lex(text, textpos):
+def lex(text, textpos, filepath):
     offset = pos = 0
     end = len(text)
     escaped = False
@@ -103,7 +103,8 @@ def lex(text, textpos):
             while level:
                 match = tokenprog.match(text, pos)
                 if match is None:
-                    raise TemplateSyntaxError('invalid syntax', *textpos)
+                    raise TemplateSyntaxError('invalid syntax',  filepath,
+                                              *textpos[1:])
                 pos = match.end()
                 tstart, tend = match.regs[3]
                 token = text[tstart:tend]

@@ -76,7 +76,7 @@ class Directive(object):
         at runtime. `stream` is an event stream that replaces the original
         stream associated with the directive.
         """
-        return cls(value, namespaces, template.filename, *pos[1:]), stream
+        return cls(value, namespaces, template.filepath, *pos[1:]), stream
     attach = classmethod(attach)
 
     def __call__(self, stream, ctxt, directives):
@@ -197,7 +197,7 @@ class ContentDirective(Directive):
     __slots__ = []
 
     def attach(cls, template, stream, value, namespaces, pos):
-        expr = cls._parse_expr(value, template.filename, *pos[1:])
+        expr = cls._parse_expr(value, template.filepath, *pos[1:])
         return None, [stream[0], (EXPR, expr, pos),  stream[-1]]
     attach = classmethod(attach)
 
@@ -442,7 +442,7 @@ class ReplaceDirective(Directive):
     __slots__ = []
 
     def attach(cls, template, stream, value, namespaces, pos):
-        expr = cls._parse_expr(value, template.filename, *pos[1:])
+        expr = cls._parse_expr(value, template.filepath, *pos[1:])
         return None, [(EXPR, expr, pos)]
     attach = classmethod(attach)
 

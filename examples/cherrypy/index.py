@@ -15,8 +15,5 @@ class Example(object):
         return tmpl.generate(name='world').render('xhtml')
 
 
-cherrypy.root = Example()
-
 if __name__ == '__main__':
-    cherrypy.config.update(file='config.txt')
-    cherrypy.server.start()
+    cherrypy.quickstart(Example(), config='config.txt')

@@ -34,7 +34,11 @@ __all__ = ['ET', 'ParseError', 'XMLParser', 'XML', 'HTMLParser', 'HTML']
 __docformat__ = 'restructuredtext en'
 
 def ET(element):
-    """Convert a given ElementTree element to a markup stream."""
+    """Convert a given ElementTree element to a markup stream.
+    
+    :param element: an ElementTree element
+    :return: a markup stream
+    """
     tag_name = QName(element.tag.lstrip('{'))
     attrs = Attrs([(QName(attr), value) for attr, value in element.items()])
 
@@ -51,9 +55,17 @@ def ET(element):
 
 class ParseError(Exception):
     """Exception raised when fatal syntax errors are found in the input being
-    parsed."""
+    parsed.
+    """
 
     def __init__(self, message, filename=None, lineno=-1, offset=-1):
+        """Exception initializer.
+        
+        :param message: the error message from the parser
+        :param filename: the path to the file that was parsed
+        :param lineno: the number of the line on which the error was encountered
+        :param offset: the column number where the error was encountered
+        """
         self.msg = message
         if filename:
             message += ', in ' + os.path.basename(filename)
@@ -128,6 +140,11 @@ class XMLParser(object):
         self._queue = []
 
     def parse(self):
+        """Generator that parses the XML source, yielding markup events.
+        
+        :return: a markup event stream
+        :raises ParseError: if the XML text is not well formed
+        """
         def _generate():
             try:
                 bufsize = 4 * 1024 # 4K
@@ -237,6 +254,23 @@ class XMLParser(object):
 
 
 def XML(text):
+    """Parse the given XML source and return a markup stream.
+    
+    Unlike with `XMLParser`, the returned stream is reusable, meaning it can be
+    iterated over multiple times:
+    
+    >>> xml = XML('<doc><elem>Foo</elem><elem>Bar</elem></doc>')
+    >>> print xml
+    <doc><elem>Foo</elem><elem>Bar</elem></doc>
+    >>> print xml.select('elem')
+    <elem>Foo</elem><elem>Bar</elem>
+    >>> print xml.select('elem/text()')
+    FooBar
+    
+    :param text: the XML source
+    :return: the parsed XML event stream
+    :raises ParseError: if the XML text is not well-formed
+    """
     return Stream(list(XMLParser(StringIO(text))))
 
 
@@ -277,6 +311,11 @@ class HTMLParser(html.HTMLParser, object):
         self._open_tags = []
 
     def parse(self):
+        """Generator that parses the HTML source, yielding markup events.
+        
+        :return: a markup event stream
+        :raises ParseError: if the HTML text is not well formed
+        """
         def _generate():
             try:
                 bufsize = 4 * 1024 # 4K
@@ -368,6 +407,24 @@ class HTMLParser(html.HTMLParser, object):
 
 
 def HTML(text, encoding='utf-8'):
+    """Parse the given HTML source and return a markup stream.
+    
+    Unlike with `HTMLParser`, the returned stream is reusable, meaning it can be
+    iterated over multiple times:
+    
+    >>> html = HTML('<body><h1>Foo</h1></body>')
+    >>> print html
+    <body><h1>Foo</h1></body>
+    >>> print html.select('h1')
+    <h1>Foo</h1>
+    >>> print html.select('h1/text()')
+    Foo
+    
+    :param text: the HTML source
+    :return: the parsed XML event stream
+    :raises ParseError: if the HTML text is not well-formed, and error recovery
+                        fails
+    """
     return Stream(list(HTMLParser(StringIO(text), encoding=encoding)))
 
 def _coalesce(stream):

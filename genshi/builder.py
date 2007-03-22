@@ -70,7 +70,7 @@ Hello, <em>world</em>!
 
 from genshi.core import Attrs, Namespace, QName, Stream, START, END, TEXT
 
-__all__ = ['Fragment', 'Element', 'tag']
+__all__ = ['Fragment', 'Element', 'ElementFactory', 'tag']
 __docformat__ = 'restructuredtext en'
 
 
@@ -81,12 +81,17 @@ class Fragment(object):
     __slots__ = ['children']
 
     def __init__(self):
+        """Create a new fragment."""
         self.children = []
 
     def __add__(self, other):
         return Fragment()(self, other)
 
     def __call__(self, *args):
+        """Append any positional arguments as child nodes.
+        
+        :see: `append`
+        """
         map(self.append, args)
         return self
 
@@ -103,7 +108,11 @@ class Fragment(object):
         return unicode(self.generate())
 
     def append(self, node):
-        """Append an element or string as child node."""
+        """Append an element or string as child node.
+        
+        :param node: the node to append; can be an `Element`, `Fragment`, or a
+                     `Stream`, or a Python string or number
+        """
         if isinstance(node, (Stream, Element, basestring, int, float, long)):
             # For objects of a known/primitive type, we avoid the check for
             # whether it is iterable for better performance
@@ -231,6 +240,11 @@ class Element(Fragment):
         self.attrib = Attrs(_kwargs_to_attrs(attrib))
 
     def __call__(self, *args, **kwargs):
+        """Append any positional arguments as child nodes, and keyword arguments
+        as attributes.
+        
+        :see: `Fragment.append`
+        """
         self.attrib |= Attrs(_kwargs_to_attrs(kwargs))
         Fragment.__call__(self, *args)
         return self
@@ -295,15 +309,30 @@ class ElementFactory(object):
         self.namespace = namespace
 
     def __call__(self, *args):
+        """Create a fragment that has the given positional arguments as child
+        nodes.
+
+        :return: the created `Fragment`
+        """
         return Fragment()(*args)
 
     def __getitem__(self, namespace):
-        """Return a new factory that is bound to the specified namespace."""
+        """Return a new factory that is bound to the specified namespace.
+        
+        :param namespace: the namespace URI or `Namespace` object
+        :return: an `ElementFactory` that produces elements bound to the given
+                 namespace
+        """
         return ElementFactory(namespace)
 
     def __getattr__(self, name):
-        """Create an `Element` with the given name."""
+        """Create an `Element` with the given name.
+        
+        :param name: the tag name of the element to create
+        :return: an `Element` with the specified name
+        """
         return Element(self.namespace and self.namespace[name] or name)
 
 
 tag = ElementFactory()
+"""Global `ElementFactory` bound to the default namespace."""

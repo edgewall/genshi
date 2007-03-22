@@ -28,6 +28,7 @@ from genshi.template.base import TemplateRuntimeError
 from genshi.util import flatten
 
 __all__ = ['Expression', 'Suite']
+__docformat__ = 'restructuredtext en'
 
 
 class Code(object):
@@ -37,11 +38,11 @@ class Code(object):
     def __init__(self, source, filename=None, lineno=-1):
         """Create the code object, either from a string, or from an AST node.
         
-        @param source: either a string containing the source code, or an AST
-            node
-        @param filename: the (preferably absolute) name of the file containing
-            the code
-        @param lineno: the number of the line on which the code was found
+        :param source: either a string containing the source code, or an AST
+                       node
+        :param filename: the (preferably absolute) name of the file containing
+                         the code
+        :param lineno: the number of the line on which the code was found
         """
         if isinstance(source, basestring):
             self.source = source
@@ -91,7 +92,7 @@ class Expression(Code):
     'thing'
     
     This also works the other way around: item access can be used to access
-    any object attribute (meaning there's no use for `getattr()` in templates):
+    any object attribute:
     
     >>> class MyClass(object):
     ...     myattr = 'Bar'
@@ -104,7 +105,7 @@ class Expression(Code):
     'Bar'
     
     All of the standard Python operators are available to template expressions.
-    Built-in functions such as `len()` are also available in template
+    Built-in functions such as ``len()`` are also available in template
     expressions:
     
     >>> data = dict(items=[1, 2, 3])
@@ -117,8 +118,8 @@ class Expression(Code):
     def evaluate(self, data):
         """Evaluate the expression against the given data dictionary.
         
-        @param data: a mapping containing the data to evaluate against
-        @return: the result of the evaluation
+        :param data: a mapping containing the data to evaluate against
+        :return: the result of the evaluation
         """
         __traceback_hide__ = 'before_and_this'
         return eval(self.code, {'data': data,
@@ -144,7 +145,7 @@ class Suite(Code):
     def execute(self, data):
         """Execute the suite in the given data dictionary.
         
-        @param data: a mapping containing the data to execute in
+        :param data: a mapping containing the data to execute in
         """
         __traceback_hide__ = 'before_and_this'
         exec self.code in {'data': data,
@@ -166,7 +167,7 @@ def _defined(data):
 def _value_of(data):
     def value_of(name, default=None):
         """If a variable of the specified name is defined, return its value.
-        Otherwise, return the provided default value, or `None`.
+        Otherwise, return the provided default value, or ``None``.
         """
         return data.get(name, default)
     return value_of

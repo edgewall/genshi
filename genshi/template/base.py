@@ -24,6 +24,7 @@ from genshi.core import Attrs, Stream, StreamEventKind, START, TEXT, _ensure
 
 __all__ = ['Context', 'Template', 'TemplateError', 'TemplateRuntimeError',
            'TemplateSyntaxError', 'BadDirectiveError']
+__docformat__ = 'restructuredtext en'
 
 
 class TemplateError(Exception):

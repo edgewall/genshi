@@ -28,6 +28,7 @@ from genshi.core import DOCTYPE, START, END, START_NS, END_NS, TEXT, \
 
 __all__ = ['DocType', 'XMLSerializer', 'XHTMLSerializer', 'HTMLSerializer',
            'TextSerializer']
+__docformat__ = 'restructuredtext en'
 
 
 class DocType(object):
@@ -69,11 +70,11 @@ class XMLSerializer(object):
                  namespace_prefixes=None):
         """Initialize the XML serializer.
         
-        @param doctype: a `(name, pubid, sysid)` tuple that represents the
-            DOCTYPE declaration that should be included at the top of the
-            generated output
-        @param strip_whitespace: whether extraneous whitespace should be
-            stripped from the output
+        :param doctype: a ``(name, pubid, sysid)`` tuple that represents the
+                        DOCTYPE declaration that should be included at the top
+                        of the generated output
+        :param strip_whitespace: whether extraneous whitespace should be
+                                 stripped from the output
         """
         self.preamble = []
         if doctype:
@@ -248,11 +249,11 @@ class HTMLSerializer(XHTMLSerializer):
     def __init__(self, doctype=None, strip_whitespace=True):
         """Initialize the HTML serializer.
         
-        @param doctype: a `(name, pubid, sysid)` tuple that represents the
-            DOCTYPE declaration that should be included at the top of the
-            generated output
-        @param strip_whitespace: whether extraneous whitespace should be
-            stripped from the output
+        :param doctype: a ``(name, pubid, sysid)`` tuple that represents the
+                        DOCTYPE declaration that should be included at the top
+                        of the generated output
+        :param strip_whitespace: whether extraneous whitespace should be
+                                 stripped from the output
         """
         super(HTMLSerializer, self).__init__(doctype, False)
         self.filters = [EmptyTagFilter()]
@@ -381,7 +382,7 @@ class NamespaceFlattener(object):
     r"""Output stream filter that removes namespace information from the stream,
     instead adding namespace attributes and prefixes as needed.
     
-    @param prefixes: optional mapping of namespace URIs to prefixes
+    :param prefixes: optional mapping of namespace URIs to prefixes
     
     >>> from genshi.input import XML
     >>> xml = XML('''<doc xmlns="NS1" xmlns:two="NS2">
@@ -492,8 +493,9 @@ class NamespaceStripper(object):
     r"""Stream filter that removes all namespace information from a stream, and
     optionally strips out all tags not in a given namespace.
     
-    @param namespace: the URI of the namespace that should not be stripped. If
-        not set, only elements with no namespace are included in the output.
+    :param namespace: the URI of the namespace that should not be stripped. If
+                      not set, only elements with no namespace are included in
+                      the output.
     
     >>> from genshi.input import XML
     >>> xml = XML('''<doc xmlns="NS1" xmlns:two="NS2">
@@ -549,13 +551,14 @@ class WhitespaceFilter(object):
     def __init__(self, preserve=None, noescape=None):
         """Initialize the filter.
         
-        @param preserve: a set or sequence of tag names for which white-space
-            should be preserved
-        @param noescape: a set or sequence of tag names for which text content
-            should not be escaped
+        :param preserve: a set or sequence of tag names for which white-space
+                         should be preserved
+        :param noescape: a set or sequence of tag names for which text content
+                         should not be escaped
         
         The `noescape` set is expected to refer to elements that cannot contain
-        further child elements (such as <style> or <script> in HTML documents).
+        further child elements (such as ``<style>`` or ``<script>`` in HTML
+        documents).
         """
         if preserve is None:
             preserve = []

@@ -23,6 +23,7 @@ from genshi.template.base import TemplateError
 from genshi.util import LRUCache
 
 __all__ = ['TemplateLoader', 'TemplateNotFound']
+__docformat__ = 'restructuredtext en'
 
 
 class TemplateNotFound(TemplateError):
@@ -69,17 +70,17 @@ class TemplateLoader(object):
                  default_encoding=None, max_cache_size=25, default_class=None):
         """Create the template laoder.
         
-        @param search_path: a list of absolute path names that should be
-            searched for template files, or a string containing a single
-            absolute path
-        @param auto_reload: whether to check the last modification time of
-            template files, and reload them if they have changed
-        @param default_encoding: the default encoding to assume when loading
-            templates; defaults to UTF-8
-        @param max_cache_size: the maximum number of templates to keep in the
-            cache
-        @param default_class: the default `Template` subclass to use when
-            instantiating templates
+        :param search_path: a list of absolute path names that should be
+                            searched for template files, or a string containing
+                            a single absolute path
+        :param auto_reload: whether to check the last modification time of
+                            template files, and reload them if they have changed
+        :param default_encoding: the default encoding to assume when loading
+                                 templates; defaults to UTF-8
+        :param max_cache_size: the maximum number of templates to keep in the
+                               cache
+        :param default_class: the default `Template` subclass to use when
+                              instantiating templates
         """
         from genshi.template.markup import MarkupTemplate
 
@@ -109,19 +110,19 @@ class TemplateLoader(object):
         Template instances are cached to avoid having to parse the same
         template file more than once. Thus, subsequent calls of this method
         with the same template file name will return the same `Template`
-        object (unless the `auto_reload` option is enabled and the file was
+        object (unless the ``auto_reload`` option is enabled and the file was
         changed since the last parse.)
         
         If the `relative_to` parameter is provided, the `filename` is
         interpreted as being relative to that path.
         
-        @param filename: the relative path of the template file to load
-        @param relative_to: the filename of the template from which the new
-            template is being loaded, or `None` if the template is being loaded
-            directly
-        @param cls: the class of the template object to instantiate
-        @param encoding: the encoding of the template to load; defaults to the
-            `default_encoding` of the loader instance
+        :param filename: the relative path of the template file to load
+        :param relative_to: the filename of the template from which the new
+                            template is being loaded, or ``None`` if the template
+                            is being loaded directly
+        :param cls: the class of the template object to instantiate
+        :param encoding: the encoding of the template to load; defaults to the
+                         ``default_encoding`` of the loader instance
         """
         if cls is None:
             cls = self.default_class

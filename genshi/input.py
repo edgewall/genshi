@@ -11,6 +11,10 @@
 # individuals. For the exact contribution history, see the revision
 # history and logs, available at http://genshi.edgewall.org/log/.
 
+"""Support for constructing markup streams from files, strings, or other
+sources.
+"""
+
 from itertools import chain
 from xml.parsers import expat
 try:
@@ -27,6 +31,7 @@ from genshi.core import DOCTYPE, START, END, START_NS, END_NS, TEXT, \
                         START_CDATA, END_CDATA, PI, COMMENT
 
 __all__ = ['ET', 'ParseError', 'XMLParser', 'XML', 'HTMLParser', 'HTML']
+__docformat__ = 'restructuredtext en'
 
 def ET(element):
     """Convert a given ElementTree element to a markup stream."""
@@ -81,11 +86,12 @@ class XMLParser(object):
     def __init__(self, source, filename=None, encoding=None):
         """Initialize the parser for the given XML input.
         
-        @param source: the XML text as a file-like object
-        @param filename: the name of the file, if appropriate
-        @param encoding: the encoding of the file; if not specified, the
-            encoding is assumed to be ASCII, UTF-8, or UTF-16, or whatever the
-            encoding specified in the XML declaration (if any)
+        :param source: the XML text as a file-like object
+        :param filename: the name of the file, if appropriate
+        :param encoding: the encoding of the file; if not specified, the
+                         encoding is assumed to be ASCII, UTF-8, or UTF-16, or
+                         whatever the encoding specified in the XML declaration
+                         (if any)
         """
         self.source = source
         self.filename = filename
@@ -259,9 +265,9 @@ class HTMLParser(html.HTMLParser, object):
     def __init__(self, source, filename=None, encoding='utf-8'):
         """Initialize the parser for the given HTML input.
         
-        @param source: the HTML text as a file-like object
-        @param filename: the name of the file, if known
-        @param filename: encoding of the file; ignored if the input is unicode
+        :param source: the HTML text as a file-like object
+        :param filename: the name of the file, if known
+        :param filename: encoding of the file; ignored if the input is unicode
         """
         html.HTMLParser.__init__(self)
         self.source = source

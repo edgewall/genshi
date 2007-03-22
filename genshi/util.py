@@ -16,6 +16,8 @@
 import htmlentitydefs
 import re
 
+__docformat__ = 'restructuredtext en'
+
 
 class LRUCache(dict):
     """A dictionary-like object that stores only a certain number of items, and

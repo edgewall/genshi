@@ -19,6 +19,7 @@ from genshi.util import plaintext, stripentities, striptags
 
 __all__ = ['Stream', 'Markup', 'escape', 'unescape', 'Attrs', 'Namespace',
            'QName']
+__docformat__ = 'restructuredtext en'
 
 
 class StreamEventKind(str):
@@ -35,14 +36,15 @@ class Stream(object):
     
     This class is basically an iterator over the events.
     
-    Stream events are tuples of the form:
+    Stream events are tuples of the form::
     
       (kind, data, position)
     
-    where `kind` is the event kind (such as `START`, `END`, `TEXT`, etc), `data`
-    depends on the kind of event, and `position` is a `(filename, line, offset)`
-    tuple that contains the location of the original element or text in the
-    input. If the original location is unknown, `position` is `(None, -1, -1)`.
+    where ``kind`` is the event kind (such as `START`, `END`, `TEXT`, etc),
+    ``data`` depends on the kind of event, and ``position`` is a
+    ``(filename, line, offset)`` tuple that contains the location of the
+    original element or text in the input. If the original location is unknown,
+    ``position`` is ``(None, -1, -1)``.
     
     Also provided are ways to serialize the stream to text. The `serialize()`
     method will return an iterator over generated strings, while `render()`
@@ -65,7 +67,7 @@ class Stream(object):
     def __init__(self, events):
         """Initialize the stream with a sequence of markup events.
         
-        @param events: a sequence or iterable providing the events
+        :param events: a sequence or iterable providing the events
         """
         self.events = events
 
@@ -121,11 +123,11 @@ class Stream(object):
         filters must be callables that accept the stream object as parameter,
         and return the filtered stream.
         
-        The call:
+        The call::
         
             stream.filter(filter1, filter2)
         
-        is equivalent to:
+        is equivalent to::
         
             stream | filter1 | filter2
         """
@@ -134,10 +136,10 @@ class Stream(object):
     def render(self, method='xml', encoding='utf-8', **kwargs):
         """Return a string representation of the stream.
         
-        @param method: determines how the stream is serialized; can be either
+        :param method: determines how the stream is serialized; can be either
                        "xml", "xhtml", "html", "text", or a custom serializer
                        class
-        @param encoding: how the output string should be encoded; if set to
+        :param encoding: how the output string should be encoded; if set to
                          `None`, this method returns a `unicode` object
 
         Any additional keyword arguments are passed to the serializer, and thus
@@ -156,7 +158,7 @@ class Stream(object):
         """Return a new stream that contains the events matching the given
         XPath expression.
         
-        @param path: a string containing the XPath expression
+        :param path: a string containing the XPath expression
         """
         from genshi.path import Path
         return Path(path).select(self, namespaces, variables)
@@ -169,7 +171,7 @@ class Stream(object):
         the serialized output incrementally, as opposed to returning a single
         string.
         
-        @param method: determines how the stream is serialized; can be either
+        :param method: determines how the stream is serialized; can be either
                        "xml", "xhtml", "html", "text", or a custom serializer
                        class
 
@@ -231,11 +233,11 @@ class Attrs(tuple):
     >>> attrs.get('title')
     'Foo'
     
-    Instances may not be manipulated directly. Instead, the operators `|` and
-    `-` can be used to produce new instances that have specific attributes
+    Instances may not be manipulated directly. Instead, the operators ``|`` and
+    ``-`` can be used to produce new instances that have specific attributes
     added, replaced or removed.
     
-    To remove an attribute, use the `-` operator. The right hand side can be
+    To remove an attribute, use the ``-`` operator. The right hand side can be
     either a string or a set/sequence of strings, identifying the name(s) of
     the attribute(s) to remove:
     
@@ -253,8 +255,9 @@ class Attrs(tuple):
     >>> attrs
     Attrs([('href', '#')])
     
-    To add a new attribute, use the `|` operator, where the right hand value
-    is a sequence of `(name, value)` tuples (which includes `Attrs` instances):
+    To add a new attribute, use the ``|`` operator, where the right hand value
+    is a sequence of ``(name, value)`` tuples (which includes `Attrs`
+    instances):
     
     >>> attrs | [('title', 'Bar')]
     Attrs([('href', '#'), ('title', 'Bar')])
@@ -264,7 +267,6 @@ class Attrs(tuple):
     
     >>> attrs | [('href', 'http://example.org/')]
     Attrs([('href', 'http://example.org/')])
-    
     """
     __slots__ = []
 
@@ -312,7 +314,7 @@ class Attrs(tuple):
     def totuple(self):
         """Return the attributes as a markup event.
         
-        The returned event is a TEXT event, the data is the value of all
+        The returned event is a `TEXT` event, the data is the value of all
         attributes joined together.
         """
         return TEXT, u''.join([x[1] for x in self]), (None, -1, -1)
@@ -438,7 +440,7 @@ class Namespace(object):
     QName(u'http://www.w3.org/1999/xhtml}body')
     
     A `Namespace` object can also be used to test whether a specific `QName`
-    belongs to that namespace using the `in` operator:
+    belongs to that namespace using the ``in`` operator:
     
     >>> qname = html.body
     >>> qname in html
@@ -496,7 +498,7 @@ class QName(unicode):
     """A qualified element or attribute name.
     
     The unicode value of instances of this class contains the qualified name of
-    the element or attribute, in the form `{namespace}localname`. The namespace
+    the element or attribute, in the form ``{namespace}localname``. The namespace
     URI can be obtained through the additional `namespace` attribute, while the
     local name can be accessed through the `localname` attribute.
     

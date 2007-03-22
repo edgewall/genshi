@@ -11,9 +11,12 @@
 # individuals. For the exact contribution history, see the revision
 # history and logs, available at http://genshi.edgewall.org/log/.
 
+"""Support for programmatically generating markup streams."""
+
 from genshi.core import Attrs, Namespace, QName, Stream, START, END, TEXT
 
 __all__ = ['Fragment', 'Element', 'tag']
+__docformat__ = 'restructuredtext en'
 
 
 class Fragment(object):
@@ -229,8 +232,8 @@ class ElementFactory(object):
     def __init__(self, namespace=None):
         """Create the factory, optionally bound to the given namespace.
         
-        @param namespace: the namespace URI for any created elements, or `None`
-            for no namespace
+        :param namespace: the namespace URI for any created elements, or `None`
+                          for no namespace
         """
         if namespace and not isinstance(namespace, Namespace):
             namespace = Namespace(namespace)

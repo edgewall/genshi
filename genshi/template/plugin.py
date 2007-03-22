@@ -27,6 +27,7 @@ from genshi.template.text import TextTemplate
 
 __all__ = ['ConfigurationError', 'MarkupTemplateEnginePlugin',
            'TextTemplateEnginePlugin']
+__docformat__ = 'restructuredtext en'
 
 
 class ConfigurationError(Exception):

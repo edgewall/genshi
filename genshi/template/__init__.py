@@ -19,3 +19,5 @@ from genshi.template.base import Context, Template, TemplateError, \
 from genshi.template.loader import TemplateLoader, TemplateNotFound
 from genshi.template.markup import MarkupTemplate
 from genshi.template.text import TextTemplate
+
+__docformat__ = 'restructuredtext en'

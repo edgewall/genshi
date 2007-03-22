@@ -24,6 +24,7 @@ from genshi.template.base import TemplateSyntaxError, EXPR
 from genshi.template.eval import Expression
 
 __all__ = ['interpolate']
+__docformat__ = 'restructuredtext en'
 
 NAMESTART = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_'
 NAMECHARS = NAMESTART + '.0123456789'
@@ -32,21 +33,25 @@ PREFIX = '$'
 def interpolate(text, basedir=None, filename=None, lineno=-1, offset=0):
     """Parse the given string and extract expressions.
     
-    This method returns a list containing both literal text and `Expression`
-    objects.
+    This function is a generator that yields `TEXT` events for literal strings,
+    and `EXPR` events for expressions, depending on the results of parsing the
+    string.
     
     >>> for kind, data, pos in interpolate("$foo bar"):
     ...     print kind, `data`
     EXPR Expression('foo')
     TEXT u' bar'
     
-    @param text: the text to parse
-    @param basedir: base directory of the file in which the text was found
-        (optional)
-    @param filename: basename of the file in which the text was found (optional)
-    @param lineno: the line number at which the text was found (optional)
-    @param offset: the column number at which the text starts in the source
-        (optional)
+    :param text: the text to parse
+    :param basedir: base directory of the file in which the text was found
+                    (optional)
+    :param filename: basename of the file in which the text was found (optional)
+    :param lineno: the line number at which the text was found (optional)
+    :param offset: the column number at which the text starts in the source
+                   (optional)
+    :return: a list of `TEXT` and `EXPR` events
+    :raise TemplateSyntaxError: when a syntax error in an expression is
+                                encountered
     """
     filepath = filename
     if filepath and basedir:

@@ -32,6 +32,9 @@ if sys.version_info < (2, 4):
 else:
     _ctxt2dict = lambda ctxt: ctxt
 
+__all__ = ['MarkupTemplate']
+__docformat__ = 'restructuredtext en'
+
 
 class MarkupTemplate(Template):
     """Implementation of the template language for XML-based templates.
@@ -221,8 +224,8 @@ class MarkupTemplate(Template):
             yield kind, data, pos
 
     def _exec(self, stream, ctxt):
-        """Internal stream filter that executes code in <?python ?> processing
-        instructions.
+        """Internal stream filter that executes code in ``<?python ?>``
+        processing instructions.
         """
         for event in stream:
             if event[0] is EXEC:

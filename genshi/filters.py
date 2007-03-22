@@ -23,6 +23,7 @@ from genshi.core import Attrs, QName, stripentities
 from genshi.core import END, START, TEXT
 
 __all__ = ['HTMLFormFiller', 'HTMLSanitizer']
+__docformat__ = 'restructuredtext en'
 
 
 class HTMLFormFiller(object):
@@ -45,14 +46,15 @@ class HTMLFormFiller(object):
     def __init__(self, name=None, id=None, data=None):
         """Create the filter.
         
-        @param name: The name of the form that should be populated. If this
-            parameter is given, only forms where the ``name`` attribute value
-            matches the parameter are processed.
-        @param id: The ID of the form that should be populated. If this
-            parameter is given, only forms where the ``id`` attribute value
-            matches the parameter are processed.
-        @param data: The dictionary of form values, where the keys are the names
-            of the form fields, and the values are the values to fill in.
+        :param name: The name of the form that should be populated. If this
+                     parameter is given, only forms where the ``name`` attribute
+                     value matches the parameter are processed.
+        :param id: The ID of the form that should be populated. If this
+                   parameter is given, only forms where the ``id`` attribute
+                   value matches the parameter are processed.
+        :param data: The dictionary of form values, where the keys are the names
+                     of the form fields, and the values are the values to fill
+                     in.
         """
         self.name = name
         self.id = id
@@ -63,8 +65,8 @@ class HTMLFormFiller(object):
     def __call__(self, stream, ctxt=None):
         """Apply the filter to the given stream.
         
-        @param stream: the markup event stream to filter
-        @param ctxt: the template context (unused)
+        :param stream: the markup event stream to filter
+        :param ctxt: the template context (unused)
         """
         in_form = in_select = in_option = in_textarea = False
         select_value = option_value = textarea_value = None
@@ -213,10 +215,10 @@ class HTMLSanitizer(object):
         
         The exact set of allowed elements and attributes can be configured.
         
-        @param safe_tags: a set of tag names that are considered safe
-        @param safe_attrs: a set of attribute names that are considered safe
-        @param safe_schemes: a set of URI schemes that are considered safe
-        @param uri_attrs: a set of names of attributes that contain URIs
+        :param safe_tags: a set of tag names that are considered safe
+        :param safe_attrs: a set of attribute names that are considered safe
+        :param safe_schemes: a set of URI schemes that are considered safe
+        :param uri_attrs: a set of names of attributes that contain URIs
         """
         self.safe_tags = safe_tags
         self.safe_attrs = safe_attrs
@@ -226,8 +228,8 @@ class HTMLSanitizer(object):
     def __call__(self, stream, ctxt=None):
         """Apply the filter to the given stream.
         
-        @param stream: the markup event stream to filter
-        @param ctxt: the template context (unused)
+        :param stream: the markup event stream to filter
+        :param ctxt: the template context (unused)
         """
         waiting_for = None
 

@@ -19,6 +19,9 @@ from genshi.template.base import BadDirectiveError, Template, SUB
 from genshi.template.directives import *
 from genshi.template.interpolation import interpolate
 
+__all__ = ['TextTemplate']
+__docformat__ = 'restructuredtext en'
+
 
 class TextTemplate(Template):
     """Implementation of a simple text-based template engine.

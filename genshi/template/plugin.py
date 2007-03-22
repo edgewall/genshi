@@ -96,17 +96,7 @@ class AbstractTemplateEnginePlugin(object):
         """Render the output to an event stream."""
         if not isinstance(template, Template):
             template = self.load_template(template)
-        ctxt = Context(**info)
-
-        # Some functions for Kid compatibility
-        def defined(name):
-            return name in ctxt
-        ctxt['defined'] = defined
-        def value_of(name, default=None):
-            return ctxt.get(name, default)
-        ctxt['value_of'] = value_of
-
-        return template.generate(ctxt)
+        return template.generate(**info)
 
 
 class MarkupTemplateEnginePlugin(AbstractTemplateEnginePlugin):

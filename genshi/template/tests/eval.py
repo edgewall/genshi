@@ -353,8 +353,7 @@ class ExpressionTestCase(unittest.TestCase):
             while frame.tb_next:
                 frame = frame.tb_next
                 frames.append(frame)
-            self.assertEqual('Something (<Something>) has no member named "nil"',
-                             str(e))
+            self.assertEqual('<Something> has no member named "nil"', str(e))
             self.assertEqual("<Expression 'something.nil'>",
                              frames[-2].tb_frame.f_code.co_name)
             self.assertEqual('index.html',
@@ -376,8 +375,7 @@ class ExpressionTestCase(unittest.TestCase):
             while frame.tb_next:
                 frame = frame.tb_next
                 frames.append(frame)
-            self.assertEqual('Something (<Something>) has no member named "nil"',
-                             str(e))
+            self.assertEqual('<Something> has no member named "nil"', str(e))
             self.assertEqual('''<Expression 'something["nil"]'>''',
                              frames[-2].tb_frame.f_code.co_name)
             self.assertEqual('index.html',

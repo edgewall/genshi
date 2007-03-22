@@ -215,12 +215,7 @@ class UndefinedError(TemplateRuntimeError):
     """
     def __init__(self, name, owner=UNDEFINED):
         if owner is not UNDEFINED:
-            orepr = repr(owner)
-            if len(orepr) > 60:
-                orepr = orepr[:60] + '...'
-            message = '%s (%s) has no member named "%s"' % (
-                type(owner).__name__, orepr, name
-            )
+            message = '%s has no member named "%s"' % (repr(owner), name)
         else:
             message = '"%s" not defined' % name
         TemplateRuntimeError.__init__(self, message)

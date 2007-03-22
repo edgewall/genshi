@@ -11,7 +11,62 @@
 # individuals. For the exact contribution history, see the revision
 # history and logs, available at http://genshi.edgewall.org/log/.
 
-"""Support for programmatically generating markup streams."""
+"""Support for programmatically generating markup streams from Python code using
+a very simple syntax. The main entry point to this module is the `tag` object
+(which is actually an instance of the ``ElementFactory`` class). You should
+rarely (if ever) need to directly import and use any of the other classes in
+this module.
+
+Elements can be created using the `tag` object using attribute access. For
+example:
+
+>>> doc = tag.p('Some text and ', tag.a('a link', href='http://example.org/'), '.')
+>>> doc
+<Element "p">
+
+This produces an `Element` instance which can be further modified to add child
+nodes and attributes. This is done by "calling" the element: positional
+arguments are added as child nodes (alternatively, the `Element.append` method
+can be used for that purpose), whereas keywords arguments are added as
+attributes:
+
+>>> doc(tag.br)
+<Element "p">
+>>> print doc
+<p>Some text and <a href="http://example.org/">a link</a>.<br/></p>
+
+If an attribute name collides with a Python keyword, simply append an underscore
+to the name:
+
+>>> doc(class_='intro')
+<Element "p">
+>>> print doc
+<p class="intro">Some text and <a href="http://example.org/">a link</a>.<br/></p>
+
+As shown above, an `Element` can easily be directly rendered to XML text by
+printing it or using the Python ``str()`` function. This is basically a
+shortcut for converting the `Element` to a stream and serializing that
+stream:
+
+>>> stream = doc.generate()
+>>> stream
+<genshi.core.Stream object at ...>
+>>> print stream
+<p class="intro">Some text and <a href="http://example.org/">a link</a>.<br/></p>
+
+
+The `tag` object also allows creating "fragments", which are basically lists
+of nodes (elements or text) that don't have a parent element. This can be useful
+for creating snippets of markup that are attached to a parent element later (for
+example in a template). Fragments are created by calling the `tag` object, which
+returns an object of type `Fragment`:
+
+>>> fragment = tag('Hello, ', tag.em('world'), '!')
+>>> fragment
+<Fragment>
+>>> print fragment
+Hello, <em>world</em>!
+"""
 
 from genshi.core import Attrs, Namespace, QName, Stream, START, END, TEXT
 

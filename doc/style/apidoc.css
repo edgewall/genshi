@@ -110,7 +110,7 @@ table td.footer :link:hover, table td.footer :visited:hover {
 .py-string, .variable-string, .variable-quote { color: #093; }
 .py-comment { color: #06f; font-style: italic; }
 .py-keyword { color: #00f; }
-.py-output { background: #f6f6f0; font-weight: bold; }
+.py-output { background: #f6f6f0; color: #666; font-weight: bold; }
 
 /* Index */
 

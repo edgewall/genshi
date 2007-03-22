@@ -92,23 +92,38 @@ a dictionary)::
   >>> print tmpl.generate(dict={'foo': 'bar'})
   bar
 
-Another difference is that you can access variables that are not defined, and
-won't get a ``NameError`` exception::
+Because there are two ways to access either attributes or items, expressions
+do not raise the standard ``AttributeError`` or ``IndexError`` exceptions, but
+rather an exception of the type ``UndefinedError``. The same kind of error is
+raised when you try to access a top-level variable that is not in the context
+data.
 
-  >>> from genshi.template import TextTemplate
-  >>> tmpl = TextTemplate('${doh}')
-  >>> print tmpl.generate()
-  <BLANKLINE>
+Built-in Functions & Types
+==========================
 
-You **will** however get a ``NameError`` if you try to call an undefined 
-variable, or do anything else with it, such as accessing its attributes. If you
-need to know whether a variable is defined, you can check its type against the
-``Undefined`` class, for example in an `#if`_ directive::
+The following functions and types are available by default in template code, in
+addition to the standard built-ins that are available to all Python code.
 
-  >>> from genshi.template import TextTemplate
-  >>> tmpl = TextTemplate('${type(doh) is Undefined}')
-  >>> print tmpl.generate()
-  True
+``defined(name)``
+-----------------
+ 
+This function determines whether a variable of the specified name exists in
+the context data, and returns ``True`` if it does.
+ 
+``value_of(name, default=None)``
+--------------------------------
+
+This function returns the value of the variable with the specified name if
+such a variable is defined, and returns the value of the ``default``
+parameter if no such variable is defined.
+
+``Markup(text)``
+----------------
+
+The ``Markup`` type marks a given string as being safe for inclusion in markup,
+meaning it will *not* be escaped in the serialization stage. Use this with care,
+as not escaping a user-provided string may allow malicious users to open your
+web site to cross-site scripting attacks.
 
 
 .. _`directives`:

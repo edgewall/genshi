@@ -48,7 +48,10 @@ class MarkupTemplate(Template):
     </ul>
     """
     EXEC = StreamEventKind('EXEC')
+    """Stream event kind representing a Python code suite to execute."""
+
     INCLUDE = StreamEventKind('INCLUDE')
+    """Stream event kind representing the inclusion of another template."""
 
     DIRECTIVE_NAMESPACE = Namespace('http://genshi.edgewall.org/')
     XINCLUDE_NAMESPACE = Namespace('http://www.w3.org/2001/XInclude')
@@ -68,7 +71,6 @@ class MarkupTemplate(Template):
 
     def __init__(self, source, basedir=None, filename=None, loader=None,
                  encoding=None):
-        """Initialize a template from either a string or a file-like object."""
         Template.__init__(self, source, basedir=basedir, filename=filename,
                           loader=loader, encoding=encoding)
 
@@ -77,7 +79,6 @@ class MarkupTemplate(Template):
             self.filters.append(self._include)
 
     def _parse(self, source, encoding):
-        """Parse the template from an XML document."""
         streams = [[]] # stacked lists of events of the "compiled" template
         dirmap = {} # temporary mapping of directives to elements
         ns_prefix = {}

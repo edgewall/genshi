@@ -53,16 +53,16 @@ class Stream(object):
     """
     __slots__ = ['events']
 
-    START = StreamEventKind('START') # a start tag
-    END = StreamEventKind('END') # an end tag
-    TEXT = StreamEventKind('TEXT') # literal text
-    DOCTYPE = StreamEventKind('DOCTYPE') # doctype declaration
-    START_NS = StreamEventKind('START_NS') # start namespace mapping
-    END_NS = StreamEventKind('END_NS') # end namespace mapping
-    START_CDATA = StreamEventKind('START_CDATA') # start CDATA section
-    END_CDATA = StreamEventKind('END_CDATA') # end CDATA section
-    PI = StreamEventKind('PI') # processing instruction
-    COMMENT = StreamEventKind('COMMENT') # comment
+    START = StreamEventKind('START') #: a start tag
+    END = StreamEventKind('END') #: an end tag
+    TEXT = StreamEventKind('TEXT') #: literal text
+    DOCTYPE = StreamEventKind('DOCTYPE') #: doctype declaration
+    START_NS = StreamEventKind('START_NS') #: start namespace mapping
+    END_NS = StreamEventKind('END_NS') #: end namespace mapping
+    START_CDATA = StreamEventKind('START_CDATA') #: start CDATA section
+    END_CDATA = StreamEventKind('END_CDATA') #: end CDATA section
+    PI = StreamEventKind('PI') #: processing instruction
+    COMMENT = StreamEventKind('COMMENT') #: comment
 
     def __init__(self, events):
         """Initialize the stream with a sequence of markup events.

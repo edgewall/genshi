@@ -11,6 +11,8 @@
 # individuals. For the exact contribution history, see the revision
 # history and logs, available at http://genshi.edgewall.org/log/.
 
+"""Basic templating functionality."""
+
 try:
     from collections import deque
 except ImportError:
@@ -197,12 +199,30 @@ class Template(object):
     """
     __metaclass__ = TemplateMeta
 
-    EXPR = StreamEventKind('EXPR') # an expression
-    SUB = StreamEventKind('SUB') # a "subprogram"
+    EXPR = StreamEventKind('EXPR')
+    """Stream event kind representing a Python expression."""
+
+    SUB = StreamEventKind('SUB')
+    """Stream event kind representing a nested stream to which one or more
+    directives should be applied.
+    """
 
     def __init__(self, source, basedir=None, filename=None, loader=None,
                  encoding=None):
-        """Initialize a template from either a string or a file-like object."""
+        """Initialize a template from either a string, a file-like object, or
+        an already parsed markup stream.
+        
+        :param source: a string, file-like object, or markup stream to read the
+                       template from
+        :param basedir: the base directory containing the template file; when
+                        loaded from a `TemplateLoader`, this will be the
+                        directory on the template search path in which the
+                        template was found
+        :param filename: the name of the template file, relative to the given
+                         base directory
+        :param loader: the `TemplateLoader` to use for load included templates
+        :param encoding: the encoding of the `source`
+        """
         self.basedir = basedir
         self.filename = filename
         if basedir and filename:
@@ -228,11 +248,18 @@ class Template(object):
         directives that will be executed in the render stage. The input is
         split up into literal output (text that does not depend on the context
         data) and directives or expressions.
+        
+        :param source: a file-like object containing the XML source of the
+                       template, or an XML event stream
+        :param encoding: the encoding of the `source`
         """
         raise NotImplementedError
 
     def _prepare(self, stream):
-        """Call the `attach` method of every directive found in the template."""
+        """Call the `attach` method of every directive found in the template.
+        
+        :param stream: the event stream of the template
+        """
         for kind, data, pos in stream:
             if kind is SUB:
                 directives = []
@@ -261,8 +288,8 @@ class Template(object):
         an instance of the `Context` class, and keyword arguments are ignored.
         This calling style is used for internal processing.
         
-        @return: a markup event stream representing the result of applying
-            the template to the context data.
+        :return: a markup event stream representing the result of applying
+                 the template to the context data.
         """
         if args:
             assert len(args) == 1

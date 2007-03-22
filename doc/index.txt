@@ -25,3 +25,4 @@ which is heavily inspired by Kid.
 * `Genshi XML Template Language <xml-templates.html>`_
 * `Genshi Text Template Language <text-templates.html>`_
 * `Using XPath in Genshi <xpath.html>`_
+* `Generated API Documentation <api/index.html>`_

@@ -25,8 +25,8 @@ from genshi.template.loader import TemplateLoader
 from genshi.template.markup import MarkupTemplate
 from genshi.template.text import TextTemplate
 
-__all__ = ['ConfigurationError', 'MarkupTemplateEnginePlugin',
-           'TextTemplateEnginePlugin']
+__all__ = ['ConfigurationError', 'AbstractTemplateEnginePlugin',
+           'MarkupTemplateEnginePlugin', 'TextTemplateEnginePlugin']
 __docformat__ = 'restructuredtext en'
 
 

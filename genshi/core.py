@@ -159,6 +159,11 @@ class Stream(object):
         XPath expression.
         
         :param path: a string containing the XPath expression
+        :param namespaces: mapping of namespace prefixes used in the path
+        :param variables: mapping of variable names to values
+        :return: the selected substream
+        :raises PathSyntaxError: if the given path expression is invalid or not
+                                 supported
         """
         from genshi.path import Path
         return Path(path).select(self, namespaces, variables)
@@ -305,6 +310,11 @@ class Attrs(tuple):
     def get(self, name, default=None):
         """Return the value of the attribute with the specified name, or the
         value of the `default` parameter if no such attribute is found.
+        
+        :param name: the name of the attribute
+        :param default: the value to return when the attribute does not exist
+        :return: the attribute value, or the `default` value if that attribute
+                 does not exist
         """
         for attr, value in self:
             if attr == name:

@@ -35,10 +35,19 @@ class TemplateError(Exception):
 
 
 class TemplateRuntimeError(TemplateError):
-    """Exception raised when an the evualation of a Python expression in a
-    template causes an error."""
+    """Exception raised when an the evaluation of a Python expression in a
+    template causes an error.
+    """
 
     def __init__(self, message, filename='<string>', lineno=-1, offset=-1):
+        """Create the exception
+        
+        :param message: the error message
+        :param filename: the filename of the template
+        :param lineno: the number of line in the template at which the error
+                       occurred
+        :param offset: the column number at which the error occurred
+        """
         self.msg = message
         if filename != '<string>' or lineno >= 0:
             message = '%s (%s, line %d)' % (self.msg, filename, lineno)
@@ -53,6 +62,14 @@ class TemplateSyntaxError(TemplateError):
     error."""
 
     def __init__(self, message, filename='<string>', lineno=-1, offset=-1):
+        """Create the exception
+        
+        :param message: the error message
+        :param filename: the filename of the template
+        :param lineno: the number of line in the template at which the error
+                       occurred
+        :param offset: the column number at which the error occurred
+        """
         if isinstance(message, SyntaxError) and message.lineno is not None:
             message = str(message).replace(' (line %d)' % message.lineno, '')
         self.msg = message
@@ -72,6 +89,13 @@ class BadDirectiveError(TemplateSyntaxError):
     """
 
     def __init__(self, name, filename='<string>', lineno=-1):
+        """Create the exception
+        
+        :param name: the name of the directive
+        :param filename: the filename of the template
+        :param lineno: the number of line in the template at which the error
+                       occurred
+        """
         message = 'bad directive "%s"' % name
         TemplateSyntaxError.__init__(self, message, filename, lineno)
 
@@ -102,6 +126,9 @@ class Context(object):
     """
 
     def __init__(self, **data):
+        """Initialize the template context with the given keyword arguments as
+        data.
+        """
         self.frames = deque([data])
         self.pop = self.frames.popleft
         self.push = self.frames.appendleft
@@ -111,11 +138,17 @@ class Context(object):
         return repr(list(self.frames))
 
     def __contains__(self, key):
-        """Return whether a variable exists in any of the scopes."""
+        """Return whether a variable exists in any of the scopes.
+        
+        :param key: the name of the variable
+        """
         return self._find(key)[1] is not None
 
     def __delitem__(self, key):
-        """Set a variable in the current scope."""
+        """Remove a variable from all scopes.
+        
+        :param key: the name of the variable
+        """
         for frame in self.frames:
             if key in frame:
                 del frame[key]
@@ -124,7 +157,9 @@ class Context(object):
         """Get a variables's value, starting at the current scope and going
         upward.
         
-        Raises `KeyError` if the requested variable wasn't found in any scope.
+        :param key: the name of the variable
+        :return: the variable value
+        :raises KeyError: if the requested variable wasn't found in any scope
         """
         value, frame = self._find(key)
         if frame is None:
@@ -132,17 +167,28 @@ class Context(object):
         return value
 
     def __len__(self):
-        """Return the number of distinctly named variables in the context."""
+        """Return the number of distinctly named variables in the context.
+        
+        :return: the number of variables in the context
+        """
         return len(self.items())
 
     def __setitem__(self, key, value):
-        """Set a variable in the current scope."""
+        """Set a variable in the current scope.
+        
+        :param key: the name of the variable
+        :param value: the variable value
+        """
         self.frames[0][key] = value
 
     def _find(self, key, default=None):
         """Retrieve a given variable's value and the frame it was found in.
 
-        Intented for internal use by directives.
+        Intended primarily for internal use by directives.
+        
+        :param key: the name of the variable
+        :param default: the default value to return when the variable is not
+                        found
         """
         for frame in self.frames:
             if key in frame:
@@ -152,6 +198,10 @@ class Context(object):
     def get(self, key, default=None):
         """Get a variable's value, starting at the current scope and going
         upward.
+        
+        :param key: the name of the variable
+        :param default: the default value to return when the variable is not
+                        found
         """
         for frame in self.frames:
             if key in frame:
@@ -159,23 +209,41 @@ class Context(object):
         return default
 
     def keys(self):
+        """Return the name of all variables in the context.
+        
+        :return: a list of variable names
+        """
         keys = []
         for frame in self.frames:
             keys += [key for key in frame if key not in keys]
         return keys
 
     def items(self):
+        """Return a list of ``(name, value)`` tuples for all variables in the
+        context.
+        
+        :return: a list of variables
+        """
         return [(key, self.get(key)) for key in self.keys()]
 
     def push(self, data):
-        """Push a new scope on the stack."""
+        """Push a new scope on the stack.
+        
+        :param data: the data dictionary to push on the context stack.
+        """
 
     def pop(self):
         """Pop the top-most scope from the stack."""
 
 
 def _apply_directives(stream, ctxt, directives):
-    """Apply the given directives to the stream."""
+    """Apply the given directives to the stream.
+    
+    :param stream: the stream the directives should be applied to
+    :param ctxt: the `Context`
+    :param directives: the list of directives to apply
+    :return: the stream with the given directives applied
+    """
     if directives:
         stream = directives[0](iter(stream), ctxt, directives[1:])
     return stream

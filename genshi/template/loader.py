@@ -30,6 +30,11 @@ class TemplateNotFound(TemplateError):
     """Exception raised when a specific template file could not be found."""
 
     def __init__(self, name, search_path):
+        """Create the exception.
+        
+        :param name: the filename of the template
+        :param search_path: the search path used to lookup the template
+        """
         TemplateError.__init__(self, 'Template "%s" not found' % name)
         self.search_path = search_path
 
@@ -101,11 +106,11 @@ class TemplateLoader(object):
         
         If the `filename` parameter is relative, this method searches the search
         path trying to locate a template matching the given name. If the file
-        name is an absolute path, the search path is not bypassed.
+        name is an absolute path, the search path is ignored.
         
-        If requested template is not found, a `TemplateNotFound` exception is
-        raised. Otherwise, a `Template` object is returned that represents the
-        parsed template.
+        If the requested template is not found, a `TemplateNotFound` exception
+        is raised. Otherwise, a `Template` object is returned that represents
+        the parsed template.
         
         Template instances are cached to avoid having to parse the same
         template file more than once. Thus, subsequent calls of this method
@@ -118,11 +123,14 @@ class TemplateLoader(object):
         
         :param filename: the relative path of the template file to load
         :param relative_to: the filename of the template from which the new
-                            template is being loaded, or ``None`` if the template
-                            is being loaded directly
+                            template is being loaded, or ``None`` if the
+                            template is being loaded directly
         :param cls: the class of the template object to instantiate
         :param encoding: the encoding of the template to load; defaults to the
                          ``default_encoding`` of the loader instance
+        :return: the loaded `Template` instance
+        :raises TemplateNotFound: if a template with the given name could not be
+                                  found
         """
         if cls is None:
             cls = self.default_class

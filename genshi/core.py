@@ -219,7 +219,7 @@ def _ensure(stream):
 class Attrs(tuple):
     """Immutable sequence type that stores the attributes of an element.
     
-    Ordering of the attributes is preserved, while accessing by name is also
+    Ordering of the attributes is preserved, while access by name is also
     supported.
     
     >>> attrs = Attrs([('href', '#'), ('title', 'Foo')])
@@ -316,6 +316,9 @@ class Attrs(tuple):
         
         The returned event is a `TEXT` event, the data is the value of all
         attributes joined together.
+        
+        >>> Attrs([('href', '#'), ('title', 'Foo')]).totuple()
+        ('TEXT', u'#Foo', (None, -1, -1))
         """
         return TEXT, u''.join([x[1] for x in self]), (None, -1, -1)
 
@@ -352,6 +355,19 @@ class Markup(unicode):
         return '<%s %r>' % (self.__class__.__name__, unicode(self))
 
     def join(self, seq, escape_quotes=True):
+        """Return a `Markup` object which is the concatenation of the strings
+        in the given sequence, where this `Markup` object is the separator
+        between the joined elements.
+        
+        Any element in the sequence that is not a `Markup` instance is
+        automatically escaped.
+        
+        :param seq: the sequence of strings to join
+        :param escape_quotes: whether double quote characters in the elements
+                              should be escaped
+        :return: the joined `Markup` object
+        :see: `escape`
+        """
         return Markup(unicode(self).join([escape(item, quotes=escape_quotes)
                                           for item in seq]))
 
@@ -359,9 +375,21 @@ class Markup(unicode):
         """Create a Markup instance from a string and escape special characters
         it may contain (<, >, & and \").
         
+        >>> escape('"1 < 2"')
+        <Markup u'&#34;1 &lt; 2&#34;'>
+        
         If the `quotes` parameter is set to `False`, the \" character is left
         as is. Escaping quotes is generally only required for strings that are
         to be used in attribute values.
+        
+        >>> escape('"1 < 2"', quotes=False)
+        <Markup u'"1 &lt; 2"'>
+        
+        :param text: the text to escape
+        :param quotes: if ``True``, double quote characters are escaped in
+                       addition to the other special characters
+        :return: the escaped `Markup` string
+        :see: `genshi.core.escape`
         """
         if not text:
             return cls()
@@ -376,7 +404,13 @@ class Markup(unicode):
     escape = classmethod(escape)
 
     def unescape(self):
-        """Reverse-escapes &, <, > and \" and returns a `unicode` object."""
+        """Reverse-escapes &, <, >, and \" and returns a `unicode` object.
+        
+        >>> Markup('1 &lt; 2').unescape()
+        u'1 < 2'
+        
+        :see: `genshi.core.unescape`
+        """
         if not self:
             return u''
         return unicode(self).replace('&#34;', '"') \
@@ -389,20 +423,37 @@ class Markup(unicode):
         replaced by the equivalent UTF-8 characters.
         
         If the `keepxmlentities` parameter is provided and evaluates to `True`,
-        the core XML entities (&amp;, &apos;, &gt;, &lt; and &quot;) are not
-        stripped.
+        the core XML entities (``&amp;``, ``&apos;``, ``&gt;``, ``&lt;`` and
+        ``&quot;``) are not stripped.
+        
+        :see: `genshi.util.stripentities`
         """
         return Markup(stripentities(self, keepxmlentities=keepxmlentities))
 
     def striptags(self):
-        """Return a copy of the text with all XML/HTML tags removed."""
+        """Return a copy of the text with all XML/HTML tags removed.
+        
+        :see: `genshi.util.striptags`
+        """
         return Markup(striptags(self))
 
 
 escape = Markup.escape
 
 def unescape(text):
-    """Reverse-escapes &, <, > and \" and returns a `unicode` object."""
+    """Reverse-escapes &, <, >, and \" and returns a `unicode` object.
+    
+    >>> unescape(Markup('1 &lt; 2'))
+    u'1 < 2'
+    
+    If the provided `text` object is not a `Markup` instance, the text is
+    returned as-is.
+    
+    >>> unescape('1 &lt; 2')
+    '1 &lt; 2'
+    
+    :param text: the text to unescape
+    """
     if not isinstance(text, Markup):
         return text
     return text.unescape()

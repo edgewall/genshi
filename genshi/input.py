@@ -23,7 +23,6 @@ except NameError:
     from sets import ImmutableSet as frozenset
 import HTMLParser as html
 import htmlentitydefs
-import os
 from StringIO import StringIO
 
 from genshi.core import Attrs, QName, Stream, stripentities
@@ -68,7 +67,7 @@ class ParseError(Exception):
         """
         self.msg = message
         if filename:
-            message += ', in ' + os.path.basename(filename)
+            message += ', in ' + filename
         Exception.__init__(self, message)
         self.filename = filename or '<string>'
         self.lineno = lineno

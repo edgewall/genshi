@@ -87,7 +87,7 @@ class MarkupTemplate(Template):
         include_href = None
 
         if not isinstance(source, Stream):
-            source = XMLParser(source, filename=self.filepath,
+            source = XMLParser(source, filename=self.filename,
                                encoding=encoding)
 
         for kind, data, pos in source:

@@ -23,6 +23,7 @@ import os
 from StringIO import StringIO
 
 from genshi.core import Attrs, Stream, StreamEventKind, START, TEXT, _ensure
+from genshi.input import ParseError
 
 __all__ = ['Context', 'Template', 'TemplateError', 'TemplateRuntimeError',
            'TemplateSyntaxError', 'BadDirectiveError']
@@ -235,7 +236,10 @@ class Template(object):
             source = StringIO(source)
         else:
             source = source
-        self.stream = list(self._prepare(self._parse(source, encoding)))
+        try:
+            self.stream = list(self._prepare(self._parse(source, encoding)))
+        except ParseError, e:
+            raise TemplateSyntaxError(e.msg, self.filepath, e.lineno, e.offset)
         self.filters = [self._flatten, self._eval]
 
     def __repr__(self):

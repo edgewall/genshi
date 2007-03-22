@@ -20,6 +20,7 @@ try:
     from setuptools import setup
 except ImportError:
     from distutils.core import setup
+import sys
 
 
 class build_doc(Command):
@@ -34,7 +35,8 @@ class build_doc(Command):
 
     def run(self):
         from docutils.core import publish_cmdline
-        conf = os.path.join('doc', 'docutils.conf')
+        docutils_conf = os.path.join('doc', 'docutils.conf')
+        epydoc_conf = os.path.join('doc', 'epydoc.conf')
 
         for source in glob('doc/*.txt'):
             dest = os.path.splitext(source)[0] + '.html'
@@ -42,7 +44,23 @@ class build_doc(Command):
                    os.path.getmtime(dest) < os.path.getmtime(source):
                 print 'building documentation file %s' % dest
                 publish_cmdline(writer_name='html',
-                                argv=['--config=%s' % conf, source, dest])
+                                argv=['--config=%s' % docutils_conf, source,
+                                      dest])
+
+        try:
+            from epydoc import cli
+            old_argv = sys.argv[1:]
+            sys.argv[1:] = [
+                '--config=%s' % epydoc_conf,
+                '--no-private', # epydoc bug, not read from config
+                '--simple-term',
+                '--verbose'
+            ]
+            cli.cli()
+            sys.argv[1:] = old_argv
+
+        except ImportError:
+            print 'epydoc not installed, skipping API documentation.'
 
 
 class test_doc(Command):

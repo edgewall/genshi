@@ -49,7 +49,7 @@ shortcut for converting the `Element` to a stream and serializing that
 stream:
 
 >>> stream = doc.generate()
->>> stream
+>>> stream #doctest: +ELLIPSIS
 <genshi.core.Stream object at ...>
 >>> print stream
 <p class="intro">Some text and <a href="http://example.org/">a link</a>.<br/></p>

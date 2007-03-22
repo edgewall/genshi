@@ -180,6 +180,32 @@ class HTMLFormFiller(object):
 class HTMLSanitizer(object):
     """A filter that removes potentially dangerous HTML tags and attributes
     from the stream.
+    
+    >>> from genshi import HTML
+    >>> html = HTML('<div><script>alert(document.cookie)</script></div>')
+    >>> print html | HTMLSanitizer()
+    <div/>
+    
+    The default set of safe tags and attributes can be modified when the filter
+    is instantiated. For example, to allow inline ``style`` attributes, the
+    following instantation would work:
+    
+    >>> html = HTML('<div style="background: #000"></div>')
+    >>> sanitizer = HTMLSanitizer(safe_attrs=HTMLSanitizer.SAFE_ATTRS | set(['style']))
+    >>> print html | sanitizer
+    <div style="background: #000"/>
+    
+    Note that even in this case, the filter *does* attempt to remove dangerous
+    constructs from style attributes:
+
+    >>> html = HTML('<div style="background: url(javascript:void); color: #000"></div>')
+    >>> print html | sanitizer
+    <div style="color: #000"/>
+    
+    This handles HTML entities, unicode escapes in CSS and Javascript text, as
+    well as a lot of other things. However, the style tag is still excluded by
+    default because it is very hard for such sanitizing to be completely safe,
+    especially considering how much error recovery current web browsers perform.
     """
 
     SAFE_TAGS = frozenset(['a', 'abbr', 'acronym', 'address', 'area', 'b',
@@ -201,8 +227,8 @@ class HTMLSanitizer(object):
         'longdesc', 'maxlength', 'media', 'method', 'multiple', 'name',
         'nohref', 'noshade', 'nowrap', 'prompt', 'readonly', 'rel', 'rev',
         'rows', 'rowspan', 'rules', 'scope', 'selected', 'shape', 'size',
-        'span', 'src', 'start', 'style', 'summary', 'tabindex', 'target',
-        'title', 'type', 'usemap', 'valign', 'value', 'vspace', 'width'])
+        'span', 'src', 'start', 'summary', 'tabindex', 'target', 'title',
+        'type', 'usemap', 'valign', 'value', 'vspace', 'width'])
 
     SAFE_SCHEMES = frozenset(['file', 'ftp', 'http', 'https', 'mailto', None])
 
@@ -260,6 +286,7 @@ class HTMLSanitizer(object):
                     elif attr == 'style':
                         # Remove dangerous CSS declarations from inline styles
                         decls = []
+                        value = self._replace_unicode_escapes(value)
                         for decl in filter(None, value.split(';')):
                             is_evil = False
                             if 'expression' in decl:
@@ -288,3 +315,11 @@ class HTMLSanitizer(object):
             else:
                 if not waiting_for:
                     yield kind, data, pos
+
+    _NORMALIZE_NEWLINES = re.compile(r'\r\n').sub
+    _UNICODE_ESCAPE = re.compile(r'\\([0-9a-fA-F]{1,6})\s?').sub
+
+    def _replace_unicode_escapes(self, text):
+        def _repl(match):
+            return unichr(int(match.group(1), 16))
+        return self._UNICODE_ESCAPE(_repl, self._NORMALIZE_NEWLINES('\n', text))

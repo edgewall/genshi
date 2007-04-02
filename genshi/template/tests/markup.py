@@ -217,6 +217,22 @@ class MarkupTemplateTestCase(unittest.TestCase):
           42
         </div>""", str(tmpl.generate()))
 
+    def test_namespace_on_removed_elem(self):
+        """
+        Verify that a namespace declaration on an element that is removed from
+        the generated stream does not get pushed up to the next non-stripped
+        element (see ticket #107).
+        """
+        tmpl = MarkupTemplate("""<?xml version="1.0"?>
+        <Test xmlns:py="http://genshi.edgewall.org/">
+          <Size py:if="0" xmlns:t="test">Size</Size>
+          <Item/>
+        </Test>""")
+        self.assertEqual("""<Test>
+          
+          <Item/>
+        </Test>""", str(tmpl.generate()))
+
     def test_include_in_loop(self):
         dirname = tempfile.mkdtemp(suffix='genshi_test')
         try:

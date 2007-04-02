@@ -50,6 +50,9 @@ http://svn.edgewall.org/repos/genshi/tags/0.4.0/
  * `style` attributes are no longer allowed by the `HTMLSanitizer` by default.
    If it is explicitly added to the set of safe attributes, and unicode escapes
    in the attribute value are handled correctly.
+ * Namespace declarations on conditional elements (for example using a `py:if`
+   directive`) are no longer moved to the following element when the element
+   originally carrying the declaration is removed from the stream (ticket #107).
 
 
 Version 0.3.6

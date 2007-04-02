@@ -412,6 +412,8 @@ class NamespaceFlattener(object):
 
         ns_attrs = []
         _push_ns_attr = ns_attrs.append
+        def _make_ns_attr(prefix, uri):
+            return u'xmlns%s' % (prefix and ':%s' % prefix or ''), uri
 
         def _gen_prefix():
             val = 0
@@ -467,10 +469,7 @@ class NamespaceFlattener(object):
                 prefix, uri = data
                 if uri not in namespaces:
                     prefix = prefixes.get(uri, [prefix])[-1]
-                    if not prefix:
-                        _push_ns_attr((u'xmlns', uri))
-                    else:
-                        _push_ns_attr((u'xmlns:%s' % prefix, uri))
+                    _push_ns_attr(_make_ns_attr(prefix, uri))
                 _push_ns(prefix, uri)
 
             elif kind is END_NS:
@@ -484,6 +483,10 @@ class NamespaceFlattener(object):
                         uri_prefixes.pop()
                         if not uri_prefixes:
                             del namespaces[uri]
+                    if ns_attrs:
+                        attr = _make_ns_attr(data, uri)
+                        if attr in ns_attrs:
+                            ns_attrs.remove(attr)
 
             else:
                 yield kind, data, pos

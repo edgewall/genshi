@@ -1,0 +1,132 @@
+.. -*- mode: rst; encoding: utf-8 -*-
+
+==============
+Stream Filters
+==============
+
+`Markup Streams`_ showed how to write filters and how they are applied to
+markup streams. This page describes the features of the various filters that
+come with Genshi itself.
+
+.. _`Markup Streams`: streams.html
+
+.. contents:: Contents
+   :depth: 1
+.. sectnum::
+
+
+HTML Form Filler
+================
+
+The filter ``genshi.filters.HTMLFormFiller`` can automatically populate an HTML
+form from values provided as a simple dictionary. When using thi filter, you can
+basically omit any ``value``, ``selected``, or ``checked`` attributes from form
+controls in your templates, and let the filter do all that work for you.
+
+``HTMLFormFiller`` takes a dictionary of data to populate the form with, where
+the keys should match the names of form elements, and the values determine the
+values of those controls. For example::
+
+  >>> from genshi.filters import HTMLFormFiller
+  >>> from genshi.template import MarkupTemplate
+  >>> template = MarkupTemplate("""<form>
+  ...   <p>
+  ...     <label>User name:
+  ...       <input type="text" name="username" />
+  ...     </label><br />
+  ...     <label>Password:
+  ...       <input type="password" name="password" />
+  ...     </label><br />
+  ...     <label>
+  ...       <input type="checkbox" name="remember" /> Remember me
+  ...     </label>
+  ...   </p>
+  ... </form>""")
+  >>> filler = HTMLFormFiller(data=dict(username='john', remember=True))
+  >>> print template.generate() | filler
+  <form>
+    <p>
+      <label>User name:
+        <input type="text" name="username" value="john"/>
+      </label><br/>
+      <label>Password:
+        <input type="password" name="password"/>
+      </label><br/>
+      <label>
+        <input type="checkbox" name="remember" checked="checked"/> Remember me
+      </label>
+    </p>
+  </form>
+
+.. note:: This processing is done without in any way reparsing the template
+          output. As any stream filter it operates after the template output is
+          generated but *before* that output is actually serialized.
+
+The filter will of course also handle radio buttons as well as ``<select>`` and
+``<textarea>`` elements. For radio buttons to be marked as checked, the value in
+the data dictionary needs to match the ``value`` attribute of the ``<input>``
+element, or evaluate to a truth value if the element has no such attribute. For
+options in a ``<select>`` box to be marked as selected, the value in the data
+dictionary needs to match the ``value`` attribute of the ``<option>`` element,
+or the text content of the option if it has no ``value`` attribute. Password and
+file input fields are not populated, as most browsers would ignore that anyway
+for security reasons.
+
+You'll want to make sure that the values in the data dictionary have already
+been converted to strings. While the filter may be able to deal with non-string
+data in some cases (such as check boxes), in most cases it will either not
+attempt any conversion or not produce the desired results.
+
+You can restrict the form filler to operate only on a specific ``<form>`` by
+passing either the ``id`` or the ``name`` keyword argument to the initializer.
+If either of those is specified, the filter will only apply to form tags with
+an attribute matching the specified value.
+
+
+HTML Sanitizer
+==============
+
+The filter ``genshi.filters.HTMLSanitizer`` filter can be used to clean up
+user-submitted HTML markup, removing potentially dangerous constructs that could
+be used for various kinds of abuse, such as cross-site scripting (XSS) attacks::
+
+  >>> from genshi.filters import HTMLSanitizer
+  >>> from genshi.input import HTML
+  >>> html = HTML("""<div>
+  ...   <p>Innocent looking text.</p>
+  ...   <script>alert("Danger: " + document.cookie)</script>
+  ... </div>""")
+  >>> sanitize = HTMLSanitizer()
+  >>> print html | sanitize
+  <div>
+    <p>Innocent looking text.</p>
+  </div>
+
+In this example, the ``<script>`` tag was removed from the output.
+
+You can determine which tags and attributes should be allowed by initializing
+the filter with corresponding sets. See the API documentation for more
+information.
+
+Inline ``style`` attributes are forbidden by default. If you allow them, the
+filter will still perform sanitization on the contents any encountered inline
+styles: the proprietary ``expression()`` function (supported only by Internet
+Explorer) is removed, and any property using an ``url()`` which a potentially
+dangerous URL scheme (such as ``javascript:``) are also stripped out::
+
+  >>> from genshi.filters import HTMLSanitizer
+  >>> from genshi.input import HTML
+  >>> html = HTML("""<div>
+  ...   <br style="background: url(javascript:alert(document.cookie); color: #000" />
+  ... </div>""")
+  >>> sanitize = HTMLSanitizer(safe_attrs=HTMLSanitizer.SAFE_ATTRS | set(['style']))
+  >>> print html | sanitize
+  <div>
+    <br style="color: #000"/>
+  </div>
+
+.. warning:: You should probably not rely on the ``style`` filtering, as
+             sanitizing mixed HTML, CSS, and Javascript is very complicated and
+             suspect to various browser bugs. If you can somehow get away with
+             not allowing inline styles in user-submitted content, that would
+             definitely be the safer route to follow.

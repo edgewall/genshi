@@ -33,14 +33,8 @@ __docformat__ = 'restructuredtext en'
 class TemplateError(Exception):
     """Base exception class for errors related to template processing."""
 
-
-class TemplateRuntimeError(TemplateError):
-    """Exception raised when an the evaluation of a Python expression in a
-    template causes an error.
-    """
-
     def __init__(self, message, filename='<string>', lineno=-1, offset=-1):
-        """Create the exception
+        """Create the exception.
         
         :param message: the error message
         :param filename: the filename of the template
@@ -48,18 +42,19 @@ class TemplateRuntimeError(TemplateError):
                        occurred
         :param offset: the column number at which the error occurred
         """
-        self.msg = message
+        self.msg = message #: the error message string
         if filename != '<string>' or lineno >= 0:
             message = '%s (%s, line %d)' % (self.msg, filename, lineno)
-        TemplateError.__init__(self, message)
-        self.filename = filename
-        self.lineno = lineno
-        self.offset = offset
+        Exception.__init__(self, message)
+        self.filename = filename #: the name of the template file
+        self.lineno = lineno #: the number of the line containing the error
+        self.offset = offset #: the offset on the line
 
 
 class TemplateSyntaxError(TemplateError):
     """Exception raised when an expression in a template causes a Python syntax
-    error."""
+    error, or the template is not well-formed.
+    """
 
     def __init__(self, message, filename='<string>', lineno=-1, offset=-1):
         """Create the exception
@@ -72,12 +67,7 @@ class TemplateSyntaxError(TemplateError):
         """
         if isinstance(message, SyntaxError) and message.lineno is not None:
             message = str(message).replace(' (line %d)' % message.lineno, '')
-        self.msg = message
-        message = '%s (%s, line %d)' % (self.msg, filename, lineno)
-        TemplateError.__init__(self, message)
-        self.filename = filename
-        self.lineno = lineno
-        self.offset = offset
+        TemplateError.__init__(self, message, filename, lineno)
 
 
 class BadDirectiveError(TemplateSyntaxError):
@@ -96,8 +86,14 @@ class BadDirectiveError(TemplateSyntaxError):
         :param lineno: the number of line in the template at which the error
                        occurred
         """
-        message = 'bad directive "%s"' % name
-        TemplateSyntaxError.__init__(self, message, filename, lineno)
+        TemplateSyntaxError.__init__(self, 'bad directive "%s"' % name,
+                                     filename, lineno)
+
+
+class TemplateRuntimeError(TemplateError):
+    """Exception raised when an the evaluation of a Python expression in a
+    template causes an error.
+    """
 
 
 class Context(object):

@@ -144,6 +144,9 @@ class Stream(object):
 
         Any additional keyword arguments are passed to the serializer, and thus
         depend on the `method` parameter value.
+        
+        :see: XMLSerializer.__init__, XHTMLSerializer.__init__,
+              HTMLSerializer.__init__, TextSerializer.__init__
         """
         generator = self.serialize(method=method, **kwargs)
         output = u''.join(list(generator))
@@ -179,9 +182,12 @@ class Stream(object):
         :param method: determines how the stream is serialized; can be either
                        "xml", "xhtml", "html", "text", or a custom serializer
                        class
-
+        
         Any additional keyword arguments are passed to the serializer, and thus
         depend on the `method` parameter value.
+        
+        :see: XMLSerializer.__init__, XHTMLSerializer.__init__,
+              HTMLSerializer.__init__, TextSerializer.__init__
         """
         from genshi import output
         cls = method

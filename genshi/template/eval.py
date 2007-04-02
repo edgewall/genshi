@@ -27,7 +27,7 @@ from genshi.core import Markup
 from genshi.template.base import TemplateRuntimeError
 from genshi.util import flatten
 
-__all__ = ['Expression', 'Suite']
+__all__ = ['Code', 'Expression', 'Suite', 'UndefinedError']
 __docformat__ = 'restructuredtext en'
 
 

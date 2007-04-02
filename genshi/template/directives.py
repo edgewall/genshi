@@ -443,6 +443,9 @@ class ReplaceDirective(Directive):
     __slots__ = []
 
     def attach(cls, template, stream, value, namespaces, pos):
+        if not value:
+            raise TemplateSyntaxError('missing value for "replace" directive',
+                                      template.filepath, *pos[1:])
         expr = cls._parse_expr(value, template.filepath, *pos[1:])
         return None, [(EXPR, expr, pos)]
     attach = classmethod(attach)

@@ -72,7 +72,8 @@ class TemplateLoader(object):
     >>> os.remove(path)
     """
     def __init__(self, search_path=None, auto_reload=False,
-                 default_encoding=None, max_cache_size=25, default_class=None):
+                 default_encoding=None, max_cache_size=25, default_class=None,
+                 callback=None):
         """Create the template laoder.
         
         :param search_path: a list of absolute path names that should be
@@ -86,6 +87,11 @@ class TemplateLoader(object):
                                cache
         :param default_class: the default `Template` subclass to use when
                               instantiating templates
+        :param callback: (optional) a callback function that is invoked after a
+                         template was initialized by this loader; the function
+                         is passed the template object as only argument. This
+                         callback can be used for example to add any desired
+                         filters to the template
         """
         from genshi.template.markup import MarkupTemplate
 
@@ -97,6 +103,9 @@ class TemplateLoader(object):
         self.auto_reload = auto_reload
         self.default_encoding = default_encoding
         self.default_class = default_class or MarkupTemplate
+        if callback is not None and not callable(callback):
+            raise TypeError('The "callback" parameter needs to be callable')
+        self.callback = callback
         self._cache = LRUCache(max_cache_size)
         self._mtime = {}
         self._lock = threading.Lock()
@@ -186,10 +195,12 @@ class TemplateLoader(object):
                             dirname = ''
                         tmpl = cls(fileobj, basedir=dirname, filename=filename,
                                    loader=self, encoding=encoding)
+                        if self.callback:
+                            self.callback(tmpl)
+                        self._cache[filename] = tmpl
+                        self._mtime[filename] = os.path.getmtime(filepath)
                     finally:
                         fileobj.close()
-                    self._cache[filename] = tmpl
-                    self._mtime[filename] = os.path.getmtime(filepath)
                     return tmpl
                 except IOError:
                     continue

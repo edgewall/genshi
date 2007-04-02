@@ -62,11 +62,10 @@ class HTMLFormFiller(object):
             data = {}
         self.data = data
 
-    def __call__(self, stream, ctxt=None):
+    def __call__(self, stream):
         """Apply the filter to the given stream.
         
         :param stream: the markup event stream to filter
-        :param ctxt: the template context (unused)
         """
         in_form = in_select = in_option = in_textarea = False
         select_value = option_value = textarea_value = None
@@ -251,11 +250,10 @@ class HTMLSanitizer(object):
         self.uri_attrs = uri_attrs
         self.safe_schemes = safe_schemes
 
-    def __call__(self, stream, ctxt=None):
+    def __call__(self, stream):
         """Apply the filter to the given stream.
         
         :param stream: the markup event stream to filter
-        :param ctxt: the template context (unused)
         """
         waiting_for = None
 

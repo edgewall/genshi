@@ -10,6 +10,16 @@ continue to work without problems, you should make sure to remove any
 leftover traces of the `template.py` file on the installation path.
 This is not necessary when Genshi was installed as a Python egg.
 
+Handling of errors in template expressions is now more strict. In
+particular, it is no longer possible to reference an undefined
+variable without an exception being raised. The previous error
+handling let expressions get away with minor typos, which would
+result in subtle bugs that were hard to find. The functions
+`defined()` and `value_of()` are now available in all template
+code; they can be used to test whether a specific variable is
+defined at the top-level scope. Please refer to the template
+language documentation for details.
+
 Results of evaluating template expressions are no longer implicitly
 called if they are callable. If you have been using that feature, you
 will need to add the parenthesis to actually call the function.

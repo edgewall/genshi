@@ -27,15 +27,16 @@ from genshi.core import Markup
 from genshi.template.base import TemplateRuntimeError
 from genshi.util import flatten
 
-__all__ = ['Code', 'Expression', 'Suite', 'UndefinedError']
+__all__ = ['Code', 'Expression', 'Suite', 'LenientLookup', 'StrictLookup',
+           'Undefined', 'UndefinedError']
 __docformat__ = 'restructuredtext en'
 
 
 class Code(object):
     """Abstract base class for the `Expression` and `Suite` classes."""
-    __slots__ = ['source', 'code']
+    __slots__ = ['source', 'code', '_globals']
 
-    def __init__(self, source, filename=None, lineno=-1):
+    def __init__(self, source, filename=None, lineno=-1, lookup='lenient'):
         """Create the code object, either from a string, or from an AST node.
         
         :param source: either a string containing the source code, or an AST
@@ -43,6 +44,9 @@ class Code(object):
         :param filename: the (preferably absolute) name of the file containing
                          the code
         :param lineno: the number of the line on which the code was found
+        :param lookup: the lookup class that defines how variables are looked
+                       up in the context. Can be either `LenientLookup` (the
+                       default), `StrictLookup`, or a custom lookup class
         """
         if isinstance(source, basestring):
             self.source = source
@@ -57,6 +61,11 @@ class Code(object):
 
         self.code = _compile(node, self.source, mode=self.mode,
                              filename=filename, lineno=lineno)
+        if lookup is None:
+            lookup = LenientLookup
+        elif isinstance(lookup, basestring):
+            lookup = {'lenient': LenientLookup, 'strict': StrictLookup}[lookup]
+        self._globals = lookup.globals()
 
     def __eq__(self, other):
         return (type(other) == type(self)) and (self.code == other.code)
@@ -122,13 +131,9 @@ class Expression(Code):
         :return: the result of the evaluation
         """
         __traceback_hide__ = 'before_and_this'
-        return eval(self.code, {'data': data,
-                                '_lookup_name': _lookup_name,
-                                '_lookup_attr': _lookup_attr,
-                                '_lookup_item': _lookup_item,
-                                'defined': _defined(data),
-                                'value_of': _value_of(data)},
-                               {'data': data})
+        _globals = self._globals
+        _globals['data'] = data
+        return eval(self.code, _globals, {'data': data})
 
 
 class Suite(Code):
@@ -148,29 +153,207 @@ class Suite(Code):
         :param data: a mapping containing the data to execute in
         """
         __traceback_hide__ = 'before_and_this'
-        exec self.code in {'data': data,
-                           '_lookup_name': _lookup_name,
-                           '_lookup_attr': _lookup_attr,
-                           '_lookup_item': _lookup_item,
-                           'defined': _defined(data),
-                           'value_of': _value_of(data)}, data
+        _globals = self._globals
+        _globals['data'] = data
+        exec self.code in _globals, data
 
 
-def _defined(data):
-    def defined(name):
-        """Return whether a variable with the specified name exists in the
-        expression scope.
+UNDEFINED = object()
+
+
+class UndefinedError(TemplateRuntimeError):
+    """Exception thrown when a template expression attempts to access a variable
+    not defined in the context.
+    
+    :see: `LenientLookup`, `StrictLookup`
+    """
+    def __init__(self, name, owner=UNDEFINED):
+        if owner is not UNDEFINED:
+            message = '%s has no member named "%s"' % (repr(owner), name)
+        else:
+            message = '"%s" not defined' % name
+        TemplateRuntimeError.__init__(self, message)
+
+
+class Undefined(object):
+    """Represents a reference to an undefined variable.
+    
+    Unlike the Python runtime, template expressions can refer to an undefined
+    variable without causing a `NameError` to be raised. The result will be an
+    instance of the `Undefined` class, which is treated the same as ``False`` in
+    conditions, but raise an exception on any other operation:
+    
+    >>> foo = Undefined('foo')
+    >>> bool(foo)
+    False
+    >>> list(foo)
+    []
+    >>> print foo
+    undefined
+    
+    However, calling an undefined variable, or trying to access an attribute
+    of that variable, will raise an exception that includes the name used to
+    reference that undefined variable.
+    
+    >>> foo('bar')
+    Traceback (most recent call last):
+        ...
+    UndefinedError: "foo" not defined
+
+    >>> foo.bar
+    Traceback (most recent call last):
+        ...
+    UndefinedError: "foo" not defined
+    
+    :see: `LenientLookup`
+    """
+    __slots__ = ['_name', '_owner']
+
+    def __init__(self, name, owner=UNDEFINED):
+        """Initialize the object.
+        
+        :param name: the name of the reference
+        :param owner: the owning object, if the variable is accessed as a member
         """
-        return name in data
-    return defined
+        self._name = name
+        self._owner = owner
 
-def _value_of(data):
-    def value_of(name, default=None):
-        """If a variable of the specified name is defined, return its value.
-        Otherwise, return the provided default value, or ``None``.
+    def __iter__(self):
+        return iter([])
+
+    def __nonzero__(self):
+        return False
+
+    def __repr__(self):
+        return '<%s %r>' % (self.__class__.__name__, self._name)
+
+    def __str__(self):
+        return 'undefined'
+
+    def _die(self, *args, **kwargs):
+        """Raise an `UndefinedError`."""
+        __traceback_hide__ = True
+        raise UndefinedError(self._name, self._owner)
+    __call__ = __getattr__ = __getitem__ = _die
+
+
+class LookupBase(object):
+    """Abstract base class for variable lookup implementations."""
+
+    def globals(cls):
+        """Construct the globals dictionary to use as the execution context for
+        the expression or suite.
         """
-        return data.get(name, default)
-    return value_of
+        return {
+            '_lookup_name': cls.lookup_name,
+            '_lookup_attr': cls.lookup_attr,
+            '_lookup_item': cls.lookup_item
+        }
+    globals = classmethod(globals)
+
+    def lookup_name(cls, data, name):
+        __traceback_hide__ = True
+        val = data.get(name, UNDEFINED)
+        if val is UNDEFINED:
+            val = BUILTINS.get(name, val)
+            if val is UNDEFINED:
+                return cls.undefined(name)
+        return val
+    lookup_name = classmethod(lookup_name)
+
+    def lookup_attr(cls, data, obj, key):
+        __traceback_hide__ = True
+        if hasattr(obj, key):
+            return getattr(obj, key)
+        try:
+            return obj[key]
+        except (KeyError, TypeError):
+            return cls.undefined(key, owner=obj)
+    lookup_attr = classmethod(lookup_attr)
+
+    def lookup_item(cls, data, obj, key):
+        __traceback_hide__ = True
+        if len(key) == 1:
+            key = key[0]
+        try:
+            return obj[key]
+        except (AttributeError, KeyError, IndexError, TypeError), e:
+            if isinstance(key, basestring):
+                val = getattr(obj, key, UNDEFINED)
+                if val is UNDEFINED:
+                    return cls.undefined(key, owner=obj)
+                return val
+            raise
+    lookup_item = classmethod(lookup_item)
+
+    def undefined(cls, key, owner=UNDEFINED):
+        """Can be overridden by subclasses to specify behavior when undefined
+        variables are accessed.
+        
+        :param key: the name of the variable
+        :param owner: the owning object, if the variable is accessed as a member
+        """
+        raise NotImplementedError
+    undefined = classmethod(undefined)
+
+
+class LenientLookup(LookupBase):
+    """Default variable lookup mechanism for expressions.
+    
+    When an undefined variable is referenced using this lookup style, the
+    reference evaluates to an instance of the `Undefined` class:
+    
+    >>> expr = Expression('nothing', lookup='lenient')
+    >>> undef = expr.evaluate({})
+    >>> undef
+    <Undefined 'nothing'>
+    
+    The same will happen when a non-existing attribute or item is accessed on
+    an existing object:
+    
+    >>> expr = Expression('something.nil', lookup='lenient')
+    >>> expr.evaluate({'something': dict()})
+    <Undefined 'nil'>
+    
+    See the documentation of the `Undefined` class for details on the behavior
+    of such objects.
+    
+    :see: `StrictLookup`
+    """
+    def undefined(cls, key, owner=UNDEFINED):
+        """Return an ``Undefined`` object."""
+        __traceback_hide__ = True
+        return Undefined(key, owner=owner)
+    undefined = classmethod(undefined)
+
+
+class StrictLookup(LookupBase):
+    """Strict variable lookup mechanism for expressions.
+    
+    Referencing an undefined variable using this lookup style will immediately
+    raise an ``UndefinedError``:
+    
+    >>> expr = Expression('nothing', lookup='strict')
+    >>> expr.evaluate({})
+    Traceback (most recent call last):
+        ...
+    UndefinedError: "nothing" not defined
+    
+    The same happens when a non-existing attribute or item is accessed on an
+    existing object:
+    
+    >>> expr = Expression('something.nil', lookup='strict')
+    >>> expr.evaluate({'something': dict()})
+    Traceback (most recent call last):
+        ...
+    UndefinedError: {} has no member named "nil"
+    """
+    def undefined(cls, key, owner=UNDEFINED):
+        """Raise an ``UndefinedError`` immediately."""
+        __traceback_hide__ = True
+        raise UndefinedError(key, owner=owner)
+    undefined = classmethod(undefined)
+
 
 def _parse(source, mode='eval'):
     if isinstance(source, unicode):
@@ -205,53 +388,7 @@ def _compile(node, source=None, mode='eval', filename=None, lineno=-1):
                     code.co_lnotab, (), ())
 
 BUILTINS = __builtin__.__dict__.copy()
-BUILTINS.update({'Markup': Markup})
-UNDEFINED = object()
-
-
-class UndefinedError(TemplateRuntimeError):
-    """Exception thrown when a template expression attempts to access a variable
-    not defined in the context.
-    """
-    def __init__(self, name, owner=UNDEFINED):
-        if owner is not UNDEFINED:
-            message = '%s has no member named "%s"' % (repr(owner), name)
-        else:
-            message = '"%s" not defined' % name
-        TemplateRuntimeError.__init__(self, message)
-
-
-def _lookup_name(data, name):
-    __traceback_hide__ = True
-    val = data.get(name, UNDEFINED)
-    if val is UNDEFINED:
-        val = BUILTINS.get(name, val)
-        if val is UNDEFINED:
-            raise UndefinedError(name)
-    return val
-
-def _lookup_attr(data, obj, key):
-    __traceback_hide__ = True
-    if hasattr(obj, key):
-        return getattr(obj, key)
-    try:
-        return obj[key]
-    except (KeyError, TypeError):
-        raise UndefinedError(key, owner=obj)
-
-def _lookup_item(data, obj, key):
-    __traceback_hide__ = True
-    if len(key) == 1:
-        key = key[0]
-    try:
-        return obj[key]
-    except (AttributeError, KeyError, IndexError, TypeError), e:
-        if isinstance(key, basestring):
-            val = getattr(obj, key, UNDEFINED)
-            if val is UNDEFINED:
-                raise UndefinedError(key, owner=obj)
-            return val
-        raise
+BUILTINS.update({'Markup': Markup, 'Undefined': Undefined})
 
 
 class ASTTransformer(object):
@@ -499,7 +636,7 @@ class TemplateASTTransformer(ASTTransformer):
     """
 
     def __init__(self):
-        self.locals = [set(['defined', 'value_of'])]
+        self.locals = []
 
     def visitConst(self, node):
         if isinstance(node.value, str):

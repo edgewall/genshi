@@ -18,150 +18,16 @@ This document describes the template language and will be most useful as
 reference to those developing Genshi XML templates. Templates are XML files of
 some kind (such as XHTML) that include processing directives_ (elements or
 attributes identified by a separate namespace) that affect how the template is
-rendered, and template expressions_ that are dynamically substituted by
+rendered, and template expressions that are dynamically substituted by
 variable data.
+
+See `Genshi Templating Basics <templates.html>`_ for general information on
+embedding Python code in templates.
 
 
 .. contents:: Contents
    :depth: 3
 .. sectnum::
-
-----------
-Python API
-----------
-
-The Python code required for templating with Genshi is generally based on the
-following pattern:
-
-* Attain a ``MarkupTemplate`` object from a string or file object containing
-  the template XML source. This can either be done directly, or through a
-  ``TemplateLoader`` instance.
-* Call the ``generate()`` method of the template, passing any data that should
-  be made available to the template as keyword arguments.
-* Serialize the resulting stream using its ``render()`` method.
-
-For example::
-
-  from genshi.template import MarkupTemplate
-
-  tmpl = MarkupTemplate('<h1>$title</h1>')
-  stream = tmpl.generate(title='Hello, world!')
-  print stream.render('xhtml')
-
-That code would produce the following output::
-
-  <h1>Hello, world!</h1>
-
-However, if you want includes_ to work, you should attain the template instance
-through a ``TemplateLoader``, and load the template from a file::
-
-  from genshi.template import TemplateLoader
-
-  loader = TemplateLoader([templates_dir])
-  tmpl = loader.load('test.html')
-  stream = tmpl.generate(title='Hello, world!')
-  print stream.render('xhtml')
-
-
-.. _`expressions`:
-
-------------------------------------
-Template Expressions and Code Blocks
-------------------------------------
-
-Python_ expressions can be used in text and attribute values. An expression is
-substituted with the result of its evaluation against the template data.
-Expressions need to prefixed with a dollar sign (``$``) and usually enclosed in
-curly braces (``{…}``).
-
-If the expression starts with a letter and contains only letters, digits, dots,
-and underscores, the curly braces may be omitted. In all other cases, the
-braces are required so that the template processor knows where the expression
-ends::
-
-  >>> from genshi.template import MarkupTemplate
-  >>> tmpl = MarkupTemplate('<em>${items[0].capitalize()} item</em>')
-  >>> print tmpl.generate(items=['first', 'second'])
-  <em>First item</em>
-
-Expressions support the full power of Python. In addition, it is possible to
-access items in a dictionary using “dotted notation” (i.e. as if they were
-attributes), and vice-versa (i.e. access attributes as if they were items in a
-dictionary)::
-
-  >>> from genshi.template import MarkupTemplate
-  >>> tmpl = MarkupTemplate('<em>${dict.foo}</em>')
-  >>> print tmpl.generate(dict={'foo': 'bar'})
-  <em>bar</em>
-
-Because there are two ways to access either attributes or items, expressions
-do not raise the standard ``AttributeError`` or ``IndexError`` exceptions, but
-rather an exception of the type ``UndefinedError``. The same kind of error is
-raised when you try to access a top-level variable that is not in the context
-data.
-
-
-.. _`code blocks`:
-
-Code Blocks
-===========
-
-XML templates also support full Python code blocks using the ``<?python ?>``
-processing instruction::
-
-  <div>
-    <?python
-        from genshi.builder import tag
-        def greeting(name):
-            return tag.b('Hello, %s!' % name') ?>
-    ${greeting('world')}
-  </div>
-
-This will produce the following output::
-
-  <div>
-    <b>Hello, world!</b>
-  </div>
-
-Code blocks can import modules, define classes and functions, and basically do
-anything you can do in normal Python code. What code blocks can *not* do is to
-produce content that is included directly in the generated page.
-
-.. note:: Using the ``print`` statement will print to the standard output
-          stream, just as it does for other Python code in your application.
-
-This feature is not supposed to encourage mixing application code into
-templates, which is generally considered bad design. If you're using many code
-blocks, that me be a sign that you should move such code into separate Python
-modules.
-
-
-Built-in Functions & Types
-==========================
-
-The following functions and types are available by default in template code, in
-addition to the standard built-ins that are available to all Python code.
-
-``defined(name)``
------------------
- 
-This function determines whether a variable of the specified name exists in
-the context data, and returns ``True`` if it does.
- 
-``value_of(name, default=None)``
---------------------------------
-
-This function returns the value of the variable with the specified name if
-such a variable is defined, and returns the value of the ``default``
-parameter if no such variable is defined.
-
-``Markup(text)``
-----------------
-
-The ``Markup`` type marks a given string as being safe for inclusion in markup,
-meaning it will *not* be escaped in the serialization stage. Use this with care,
-as not escaping a user-provided string may allow malicious users to open your
-web site to cross-site scripting attacks.
 
 
 .. _`directives`:
@@ -627,7 +493,7 @@ that Genshi currently only supports a small subset of XInclude.
 .. _`xinclude specification`: http://www.w3.org/TR/xinclude/
 
 Incudes in Genshi are fully dynamic: Just like normal attributes, the `href`
-attribute accepts expressions_, and directives_ can be used on the
+attribute accepts expressions, and directives_ can be used on the
 ``<xi:include />`` element just as on any other element, meaning you can do
 things like conditional includes::
 

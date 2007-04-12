@@ -30,17 +30,19 @@ NAMESTART = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_'
 NAMECHARS = NAMESTART + '.0123456789'
 PREFIX = '$'
 
-def interpolate(text, basedir=None, filename=None, lineno=-1, offset=0):
+def interpolate(text, basedir=None, filename=None, lineno=-1, offset=0,
+                lookup='lenient'):
     """Parse the given string and extract expressions.
     
     This function is a generator that yields `TEXT` events for literal strings,
     and `EXPR` events for expressions, depending on the results of parsing the
     string.
     
-    >>> for kind, data, pos in interpolate("$foo bar"):
+    >>> for kind, data, pos in interpolate("hey ${foo}bar"):
     ...     print kind, `data`
+    TEXT u'hey '
     EXPR Expression('foo')
-    TEXT u' bar'
+    TEXT u'bar'
     
     :param text: the text to parse
     :param basedir: base directory of the file in which the text was found
@@ -49,6 +51,8 @@ def interpolate(text, basedir=None, filename=None, lineno=-1, offset=0):
     :param lineno: the line number at which the text was found (optional)
     :param offset: the column number at which the text starts in the source
                    (optional)
+    :param lookup: the variable lookup mechanism; either "lenient" (the
+                   default), "strict", or a custom lookup class
     :return: a list of `TEXT` and `EXPR` events
     :raise TemplateSyntaxError: when a syntax error in an expression is
                                 encountered
@@ -68,7 +72,8 @@ def interpolate(text, basedir=None, filename=None, lineno=-1, offset=0):
                 textpos = None
             if chunk:
                 try:
-                    expr = Expression(chunk.strip(), pos[0], pos[1])
+                    expr = Expression(chunk.strip(), pos[0], pos[1],
+                                     lookup=lookup)
                     yield EXPR, expr, tuple(pos)
                 except SyntaxError, err:
                     raise TemplateSyntaxError(err, filepath, pos[1],

@@ -16,7 +16,8 @@ import sys
 import unittest
 
 from genshi.core import Markup
-from genshi.template.eval import Expression, Suite, UndefinedError
+from genshi.template.eval import Expression, Suite, Undefined, UndefinedError, \
+                                 UNDEFINED
 
 
 class ExpressionTestCase(unittest.TestCase):
@@ -319,8 +320,38 @@ class ExpressionTestCase(unittest.TestCase):
         expr = Expression("numbers[:-1]")
         self.assertEqual([0, 1, 2, 3], expr.evaluate({'numbers': range(5)}))
 
-    def test_error_access_undefined(self):
+    def test_access_undefined(self):
         expr = Expression("nothing", filename='index.html', lineno=50)
+        retval = expr.evaluate({})
+        assert isinstance(retval, Undefined)
+        self.assertEqual('nothing', retval._name)
+        assert retval._owner is UNDEFINED
+
+    def test_getattr_undefined(self):
+        class Something(object):
+            def __repr__(self):
+                return '<Something>'
+        something = Something()
+        expr = Expression('something.nil', filename='index.html', lineno=50)
+        retval = expr.evaluate({'something': something})
+        assert isinstance(retval, Undefined)
+        self.assertEqual('nil', retval._name)
+        assert retval._owner is something
+
+    def test_getitem_undefined_string(self):
+        class Something(object):
+            def __repr__(self):
+                return '<Something>'
+        something = Something()
+        expr = Expression('something["nil"]', filename='index.html', lineno=50)
+        retval = expr.evaluate({'something': something})
+        assert isinstance(retval, Undefined)
+        self.assertEqual('nil', retval._name)
+        assert retval._owner is something
+
+    def test_error_access_undefined(self):
+        expr = Expression("nothing", filename='index.html', lineno=50,
+                          lookup='strict')
         try:
             expr.evaluate({})
             self.fail('Expected UndefinedError')
@@ -333,16 +364,17 @@ class ExpressionTestCase(unittest.TestCase):
                 frames.append(frame)
             self.assertEqual('"nothing" not defined', str(e))
             self.assertEqual("<Expression 'nothing'>",
-                             frames[-2].tb_frame.f_code.co_name)
+                             frames[-3].tb_frame.f_code.co_name)
             self.assertEqual('index.html',
-                             frames[-2].tb_frame.f_code.co_filename)
-            self.assertEqual(50, frames[-2].tb_lineno)
+                             frames[-3].tb_frame.f_code.co_filename)
+            self.assertEqual(50, frames[-3].tb_lineno)
 
     def test_error_getattr_undefined(self):
         class Something(object):
             def __repr__(self):
                 return '<Something>'
-        expr = Expression('something.nil', filename='index.html', lineno=50)
+        expr = Expression('something.nil', filename='index.html', lineno=50,
+                          lookup='strict')
         try:
             expr.evaluate({'something': Something()})
             self.fail('Expected UndefinedError')
@@ -355,16 +387,17 @@ class ExpressionTestCase(unittest.TestCase):
                 frames.append(frame)
             self.assertEqual('<Something> has no member named "nil"', str(e))
             self.assertEqual("<Expression 'something.nil'>",
-                             frames[-2].tb_frame.f_code.co_name)
+                             frames[-3].tb_frame.f_code.co_name)
             self.assertEqual('index.html',
-                             frames[-2].tb_frame.f_code.co_filename)
-            self.assertEqual(50, frames[-2].tb_lineno)
+                             frames[-3].tb_frame.f_code.co_filename)
+            self.assertEqual(50, frames[-3].tb_lineno)
 
     def test_error_getitem_undefined_string(self):
         class Something(object):
             def __repr__(self):
                 return '<Something>'
-        expr = Expression('something["nil"]', filename='index.html', lineno=50)
+        expr = Expression('something["nil"]', filename='index.html', lineno=50,
+                          lookup='strict')
         try:
             expr.evaluate({'something': Something()})
             self.fail('Expected UndefinedError')
@@ -377,10 +410,10 @@ class ExpressionTestCase(unittest.TestCase):
                 frames.append(frame)
             self.assertEqual('<Something> has no member named "nil"', str(e))
             self.assertEqual('''<Expression 'something["nil"]'>''',
-                             frames[-2].tb_frame.f_code.co_name)
+                             frames[-3].tb_frame.f_code.co_name)
             self.assertEqual('index.html',
-                             frames[-2].tb_frame.f_code.co_filename)
-            self.assertEqual(50, frames[-2].tb_lineno)
+                             frames[-3].tb_frame.f_code.co_filename)
+            self.assertEqual(50, frames[-3].tb_lineno)
 
 
 class SuiteTestCase(unittest.TestCase):

@@ -75,7 +75,8 @@ class TextTemplate(Template):
             if start > offset:
                 text = source[offset:start]
                 for kind, data, pos in interpolate(text, self.basedir,
-                                                   self.filename, lineno):
+                                                   self.filename, lineno,
+                                                   lookup=self.lookup):
                     stream.append((kind, data, pos))
                 lineno += len(text.splitlines())
 
@@ -107,7 +108,8 @@ class TextTemplate(Template):
         if offset < len(source):
             text = source[offset:].replace('\\#', '#')
             for kind, data, pos in interpolate(text, self.basedir,
-                                               self.filename, lineno):
+                                               self.filename, lineno,
+                                               lookup=self.lookup):
                 stream.append((kind, data, pos))
 
         return stream

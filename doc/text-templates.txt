@@ -12,118 +12,18 @@ The language is similar to Cheetah_ or Velocity_.
 .. _velocity: http://jakarta.apache.org/velocity/
 
 This document describes the template language and will be most useful as
-reference to those developing Genshi text templates. Templates are XML files of some
-kind (such as XHTML) that include processing directives_ (elements or
-attributes identified by a separate namespace) that affect how the template is
-rendered, and template expressions_ that are dynamically substituted by
+reference to those developing Genshi text templates. Templates are text files of
+some kind that include processing directives_ that affect how the template is
+rendered, and template expressions that are dynamically substituted by
 variable data.
+
+See `Genshi Templating Basics <templates.html>`_ for general information on
+embedding Python code in templates.
 
 
 .. contents:: Contents
    :depth: 3
 .. sectnum::
-
-----------
-Python API
-----------
-
-The Python code required for templating with Genshi is generally based on the
-following pattern:
-
-* Attain a ``TextTemplate`` object from a string or file object containing the
-  template source. This can either be done directly, or through a
-  ``TemplateLoader`` instance.
-* Call the ``generate()`` method of the template, passing any data that should
-  be made available to the template as keyword arguments.
-* Serialize the resulting stream using its ``render()`` method.
-
-For example::
-
-  from genshi.template import TextTemplate
-
-  tmpl = TextTemplate('$title')
-  stream = tmpl.generate(title='Hello, world!')
-  print stream.render('text')
-
-That code would produce the following output::
-
-  Hello, world!
-
-Using a template loader provides the advantage that “compiled” templates are
-automatically cached, and only parsed again when the template file changes::
-
-  from genshi.template import TemplateLoader
-
-  loader = TemplateLoader([templates_dir])
-  tmpl = loader.load('test.txt' cls=TextTemplate)
-  stream = tmpl.generate(title='Hello, world!')
-  print stream.render('text')
-
-
-.. _`expressions`:
-
---------------------
-Template Expressions
---------------------
-
-Python_ expressions can be used in text and as arguments to directives_. An expression is substituted with the result of its evaluation against the
-template data. Expressions need to prefixed with a dollar sign (``$``) and 
-usually enclosed in curly braces (``{…}``).
-
-.. _python: http://www.python.org/
-
-If the expression starts with a letter and contains only letters, digits, dots,
-and underscores, the curly braces may be omitted. In all other cases, the
-braces are required so that the template processor knows where the expression
-ends::
-
-  >>> from genshi.template import TextTemplate
-  >>> tmpl = TextTemplate('${items[0].capitalize()} item')
-  >>> print tmpl.generate(items=['first', 'second'])
-  First item
-
-Expressions support the full power of Python. In addition, it is possible to
-access items in a dictionary using “dotted notation” (i.e. as if they were
-attributes), and vice-versa (i.e. access attributes as if they were items in
-a dictionary)::
-
-  >>> from genshi.template import TextTemplate
-  >>> tmpl = TextTemplate('${dict.foo}')
-  >>> print tmpl.generate(dict={'foo': 'bar'})
-  bar
-
-Because there are two ways to access either attributes or items, expressions
-do not raise the standard ``AttributeError`` or ``IndexError`` exceptions, but
-rather an exception of the type ``UndefinedError``. The same kind of error is
-raised when you try to access a top-level variable that is not in the context
-data.
-
-Built-in Functions & Types
-==========================
-
-The following functions and types are available by default in template code, in
-addition to the standard built-ins that are available to all Python code.
-
-``defined(name)``
------------------
- 
-This function determines whether a variable of the specified name exists in
-the context data, and returns ``True`` if it does.
- 
-``value_of(name, default=None)``
---------------------------------
-
-This function returns the value of the variable with the specified name if
-such a variable is defined, and returns the value of the ``default``
-parameter if no such variable is defined.
-
-``Markup(text)``
-----------------
-
-The ``Markup`` type marks a given string as being safe for inclusion in markup,
-meaning it will *not* be escaped in the serialization stage. Use this with care,
-as not escaping a user-provided string may allow malicious users to open your
-web site to cross-site scripting attacks.
 
 
 .. _`directives`:

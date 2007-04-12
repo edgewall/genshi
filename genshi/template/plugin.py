@@ -20,7 +20,7 @@ from pkg_resources import resource_filename
 
 from genshi.input import ET, HTML, XML
 from genshi.output import DocType
-from genshi.template.base import Context, Template
+from genshi.template.base import Template
 from genshi.template.loader import TemplateLoader
 from genshi.template.markup import MarkupTemplate
 from genshi.template.text import TextTemplate
@@ -58,10 +58,16 @@ class AbstractTemplateEnginePlugin(object):
             raise ConfigurationError('Invalid value for max_cache_size: "%s"' %
                                      options.get('genshi.max_cache_size'))
 
+        lookup_errors = options.get('genshi.lookup_errors', 'lenient')
+        if lookup_errors not in ('lenient', 'strict'):
+            raise ConfigurationError('Unknown lookup errors mode "%s"' %
+                                     lookup_errors)
+
         self.loader = TemplateLoader(filter(None, search_path),
                                      auto_reload=auto_reload,
                                      max_cache_size=max_cache_size,
-                                     default_class=self.template_class)
+                                     default_class=self.template_class,
+                                     variable_lookup=lookup_errors)
 
     def load_template(self, templatename, template_string=None):
         """Find a template specified in python 'dot' notation, or load one from

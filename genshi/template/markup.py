@@ -70,9 +70,9 @@ class MarkupTemplate(Template):
                   ('strip', StripDirective)]
 
     def __init__(self, source, basedir=None, filename=None, loader=None,
-                 encoding=None):
+                 encoding=None, lookup='lenient'):
         Template.__init__(self, source, basedir=basedir, filename=filename,
-                          loader=loader, encoding=encoding)
+                          loader=loader, encoding=encoding, lookup=lookup)
 
         self.filters += [self._exec, self._match]
         if loader:
@@ -132,7 +132,9 @@ class MarkupTemplate(Template):
                         directives.append((cls, value, ns_prefix.copy(), pos))
                     else:
                         if value:
-                            value = list(interpolate(value, self.basedir, *pos))
+                            value = list(interpolate(value, self.basedir,
+                                                     pos[0], pos[1], pos[2],
+                                                     lookup=self.lookup))
                             if len(value) == 1 and value[0][0] is TEXT:
                                 value = value[0][1]
                         else:
@@ -197,7 +199,8 @@ class MarkupTemplate(Template):
                         rest = '\n'.join(['    ' + line for line
                                           in rest.splitlines()])
                     source = '\n'.join([first, rest])
-                    suite = Suite(source, self.filepath, pos[1])
+                    suite = Suite(source, self.filepath, pos[1],
+                                  lookup=self.lookup)
                 except SyntaxError, err:
                     raise TemplateSyntaxError(err, self.filepath,
                                               pos[1] + (err.lineno or 1) - 1,
@@ -205,7 +208,9 @@ class MarkupTemplate(Template):
                 stream.append((EXEC, suite, pos))
 
             elif kind is TEXT:
-                for kind, data, pos in interpolate(data, self.basedir, *pos):
+                for kind, data, pos in interpolate(data, self.basedir, pos[0],
+                                                   pos[1], pos[2],
+                                                   lookup=self.lookup):
                     stream.append((kind, data, pos))
 
             elif kind is COMMENT:

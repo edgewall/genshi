@@ -130,6 +130,18 @@ class Context(object):
         self.push = self.frames.appendleft
         self._match_templates = []
 
+        # Helper functions for use in expressions
+        def defined(name):
+            """Return whether a variable with the specified name exists in the
+            expression scope."""
+            return name in self
+        def value_of(name, default=None):
+            """If a variable of the specified name is defined, return its value.
+            Otherwise, return the provided default value, or ``None``."""
+            return self.get(name, default)
+        data.setdefault('defined', defined)
+        data.setdefault('value_of', value_of)
+
     def __repr__(self):
         return repr(list(self.frames))
 
@@ -273,7 +285,7 @@ class Template(object):
     """
 
     def __init__(self, source, basedir=None, filename=None, loader=None,
-                 encoding=None):
+                 encoding=None, lookup='lenient'):
         """Initialize a template from either a string, a file-like object, or
         an already parsed markup stream.
         
@@ -287,6 +299,8 @@ class Template(object):
                          base directory
         :param loader: the `TemplateLoader` to use for load included templates
         :param encoding: the encoding of the `source`
+        :param lookup: the variable lookup mechanism; either "lenient" (the
+                       default), "strict", or a custom lookup class
         """
         self.basedir = basedir
         self.filename = filename
@@ -295,6 +309,7 @@ class Template(object):
         else:
             self.filepath = filename
         self.loader = loader
+        self.lookup = lookup
 
         if isinstance(source, basestring):
             source = StringIO(source)

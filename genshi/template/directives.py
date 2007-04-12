@@ -57,9 +57,9 @@ class Directive(object):
     __metaclass__ = DirectiveMeta
     __slots__ = ['expr']
 
-    def __init__(self, value, namespaces=None, filename=None, lineno=-1,
+    def __init__(self, value, template=None, namespaces=None, lineno=-1,
                  offset=-1):
-        self.expr = self._parse_expr(value, filename, lineno, offset)
+        self.expr = self._parse_expr(value, template, lineno, offset)
 
     def attach(cls, template, stream, value, namespaces, pos):
         """Called after the template stream has been completely parsed.
@@ -77,7 +77,7 @@ class Directive(object):
         at runtime. `stream` is an event stream that replaces the original
         stream associated with the directive.
         """
-        return cls(value, namespaces, template.filepath, *pos[1:]), stream
+        return cls(value, template, namespaces, *pos[1:]), stream
     attach = classmethod(attach)
 
     def __call__(self, stream, ctxt, directives):
@@ -96,16 +96,17 @@ class Directive(object):
             expr = ' "%s"' % self.expr.source
         return '<%s%s>' % (self.__class__.__name__, expr)
 
-    def _parse_expr(cls, expr, filename=None, lineno=-1, offset=-1):
+    def _parse_expr(cls, expr, template, lineno=-1, offset=-1):
         """Parses the given expression, raising a useful error message when a
         syntax error is encountered.
         """
         try:
-            return expr and Expression(expr, filename, lineno) or None
+            return expr and Expression(expr, template.filepath, lineno,
+                                       lookup=template.lookup) or None
         except SyntaxError, err:
             err.msg += ' in expression "%s" of "%s" directive' % (expr,
                                                                   cls.tagname)
-            raise TemplateSyntaxError(err, filename, lineno,
+            raise TemplateSyntaxError(err, template.filepath, lineno,
                                       offset + (err.offset or 0))
     _parse_expr = classmethod(_parse_expr)
 
@@ -198,7 +199,7 @@ class ContentDirective(Directive):
     __slots__ = []
 
     def attach(cls, template, stream, value, namespaces, pos):
-        expr = cls._parse_expr(value, template.filepath, *pos[1:])
+        expr = cls._parse_expr(value, template, *pos[1:])
         return None, [stream[0], (EXPR, expr, pos),  stream[-1]]
     attach = classmethod(attach)
 
@@ -248,9 +249,8 @@ class DefDirective(Directive):
 
     ATTRIBUTE = 'function'
 
-    def __init__(self, args, namespaces=None, filename=None, lineno=-1,
-                 offset=-1):
-        Directive.__init__(self, None, namespaces, filename, lineno, offset)
+    def __init__(self, args, template, namespaces=None, lineno=-1, offset=-1):
+        Directive.__init__(self, None, template, namespaces, lineno, offset)
         ast = _parse(args).node
         self.args = []
         self.defaults = {}
@@ -259,8 +259,10 @@ class DefDirective(Directive):
             for arg in ast.args:
                 if isinstance(arg, compiler.ast.Keyword):
                     self.args.append(arg.name)
-                    self.defaults[arg.name] = Expression(arg.expr, filename,
-                                                         lineno)
+                    self.defaults[arg.name] = Expression(arg.expr,
+                                                         template.filepath,
+                                                         lineno,
+                                                         lookup=template.lookup)
                 else:
                     self.args.append(arg.name)
         else:
@@ -319,16 +321,15 @@ class ForDirective(Directive):
 
     ATTRIBUTE = 'each'
 
-    def __init__(self, value, namespaces=None, filename=None, lineno=-1,
-                 offset=-1):
+    def __init__(self, value, template, namespaces=None, lineno=-1, offset=-1):
         if ' in ' not in value:
             raise TemplateSyntaxError('"in" keyword missing in "for" directive',
-                                      filename, lineno, offset)
+                                      template.filepath, lineno, offset)
         assign, value = value.split(' in ', 1)
         ast = _parse(assign, 'exec')
         self.assign = _assignment(ast.node.nodes[0].expr)
-        self.filename = filename
-        Directive.__init__(self, value.strip(), namespaces, filename, lineno,
+        self.filename = template.filepath
+        Directive.__init__(self, value.strip(), template, namespaces, lineno,
                            offset)
 
     def __call__(self, stream, ctxt, directives):
@@ -398,10 +399,9 @@ class MatchDirective(Directive):
 
     ATTRIBUTE = 'path'
 
-    def __init__(self, value, namespaces=None, filename=None, lineno=-1,
-                 offset=-1):
-        Directive.__init__(self, None, namespaces, filename, lineno, offset)
-        self.path = Path(value, filename, lineno)
+    def __init__(self, value, template, namespaces=None, lineno=-1, offset=-1):
+        Directive.__init__(self, None, template, namespaces, lineno, offset)
+        self.path = Path(value, template.filepath, lineno)
         self.namespaces = namespaces or {}
 
     def __call__(self, stream, ctxt, directives):
@@ -446,7 +446,7 @@ class ReplaceDirective(Directive):
         if not value:
             raise TemplateSyntaxError('missing value for "replace" directive',
                                       template.filepath, *pos[1:])
-        expr = cls._parse_expr(value, template.filepath, *pos[1:])
+        expr = cls._parse_expr(value, template, *pos[1:])
         return None, [(EXPR, expr, pos)]
     attach = classmethod(attach)
 
@@ -568,10 +568,9 @@ class WhenDirective(Directive):
 
     ATTRIBUTE = 'test'
 
-    def __init__(self, value, namespaces=None, filename=None, lineno=-1,
-                 offset=-1):
-        Directive.__init__(self, value, namespaces, filename, lineno, offset)
-        self.filename = filename
+    def __init__(self, value, template, namespaces=None, lineno=-1, offset=-1):
+        Directive.__init__(self, value, template, namespaces, lineno, offset)
+        self.filename = template.filepath
 
     def __call__(self, stream, ctxt, directives):
         matched, frame = ctxt._find('_choose.matched')
@@ -608,10 +607,9 @@ class OtherwiseDirective(Directive):
     """
     __slots__ = ['filename']
 
-    def __init__(self, value, namespaces=None, filename=None, lineno=-1,
-                 offset=-1):
-        Directive.__init__(self, None, namespaces, filename, lineno, offset)
-        self.filename = filename
+    def __init__(self, value, template, namespaces=None, lineno=-1, offset=-1):
+        Directive.__init__(self, None, template, namespaces, lineno, offset)
+        self.filename = template.filepath
 
     def __call__(self, stream, ctxt, directives):
         matched, frame = ctxt._find('_choose.matched')
@@ -643,9 +641,8 @@ class WithDirective(Directive):
 
     ATTRIBUTE = 'vars'
 
-    def __init__(self, value, namespaces=None, filename=None, lineno=-1,
-                 offset=-1):
-        Directive.__init__(self, None, namespaces, filename, lineno, offset)
+    def __init__(self, value, template, namespaces=None, lineno=-1, offset=-1):
+        Directive.__init__(self, None, template, namespaces, lineno, offset)
         self.vars = []
         value = value.strip()
         try:
@@ -656,13 +653,14 @@ class WithDirective(Directive):
                 elif not isinstance(node, compiler.ast.Assign):
                     raise TemplateSyntaxError('only assignment allowed in '
                                               'value of the "with" directive',
-                                              filename, lineno, offset)
+                                              template.filepath, lineno, offset)
                 self.vars.append(([_assignment(n) for n in node.nodes],
-                                  Expression(node.expr, filename, lineno)))
+                                  Expression(node.expr, template.filepath,
+                                             lineno, lookup=template.lookup)))
         except SyntaxError, err:
             err.msg += ' in expression "%s" of "%s" directive' % (value,
                                                                   self.tagname)
-            raise TemplateSyntaxError(err, filename, lineno,
+            raise TemplateSyntaxError(err, template.filepath, lineno,
                                       offset + (err.offset or 0))
 
     def __call__(self, stream, ctxt, directives):

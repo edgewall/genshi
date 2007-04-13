@@ -8,7 +8,7 @@ from gettext import gettext
 from opcode import opmap
 import re
 
-from genshi.core import Attrs, START, END, TEXT
+from genshi.core import Attrs, Namespace, QName, START, END, TEXT
 from genshi.template.base import Template, EXPR, SUB
 from genshi.template.markup import EXEC
 
@@ -20,11 +20,12 @@ _BINARY_ADD = chr(opmap['BINARY_ADD'])
 
 class Translator(object):
     """Can extract and translate localizable strings from markup streams and
-    templates
+    templates.
     
     For example, assume the followng template:
     
     >>> from genshi.template import MarkupTemplate
+    >>> 
     >>> tmpl = MarkupTemplate('''<html xmlns:py="http://genshi.edgewall.org/">
     ...   <head>
     ...     <title>Example</title>
@@ -43,6 +44,7 @@ class Translator(object):
     ...         'Example': 'Beispiel',
     ...         'Hello, %(name)s': 'Hallo, %(name)s'
     ...     }[string]
+    >>> 
     >>> translator = Translator(pseudo_gettext)
     
     Next, the translator needs to be prepended to any already defined filters
@@ -65,7 +67,10 @@ class Translator(object):
     </html>
     """
 
-    IGNORE_TAGS = frozenset(['script', 'style'])
+    IGNORE_TAGS = frozenset([
+        QName('script'), QName('http://www.w3.org/1999/xhtml}script'),
+        QName('style'), QName('http://www.w3.org/1999/xhtml}style')
+    ])
     INCLUDE_ATTRS = frozenset(['title', 'alt'])
 
     def __init__(self, translate=gettext, ignore_tags=IGNORE_TAGS,
@@ -77,7 +82,7 @@ class Translator(object):
         :param ignore_tags: a set of tag names that should not be localized
         :param include_attrs: a set of attribute names should be localized
         """
-        self.gettext = translate
+        self.translate = translate
         self.ignore_tags = ignore_tags
         self.include_attrs = include_attrs
 
@@ -96,6 +101,9 @@ class Translator(object):
                             internally)
         :return: the localized stream
         """
+        ignore_tags = self.ignore_tags
+        include_attrs = self.include_attrs
+        translate = self.translate
         skip = 0
 
         for kind, data, pos in stream:
@@ -104,11 +112,10 @@ class Translator(object):
             if skip:
                 if kind is START:
                     tag, attrs = data
-                    tag = tag.localname
-                    if tag.localname in self.ignore_tags:
+                    if tag in ignore_tags:
                         skip += 1
                 elif kind is END:
-                    if tag.localname in self.ignore_tags:
+                    if tag in ignore_tags:
                         skip -= 1
                 yield kind, data, pos
                 continue
@@ -116,7 +123,7 @@ class Translator(object):
             # handle different events that can be localized
             if kind is START:
                 tag, attrs = data
-                if tag.localname in self.ignore_tags:
+                if tag in ignore_tags:
                     skip += 1
                     yield kind, data, pos
                     continue
@@ -128,7 +135,7 @@ class Translator(object):
                         if isinstance(value, basestring):
                             newval = ugettext(value)
                         else:
-                            newval = list(self(value, ctxt, search_text=name in self.include_attrs))
+                            newval = list(self(value, ctxt, search_text=name in include_attrs))
                         if newval != value:
                             value = new_val
                             changed = True
@@ -141,7 +148,7 @@ class Translator(object):
             elif kind is TEXT:
                 text = data.strip()
                 if text:
-                    data = data.replace(text, self.gettext(text))
+                    data = data.replace(text, translate(text))
                 yield kind, data, pos
 
             elif kind is SUB:
@@ -152,16 +159,22 @@ class Translator(object):
             else:
                 yield kind, data, pos
 
-    def extract(self, stream, gettext_functions=('_', 'gettext', 'ngettext')):
+    GETTEXT_FUNCTIONS = ('_', 'gettext', 'ngettext', 'dgettext', 'dngettext',
+                         'ugettext', 'ungettext')
+
+    def extract(self, stream, gettext_functions=GETTEXT_FUNCTIONS):
         """Extract localizable strings from the given template stream.
         
-        For every string found, this function yields a ``(lineno, message)``
-        tuple.
+        For every string found, this function yields a ``(lineno, function,
+        message)`` tuple, where:
         
-        :param stream: the event stream to extract strings from; can be a
-                       regular stream or a template stream
+        * ``lineno`` is the number of the line on which the string was found,
+        * ``function`` is the name of the ``gettext`` function used (if the
+          string was extracted from embedded Python code), and
+        *  ``message`` is the string itself (a ``unicode`` object).
         
         >>> from genshi.template import MarkupTemplate
+        >>> 
         >>> tmpl = MarkupTemplate('''<html xmlns:py="http://genshi.edgewall.org/">
         ...   <head>
         ...     <title>Example</title>
@@ -171,11 +184,18 @@ class Translator(object):
         ...     <p>${_("Hello, %(name)s") % dict(name=username)}</p>
         ...   </body>
         ... </html>''', filename='example.html')
-        >>> for lineno, message in Translator().extract(tmpl.stream):
-        ...    print "Line %d: %r" % (lineno, message)
-        Line 3: u'Example'
-        Line 6: u'Example'
-        Line 7: u'Hello, %(name)s'
+        >>> 
+        >>> for lineno, funcname, message in Translator().extract(tmpl.stream):
+        ...    print "%d, %r, %r" % (lineno, funcname, message)
+        3, None, u'Example'
+        6, None, u'Example'
+        7, '_', u'Hello, %(name)s'
+
+        :param stream: the event stream to extract strings from; can be a
+                       regular stream or a template stream
+        :param gettext_functions: a sequence of function names that should be
+                                  treated as gettext-style localization
+                                  functions
         """
         tagname = None
         skip = 0
@@ -184,17 +204,17 @@ class Translator(object):
             if skip:
                 if kind is START:
                     tag, attrs = data
-                    if tag.localname in self.ignore_tags:
+                    if tag in self.ignore_tags:
                         skip += 1
                 if kind is END:
                     tag = data
-                    if tag.localname in self.ignore_tags:
+                    if tag in self.ignore_tags:
                         skip -= 1
                 continue
 
             if kind is START:
                 tag, attrs = data
-                if tag.localname in self.ignore_tags:
+                if tag in self.ignore_tags:
                     skip += 1
                     continue
 
@@ -203,15 +223,15 @@ class Translator(object):
                         if isinstance(value, basestring):
                             text = value.strip()
                             if text:
-                                yield pos[1], text
+                                yield pos[1], None, text
                         else:
-                            for lineno, text in harvest(value):
-                                yield lineno, text
+                            for lineno, funcname, text in harvest(value):
+                                yield lineno, funcname, text
 
             elif kind is TEXT:
                 text = data.strip()
                 if text and filter(None, [ch.isalpha() for ch in text]):
-                    yield pos[1], text
+                    yield pos[1], None, text
 
             elif kind is EXPR or kind is EXEC:
                 consts = dict([(n, chr(i) + '\x00') for i, n in
@@ -223,7 +243,8 @@ class Translator(object):
                     _CALL_FUNCTION, '.\x00',
                     '((?:', _BINARY_ADD, '|', _LOAD_CONST, '.\x00)+)'
                 ]
-                for _, opcodes in re.findall(''.join(ops), data.code.co_code):
+                for loc, opcodes in re.findall(''.join(ops), data.code.co_code):
+                    funcname = data.code.co_consts[ord(loc[0])]
                     strings = []
                     opcodes = iter(opcodes)
                     for opcode in opcodes:
@@ -237,9 +258,9 @@ class Translator(object):
                                 break
                             strings.append(unicode(arg))
                     for string in strings:
-                        yield pos[1], string
+                        yield pos[1], funcname, string
 
             elif kind is SUB:
                 subkind, substream = data
-                for lineno, text in self.harvest(substream):
-                    yield lineno, text
+                for lineno, funcname, text in self.harvest(substream):
+                    yield lineno, funcname, text

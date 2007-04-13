@@ -19,5 +19,11 @@ in concept to SAX parsing events) which can be processed in a uniform manner
 independently of where or how they are produced.
 """
 
+__docformat__ = 'restructuredtext en'
+try:
+    __version__ = __import__('pkg_resources').get_distribution('Genshi').version
+except ImportError:
+    pass
+
 from genshi.core import *
 from genshi.input import ParseError, XML, HTML

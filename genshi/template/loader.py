@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2006 Edgewall Software
+# Copyright (C) 2006-2007 Edgewall Software
 # All rights reserved.
 #
 # This software is licensed as described in the file COPYING, which
@@ -19,16 +19,22 @@ try:
 except ImportError:
     import dummy_threading as threading
 
-from genshi.template.core import TemplateError
+from genshi.template.base import TemplateError
 from genshi.util import LRUCache
 
 __all__ = ['TemplateLoader', 'TemplateNotFound']
+__docformat__ = 'restructuredtext en'
 
 
 class TemplateNotFound(TemplateError):
     """Exception raised when a specific template file could not be found."""
 
     def __init__(self, name, search_path):
+        """Create the exception.
+        
+        :param name: the filename of the template
+        :param search_path: the search path used to lookup the template
+        """
         TemplateError.__init__(self, 'Template "%s" not found' % name)
         self.search_path = search_path
 
@@ -66,20 +72,30 @@ class TemplateLoader(object):
     >>> os.remove(path)
     """
     def __init__(self, search_path=None, auto_reload=False,
-                 default_encoding=None, max_cache_size=25, default_class=None):
+                 default_encoding=None, max_cache_size=25, default_class=None,
+                 variable_lookup='lenient', callback=None):
         """Create the template laoder.
         
-        @param search_path: a list of absolute path names that should be
-            searched for template files, or a string containing a single
-            absolute path
-        @param auto_reload: whether to check the last modification time of
-            template files, and reload them if they have changed
-        @param default_encoding: the default encoding to assume when loading
-            templates; defaults to UTF-8
-        @param max_cache_size: the maximum number of templates to keep in the
-            cache
-        @param default_class: the default `Template` subclass to use when
-            instantiating templates
+        :param search_path: a list of absolute path names that should be
+                            searched for template files, or a string containing
+                            a single absolute path
+        :param auto_reload: whether to check the last modification time of
+                            template files, and reload them if they have changed
+        :param default_encoding: the default encoding to assume when loading
+                                 templates; defaults to UTF-8
+        :param max_cache_size: the maximum number of templates to keep in the
+                               cache
+        :param default_class: the default `Template` subclass to use when
+                              instantiating templates
+        :param variable_lookup: the variable lookup mechanism; either "lenient"
+                                (the default), "strict", or a custom lookup
+                                class
+        :param callback: (optional) a callback function that is invoked after a
+                         template was initialized by this loader; the function
+                         is passed the template object as only argument. This
+                         callback can be used for example to add any desired
+                         filters to the template
+        :see: `LenientLookup`, `StrictLookup`
         """
         from genshi.template.markup import MarkupTemplate
 
@@ -91,6 +107,10 @@ class TemplateLoader(object):
         self.auto_reload = auto_reload
         self.default_encoding = default_encoding
         self.default_class = default_class or MarkupTemplate
+        self.variable_lookup = variable_lookup
+        if callback is not None and not callable(callback):
+            raise TypeError('The "callback" parameter needs to be callable')
+        self.callback = callback
         self._cache = LRUCache(max_cache_size)
         self._mtime = {}
         self._lock = threading.Lock()
@@ -100,28 +120,31 @@ class TemplateLoader(object):
         
         If the `filename` parameter is relative, this method searches the search
         path trying to locate a template matching the given name. If the file
-        name is an absolute path, the search path is not bypassed.
+        name is an absolute path, the search path is ignored.
         
-        If requested template is not found, a `TemplateNotFound` exception is
-        raised. Otherwise, a `Template` object is returned that represents the
-        parsed template.
+        If the requested template is not found, a `TemplateNotFound` exception
+        is raised. Otherwise, a `Template` object is returned that represents
+        the parsed template.
         
         Template instances are cached to avoid having to parse the same
         template file more than once. Thus, subsequent calls of this method
         with the same template file name will return the same `Template`
-        object (unless the `auto_reload` option is enabled and the file was
+        object (unless the ``auto_reload`` option is enabled and the file was
         changed since the last parse.)
         
         If the `relative_to` parameter is provided, the `filename` is
         interpreted as being relative to that path.
         
-        @param filename: the relative path of the template file to load
-        @param relative_to: the filename of the template from which the new
-            template is being loaded, or `None` if the template is being loaded
-            directly
-        @param cls: the class of the template object to instantiate
-        @param encoding: the encoding of the template to load; defaults to the
-            `default_encoding` of the loader instance
+        :param filename: the relative path of the template file to load
+        :param relative_to: the filename of the template from which the new
+                            template is being loaded, or ``None`` if the
+                            template is being loaded directly
+        :param cls: the class of the template object to instantiate
+        :param encoding: the encoding of the template to load; defaults to the
+                         ``default_encoding`` of the loader instance
+        :return: the loaded `Template` instance
+        :raises TemplateNotFound: if a template with the given name could not be
+                                  found
         """
         if cls is None:
             cls = self.default_class
@@ -176,11 +199,14 @@ class TemplateLoader(object):
                             filename = os.path.join(dirname, filename)
                             dirname = ''
                         tmpl = cls(fileobj, basedir=dirname, filename=filename,
-                                   loader=self, encoding=encoding)
+                                   loader=self, lookup=self.variable_lookup,
+                                   encoding=encoding)
+                        if self.callback:
+                            self.callback(tmpl)
+                        self._cache[filename] = tmpl
+                        self._mtime[filename] = os.path.getmtime(filepath)
                     finally:
                         fileobj.close()
-                    self._cache[filename] = tmpl
-                    self._mtime[filename] = os.path.getmtime(filepath)
                     return tmpl
                 except IOError:
                     continue

@@ -38,6 +38,7 @@ from genshi.core import Stream, Attrs, Namespace, QName
 from genshi.core import START, END, TEXT, COMMENT, PI
 
 __all__ = ['Path', 'PathSyntaxError']
+__docformat__ = 'restructuredtext en'
 
 
 class Axis(object):
@@ -75,7 +76,7 @@ class Path(object):
     def __init__(self, text, filename=None, lineno=-1):
         """Create the path object from a string.
         
-        @param text: the path expression
+        :param text: the path expression
         """
         self.source = text
         self.paths = PathParser(text, filename, lineno).parse()
@@ -105,10 +106,10 @@ class Path(object):
         >>> print Path('.//child/text()').select(xml)
         Text
         
-        @param stream: the stream to select from
-        @param namespaces: (optional) a mapping of namespace prefixes to URIs
-        @param variables: (optional) a mapping of variable names to values
-        @return: the substream matching the path, or an empty stream
+        :param stream: the stream to select from
+        :param namespaces: (optional) a mapping of namespace prefixes to URIs
+        :param variables: (optional) a mapping of variable names to values
+        :return: the substream matching the path, or an empty stream
         """
         if namespaces is None:
             namespaces = {}
@@ -140,16 +141,16 @@ class Path(object):
         """Returns a function that can be used to track whether the path matches
         a specific stream event.
         
-        The function returned expects the positional arguments `event`,
-        `namespaces` and `variables`. The first is a stream event, while the
+        The function returned expects the positional arguments ``event``,
+        ``namespaces`` and ``variables``. The first is a stream event, while the
         latter two are a mapping of namespace prefixes to URIs, and a mapping
         of variable names to values, respectively. In addition, the function
-        accepts an `updateonly` keyword argument that default to `False`. If
-        it is set to `True`, the function only updates its internal state,
+        accepts an ``updateonly`` keyword argument that default to ``False``. If
+        it is set to ``True``, the function only updates its internal state,
         but does not perform any tests or return a result.
         
         If the path matches the event, the function returns the match (for
-        example, a `START` or `TEXT` event.) Otherwise, it returns `None`.
+        example, a `START` or `TEXT` event.) Otherwise, it returns ``None``.
         
         >>> from genshi.input import XML
         >>> xml = XML('<root><elem><child id="1"/></elem><child id="2"/></root>')

@@ -15,8 +15,8 @@ import unittest
 
 def suite():
     import genshi
-    from genshi.tests import builder, core, filters, input, output, path, \
-                             util
+    from genshi.tests import builder, core, input, output, path, util
+    from genshi.filters import tests as filters
     from genshi.template import tests as template
 
     suite = unittest.TestSuite()

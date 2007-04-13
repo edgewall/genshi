@@ -222,6 +222,14 @@ bar</elem>'''
         self.assertEqual((Stream.END, 'b'), events[3][:2])
         self.assertEqual((Stream.END, 'span'), events[4][:2])
 
+    def test_hex_charref(self):
+        text = '<span>&#x27;</span>'
+        events = list(HTMLParser(StringIO(text)))
+        self.assertEqual(3, len(events))
+        self.assertEqual((Stream.START, ('span', ())), events[0][:2])
+        self.assertEqual((Stream.TEXT, "'"), events[1][:2])
+        self.assertEqual((Stream.END, 'span'), events[2][:2])
+
 
 def suite():
     suite = unittest.TestSuite()

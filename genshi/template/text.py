@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2006 Edgewall Software
+# Copyright (C) 2006-2007 Edgewall Software
 # All rights reserved.
 #
 # This software is licensed as described in the file COPYING, which
@@ -15,8 +15,12 @@
 
 import re
 
-from genshi.template.core import BadDirectiveError, Template, SUB
+from genshi.template.base import BadDirectiveError, Template, SUB
 from genshi.template.directives import *
+from genshi.template.interpolation import interpolate
+
+__all__ = ['TextTemplate']
+__docformat__ = 'restructuredtext en'
 
 
 class TextTemplate(Template):
@@ -70,8 +74,9 @@ class TextTemplate(Template):
             start, end = mo.span()
             if start > offset:
                 text = source[offset:start]
-                for kind, data, pos in self._interpolate(text, self.basedir,
-                                                         self.filename, lineno):
+                for kind, data, pos in interpolate(text, self.basedir,
+                                                   self.filename, lineno,
+                                                   lookup=self.lookup):
                     stream.append((kind, data, pos))
                 lineno += len(text.splitlines())
 
@@ -102,8 +107,9 @@ class TextTemplate(Template):
 
         if offset < len(source):
             text = source[offset:].replace('\\#', '#')
-            for kind, data, pos in self._interpolate(text, self.basedir,
-                                                     self.filename, lineno):
+            for kind, data, pos in interpolate(text, self.basedir,
+                                               self.filename, lineno,
+                                               lookup=self.lookup):
                 stream.append((kind, data, pos))
 
         return stream

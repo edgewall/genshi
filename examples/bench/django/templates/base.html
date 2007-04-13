@@ -3,12 +3,16 @@
     "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en">
 
-  {% block body %}
-    <div id="header">
-      <h1>{{ title|escape }}</h1>
-    </div>
-    {{ block.super }}
-    <div id="footer"></div>
+  {% block content %}
+    {% block header %}
+      <div id="header">
+        <h1>{{ title|escape }}</h1>
+      </div>
+    {% endblock %}
+
+    {% block footer %}
+      <div id="footer"></div>
+    {% endblock %}
   {% endblock %}
 
 </html>

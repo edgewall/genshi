@@ -21,7 +21,10 @@ for output generation on the web. The major feature is a template language,
 which is heavily inspired by Kid.
 
 * `Markup Streams <streams.html>`_
-* `Generating Markup Programmatically <builder.html>`_
-* `Genshi XML Template Language <xml-templates.html>`_
-* `Genshi Text Template Language <text-templates.html>`_
-* `Using XPath in Genshi <xpath.html>`_
+* `Templating Basics <templates.html>`_
+* `XML Template Language <xml-templates.html>`_
+* `Text Template Language <text-templates.html>`_
+* `Using Stream Filters <filters.html>`_
+* `Using XPath <xpath.html>`_
+* `Using the Templating Plugin <plugin.html>`_
+* `Generated API Documentation <api/index.html>`_

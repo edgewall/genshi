@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2006 Edgewall Software
+# Copyright (C) 2006-2007 Edgewall Software
 # All rights reserved.
 #
 # This software is licensed as described in the file COPYING, which
@@ -19,6 +19,7 @@ from genshi.util import plaintext, stripentities, striptags
 
 __all__ = ['Stream', 'Markup', 'escape', 'unescape', 'Attrs', 'Namespace',
            'QName']
+__docformat__ = 'restructuredtext en'
 
 
 class StreamEventKind(str):
@@ -35,14 +36,20 @@ class Stream(object):
     
     This class is basically an iterator over the events.
     
-    Stream events are tuples of the form:
+    Stream events are tuples of the form::
     
       (kind, data, position)
     
-    where `kind` is the event kind (such as `START`, `END`, `TEXT`, etc), `data`
-    depends on the kind of event, and `position` is a `(filename, line, offset)`
-    tuple that contains the location of the original element or text in the
-    input. If the original location is unknown, `position` is `(None, -1, -1)`.
+    where ``kind`` is the event kind (such as `START`, `END`, `TEXT`, etc),
+    ``data`` depends on the kind of event, and ``position`` is a
+    ``(filename, line, offset)`` tuple that contains the location of the
+    original element or text in the input. If the original location is unknown,
+    ``position`` is ``(None, -1, -1)``.
+    
+    Also provided are ways to serialize the stream to text. The `serialize()`
+    method will return an iterator over generated strings, while `render()`
+    returns the complete generated text at once. Both accept various parameters
+    that impact the way the stream is serialized.
     
     Also provided are ways to serialize the stream to text. The `serialize()`
     method will return an iterator over generated strings, while `render()`
@@ -51,21 +58,21 @@ class Stream(object):
     """
     __slots__ = ['events']
 
-    START = StreamEventKind('START') # a start tag
-    END = StreamEventKind('END') # an end tag
-    TEXT = StreamEventKind('TEXT') # literal text
-    DOCTYPE = StreamEventKind('DOCTYPE') # doctype declaration
-    START_NS = StreamEventKind('START_NS') # start namespace mapping
-    END_NS = StreamEventKind('END_NS') # end namespace mapping
-    START_CDATA = StreamEventKind('START_CDATA') # start CDATA section
-    END_CDATA = StreamEventKind('END_CDATA') # end CDATA section
-    PI = StreamEventKind('PI') # processing instruction
-    COMMENT = StreamEventKind('COMMENT') # comment
+    START = StreamEventKind('START') #: a start tag
+    END = StreamEventKind('END') #: an end tag
+    TEXT = StreamEventKind('TEXT') #: literal text
+    DOCTYPE = StreamEventKind('DOCTYPE') #: doctype declaration
+    START_NS = StreamEventKind('START_NS') #: start namespace mapping
+    END_NS = StreamEventKind('END_NS') #: end namespace mapping
+    START_CDATA = StreamEventKind('START_CDATA') #: start CDATA section
+    END_CDATA = StreamEventKind('END_CDATA') #: end CDATA section
+    PI = StreamEventKind('PI') #: processing instruction
+    COMMENT = StreamEventKind('COMMENT') #: comment
 
     def __init__(self, events):
         """Initialize the stream with a sequence of markup events.
         
-        @param events: a sequence or iterable providing the events
+        :param events: a sequence or iterable providing the events
         """
         self.events = events
 
@@ -121,11 +128,11 @@ class Stream(object):
         filters must be callables that accept the stream object as parameter,
         and return the filtered stream.
         
-        The call:
+        The call::
         
             stream.filter(filter1, filter2)
         
-        is equivalent to:
+        is equivalent to::
         
             stream | filter1 | filter2
         """
@@ -134,14 +141,17 @@ class Stream(object):
     def render(self, method='xml', encoding='utf-8', **kwargs):
         """Return a string representation of the stream.
         
-        @param method: determines how the stream is serialized; can be either
+        :param method: determines how the stream is serialized; can be either
                        "xml", "xhtml", "html", "text", or a custom serializer
                        class
-        @param encoding: how the output string should be encoded; if set to
+        :param encoding: how the output string should be encoded; if set to
                          `None`, this method returns a `unicode` object
 
         Any additional keyword arguments are passed to the serializer, and thus
         depend on the `method` parameter value.
+        
+        :see: XMLSerializer.__init__, XHTMLSerializer.__init__,
+              HTMLSerializer.__init__, TextSerializer.__init__
         """
         generator = self.serialize(method=method, **kwargs)
         output = u''.join(list(generator))
@@ -156,7 +166,12 @@ class Stream(object):
         """Return a new stream that contains the events matching the given
         XPath expression.
         
-        @param path: a string containing the XPath expression
+        :param path: a string containing the XPath expression
+        :param namespaces: mapping of namespace prefixes used in the path
+        :param variables: mapping of variable names to values
+        :return: the selected substream
+        :raises PathSyntaxError: if the given path expression is invalid or not
+                                 supported
         """
         from genshi.path import Path
         return Path(path).select(self, namespaces, variables)
@@ -169,12 +184,15 @@ class Stream(object):
         the serialized output incrementally, as opposed to returning a single
         string.
         
-        @param method: determines how the stream is serialized; can be either
+        :param method: determines how the stream is serialized; can be either
                        "xml", "xhtml", "html", "text", or a custom serializer
                        class
-
+        
         Any additional keyword arguments are passed to the serializer, and thus
         depend on the `method` parameter value.
+        
+        :see: XMLSerializer.__init__, XHTMLSerializer.__init__,
+              HTMLSerializer.__init__, TextSerializer.__init__
         """
         from genshi import output
         cls = method
@@ -217,30 +235,30 @@ def _ensure(stream):
 class Attrs(tuple):
     """Immutable sequence type that stores the attributes of an element.
     
-    Ordering of the attributes is preserved, while accessing by name is also
+    Ordering of the attributes is preserved, while access by name is also
     supported.
     
     >>> attrs = Attrs([('href', '#'), ('title', 'Foo')])
     >>> attrs
-    Attrs([(QName(u'href'), '#'), (QName(u'title'), 'Foo')])
+    Attrs([('href', '#'), ('title', 'Foo')])
     
     >>> 'href' in attrs
     True
     >>> 'tabindex' in attrs
     False
-    >>> attrs.get(u'title')
+    >>> attrs.get('title')
     'Foo'
     
-    Instances may not be manipulated directly. Instead, the operators `|` and
-    `-` can be used to produce new instances that have specific attributes
+    Instances may not be manipulated directly. Instead, the operators ``|`` and
+    ``-`` can be used to produce new instances that have specific attributes
     added, replaced or removed.
     
-    To remove an attribute, use the `-` operator. The right hand side can be
+    To remove an attribute, use the ``-`` operator. The right hand side can be
     either a string or a set/sequence of strings, identifying the name(s) of
     the attribute(s) to remove:
     
     >>> attrs - 'title'
-    Attrs([(QName(u'href'), '#')])
+    Attrs([('href', '#')])
     >>> attrs - ('title', 'href')
     Attrs()
     
@@ -248,33 +266,25 @@ class Attrs(tuple):
     used with an assignment:
 
     >>> attrs
-    Attrs([(QName(u'href'), '#'), (QName(u'title'), 'Foo')])
+    Attrs([('href', '#'), ('title', 'Foo')])
     >>> attrs -= 'title'
     >>> attrs
-    Attrs([(QName(u'href'), '#')])
+    Attrs([('href', '#')])
     
-    To add a new attribute, use the `|` operator, where the right hand value
-    is a sequence of `(name, value)` tuples (which includes `Attrs` instances):
+    To add a new attribute, use the ``|`` operator, where the right hand value
+    is a sequence of ``(name, value)`` tuples (which includes `Attrs`
+    instances):
     
-    >>> attrs | [(u'title', 'Bar')]
-    Attrs([(QName(u'href'), '#'), (QName(u'title'), 'Bar')])
+    >>> attrs | [('title', 'Bar')]
+    Attrs([('href', '#'), ('title', 'Bar')])
     
     If the attributes already contain an attribute with a given name, the value
     of that attribute is replaced:
     
-    >>> attrs | [(u'href', 'http://example.org/')]
-    Attrs([(QName(u'href'), 'http://example.org/')])
-    
+    >>> attrs | [('href', 'http://example.org/')]
+    Attrs([('href', 'http://example.org/')])
     """
     __slots__ = []
-
-    def __new__(cls, items=()):
-        """Create the `Attrs` instance.
-        
-        If the `items` parameter is provided, it is expected to be a sequence
-        of `(name, value)` tuples.
-        """
-        return tuple.__new__(cls, [(QName(name), val) for name, val in items])
 
     def __contains__(self, name):
         """Return whether the list includes an attribute with the specified
@@ -311,6 +321,11 @@ class Attrs(tuple):
     def get(self, name, default=None):
         """Return the value of the attribute with the specified name, or the
         value of the `default` parameter if no such attribute is found.
+        
+        :param name: the name of the attribute
+        :param default: the value to return when the attribute does not exist
+        :return: the attribute value, or the `default` value if that attribute
+                 does not exist
         """
         for attr, value in self:
             if attr == name:
@@ -320,8 +335,11 @@ class Attrs(tuple):
     def totuple(self):
         """Return the attributes as a markup event.
         
-        The returned event is a TEXT event, the data is the value of all
+        The returned event is a `TEXT` event, the data is the value of all
         attributes joined together.
+        
+        >>> Attrs([('href', '#'), ('title', 'Foo')]).totuple()
+        ('TEXT', u'#Foo', (None, -1, -1))
         """
         return TEXT, u''.join([x[1] for x in self]), (None, -1, -1)
 
@@ -358,6 +376,19 @@ class Markup(unicode):
         return '<%s %r>' % (self.__class__.__name__, unicode(self))
 
     def join(self, seq, escape_quotes=True):
+        """Return a `Markup` object which is the concatenation of the strings
+        in the given sequence, where this `Markup` object is the separator
+        between the joined elements.
+        
+        Any element in the sequence that is not a `Markup` instance is
+        automatically escaped.
+        
+        :param seq: the sequence of strings to join
+        :param escape_quotes: whether double quote characters in the elements
+                              should be escaped
+        :return: the joined `Markup` object
+        :see: `escape`
+        """
         return Markup(unicode(self).join([escape(item, quotes=escape_quotes)
                                           for item in seq]))
 
@@ -365,9 +396,21 @@ class Markup(unicode):
         """Create a Markup instance from a string and escape special characters
         it may contain (<, >, & and \").
         
+        >>> escape('"1 < 2"')
+        <Markup u'&#34;1 &lt; 2&#34;'>
+        
         If the `quotes` parameter is set to `False`, the \" character is left
         as is. Escaping quotes is generally only required for strings that are
         to be used in attribute values.
+        
+        >>> escape('"1 < 2"', quotes=False)
+        <Markup u'"1 &lt; 2"'>
+        
+        :param text: the text to escape
+        :param quotes: if ``True``, double quote characters are escaped in
+                       addition to the other special characters
+        :return: the escaped `Markup` string
+        :see: `genshi.core.escape`
         """
         if not text:
             return cls()
@@ -382,7 +425,13 @@ class Markup(unicode):
     escape = classmethod(escape)
 
     def unescape(self):
-        """Reverse-escapes &, <, > and \" and returns a `unicode` object."""
+        """Reverse-escapes &, <, >, and \" and returns a `unicode` object.
+        
+        >>> Markup('1 &lt; 2').unescape()
+        u'1 < 2'
+        
+        :see: `genshi.core.unescape`
+        """
         if not self:
             return u''
         return unicode(self).replace('&#34;', '"') \
@@ -395,13 +444,18 @@ class Markup(unicode):
         replaced by the equivalent UTF-8 characters.
         
         If the `keepxmlentities` parameter is provided and evaluates to `True`,
-        the core XML entities (&amp;, &apos;, &gt;, &lt; and &quot;) are not
-        stripped.
+        the core XML entities (``&amp;``, ``&apos;``, ``&gt;``, ``&lt;`` and
+        ``&quot;``) are not stripped.
+        
+        :see: `genshi.util.stripentities`
         """
         return Markup(stripentities(self, keepxmlentities=keepxmlentities))
 
     def striptags(self):
-        """Return a copy of the text with all XML/HTML tags removed."""
+        """Return a copy of the text with all XML/HTML tags removed.
+        
+        :see: `genshi.util.striptags`
+        """
         return Markup(striptags(self))
 
 
@@ -413,7 +467,19 @@ except ImportError:
 escape = Markup.escape
 
 def unescape(text):
-    """Reverse-escapes &, <, > and \" and returns a `unicode` object."""
+    """Reverse-escapes &, <, >, and \" and returns a `unicode` object.
+    
+    >>> unescape(Markup('1 &lt; 2'))
+    u'1 < 2'
+    
+    If the provided `text` object is not a `Markup` instance, the text is
+    returned as-is.
+    
+    >>> unescape('1 &lt; 2')
+    '1 &lt; 2'
+    
+    :param text: the text to unescape
+    """
     if not isinstance(text, Markup):
         return text
     return text.unescape()
@@ -451,7 +517,7 @@ class Namespace(object):
     QName(u'http://www.w3.org/1999/xhtml}body')
     
     A `Namespace` object can also be used to test whether a specific `QName`
-    belongs to that namespace using the `in` operator:
+    belongs to that namespace using the ``in`` operator:
     
     >>> qname = html.body
     >>> qname in html
@@ -509,7 +575,7 @@ class QName(unicode):
     """A qualified element or attribute name.
     
     The unicode value of instances of this class contains the qualified name of
-    the element or attribute, in the form `{namespace}localname`. The namespace
+    the element or attribute, in the form ``{namespace}localname``. The namespace
     URI can be obtained through the additional `namespace` attribute, while the
     local name can be accessed through the `localname` attribute.
     

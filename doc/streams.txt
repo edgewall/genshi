@@ -18,9 +18,8 @@ Basics
 A stream can be attained in a number of ways. It can be:
 
 * the result of parsing XML or HTML text, or
-* programmatically generated, or
-* the result of selecting a subset of another stream filtered by an XPath
-  expression.
+* the result of selecting a subset of another stream using XPath, or
+* programmatically generated.
 
 For example, the functions ``XML()`` and ``HTML()`` can be used to convert
 literal XML or HTML text to a markup stream::
@@ -91,7 +90,9 @@ One example of a filter included with Genshi is the ``HTMLSanitizer`` in
 ``genshi.filters``. It processes a stream of HTML markup, and strips out any
 potentially dangerous constructs, such as Javascript event handlers.
 ``HTMLSanitizer`` is not a function, but rather a class that implements
-``__call__``, which means instances of the class are callable.
+``__call__``, which means instances of the class are callable::
+
+  stream = stream | HTMLSanitizer()
 
 Both the ``filter()`` method and the pipe operator allow easy chaining of
 filters::
@@ -103,15 +104,22 @@ That is equivalent to::
 
   stream = stream | noop | HTMLSanitizer()
 
+For more information about the built-in filters, see `Stream Filters`_.
+
+.. _`Stream Filters`: filters.html
+
 
 Serialization
 =============
 
-The ``Stream`` class provides two methods for serializing this list of events:
-``serialize()`` and ``render()``. The former is a generator that yields chunks
-of ``Markup`` objects (which are basically unicode strings that are considered
-safe for output on the web). The latter returns a single string, by default
-UTF-8 encoded.
+Serialization means producing some kind of textual output from a stream of
+events, which you'll need when you want to transmit or store the results of
+generating or otherwise processing markup.
+
+The ``Stream`` class provides two methods for serialization: ``serialize()`` and
+``render()``. The former is a generator that yields chunks of ``Markup`` objects
+(which are basically unicode strings that are considered safe for output on the
+web). The latter returns a single string, by default UTF-8 encoded.
 
 Here's the output from ``serialize()``::
 
@@ -157,6 +165,35 @@ The pipe operator allows a nicer syntax::
 
   >>> print stream | HTMLSanitizer() | TextSerializer()
   Some text and a link.
+
+
+Serialization Options
+---------------------
+
+Both ``serialize()`` and ``render()`` support additional keyword arguments that
+are passed through to the initializer of the serializer class. The following
+options are supported by the built-in serializers:
+
+``strip_whitespace``
+  Whether the serializer should remove trailing spaces and empty lines. Defaults
+  to ``True``.
+
+  (This option is not available for serialization to plain text.)
+
+``doctype``
+  A ``(name, pubid, sysid)`` tuple defining the name, publid identifier, and
+  system identifier of a ``DOCTYPE`` declaration to prepend to the generated
+  output. If provided, this declaration will override any ``DOCTYPE``
+  declaration in the stream.
+
+  (This option is not available for serialization to plain text.)
+
+``namespace_prefixes``
+  The namespace prefixes to use for namespace that are not bound to a prefix
+  in the stream itself.
+
+  (This option is not available for serialization to HTML or plain text.)
+
 
 
 Using XPath

@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2006-2007 Edgewall Software
+# Copyright (C) 2007 Edgewall Software
 # All rights reserved.
 #
 # This software is licensed as described in the file COPYING, which
@@ -15,17 +15,10 @@ import doctest
 import unittest
 
 def suite():
-    from genshi.template.tests import base, directives, eval, interpolation, \
-                                      loader, markup, plugin, text
+    from genshi.filters.tests import html, i18n
     suite = unittest.TestSuite()
-    suite.addTest(base.suite())
-    suite.addTest(directives.suite())
-    suite.addTest(eval.suite())
-    suite.addTest(interpolation.suite())
-    suite.addTest(loader.suite())
-    suite.addTest(markup.suite())
-    suite.addTest(plugin.suite())
-    suite.addTest(text.suite())
+    suite.addTest(html.suite())
+    suite.addTest(i18n.suite())
     return suite
 
 if __name__ == '__main__':

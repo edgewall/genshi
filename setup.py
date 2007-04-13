@@ -12,14 +12,16 @@
 # individuals. For the exact contribution history, see the revision
 # history and logs, available at http://genshi.edgewall.org/log/.
 
-from distutils.cmd import Command
+from distutils.command.build_ext import build_ext
+from distutils.errors import CCompilerError
 import doctest
 from glob import glob
 import os
 try:
-    from setuptools import setup, Extension
+    from setuptools import setup, Command, Extension, Feature
 except ImportError:
-    from distutils.core import setup, Extension
+    from distutils.core import setup, Command, Extension
+    Feature = None
 import sys
 
 
@@ -79,6 +81,30 @@ class test_doc(Command):
             doctest.testfile(filename, False, optionflags=doctest.ELLIPSIS)
 
 
+class optional_build_ext(build_ext):
+    # This class allows C extension building to fail.
+    def build_extension(self, ext):
+        try:
+            build_ext.build_extension(self, ext)
+        except CCompilerError, x:
+            print '*' * 70
+            print """WARNING:
+An optional C extension could not be compiled, speedups will not be
+available."""
+            print '*' * 70
+
+
+if Feature:
+    speedups = Feature(
+        "optionial C speed-enhancements",
+        standard = True,
+        ext_modules = [
+            Extension('genshi._speedups', ['genshi/_speedups.c']),
+        ],
+    )
+else:
+    speedups = None
+
 setup(
     name = 'Genshi',
     version = '0.4',
@@ -109,7 +135,6 @@ is heavily inspired by Kid.""",
     ],
     keywords = ['python.templating.engines'],
     packages = ['genshi', 'genshi.template'],
-    ext_modules=[Extension('genshi._speedups', ['genshi/_speedups.c'])],
     test_suite = 'genshi.tests.suite',
 
     extras_require = {'plugin': ['setuptools>=0.6a2']},
@@ -120,5 +145,7 @@ is heavily inspired by Kid.""",
     genshi-text = genshi.template.plugin:TextTemplateEnginePlugin[plugin]
     """,
 
-    cmdclass={'build_doc': build_doc, 'test_doc': test_doc}
+    features = {'speedups': speedups},
+    cmdclass = {'build_doc': build_doc, 'test_doc': test_doc,
+                'build_ext': optional_build_ext}
 )

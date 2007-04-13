@@ -60,6 +60,23 @@ This example shows:
 (c) usage of templates directives (``py:content`` and ``py:for``)
 (d) an inline Python expression (``${fruit}``).
 
+The template would generate output similar to this::
+
+  <html>
+    <head>
+      <title>A Genshi Template</title>
+    </head>
+
+    <body>
+      <p>These are some of my favorite fruits:</p>
+      <ul>
+        <li>I like apples</li>
+        <li>I like oranges</li>
+        <li>I like kiwis</li>
+      </ul>
+    </body>
+  </html>
+
 A *text template* is a simple plain text document that can also contain embedded
 Python code. Text templates can be used to generate simple *non-markup* text
 formats, such as the body of an plain text email. For example::

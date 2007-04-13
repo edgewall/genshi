@@ -316,6 +316,11 @@ class XHTMLSerializerTestCase(unittest.TestCase):
           <p></p>
         </div>""", output)
 
+    def test_html5_doctype(self):
+        stream = HTML('<html></html>')
+        output = stream.render(XHTMLSerializer, doctype=DocType.HTML5)
+        self.assertEqual('<!DOCTYPE html>\n<html></html>', output)
+
 
 class HTMLSerializerTestCase(unittest.TestCase):
 
@@ -370,6 +375,11 @@ class HTMLSerializerTestCase(unittest.TestCase):
         self.assertEqual("""<style>
             html > body { display: none; }
         </style>""", output)
+
+    def test_html5_doctype(self):
+        stream = HTML('<html></html>')
+        output = stream.render(HTMLSerializer, doctype=DocType.HTML5)
+        self.assertEqual('<!DOCTYPE html>\n<html></html>', output)
 
 
 class EmptyTagFilterTestCase(unittest.TestCase):

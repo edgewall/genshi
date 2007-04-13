@@ -12,10 +12,10 @@ from genshi.core import Attrs, START, END, TEXT
 from genshi.template.base import Template, EXPR, SUB
 from genshi.template.markup import EXEC
 
-LOAD_NAME = chr(opmap['LOAD_NAME'])
-LOAD_CONST = chr(opmap['LOAD_CONST'])
-CALL_FUNCTION = chr(opmap['CALL_FUNCTION'])
-BINARY_ADD = chr(opmap['BINARY_ADD'])
+_LOAD_NAME = chr(opmap['LOAD_NAME'])
+_LOAD_CONST = chr(opmap['LOAD_CONST'])
+_CALL_FUNCTION = chr(opmap['CALL_FUNCTION'])
+_BINARY_ADD = chr(opmap['BINARY_ADD'])
 
 
 class Translator(object):
@@ -82,6 +82,20 @@ class Translator(object):
         self.include_attrs = include_attrs
 
     def __call__(self, stream, ctxt=None, search_text=True):
+        """Translate any localizable strings in the given stream.
+        
+        This function shouldn't be called directly. Instead, an instance of
+        the `Translator` class should be registered as a filter with the
+        `Template` or the `TemplateLoader`, or applied as a regular stream
+        filter. If used as a template filter, it should be inserted in front of
+        all the default filters.
+        
+        :param stream: the markup event stream
+        :param ctxt: the template context (not used)
+        :param search_text: whether text nodes should be translated (used
+                            internally)
+        :return: the localized stream
+        """
         skip = 0
 
         for kind, data, pos in stream:
@@ -205,15 +219,15 @@ class Translator(object):
                 gettext_locs = [consts[n] for n in gettext_functions
                                 if n in consts]
                 ops = [
-                    LOAD_CONST, '(', '|'.join(gettext_locs), ')',
-                    CALL_FUNCTION, '.\x00',
-                    '((?:', BINARY_ADD, '|', LOAD_CONST, '.\x00)+)'
+                    _LOAD_CONST, '(', '|'.join(gettext_locs), ')',
+                    _CALL_FUNCTION, '.\x00',
+                    '((?:', _BINARY_ADD, '|', _LOAD_CONST, '.\x00)+)'
                 ]
                 for _, opcodes in re.findall(''.join(ops), data.code.co_code):
                     strings = []
                     opcodes = iter(opcodes)
                     for opcode in opcodes:
-                        if opcode == BINARY_ADD:
+                        if opcode == _BINARY_ADD:
                             arg = strings.pop()
                             strings[-1] += arg
                         else:

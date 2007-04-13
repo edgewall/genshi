@@ -125,6 +125,10 @@ are:
   XHTML 1.0 Strict
 **xhtml-transitional**
   XHTML 1.0 Transitional
+**html5**
+  HTML5 (as `proposed`_ by the WHAT-WG)
+
+.. _proposed: http://www.whatwg.org/specs/web-apps/current-work/
 
 .. note:: While using the Genshi API directly allows you to specify document
           types not in that list, the *dictionary-of-strings* based

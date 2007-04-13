@@ -54,6 +54,8 @@ class DocType(object):
     )
     XHTML = XHTML_STRICT
 
+    HTML5 = ('html', None, None)
+
 
 class XMLSerializer(object):
     """Produces XML text from an event stream.

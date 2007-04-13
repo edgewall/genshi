@@ -113,6 +113,7 @@ class MarkupTemplateEnginePlugin(AbstractTemplateEnginePlugin):
 
     doctypes = {'html': DocType.HTML, 'html-strict': DocType.HTML_STRICT,
                 'html-transitional': DocType.HTML_TRANSITIONAL,
+                'html5': DocType.HTML5,
                 'xhtml': DocType.XHTML, 'xhtml-strict': DocType.XHTML_STRICT,
                 'xhtml-transitional': DocType.XHTML_TRANSITIONAL}
 

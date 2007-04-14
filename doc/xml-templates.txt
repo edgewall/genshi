@@ -277,8 +277,10 @@ This would result in the following output::
 
 Inside the body of a ``py:match`` directive, the ``select(path)`` function is
 made available so that parts or all of the original element can be incorporated
-in the output of the match template. See [wiki:GenshiStream#UsingXPath] for
-more information about this function.
+in the output of the match template. See `Using XPath`_ for more information
+about this function.
+
+.. _`Using XPath`: streams.html#using-xpath
 
 This directive can also be used as an element::
 

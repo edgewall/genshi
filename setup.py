@@ -81,7 +81,7 @@ class test_doc(Command):
 
 setup(
     name = 'Genshi',
-    version = '0.4',
+    version = '0.5',
     description = 'A toolkit for stream-based generation of output for the web',
     long_description = \
 """Genshi is a Python library that provides an integrated set of

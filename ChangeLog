@@ -1,6 +1,6 @@
 Version 0.4
 http://svn.edgewall.org/repos/genshi/tags/0.4.0/
-(?, from branches/stable/0.4.x)
+(Apr 16 2007, from branches/stable/0.4.x)
 
  * New example applications for CherryPy and web.py.
  * The template loader now uses a LRU cache to limit the number of cached

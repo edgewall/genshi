@@ -4,11 +4,12 @@ Upgrading Genshi
 Upgrading from Genshi 0.3.x to 0.4.x
 ------------------------------------
 
-The `genshi.template` module has been refactored into a package with
-multiple modules. While code using the normal templating APIs should
-continue to work without problems, you should make sure to remove any
-leftover traces of the `template.py` file on the installation path.
-This is not necessary when Genshi was installed as a Python egg.
+The modules ``genshi.filters`` and ``genshi.template`` have been
+refactored into packages containing multiple modules. While code using
+the regular APIs should continue to work without problems, you should
+make sure to remove any leftover traces of the ``template.py`` file on
+the installation path. This is not necessary when Genshi was installed
+as a Python egg.
 
 Results of evaluating template expressions are no longer implicitly
 called if they are callable. If you have been using that feature, you

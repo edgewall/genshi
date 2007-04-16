@@ -84,10 +84,10 @@ setup(
     version = '0.4',
     description = 'A toolkit for stream-based generation of output for the web',
     long_description = \
-"""Genshi is a Python library that provides an integrated set of components
-for parsing, generating, and processing HTML, XML or other textual content for
-output generation on the web. The major feature is a template language, which
-is heavily inspired by Kid.""",
+"""Genshi is a Python library that provides an integrated set of
+components for parsing, generating, and processing HTML, XML or
+other textual content for output generation on the web. The major
+feature is a template language, which is heavily inspired by Kid.""",
     author = 'Edgewall Software',
     author_email = 'info@edgewall.org',
     license = 'BSD',
@@ -108,7 +108,7 @@ is heavily inspired by Kid.""",
         'Topic :: Text Processing :: Markup :: XML'
     ],
     keywords = ['python.templating.engines'],
-    packages = ['genshi', 'genshi.template'],
+    packages = ['genshi', 'genshi.filters', 'genshi.template'],
     test_suite = 'genshi.tests.suite',
 
     extras_require = {'plugin': ['setuptools>=0.6a2']},

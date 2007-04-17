@@ -243,13 +243,20 @@ Markup_join(PyObject *self, PyObject *args, PyObject *kwds)
 }
 
 static PyObject *
-Markup_concat(PyObject *self, PyObject *other)
+Markup_add(PyObject *self, PyObject *other)
 {
     PyObject *tmp, *tmp2, *args, *ret;
-    tmp = escape(other, 1);
-    if (tmp == NULL)
-        return NULL;
-    tmp2 = PyUnicode_Concat(self, tmp);
+    if (PyObject_TypeCheck(self, &MarkupType)) {
+        tmp = escape(other, 1);
+        if (tmp == NULL)
+            return NULL;
+        tmp2 = PyUnicode_Concat(self, tmp);
+    } else { // __radd__
+        tmp = escape(self, 1);
+        if (tmp == NULL)
+            return NULL;
+        tmp2 = PyUnicode_Concat(tmp, other);
+    }
     if (tmp2 == NULL) {
         Py_DECREF(tmp);
         return NULL;
@@ -318,9 +325,16 @@ Markup_mul(PyObject *self, PyObject *num)
 {
     PyObject *unicode, *result, *args;
 
-    unicode = PyObject_Unicode(self);
-    if (unicode == NULL) return NULL;
-    result = PyNumber_Multiply(unicode, num);
+    if (PyObject_TypeCheck(self, &MarkupType)) {
+        unicode = PyObject_Unicode(self);
+        if (unicode == NULL) return NULL;
+        result = PyNumber_Multiply(unicode, num);
+    } else { // __rmul__
+        unicode = PyObject_Unicode(num);
+        if (unicode == NULL) return NULL;
+        result = PyNumber_Multiply(unicode, self);
+    }
+
     if (result == NULL) return NULL;
     args = PyTuple_New(1);
     if (args == NULL) {
@@ -330,6 +344,7 @@ Markup_mul(PyObject *self, PyObject *num)
     PyTuple_SET_ITEM(args, 0, result);
     result = PyUnicode_Type.tp_new(&MarkupType, args, NULL);
     Py_DECREF(args);
+
     return result;
 }
 
@@ -446,22 +461,11 @@ static PyMethodDef Markup_methods[] = {
 };
 
 static PyNumberMethods Markup_as_number = {
-        0, /*nb_add*/
+        Markup_add, /*nb_add*/
         0, /*nb_subtract*/
         Markup_mul, /*nb_multiply*/
         0, /*nb_divide*/
         Markup_mod, /*nb_remainder*/
-};
-
-static PySequenceMethods Markup_as_sequence = {
-        0, /*sq_length*/
-        Markup_concat, /*sq_concat*/
-        0, /*sq_repeat*/
-        0, /*sq_item*/
-        0, /*sq_slice*/
-        0, /*sq_ass_item*/
-        0, /*sq_ass_slice*/
-        0  /*sq_contains*/
 };
 
 PyTypeObject MarkupType = {
@@ -477,7 +481,7 @@ PyTypeObject MarkupType = {
     0,          /*tp_compare*/
     Markup_repr, /*tp_repr*/
     &Markup_as_number, /*tp_as_number*/
-    &Markup_as_sequence, /*tp_as_sequence*/
+    0,          /*tp_as_sequence*/
     0,          /*tp_as_mapping*/
     0,          /*tp_hash */
 

@@ -76,11 +76,10 @@ class MarkupTestCase(unittest.TestCase):
         assert type(markup) is Markup
         self.assertEquals('<b>foo</b><br/>', markup)
 
-    # FIXME
-    #def test_add_reverse(self):
-    #    markup = '<br/>' + Markup('<b>bar</b>')
-    #    assert type(markup) is Markup
-    #    self.assertEquals('&lt;br/&gt;<b>bar</b>', markup)
+    def test_add_reverse(self):
+        markup = '<br/>' + Markup('<b>bar</b>')
+        assert type(markup) is Markup
+        self.assertEquals('&lt;br/&gt;<b>bar</b>', markup)
 
     def test_mod(self):
         markup = Markup('<b>%s</b>') % '&'
@@ -97,11 +96,10 @@ class MarkupTestCase(unittest.TestCase):
         assert type(markup) is Markup
         self.assertEquals('<b>foo</b><b>foo</b>', markup)
 
-    # FIXME
-    #def test_mul_reverse(self):
-    #    markup = 2 * Markup('<b>foo</b>')
-    #    assert type(markup) is Markup
-    #    self.assertEquals('<b>foo</b><b>foo</b>', markup)
+    def test_mul_reverse(self):
+        markup = 2 * Markup('<b>foo</b>')
+        assert type(markup) is Markup
+        self.assertEquals('<b>foo</b><b>foo</b>', markup)
 
     def test_join(self):
         markup = Markup('<br />').join(['foo', '<bar />', Markup('<baz />')])

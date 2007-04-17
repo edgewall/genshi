@@ -133,9 +133,11 @@ class Translator(object):
                 for name, value in attrs:
                     if name in include_attrs:
                         if isinstance(value, basestring):
-                            newval = ugettext(value)
+                            newval = self.translate(value)
                         else:
-                            newval = list(self(value, ctxt, search_text=name in include_attrs))
+                            newval = list(self(value, ctxt,
+                                search_text=name in include_attrs)
+                            )
                         if newval != value:
                             value = new_val
                             changed = True

@@ -39,7 +39,8 @@ def ET(element):
     :return: a markup stream
     """
     tag_name = QName(element.tag.lstrip('{'))
-    attrs = Attrs([(QName(attr), value) for attr, value in element.items()])
+    attrs = Attrs([(QName(attr.lstrip('{')), value)
+                   for attr, value in element.items()])
 
     yield START, (tag_name, attrs), (None, -1, -1)
     if element.text:

@@ -4,6 +4,8 @@ http://svn.edgewall.org/repos/genshi/tags/0.4.1/
 
  * Fix incorrect reference to translation function in the I18N filter.
  * The `ET()` function now correctly handles attributes with a namespace.
+ * XML declarations are now processed internally, as well as written to the
+   output when XML serialization is used (ticket #111).
 
 
 Version 0.4

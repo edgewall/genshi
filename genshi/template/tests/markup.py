@@ -183,7 +183,7 @@ class MarkupTemplateTestCase(unittest.TestCase):
         <div xmlns:py="http://genshi.edgewall.org/">
           \xf6
         </div>""".encode('iso-8859-1'), encoding='iso-8859-1')
-        self.assertEqual(u"""<div>
+        self.assertEqual(u"""<?xml version="1.0" encoding="iso-8859-1"?>\n<div>
           \xf6
         </div>""", unicode(tmpl.generate()))
 
@@ -228,7 +228,7 @@ class MarkupTemplateTestCase(unittest.TestCase):
           <Size py:if="0" xmlns:t="test">Size</Size>
           <Item/>
         </Test>""")
-        self.assertEqual("""<Test>
+        self.assertEqual("""<?xml version="1.0"?>\n<Test>
           
           <Item/>
         </Test>""", str(tmpl.generate()))

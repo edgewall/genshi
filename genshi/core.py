@@ -56,6 +56,7 @@ class Stream(object):
     START = StreamEventKind('START') #: a start tag
     END = StreamEventKind('END') #: an end tag
     TEXT = StreamEventKind('TEXT') #: literal text
+    XML_DECL = StreamEventKind('XML_DECL') #: XML declaration
     DOCTYPE = StreamEventKind('DOCTYPE') #: doctype declaration
     START_NS = StreamEventKind('START_NS') #: start namespace mapping
     END_NS = StreamEventKind('END_NS') #: end namespace mapping
@@ -208,6 +209,7 @@ class Stream(object):
 START = Stream.START
 END = Stream.END
 TEXT = Stream.TEXT
+XML_DECL = Stream.XML_DECL
 DOCTYPE = Stream.DOCTYPE
 START_NS = Stream.START_NS
 END_NS = Stream.END_NS

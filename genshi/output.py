@@ -23,7 +23,7 @@ except NameError:
 import re
 
 from genshi.core import escape, Attrs, Markup, Namespace, QName, StreamEventKind
-from genshi.core import DOCTYPE, START, END, START_NS, END_NS, TEXT, \
+from genshi.core import START, END, TEXT, XML_DECL, DOCTYPE, START_NS, END_NS, \
                         START_CDATA, END_CDATA, PI, COMMENT, XML_NAMESPACE
 
 __all__ = ['DocType', 'XMLSerializer', 'XHTMLSerializer', 'HTMLSerializer',
@@ -87,7 +87,7 @@ class XMLSerializer(object):
         self.filters.append(NamespaceFlattener(prefixes=namespace_prefixes))
 
     def __call__(self, stream):
-        have_doctype = False
+        have_decl = have_doctype = False
         in_cdata = False
 
         stream = chain(self.preamble, stream)
@@ -114,6 +114,18 @@ class XMLSerializer(object):
 
             elif kind is COMMENT:
                 yield Markup('<!--%s-->' % data)
+
+            elif kind is XML_DECL and not have_decl:
+                version, encoding, standalone = data
+                buf = ['<?xml version="%s"' % version]
+                if encoding:
+                    buf.append(' encoding="%s"' % encoding)
+                if standalone != -1:
+                    standalone = standalone and 'yes' or 'no'
+                    buf.append(' standalone="%s"' % standalone)
+                buf.append('?>\n')
+                yield Markup(u''.join(buf))
+                have_decl = True
 
             elif kind is DOCTYPE and not have_doctype:
                 name, pubid, sysid = data

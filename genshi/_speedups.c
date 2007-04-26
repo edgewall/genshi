@@ -48,8 +48,8 @@ escape(PyObject *text, int quotes)
 {
     PyObject *args, *ret;
     PyUnicodeObject *in, *out;
-    Py_UNICODE *outp;
-    int i, len;
+    Py_UNICODE *inp, *outp;
+    int i, len, inn, outn;
 
     if (PyObject_TypeCheck(text, &MarkupType)) {
         Py_INCREF(text);
@@ -60,18 +60,20 @@ escape(PyObject *text, int quotes)
         return NULL;
     }
     /* First we need to figure out how long the escaped string will be */
-    len = 0;
-    for (i = 0;i < in->length; i++) {
-        switch (in->str[i]) {
-            case '&': len += 5;                 break;
-            case '"': len += quotes ? 5 : 1;    break;
+    len = inn = 0;
+    inp = in->str;
+    while (*(inp) || in->length > inp - in->str) {
+        switch (*inp++) {
+            case '&': len += 5; inn++;                                 break;
+            case '"': len += quotes ? 5 : 1; inn += quotes ? 1 : 0;    break;
             case '<':
-            case '>': len += 4;                 break;
+            case '>': len += 4; inn++;                                 break;
             default:  len++;
         }
     }
+
     /* Do we need to escape anything at all? */
-    if (len == in->length) {
+    if (!inn) {
         args = PyTuple_New(1);
         if (args == NULL) {
             Py_DECREF((PyObject *) in);
@@ -82,37 +84,52 @@ escape(PyObject *text, int quotes)
         Py_DECREF(args);
         return ret;
     }
+
     out = (PyUnicodeObject*) PyUnicode_FromUnicode(NULL, len);
     if (out == NULL) {
         return NULL;
     }
+
+    outn = 0;
+    inp = in->str;
     outp = out->str;
-    for (i = 0;i < in->length; i++) {
-        switch (in->str[i]) {
-        case '&':
-            Py_UNICODE_COPY(outp, ((PyUnicodeObject *) amp2)->str, 5);
-            outp += 5;
+    while (*(inp) || in->length > inp - in->str) {
+        if (outn == inn) {
+            /* copy rest of string if we have already replaced everything */
+            Py_UNICODE_COPY(outp, inp, in->length - (inp - in->str));
             break;
-        case '"':
-            if (quotes) {
-                Py_UNICODE_COPY(outp, ((PyUnicodeObject *) qt2)->str, 5);
+        }
+        switch (*inp) {
+            case '&':
+                Py_UNICODE_COPY(outp, ((PyUnicodeObject *) amp2)->str, 5);
                 outp += 5;
-            } else {
-                *outp++ = in->str[i];
-            }
-            break;
-        case '<':
-            Py_UNICODE_COPY(outp, ((PyUnicodeObject *) lt2)->str, 4);
-            outp += 4;
-            break;
-        case '>':
-            Py_UNICODE_COPY(outp, ((PyUnicodeObject *) gt2)->str, 4);
-            outp += 4;
-            break;
-        default:
-            *outp++ = in->str[i];
-        };
+                outn++;
+                break;
+            case '"':
+                if (quotes) {
+                    Py_UNICODE_COPY(outp, ((PyUnicodeObject *) qt2)->str, 5);
+                    outp += 5;
+                    outn++;
+                } else {
+                    *outp++ = *inp;
+                }
+                break;
+            case '<':
+                Py_UNICODE_COPY(outp, ((PyUnicodeObject *) lt2)->str, 4);
+                outp += 4;
+                outn++;
+                break;
+            case '>':
+                Py_UNICODE_COPY(outp, ((PyUnicodeObject *) gt2)->str, 4);
+                outp += 4;
+                outn++;
+                break;
+            default:
+                *outp++ = *inp;
+        }
+        inp++;
     }
+
     args = PyTuple_New(1);
     if (args == NULL) {
         Py_DECREF((PyObject *) out);

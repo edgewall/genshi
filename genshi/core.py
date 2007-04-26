@@ -61,6 +61,7 @@ class Stream(object):
     START = StreamEventKind('START') #: a start tag
     END = StreamEventKind('END') #: an end tag
     TEXT = StreamEventKind('TEXT') #: literal text
+    XML_DECL = StreamEventKind('XML_DECL') #: XML declaration
     DOCTYPE = StreamEventKind('DOCTYPE') #: doctype declaration
     START_NS = StreamEventKind('START_NS') #: start namespace mapping
     END_NS = StreamEventKind('END_NS') #: end namespace mapping
@@ -153,14 +154,9 @@ class Stream(object):
         :see: XMLSerializer.__init__, XHTMLSerializer.__init__,
               HTMLSerializer.__init__, TextSerializer.__init__
         """
+        from genshi.output import encode
         generator = self.serialize(method=method, **kwargs)
-        output = u''.join(list(generator))
-        if encoding is not None:
-            errors = 'replace'
-            if method != 'text':
-                errors = 'xmlcharrefreplace'
-            return output.encode(encoding, errors)
-        return output
+        return encode(generator, method=method, encoding=encoding)
 
     def select(self, path, namespaces=None, variables=None):
         """Return a new stream that contains the events matching the given
@@ -194,14 +190,8 @@ class Stream(object):
         :see: XMLSerializer.__init__, XHTMLSerializer.__init__,
               HTMLSerializer.__init__, TextSerializer.__init__
         """
-        from genshi import output
-        cls = method
-        if isinstance(method, basestring):
-            cls = {'xml':   output.XMLSerializer,
-                   'xhtml': output.XHTMLSerializer,
-                   'html':  output.HTMLSerializer,
-                   'text':  output.TextSerializer}[method]
-        return cls(**kwargs)(_ensure(self))
+        from genshi.output import get_serializer
+        return get_serializer(method, **kwargs)(_ensure(self))
 
     def __str__(self):
         return self.render()
@@ -213,6 +203,7 @@ class Stream(object):
 START = Stream.START
 END = Stream.END
 TEXT = Stream.TEXT
+XML_DECL = Stream.XML_DECL
 DOCTYPE = Stream.DOCTYPE
 START_NS = Stream.START_NS
 END_NS = Stream.END_NS

@@ -26,7 +26,7 @@ import htmlentitydefs
 from StringIO import StringIO
 
 from genshi.core import Attrs, QName, Stream, stripentities
-from genshi.core import DOCTYPE, START, END, START_NS, END_NS, TEXT, \
+from genshi.core import START, END, XML_DECL, DOCTYPE, TEXT, START_NS, END_NS, \
                         START_CDATA, END_CDATA, PI, COMMENT
 
 __all__ = ['ET', 'ParseError', 'XMLParser', 'XML', 'HTMLParser', 'HTML']
@@ -123,6 +123,7 @@ class XMLParser(object):
         parser.StartCdataSectionHandler = self._handle_start_cdata
         parser.EndCdataSectionHandler = self._handle_end_cdata
         parser.ProcessingInstructionHandler = self._handle_pi
+        parser.XmlDeclHandler = self._handle_xml_decl
         parser.CommentHandler = self._handle_comment
 
         # Tell Expat that we'll handle non-XML entities ourselves
@@ -215,6 +216,9 @@ class XMLParser(object):
 
     def _handle_data(self, text):
         self._enqueue(TEXT, text)
+
+    def _handle_xml_decl(self, version, encoding, standalone):
+        self._enqueue(XML_DECL, (version, encoding, standalone))
 
     def _handle_doctype(self, name, sysid, pubid, has_internal_subset):
         self._enqueue(DOCTYPE, (name, pubid, sysid))

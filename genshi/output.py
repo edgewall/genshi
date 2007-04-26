@@ -23,12 +23,51 @@ except NameError:
 import re
 
 from genshi.core import escape, Attrs, Markup, Namespace, QName, StreamEventKind
-from genshi.core import DOCTYPE, START, END, START_NS, END_NS, TEXT, \
+from genshi.core import START, END, TEXT, XML_DECL, DOCTYPE, START_NS, END_NS, \
                         START_CDATA, END_CDATA, PI, COMMENT, XML_NAMESPACE
 
-__all__ = ['DocType', 'XMLSerializer', 'XHTMLSerializer', 'HTMLSerializer',
-           'TextSerializer']
+__all__ = ['encode', 'get_serializer', 'DocType', 'XMLSerializer',
+           'XHTMLSerializer', 'HTMLSerializer', 'TextSerializer']
 __docformat__ = 'restructuredtext en'
+
+def encode(iterator, method='xml', encoding='utf-8'):
+    """Encode serializer output into a string.
+    
+    :param iterator: the iterator returned from serializing a stream (basically
+                     any iterator that yields unicode objects)
+    :param method: the serialization method; determines how characters not
+                   representable in the specified encoding are treated
+    :param encoding: how the output string should be encoded; if set to `None`,
+                     this method returns a `unicode` object
+    :return: a string or unicode object (depending on the `encoding` parameter)
+    :since: version 0.4.1
+    """
+    output = u''.join(list(iterator))
+    if encoding is not None:
+        errors = 'replace'
+        if method != 'text' and not isinstance(method, TextSerializer):
+            errors = 'xmlcharrefreplace'
+        return output.encode(encoding, errors)
+    return output
+
+def get_serializer(method='xml', **kwargs):
+    """Return a serializer object for the given method.
+    
+    :param method: the serialization method; can be either "xml", "xhtml",
+                   "html", "text", or a custom serializer class
+
+    Any additional keyword arguments are passed to the serializer, and thus
+    depend on the `method` parameter value.
+    
+    :see: `XMLSerializer`, `XHTMLSerializer`, `HTMLSerializer`, `TextSerializer`
+    :since: version 0.4.1
+    """
+    if isinstance(method, basestring):
+        method = {'xml':   XMLSerializer,
+                  'xhtml': XHTMLSerializer,
+                  'html':  HTMLSerializer,
+                  'text':  TextSerializer}[method.lower()]
+    return method(**kwargs)
 
 
 class DocType(object):
@@ -42,7 +81,13 @@ class DocType(object):
         'html', '-//W3C//DTD HTML 4.01 Transitional//EN',
         'http://www.w3.org/TR/html4/loose.dtd'
     )
+    HTML_FRAMESET = (
+        'html', '-//W3C//DTD HTML 4.01 Frameset//EN',
+        'http://www.w3.org/TR/html4/frameset.dtd'
+    )
     HTML = HTML_STRICT
+
+    HTML5 = ('html', None, None)
 
     XHTML_STRICT = (
         'html', '-//W3C//DTD XHTML 1.0 Strict//EN',
@@ -52,9 +97,40 @@ class DocType(object):
         'html', '-//W3C//DTD XHTML 1.0 Transitional//EN',
         'http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd'
     )
+    XHTML_FRAMESET = (
+        'html', '-//W3C//DTD XHTML 1.0 Frameset//EN',
+        'http://www.w3.org/TR/xhtml1/DTD/xhtml1-frameset.dtd'
+    )
     XHTML = XHTML_STRICT
 
-    HTML5 = ('html', None, None)
+    def get(cls, name):
+        """Return the ``(name, pubid, sysid)`` tuple of the ``DOCTYPE``
+        declaration for the specified name.
+        
+        The following names are recognized in this version:
+         * "html" or "html-strict" for the HTML 4.01 strict DTD
+         * "html-transitional" for the HTML 4.01 transitional DTD
+         * "html-transitional" for the HTML 4.01 frameset DTD
+         * "html5" for the ``DOCTYPE`` proposed for HTML5
+         * "xhtml" or "xhtml-strict" for the XHTML 1.0 strict DTD
+         * "xhtml-transitional" for the XHTML 1.0 transitional DTD
+         * "xhtml-frameset" for the XHTML 1.0 frameset DTD
+        
+        :param name: the name of the ``DOCTYPE``
+        :return: the ``(name, pubid, sysid)`` tuple for the requested
+                 ``DOCTYPE``, or ``None`` if the name is not recognized
+        :since: version 0.4.1
+        """
+        return {
+            'html': cls.HTML, 'html-strict': cls.HTML_STRICT,
+            'html-transitional': DocType.HTML_TRANSITIONAL,
+            'html-frameset': DocType.HTML_FRAMESET,
+            'html5': cls.HTML5,
+            'xhtml': cls.XHTML, 'xhtml-strict': cls.XHTML_STRICT,
+            'xhtml-transitional': cls.XHTML_TRANSITIONAL,
+            'xhtml-frameset': cls.XHTML_FRAMESET,
+        }.get(name.lower())
+    get = classmethod(get)
 
 
 class XMLSerializer(object):
@@ -87,7 +163,7 @@ class XMLSerializer(object):
         self.filters.append(NamespaceFlattener(prefixes=namespace_prefixes))
 
     def __call__(self, stream):
-        have_doctype = False
+        have_decl = have_doctype = False
         in_cdata = False
 
         stream = chain(self.preamble, stream)
@@ -114,6 +190,18 @@ class XMLSerializer(object):
 
             elif kind is COMMENT:
                 yield Markup('<!--%s-->' % data)
+
+            elif kind is XML_DECL and not have_decl:
+                version, encoding, standalone = data
+                buf = ['<?xml version="%s"' % version]
+                if encoding:
+                    buf.append(' encoding="%s"' % encoding)
+                if standalone != -1:
+                    standalone = standalone and 'yes' or 'no'
+                    buf.append(' standalone="%s"' % standalone)
+                buf.append('?>\n')
+                yield Markup(u''.join(buf))
+                have_decl = True
 
             elif kind is DOCTYPE and not have_doctype:
                 name, pubid, sysid = data

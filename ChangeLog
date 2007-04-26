@@ -9,6 +9,10 @@ http://svn.edgewall.org/repos/genshi/tags/0.4.1/
  * Added the functions `encode()` and `get_serializer()` to the `genshi.output`
    module, which provide a lower-level API to the functionality previously only
    available through `Stream.render()` and `Stream.serialize()`.
+ * The `DocType` class now has a `get(name)` function that returns a `DOCTYPE`
+   tuple for a given string.
+ * Added frameset variants to the `DocType` constants for HTML 4.01 and XHTML
+   1.0.
 
 
 Version 0.4

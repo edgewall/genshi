@@ -30,7 +30,7 @@ __all__ = ['ConfigurationError', 'AbstractTemplateEnginePlugin',
 __docformat__ = 'restructuredtext en'
 
 
-class ConfigurationError(Exception):
+class ConfigurationError(ValueError):
     """Exception raised when invalid plugin options are encountered."""
 
 
@@ -111,23 +111,21 @@ class MarkupTemplateEnginePlugin(AbstractTemplateEnginePlugin):
     template_class = MarkupTemplate
     extension = '.html'
 
-    doctypes = {'html': DocType.HTML, 'html-strict': DocType.HTML_STRICT,
-                'html-transitional': DocType.HTML_TRANSITIONAL,
-                'html5': DocType.HTML5,
-                'xhtml': DocType.XHTML, 'xhtml-strict': DocType.XHTML_STRICT,
-                'xhtml-transitional': DocType.XHTML_TRANSITIONAL}
-
     def __init__(self, extra_vars_func=None, options=None):
         AbstractTemplateEnginePlugin.__init__(self, extra_vars_func, options)
 
-        doctype = self.options.get('genshi.default_doctype')
-        if doctype and doctype not in self.doctypes:
-            raise ConfigurationError('Unknown doctype "%s"' % doctype)
-        self.default_doctype = self.doctypes.get(doctype)
+        default_doctype = self.options.get('genshi.default_doctype')
+        if default_doctype:
+            doctype = DocType.get(default_doctype)
+            if doctype is None:
+                raise ConfigurationError('Unknown doctype %r' % default_doctype)
+            self.default_doctype = doctype
+        else:
+            self.default_doctype = None
 
-        format = self.options.get('genshi.default_format', 'html')
+        format = self.options.get('genshi.default_format', 'html').lower()
         if format not in ('html', 'xhtml', 'xml', 'text'):
-            raise ConfigurationError('Unknown output format "%s"' % format)
+            raise ConfigurationError('Unknown output format %r' % format)
         self.default_format = format
 
     def _get_render_options(self, format=None):

@@ -26,9 +26,48 @@ from genshi.core import escape, Attrs, Markup, Namespace, QName, StreamEventKind
 from genshi.core import START, END, TEXT, XML_DECL, DOCTYPE, START_NS, END_NS, \
                         START_CDATA, END_CDATA, PI, COMMENT, XML_NAMESPACE
 
-__all__ = ['DocType', 'XMLSerializer', 'XHTMLSerializer', 'HTMLSerializer',
-           'TextSerializer']
+__all__ = ['encode', 'get_serializer', 'DocType', 'XMLSerializer',
+           'XHTMLSerializer', 'HTMLSerializer', 'TextSerializer']
 __docformat__ = 'restructuredtext en'
+
+def encode(iterator, method='xml', encoding='utf-8'):
+    """Encode serializer output into a string.
+    
+    :param iterator: the iterator returned from serializing a stream (basically
+                     any iterator that yields unicode objects)
+    :param method: the serialization method; determines how characters not
+                   representable in the specified encoding are treated
+    :param encoding: how the output string should be encoded; if set to `None`,
+                     this method returns a `unicode` object
+    :return: a string or unicode object (depending on the `encoding` parameter)
+    :since: version 0.4.1
+    """
+    output = u''.join(list(iterator))
+    if encoding is not None:
+        errors = 'replace'
+        if method != 'text' and not isinstance(method, TextSerializer):
+            errors = 'xmlcharrefreplace'
+        return output.encode(encoding, errors)
+    return output
+
+def get_serializer(method='xml', **kwargs):
+    """Return a serializer object for the given method.
+    
+    :param method: the serialization method; can be either "xml", "xhtml",
+                   "html", "text", or a custom serializer class
+
+    Any additional keyword arguments are passed to the serializer, and thus
+    depend on the `method` parameter value.
+    
+    :see: `XMLSerializer`, `XHTMLSerializer`, `HTMLSerializer`, `TextSerializer`
+    :since: version 0.4.1
+    """
+    if isinstance(method, basestring):
+        method = {'xml':   XMLSerializer,
+                  'xhtml': XHTMLSerializer,
+                  'html':  HTMLSerializer,
+                  'text':  TextSerializer}[method.lower()]
+    return method(**kwargs)
 
 
 class DocType(object):

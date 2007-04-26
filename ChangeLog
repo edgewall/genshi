@@ -6,6 +6,9 @@ http://svn.edgewall.org/repos/genshi/tags/0.4.1/
  * The `ET()` function now correctly handles attributes with a namespace.
  * XML declarations are now processed internally, as well as written to the
    output when XML serialization is used (ticket #111).
+ * Added the functions `encode()` and `get_serializer()` to the `genshi.output`
+   module, which provide a lower-level API to the functionality previously only
+   available through `Stream.render()` and `Stream.serialize()`.
 
 
 Version 0.4

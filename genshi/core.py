@@ -149,14 +149,9 @@ class Stream(object):
         :see: XMLSerializer.__init__, XHTMLSerializer.__init__,
               HTMLSerializer.__init__, TextSerializer.__init__
         """
+        from genshi.output import encode
         generator = self.serialize(method=method, **kwargs)
-        output = u''.join(list(generator))
-        if encoding is not None:
-            errors = 'replace'
-            if method != 'text':
-                errors = 'xmlcharrefreplace'
-            return output.encode(encoding, errors)
-        return output
+        return encode(generator, method=method, encoding=encoding)
 
     def select(self, path, namespaces=None, variables=None):
         """Return a new stream that contains the events matching the given
@@ -190,14 +185,8 @@ class Stream(object):
         :see: XMLSerializer.__init__, XHTMLSerializer.__init__,
               HTMLSerializer.__init__, TextSerializer.__init__
         """
-        from genshi import output
-        cls = method
-        if isinstance(method, basestring):
-            cls = {'xml':   output.XMLSerializer,
-                   'xhtml': output.XHTMLSerializer,
-                   'html':  output.HTMLSerializer,
-                   'text':  output.TextSerializer}[method]
-        return cls(**kwargs)(_ensure(self))
+        from genshi.output import get_serializer
+        return get_serializer(method, **kwargs)(_ensure(self))
 
     def __str__(self):
         return self.render()

@@ -71,7 +71,8 @@ class Translator(object):
         QName('script'), QName('http://www.w3.org/1999/xhtml}script'),
         QName('style'), QName('http://www.w3.org/1999/xhtml}style')
     ])
-    INCLUDE_ATTRS = frozenset(['title', 'alt'])
+    INCLUDE_ATTRS = frozenset(['abbr', 'alt', 'label', 'prompt', 'standby',
+                               'summary', 'title'])
 
     def __init__(self, translate=gettext, ignore_tags=IGNORE_TAGS,
                  include_attrs=INCLUDE_ATTRS):
@@ -227,7 +228,8 @@ class Translator(object):
                             if text:
                                 yield pos[1], None, text
                         else:
-                            for lineno, funcname, text in harvest(value):
+                            for lineno, funcname, text in self.extract(value,
+                                    gettext_functions):
                                 yield lineno, funcname, text
 
             elif kind is TEXT:
@@ -264,5 +266,6 @@ class Translator(object):
 
             elif kind is SUB:
                 subkind, substream = data
-                for lineno, funcname, text in self.harvest(substream):
+                for lineno, funcname, text in self.extract(substream,
+                                                           gettext_functions):
                     yield lineno, funcname, text

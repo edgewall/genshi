@@ -227,7 +227,8 @@ class Translator(object):
                             if text:
                                 yield pos[1], None, text
                         else:
-                            for lineno, funcname, text in harvest(value):
+                            for lineno, funcname, text in self.extract(value,
+                                    gettext_functions):
                                 yield lineno, funcname, text
 
             elif kind is TEXT:
@@ -264,5 +265,6 @@ class Translator(object):
 
             elif kind is SUB:
                 subkind, substream = data
-                for lineno, funcname, text in self.harvest(substream):
+                for lineno, funcname, text in self.extract(substream,
+                                                           gettext_functions):
                     yield lineno, funcname, text

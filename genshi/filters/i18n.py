@@ -174,7 +174,8 @@ class Translator(object):
         * ``lineno`` is the number of the line on which the string was found,
         * ``function`` is the name of the ``gettext`` function used (if the
           string was extracted from embedded Python code), and
-        *  ``message`` is the string itself (a ``unicode`` object).
+        *  ``message`` is the string itself (a ``unicode`` object, or a tuple
+           of ``unicode`` objects for functions with multiple string arguments).
         
         >>> from genshi.template import MarkupTemplate
         >>> 
@@ -185,6 +186,7 @@ class Translator(object):
         ...   <body>
         ...     <h1>Example</h1>
         ...     <p>${_("Hello, %(name)s") % dict(name=username)}</p>
+        ...     <p>${ngettext("You have %d item", "You have %d items", num)}</p>
         ...   </body>
         ... </html>''', filename='example.html')
         >>> 
@@ -193,12 +195,17 @@ class Translator(object):
         3, None, u'Example'
         6, None, u'Example'
         7, '_', u'Hello, %(name)s'
-
+        8, 'ngettext', (u'You have %d item', u'You have %d items')
+        
         :param stream: the event stream to extract strings from; can be a
                        regular stream or a template stream
         :param gettext_functions: a sequence of function names that should be
                                   treated as gettext-style localization
                                   functions
+        
+        :note: Changed in 0.4.1: For a function with multiple string arguments
+               (such as ``ngettext``), a single item with a tuple of strings is
+               yielded, instead an item for each string argument.
         """
         tagname = None
         skip = 0
@@ -261,8 +268,11 @@ class Translator(object):
                             if not isinstance(arg, basestring):
                                 break
                             strings.append(unicode(arg))
-                    for string in strings:
-                        yield pos[1], funcname, string
+                    if len(strings) == 1:
+                        strings = strings[0]
+                    else:
+                        strings = tuple(strings)
+                    yield pos[1], funcname, strings
 
             elif kind is SUB:
                 subkind, substream = data

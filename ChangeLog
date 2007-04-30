@@ -13,6 +13,10 @@ http://svn.edgewall.org/repos/genshi/tags/0.4.1/
    tuple for a given string.
  * Added frameset variants to the `DocType` constants for HTML 4.01 and XHTML
    1.0.
+ * Improved I18n extraction for pluralizable messages: for any translation
+   function with multiple string arguments (such as ``ngettext``), a single
+   item with a tuple of strings is yielded, instead an item for each string
+   argument.
 
 
 Version 0.4

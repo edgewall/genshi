@@ -17,6 +17,8 @@ http://svn.edgewall.org/repos/genshi/tags/0.4.1/
    function with multiple string arguments (such as ``ngettext``), a single
    item with a tuple of strings is yielded, instead an item for each string
    argument.
+ * The `HTMLFormFiller` stream filter no longer alters form elements for which
+   the data element contains no corresponding item.
 
 
 Version 0.4

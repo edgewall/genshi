@@ -379,18 +379,19 @@ class ExpressionTestCase(unittest.TestCase):
             expr.evaluate({'something': Something()})
             self.fail('Expected UndefinedError')
         except UndefinedError, e:
+            self.assertEqual('<Something> has no member named "nil"', str(e))
             exc_type, exc_value, exc_traceback = sys.exc_info()
+            search_string = "<Expression 'something.nil'>"
             frame = exc_traceback.tb_next
-            frames = []
             while frame.tb_next:
                 frame = frame.tb_next
-                frames.append(frame)
-            self.assertEqual('<Something> has no member named "nil"', str(e))
-            self.assertEqual("<Expression 'something.nil'>",
-                             frames[-3].tb_frame.f_code.co_name)
-            self.assertEqual('index.html',
-                             frames[-3].tb_frame.f_code.co_filename)
-            self.assertEqual(50, frames[-3].tb_lineno)
+                code = frame.tb_frame.f_code
+                if code.co_name == search_string:
+                    break
+            else:
+                self.fail("never found the frame I was looking for")
+            self.assertEqual('index.html', code.co_filename)
+            self.assertEqual(50, frame.tb_lineno)
 
     def test_error_getitem_undefined_string(self):
         class Something(object):
@@ -402,18 +403,19 @@ class ExpressionTestCase(unittest.TestCase):
             expr.evaluate({'something': Something()})
             self.fail('Expected UndefinedError')
         except UndefinedError, e:
+            self.assertEqual('<Something> has no member named "nil"', str(e))
             exc_type, exc_value, exc_traceback = sys.exc_info()
+            search_string = '''<Expression 'something["nil"]'>'''
             frame = exc_traceback.tb_next
-            frames = []
             while frame.tb_next:
                 frame = frame.tb_next
-                frames.append(frame)
-            self.assertEqual('<Something> has no member named "nil"', str(e))
-            self.assertEqual('''<Expression 'something["nil"]'>''',
-                             frames[-3].tb_frame.f_code.co_name)
-            self.assertEqual('index.html',
-                             frames[-3].tb_frame.f_code.co_filename)
-            self.assertEqual(50, frames[-3].tb_lineno)
+                code = frame.tb_frame.f_code
+                if code.co_name == search_string:
+                    break
+            else:
+                self.fail("never found the frame I was looking for")
+            self.assertEqual('index.html', code.co_filename)
+            self.assertEqual(50, frame.tb_lineno)
 
 
 class SuiteTestCase(unittest.TestCase):
@@ -430,6 +432,16 @@ class SuiteTestCase(unittest.TestCase):
         suite.execute(data)
         assert 'donothing' in data
         self.assertEqual(None, data['donothing']())
+
+    def test_def_with_multiple_statements(self):
+        suite = Suite("""def donothing():
+    if True:
+        return foo
+""")
+        data = {'foo': 'bar'}
+        suite.execute(data)
+        assert 'donothing' in data
+        self.assertEqual('bar', data['donothing']())
 
     def test_delete(self):
         suite = Suite("""foo = 42
@@ -503,6 +515,61 @@ while x < 5:
         data = {'step': 2}
         suite.execute(data)
         self.assertEqual(4, data['x'])
+
+    def test_augmented_attribute_assignment(self):
+        suite = Suite("d['k'] += 42")
+        d = {"k": 1}
+        suite.execute({"d": d})
+        self.assertEqual(43, d["k"])
+
+    def test_local_augmented_assign(self):
+        Suite("x = 1; x += 42; assert x == 43").execute({})
+
+    def test_assign_in_list(self):
+        suite = Suite("[d['k']] = 'foo',; assert d['k'] == 'foo'")
+        d = {"k": "bar"}
+        suite.execute({"d": d})
+        self.assertEqual("foo", d["k"])
+
+    def test_exec(self):
+        suite = Suite("x = 1; exec d['k']; assert x == 42, x")
+        suite.execute({"d": {"k": "x = 42"}})
+
+    def test_return(self):
+        suite = Suite("""
+def f():
+    return v
+
+assert f() == 42
+""")
+        suite.execute({"v": 42})
+
+    def test_assign_to_dict_item(self):
+        suite = Suite("d['k'] = 'foo'")
+        data = {'d': {}}
+        suite.execute(data)
+        self.assertEqual('foo', data['d']['k'])
+
+    def test_assign_to_attribute(self):
+        class Something(object): pass
+        something = Something()
+        suite = Suite("obj.attr = 'foo'")
+        data = {"obj": something}
+        suite.execute(data)
+        self.assertEqual('foo', something.attr)
+
+    def test_delattr(self):
+        class Something(object):
+            def __init__(self):
+                self.attr = 'foo'
+        obj = Something()
+        Suite("del obj.attr").execute({'obj': obj})
+        self.failIf(hasattr(obj, 'attr'))
+
+    def test_delitem(self):
+        d = {'k': 'foo'}
+        Suite("del d['k']").execute({'d': d})
+        self.failIf('k' in d, `d`)
 
 
 def suite():

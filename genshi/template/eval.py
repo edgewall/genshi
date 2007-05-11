@@ -140,7 +140,7 @@ class Suite(Code):
     """Executes Python statements used in templates.
 
     >>> data = dict(test='Foo', items=[1, 2, 3], dict={'some': 'thing'})
-    >>> Suite('foo = dict.some').execute(data)
+    >>> Suite("foo = dict['some']").execute(data)
     >>> data['foo']
     'thing'
     """
@@ -361,7 +361,8 @@ def _parse(source, mode='eval'):
     return parse(source, mode)
 
 def _compile(node, source=None, mode='eval', filename=None, lineno=-1):
-    tree = TemplateASTTransformer().visit(node)
+    xform = {'eval': ExpressionASTTransformer}.get(mode, TemplateASTTransformer)
+    tree = xform().visit(node)
     if isinstance(filename, unicode):
         # unicode file names not allowed for code objects
         filename = filename.encode('utf-8', 'replace')
@@ -397,17 +398,15 @@ class ASTTransformer(object):
     Every visitor method can be overridden to return an AST node that has been
     altered or replaced in some way.
     """
-    _visitors = {}
 
     def visit(self, node):
         if node is None:
             return None
-        v = self._visitors.get(node.__class__)
-        if not v:
-            v = getattr(self.__class__, 'visit%s' % node.__class__.__name__,
-                        self.__class__._visitDefault)
-            self._visitors[node.__class__] = v
-        return v(self, node)
+        if type(node) is tuple:
+            return tuple([self.visit(n) for n in node])
+        visitor = getattr(self, 'visit%s' % node.__class__.__name__,
+                          self._visitDefault)
+        return visitor(node)
 
     def _visitDefault(self, node):
         return node
@@ -475,8 +474,23 @@ class ASTTransformer(object):
         node.expr = self.visit(node.expr)
         return node
 
+    def visitAssAttr(self, node):
+        node.expr = self.visit(node.expr)
+        return node
+
+    def visitAugAssign(self, node):
+        node.node = self.visit(node.node)
+        node.expr = self.visit(node.expr)
+        return node
+
     def visitDecorators(self, node):
         node.nodes = [self.visit(x) for x in node.nodes]
+        return node
+
+    def visitExec(self, node):
+        node.expr = self.visit(node.expr)
+        node.locals = self.visit(node.locals)
+        node.globals = self.visit(node.globals)
         return node
 
     def visitFor(self, node):
@@ -501,6 +515,10 @@ class ASTTransformer(object):
         node.expr1 = self.visit(node.expr1)
         node.expr2 = self.visit(node.expr2)
         node.expr3 = self.visit(node.expr3)
+        return node
+
+    def visitReturn(self, node):
+        node.value = self.visit(node.value)
         return node
 
     def visitTryExcept(self, node):
@@ -536,7 +554,7 @@ class ASTTransformer(object):
         node.nodes = [self.visit(x) for x in node.nodes]
         return node
     visitAnd = visitOr = visitBitand = visitBitor = visitBitxor = _visitBoolOp
-    visitAssTuple = _visitBoolOp
+    visitAssTuple = visitAssList = _visitBoolOp
 
     def _visitBinOp(self, node):
         node.left = self.visit(node.left)
@@ -651,6 +669,21 @@ class TemplateASTTransformer(ASTTransformer):
             self.locals[-1].add(node.name)
         return node
 
+    def visitAugAssign(self, node):
+        if isinstance(node.node, ast.Name):
+            name = node.node.name
+            node.node = ast.Subscript(ast.Name('data'), 'OP_APPLY',
+                                      [ast.Const(name)])
+            node.expr = self.visit(node.expr)
+            return ast.If([
+                (ast.Compare(ast.Const(name), [('in', ast.Name('data'))]),
+                 ast.Stmt([node]))],
+                ast.Stmt([ast.Raise(ast.CallFunc(ast.Name('UndefinedError'),
+                                                 [ast.Const(name)]),
+                                    None, None)]))
+        else:
+            return ASTTransformer.visitAugAssign(self, node)
+
     def visitClass(self, node):
         self.locals.append(set())
         node = ASTTransformer.visitClass(self, node)
@@ -675,12 +708,6 @@ class TemplateASTTransformer(ASTTransformer):
         self.locals.pop()
         return node
 
-    def visitGetattr(self, node):
-        return ast.CallFunc(ast.Name('_lookup_attr'), [
-            ast.Name('data'), self.visit(node.expr),
-            ast.Const(node.attrname)
-        ])
-
     def visitLambda(self, node):
         self.locals.append(set(flatten(node.argnames)))
         node = ASTTransformer.visitLambda(self, node)
@@ -702,6 +729,18 @@ class TemplateASTTransformer(ASTTransformer):
         # Otherwise, translate the name ref into a context lookup
         func_args = [ast.Name('data'), ast.Const(node.name)]
         return ast.CallFunc(ast.Name('_lookup_name'), func_args)
+
+
+class ExpressionASTTransformer(TemplateASTTransformer):
+    """Concrete AST transformer that implements the AST transformations needed
+    for code embedded in templates.
+    """
+
+    def visitGetattr(self, node):
+        return ast.CallFunc(ast.Name('_lookup_attr'), [
+            ast.Name('data'), self.visit(node.expr),
+            ast.Const(node.attrname)
+        ])
 
     def visitSubscript(self, node):
         return ast.CallFunc(ast.Name('_lookup_item'), [

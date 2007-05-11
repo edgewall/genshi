@@ -19,6 +19,12 @@ http://svn.edgewall.org/repos/genshi/tags/0.4.1/
    argument.
  * The `HTMLFormFiller` stream filter no longer alters form elements for which
    the data element contains no corresponding item.
+ * Code in `<?python ?>` processing instructions no longer gets the special
+   treatment as Python code in template expressions, i.e. item and attribute
+   access are no longer interchangeable (which was broken in a number of ways
+   anyway, see ticket #113). This change does not affect expressions.
+ * Numerous fixes for the execution of Python code in `<?python ?>` processing
+   instructions (tickets #113 and #114).
 
 
 Version 0.4

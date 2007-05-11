@@ -15,8 +15,9 @@
 
 import re
 
-from genshi.template.base import BadDirectiveError, Template, SUB
+from genshi.template.base import BadDirectiveError, Template, INCLUDE, SUB
 from genshi.template.directives import *
+from genshi.template.directives import Directive, _apply_directives
 from genshi.template.interpolation import interpolate
 
 __all__ = ['TextTemplate']
@@ -95,6 +96,9 @@ class TextTemplate(Template):
                     substream = stream[start_offset:]
                     stream[start_offset:] = [(SUB, ([directive], substream),
                                               (self.filepath, lineno, 0))]
+            elif command == 'include':
+                pos = (self.filename, lineno, 0)
+                stream.append((INCLUDE, (value.strip(), []), pos))
             elif command != '#':
                 cls = self._dir_by_name.get(command)
                 if cls is None:

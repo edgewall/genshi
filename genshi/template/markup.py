@@ -21,10 +21,10 @@ from genshi.core import Attrs, Namespace, Stream, StreamEventKind
 from genshi.core import START, END, START_NS, END_NS, TEXT, PI, COMMENT
 from genshi.input import XMLParser
 from genshi.template.base import BadDirectiveError, Template, \
-                                 TemplateSyntaxError, _apply_directives, SUB
+                                 TemplateSyntaxError, _apply_directives, \
+                                 INCLUDE, SUB
 from genshi.template.eval import Suite
 from genshi.template.interpolation import interpolate
-from genshi.template.loader import TemplateNotFound
 from genshi.template.directives import *
 
 if sys.version_info < (2, 4):
@@ -50,9 +50,6 @@ class MarkupTemplate(Template):
     EXEC = StreamEventKind('EXEC')
     """Stream event kind representing a Python code suite to execute."""
 
-    INCLUDE = StreamEventKind('INCLUDE')
-    """Stream event kind representing the inclusion of another template."""
-
     DIRECTIVE_NAMESPACE = Namespace('http://genshi.edgewall.org/')
     XINCLUDE_NAMESPACE = Namespace('http://www.w3.org/2001/XInclude')
 
@@ -73,10 +70,7 @@ class MarkupTemplate(Template):
                  encoding=None, lookup='lenient'):
         Template.__init__(self, source, basedir=basedir, filename=filename,
                           loader=loader, encoding=encoding, lookup=lookup)
-
         self.filters += [self._exec, self._match]
-        if loader:
-            self.filters.append(self._include)
 
     def _parse(self, source, encoding):
         streams = [[]] # stacked lists of events of the "compiled" template
@@ -223,12 +217,6 @@ class MarkupTemplate(Template):
         assert len(streams) == 1
         return streams[0]
 
-    def _prepare(self, stream):
-        for kind, data, pos in Template._prepare(self, stream):
-            if kind is INCLUDE:
-                data = data[0], list(self._prepare(data[1]))
-            yield kind, data, pos
-
     def _exec(self, stream, ctxt):
         """Internal stream filter that executes code in ``<?python ?>``
         processing instructions.
@@ -236,33 +224,6 @@ class MarkupTemplate(Template):
         for event in stream:
             if event[0] is EXEC:
                 event[1].execute(_ctxt2dict(ctxt))
-            else:
-                yield event
-
-    def _include(self, stream, ctxt):
-        """Internal stream filter that performs inclusion of external
-        template files.
-        """
-        for event in stream:
-            if event[0] is INCLUDE:
-                href, fallback = event[1]
-                if not isinstance(href, basestring):
-                    parts = []
-                    for subkind, subdata, subpos in self._eval(href, ctxt):
-                        if subkind is TEXT:
-                            parts.append(subdata)
-                    href = u''.join([x for x in parts if x is not None])
-                try:
-                    tmpl = self.loader.load(href, relative_to=event[2][0])
-                    for event in tmpl.generate(ctxt):
-                        yield event
-                except TemplateNotFound:
-                    if fallback is None:
-                        raise
-                    for filter_ in self.filters:
-                        fallback = filter_(iter(fallback), ctxt)
-                    for event in fallback:
-                        yield event
             else:
                 yield event
 
@@ -341,4 +302,3 @@ class MarkupTemplate(Template):
 
 
 EXEC = MarkupTemplate.EXEC
-INCLUDE = MarkupTemplate.INCLUDE

@@ -32,6 +32,8 @@ http://svn.edgewall.org/repos/genshi/tags/0.4.1/
    anyway, see ticket #113). This change does not affect expressions.
  * Numerous fixes for the execution of Python code in `<?python ?>` processing
    instructions (tickets #113 and #114).
+ * The `py:def` (and `#def`) directive now supports "star args" (i.e. `*args`
+   and `**kwargs`) in the function declaration (ticket #116).
 
 
 Version 0.4

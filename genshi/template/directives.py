@@ -245,7 +245,7 @@ class DefDirective(Directive):
       </p>
     </div>
     """
-    __slots__ = ['name', 'args', 'defaults']
+    __slots__ = ['name', 'args', 'star_args', 'dstar_args', 'defaults']
 
     ATTRIBUTE = 'function'
 
@@ -253,6 +253,8 @@ class DefDirective(Directive):
         Directive.__init__(self, None, template, namespaces, lineno, offset)
         ast = _parse(args).node
         self.args = []
+        self.star_args = None
+        self.dstar_args = None
         self.defaults = {}
         if isinstance(ast, compiler.ast.CallFunc):
             self.name = ast.node.name
@@ -265,6 +267,10 @@ class DefDirective(Directive):
                                                          lookup=template.lookup)
                 else:
                     self.args.append(arg.name)
+            if ast.star_args:
+                self.star_args = ast.star_args.name
+            if ast.dstar_args:
+                self.dstar_args = ast.dstar_args.name
         else:
             self.name = ast.name
 
@@ -283,6 +289,10 @@ class DefDirective(Directive):
                     else:
                         val = self.defaults.get(name).evaluate(ctxt)
                     scope[name] = val
+            if not self.star_args is None:
+                scope[self.star_args] = args
+            if not self.dstar_args is None:
+                scope[self.dstar_args] = kwargs
             ctxt.push(scope)
             for event in _apply_directives(stream, ctxt, directives):
                 yield event

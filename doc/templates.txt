@@ -178,8 +178,8 @@ dictionary)::
 Because there are two ways to access either attributes or items, expressions
 do not raise the standard ``AttributeError`` or ``IndexError`` exceptions, but
 rather an exception of the type ``UndefinedError``. The same kind of error is
-raised when you try to access a top-level variable that is not in the context
-data.
+raised when you try to use a top-level variable that is not in the context data.
+See `Error Handling`_ below for details on how such errors are handled.
 
 
 .. _`code blocks`:
@@ -211,10 +211,14 @@ produce content that is included directly in the generated page.
 .. note:: Using the ``print`` statement will print to the standard output
           stream, just as it does for other Python code in your application.
 
-This feature is not supposed to encourage mixing application code into
-templates, which is generally considered bad design. If you're using many code
-blocks, that me be a sign that you should move such code into separate Python
-modules.
+Unlike expressions, Python code in ``<?python ?>`` processing instructions can
+not use item and attribute access in an interchangeable manner. That means that
+“dotted notation” is always attribute access, and vice-versa.
+
+The support for Python code blocks in templates is not supposed to encourage
+mixing application code into templates, which is generally considered bad
+design. If you're using many code blocks, that may be a sign that you should
+move such code into separate Python modules.
 
 .. note:: Code blocks are not currently supported in text templates.
 

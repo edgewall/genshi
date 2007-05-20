@@ -140,7 +140,7 @@ class Translator(object):
                                 search_text=name in include_attrs)
                             )
                         if newval != value:
-                            value = new_val
+                            value = newval
                             changed = True
                     new_attrs.append((name, value))
                 if changed:

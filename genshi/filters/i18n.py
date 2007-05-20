@@ -8,7 +8,7 @@ from gettext import gettext
 from opcode import opmap
 import re
 
-from genshi.core import Attrs, Namespace, QName, START, END, TEXT
+from genshi.core import Attrs, Namespace, QName, START, END, TEXT, _ensure
 from genshi.template.base import Template, EXPR, SUB
 from genshi.template.markup import EXEC
 
@@ -132,16 +132,17 @@ class Translator(object):
                 new_attrs = list(attrs)
                 changed = False
                 for name, value in attrs:
-                    if name in include_attrs:
-                        if isinstance(value, basestring):
+                    newval = value
+                    if isinstance(value, basestring):
+                        if name in include_attrs:
                             newval = self.translate(value)
-                        else:
-                            newval = list(self(value, ctxt,
-                                search_text=name in include_attrs)
-                            )
-                        if newval != value:
-                            value = newval
-                            changed = True
+                    else:
+                        newval = list(self(_ensure(value), ctxt,
+                            search_text=name in include_attrs)
+                        )
+                    if newval != value:
+                        value = newval
+                        changed = True
                     new_attrs.append((name, value))
                 if changed:
                     attrs = new_attrs
@@ -229,15 +230,15 @@ class Translator(object):
                     continue
 
                 for name, value in attrs:
-                    if name in self.include_attrs:
-                        if isinstance(value, basestring):
+                    if isinstance(value, basestring):
+                        if name in self.include_attrs:
                             text = value.strip()
                             if text:
                                 yield pos[1], None, text
-                        else:
-                            for lineno, funcname, text in self.extract(value,
-                                    gettext_functions):
-                                yield lineno, funcname, text
+                    else:
+                        for lineno, funcname, text in self.extract(
+                                _ensure(value), gettext_functions):
+                            yield lineno, funcname, text
 
             elif kind is TEXT:
                 text = data.strip()

@@ -149,7 +149,7 @@ class Translator(object):
 
                 yield kind, (tag, attrs), pos
 
-            elif kind is TEXT:
+            elif search_text and kind is TEXT:
                 text = data.strip()
                 if text:
                     data = data.replace(text, translate(text))
@@ -166,7 +166,8 @@ class Translator(object):
     GETTEXT_FUNCTIONS = ('_', 'gettext', 'ngettext', 'dgettext', 'dngettext',
                          'ugettext', 'ungettext')
 
-    def extract(self, stream, gettext_functions=GETTEXT_FUNCTIONS):
+    def extract(self, stream, gettext_functions=GETTEXT_FUNCTIONS,
+                search_text=True):
         """Extract localizable strings from the given template stream.
         
         For every string found, this function yields a ``(lineno, function,
@@ -203,6 +204,8 @@ class Translator(object):
         :param gettext_functions: a sequence of function names that should be
                                   treated as gettext-style localization
                                   functions
+        :param search_text: whether the content of text nodes should be
+                            extracted (used internally)
         
         :note: Changed in 0.4.1: For a function with multiple string arguments
                (such as ``ngettext``), a single item with a tuple of strings is
@@ -237,10 +240,11 @@ class Translator(object):
                                 yield pos[1], None, text
                     else:
                         for lineno, funcname, text in self.extract(
-                                _ensure(value), gettext_functions):
+                                _ensure(value), gettext_functions,
+                                search_text=name in self.include_attrs):
                             yield lineno, funcname, text
 
-            elif kind is TEXT:
+            elif search_text and kind is TEXT:
                 text = data.strip()
                 if text and filter(None, [ch.isalpha() for ch in text]):
                     yield pos[1], None, text

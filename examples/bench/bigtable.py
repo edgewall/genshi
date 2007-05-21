@@ -134,7 +134,6 @@ if kid:
         kid_tmpl.table = table
         kid_tmpl.serialize(output='html')
 
-
     if cet:
         def test_kid_et():
             """Kid template + cElementTree"""
@@ -186,9 +185,9 @@ if neo_cgi:
 
 
 def run(which=None, number=10):
-    tests = ['test_builder', 'test_genshi', 'test_genshi_builder', 'test_myghty', 'test_kid',
-             'test_kid_et', 'test_et', 'test_cet', 'test_clearsilver',
-             'test_django']
+    tests = ['test_builder', 'test_genshi', 'test_genshi_builder',
+             'test_myghty', 'test_kid', 'test_kid_et', 'test_et', 'test_cet',
+             'test_clearsilver', 'test_django']
 
     if which:
         tests = filter(lambda n: n[5:] in which, tests)

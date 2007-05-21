@@ -1,3 +1,8 @@
+# -*- encoding: utf-8 -*-
+# Template language benchmarks
+#
+# Objective: Test general templating features using a small template
+
 from cgi import escape
 import os
 from StringIO import StringIO
@@ -20,7 +25,11 @@ def genshi(dirname, verbose=False):
     return render
 
 def myghty(dirname, verbose=False):
-    from myghty import interp
+    try:
+        from myghty import interp
+    except ImportError:
+        print>>sys.stderr, 'Mighty not installed, skipping'
+        return lambda: None
     interpreter = interp.Interpreter(component_root=dirname)
     def render():
         data = dict(title='Just a test', user='joe',
@@ -34,7 +43,11 @@ def myghty(dirname, verbose=False):
 
 def cheetah(dirname, verbose=False):
     # FIXME: infinite recursion somewhere... WTF?
-    from Cheetah.Template import Template
+    try:
+        from Cheetah.Template import Template
+    except ImportError:
+        print>>sys.stderr, 'Cheetah not installed, skipping'
+        return lambda: None
     class MyTemplate(Template):
         def serverSidePath(self, path): return os.path.join(dirname, path)
     filename = os.path.join(dirname, 'template.tmpl')
@@ -54,7 +67,8 @@ def clearsilver(dirname, verbose=False):
     try:
         import neo_cgi
     except ImportError:
-        return lambda:None
+        print>>sys.stderr, 'ClearSilver not installed, skipping'
+        return lambda: None
     neo_cgi.update()
     import neo_util
     import neo_cs
@@ -74,8 +88,12 @@ def clearsilver(dirname, verbose=False):
     return render
 
 def django(dirname, verbose=False):
-    from django.conf import settings
-    settings.configure(TEMPLATE_DIRS=[os.path.join(dirname, 'templates')])
+    try:
+        from django.conf import settings
+        settings.configure(TEMPLATE_DIRS=[os.path.join(dirname, 'templates')])
+    except ImportError:
+        print>>sys.stderr, 'Django not installed, skipping'
+        return lambda: None
     from django import template, templatetags
     from django.template import loader
     templatetags.__path__.append(os.path.join(dirname, 'templatetags'))
@@ -91,32 +109,29 @@ def django(dirname, verbose=False):
     return render
 
 def kid(dirname, verbose=False):
-    import kid
+    try:
+        import kid
+    except ImportError:
+        print>>sys.stderr, "SimpleTAL not installed, skipping"
+        return lambda: None
     kid.path = kid.TemplatePath([dirname])
-    template = kid.Template(file='template.kid')
+    template = kid.load_template('template.kid').Template
     def render():
-        template = kid.Template(file='template.kid',
-                                title='Just a test', user='joe',
-                                items=['Number %d' % num for num in range(1, 15)])
-        return template.serialize(output='xhtml')
-
-    if verbose:
-        print render()
-    return render
-
-def nevow(dirname, verbose=False):
-    # FIXME: can't figure out the API
-    from nevow.loaders import xmlfile
-    template = xmlfile('template.xml', templateDir=dirname).load()
-    def render():
-        print template
+        return template(
+            title='Just a test', user='joe',
+            items=['Number %d' % num for num in range(1, 15)]
+        ).serialize(output='xhtml')
 
     if verbose:
         print render()
     return render
 
 def simpletal(dirname, verbose=False):
-    from simpletal import simpleTAL, simpleTALES
+    try:
+        from simpletal import simpleTAL, simpleTALES
+    except ImportError:
+        print>>sys.stderr, "SimpleTAL not installed, skipping"
+        return lambda: None
     fileobj = open(os.path.join(dirname, 'base.html'))
     base = simpleTAL.compileHTMLTemplate(fileobj)
     fileobj.close()

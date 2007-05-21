@@ -7,7 +7,7 @@ http://svn.edgewall.org/repos/genshi/tags/0.5.0/
 
 Version 0.4.1
 http://svn.edgewall.org/repos/genshi/tags/0.4.1/
-(?, from branches/stable/0.4.x)
+(May 21 2007, from branches/stable/0.4.x)
 
  * Fix incorrect reference to translation function in the I18N filter.
  * The `ET()` function now correctly handles attributes with a namespace.

@@ -119,5 +119,5 @@ feature is a template language, which is heavily inspired by Kid.""",
     genshi-text = genshi.template.plugin:TextTemplateEnginePlugin[plugin]
     """,
 
-    cmdclass={'build_doc': build_doc, 'test_doc': test_doc}
+    cmdclass = {'build_doc': build_doc, 'test_doc': test_doc}
 )

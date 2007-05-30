@@ -300,7 +300,8 @@ class Template(object):
                         template was found
         :param filename: the name of the template file, relative to the given
                          base directory
-        :param loader: the `TemplateLoader` to use for load included templates
+        :param loader: the `TemplateLoader` to use for loading included
+                       templates
         :param encoding: the encoding of the `source`
         :param lookup: the variable lookup mechanism; either "lenient" (the
                        default), "strict", or a custom lookup class

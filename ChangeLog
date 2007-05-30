@@ -5,6 +5,16 @@ http://svn.edgewall.org/repos/genshi/tags/0.5.0/
  * Added #include directive for text templates (ticket #115).
 
 
+Version 0.4.2
+http://svn.edgewall.org/repos/genshi/tags/0.4.2/
+(?, from branches/stable/0.4.x)
+
+ * The `doctype` parameter of the markup serializers now also accepts the "name"
+   of the doctype as string, in addition to the `(name, pubid, sysid)` tuple.
+ * The I18n filter was not replacing the original attributes with the
+   translation, but instead adding a second attribute with the same name.
+
+
 Version 0.4.1
 http://svn.edgewall.org/repos/genshi/tags/0.4.1/
 (May 21 2007, from branches/stable/0.4.x)

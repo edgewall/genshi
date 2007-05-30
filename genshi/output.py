@@ -150,12 +150,16 @@ class XMLSerializer(object):
         
         :param doctype: a ``(name, pubid, sysid)`` tuple that represents the
                         DOCTYPE declaration that should be included at the top
-                        of the generated output
+                        of the generated output, or the name of a DOCTYPE as
+                        defined in `DocType.get`
         :param strip_whitespace: whether extraneous whitespace should be
                                  stripped from the output
+        :note: Changed in 0.4.2: The  `doctype` parameter can now be a string.
         """
         self.preamble = []
         if doctype:
+            if isinstance(doctype, basestring):
+                doctype = DocType.get(doctype)
             self.preamble.append((DOCTYPE, doctype, (None, -1, -1)))
         self.filters = [EmptyTagFilter()]
         if strip_whitespace:

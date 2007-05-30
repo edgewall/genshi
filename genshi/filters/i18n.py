@@ -129,7 +129,7 @@ class Translator(object):
                     yield kind, data, pos
                     continue
 
-                new_attrs = list(attrs)
+                new_attrs = []
                 changed = False
                 for name, value in attrs:
                     newval = value

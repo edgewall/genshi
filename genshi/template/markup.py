@@ -70,7 +70,12 @@ class MarkupTemplate(Template):
                  encoding=None, lookup='lenient'):
         Template.__init__(self, source, basedir=basedir, filename=filename,
                           loader=loader, encoding=encoding, lookup=lookup)
+        # Make sure the include filter comes after the match filter
+        if loader:
+            self.filters.remove(self._include)
         self.filters += [self._exec, self._match]
+        if loader:
+            self.filters.append(self._include)
 
     def _parse(self, source, encoding):
         streams = [[]] # stacked lists of events of the "compiled" template

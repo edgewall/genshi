@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2006 Edgewall Software
+# Copyright (C) 2006-2007 Edgewall Software
 # All rights reserved.
 #
 # This software is licensed as described in the file COPYING, which
@@ -19,10 +19,11 @@ except NameError:
     from sets import ImmutableSet as frozenset
 import re
 
-from genshi.core import Attrs, stripentities
+from genshi.core import Attrs, QName, stripentities
 from genshi.core import END, START, TEXT
 
 __all__ = ['HTMLFormFiller', 'HTMLSanitizer']
+__docformat__ = 'restructuredtext en'
 
 
 class HTMLFormFiller(object):
@@ -45,14 +46,15 @@ class HTMLFormFiller(object):
     def __init__(self, name=None, id=None, data=None):
         """Create the filter.
         
-        @param name: The name of the form that should be populated. If this
-            parameter is given, only forms where the ``name`` attribute value
-            matches the parameter are processed.
-        @param id: The ID of the form that should be populated. If this
-            parameter is given, only forms where the ``id`` attribute value
-            matches the parameter are processed.
-        @param data: The dictionary of form values, where the keys are the names
-            of the form fields, and the values are the values to fill in.
+        :param name: The name of the form that should be populated. If this
+                     parameter is given, only forms where the ``name`` attribute
+                     value matches the parameter are processed.
+        :param id: The ID of the form that should be populated. If this
+                   parameter is given, only forms where the ``id`` attribute
+                   value matches the parameter are processed.
+        :param data: The dictionary of form values, where the keys are the names
+                     of the form fields, and the values are the values to fill
+                     in.
         """
         self.name = name
         self.id = id
@@ -60,11 +62,10 @@ class HTMLFormFiller(object):
             data = {}
         self.data = data
 
-    def __call__(self, stream, ctxt=None):
+    def __call__(self, stream):
         """Apply the filter to the given stream.
         
-        @param stream: the markup event stream to filter
-        @param ctxt: the template context (unused)
+        :param stream: the markup event stream to filter
         """
         in_form = in_select = in_option = in_textarea = False
         select_value = option_value = textarea_value = None
@@ -87,49 +88,51 @@ class HTMLFormFiller(object):
                         type = attrs.get('type')
                         if type in ('checkbox', 'radio'):
                             name = attrs.get('name')
-                            if name:
-                                value = self.data.get(name)
+                            if name and name in self.data:
+                                value = self.data[name]
                                 declval = attrs.get('value')
                                 checked = False
                                 if isinstance(value, (list, tuple)):
                                     if declval:
-                                        checked = declval in value
+                                        checked = declval in [str(v) for v
+                                                              in value]
                                     else:
                                         checked = bool(filter(None, value))
                                 else:
                                     if declval:
-                                        checked = declval == value
+                                        checked = declval == str(value)
                                     elif type == 'checkbox':
                                         checked = bool(value)
                                 if checked:
-                                    attrs |= [('checked', 'checked')]
+                                    attrs |= [(QName('checked'), 'checked')]
                                 elif 'checked' in attrs:
                                     attrs -= 'checked'
                         elif type in (None, 'hidden', 'text'):
                             name = attrs.get('name')
-                            if name:
-                                value = self.data.get(name)
+                            if name and name in self.data:
+                                value = self.data[name]
                                 if isinstance(value, (list, tuple)):
                                     value = value[0]
                                 if value is not None:
-                                    attrs |= [('value', unicode(value))]
+                                    attrs |= [(QName('value'), unicode(value))]
                     elif tagname == 'select':
                         name = attrs.get('name')
-                        select_value = self.data.get(name)
-                        in_select = True
+                        if name in self.data:
+                            select_value = self.data[name]
+                            in_select = True
                     elif tagname == 'textarea':
                         name = attrs.get('name')
-                        textarea_value = self.data.get(name)
-                        if isinstance(textarea_value, (list, tuple)):
-                            textarea_value = textarea_value[0]
-                        in_textarea = True
+                        if name in self.data:
+                            textarea_value = self.data.get(name)
+                            if isinstance(textarea_value, (list, tuple)):
+                                textarea_value = textarea_value[0]
+                            in_textarea = True
                     elif in_select and tagname == 'option':
                         option_start = kind, data, pos
                         option_value = attrs.get('value')
                         in_option = True
                         continue
                 yield kind, (tag, attrs), pos
-
 
             elif in_form and kind is TEXT:
                 if in_select and in_option:
@@ -150,12 +153,13 @@ class HTMLFormFiller(object):
                     select_value = None
                 elif in_select and tagname == 'option':
                     if isinstance(select_value, (tuple, list)):
-                        selected = option_value in select_value
+                        selected = option_value in [str(v) for v
+                                                    in select_value]
                     else:
-                        selected = option_value == select_value
+                        selected = option_value == str(select_value)
                     okind, (tag, attrs), opos = option_start
                     if selected:
-                        attrs |= [('selected', 'selected')]
+                        attrs |= [(QName('selected'), 'selected')]
                     elif 'selected' in attrs:
                         attrs -= 'selected'
                     yield okind, (tag, attrs), opos
@@ -176,6 +180,32 @@ class HTMLFormFiller(object):
 class HTMLSanitizer(object):
     """A filter that removes potentially dangerous HTML tags and attributes
     from the stream.
+    
+    >>> from genshi import HTML
+    >>> html = HTML('<div><script>alert(document.cookie)</script></div>')
+    >>> print html | HTMLSanitizer()
+    <div/>
+    
+    The default set of safe tags and attributes can be modified when the filter
+    is instantiated. For example, to allow inline ``style`` attributes, the
+    following instantation would work:
+    
+    >>> html = HTML('<div style="background: #000"></div>')
+    >>> sanitizer = HTMLSanitizer(safe_attrs=HTMLSanitizer.SAFE_ATTRS | set(['style']))
+    >>> print html | sanitizer
+    <div style="background: #000"/>
+    
+    Note that even in this case, the filter *does* attempt to remove dangerous
+    constructs from style attributes:
+
+    >>> html = HTML('<div style="background: url(javascript:void); color: #000"></div>')
+    >>> print html | sanitizer
+    <div style="color: #000"/>
+    
+    This handles HTML entities, unicode escapes in CSS and Javascript text, as
+    well as a lot of other things. However, the style tag is still excluded by
+    default because it is very hard for such sanitizing to be completely safe,
+    especially considering how much error recovery current web browsers perform.
     """
 
     SAFE_TAGS = frozenset(['a', 'abbr', 'acronym', 'address', 'area', 'b',
@@ -197,8 +227,8 @@ class HTMLSanitizer(object):
         'longdesc', 'maxlength', 'media', 'method', 'multiple', 'name',
         'nohref', 'noshade', 'nowrap', 'prompt', 'readonly', 'rel', 'rev',
         'rows', 'rowspan', 'rules', 'scope', 'selected', 'shape', 'size',
-        'span', 'src', 'start', 'style', 'summary', 'tabindex', 'target',
-        'title', 'type', 'usemap', 'valign', 'value', 'vspace', 'width'])
+        'span', 'src', 'start', 'summary', 'tabindex', 'target', 'title',
+        'type', 'usemap', 'valign', 'value', 'vspace', 'width'])
 
     SAFE_SCHEMES = frozenset(['file', 'ftp', 'http', 'https', 'mailto', None])
 
@@ -211,21 +241,20 @@ class HTMLSanitizer(object):
         
         The exact set of allowed elements and attributes can be configured.
         
-        @param safe_tags: a set of tag names that are considered safe
-        @param safe_attrs: a set of attribute names that are considered safe
-        @param safe_schemes: a set of URI schemes that are considered safe
-        @param uri_attrs: a set of names of attributes that contain URIs
+        :param safe_tags: a set of tag names that are considered safe
+        :param safe_attrs: a set of attribute names that are considered safe
+        :param safe_schemes: a set of URI schemes that are considered safe
+        :param uri_attrs: a set of names of attributes that contain URIs
         """
         self.safe_tags = safe_tags
         self.safe_attrs = safe_attrs
         self.uri_attrs = uri_attrs
         self.safe_schemes = safe_schemes
 
-    def __call__(self, stream, ctxt=None):
+    def __call__(self, stream):
         """Apply the filter to the given stream.
         
-        @param stream: the markup event stream to filter
-        @param ctxt: the template context (unused)
+        :param stream: the markup event stream to filter
         """
         waiting_for = None
 
@@ -256,6 +285,7 @@ class HTMLSanitizer(object):
                     elif attr == 'style':
                         # Remove dangerous CSS declarations from inline styles
                         decls = []
+                        value = self._replace_unicode_escapes(value)
                         for decl in filter(None, value.split(';')):
                             is_evil = False
                             if 'expression' in decl:
@@ -284,3 +314,11 @@ class HTMLSanitizer(object):
             else:
                 if not waiting_for:
                     yield kind, data, pos
+
+    _NORMALIZE_NEWLINES = re.compile(r'\r\n').sub
+    _UNICODE_ESCAPE = re.compile(r'\\([0-9a-fA-F]{1,6})\s?').sub
+
+    def _replace_unicode_escapes(self, text):
+        def _repl(match):
+            return unichr(int(match.group(1), 16))
+        return self._UNICODE_ESCAPE(_repl, self._NORMALIZE_NEWLINES('\n', text))

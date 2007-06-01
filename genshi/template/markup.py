@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2006 Edgewall Software
+# Copyright (C) 2006-2007 Edgewall Software
 # All rights reserved.
 #
 # This software is licensed as described in the file COPYING, which
@@ -14,14 +14,26 @@
 """Markup templating engine."""
 
 from itertools import chain
+import sys
+from textwrap import dedent
 
 from genshi.core import Attrs, Namespace, Stream, StreamEventKind
-from genshi.core import START, END, START_NS, END_NS, TEXT, COMMENT
+from genshi.core import START, END, START_NS, END_NS, TEXT, PI, COMMENT
 from genshi.input import XMLParser
-from genshi.template.core import BadDirectiveError, Template, \
-                                 _apply_directives, SUB
-from genshi.template.loader import TemplateNotFound
+from genshi.template.base import BadDirectiveError, Template, \
+                                 TemplateSyntaxError, _apply_directives, \
+                                 INCLUDE, SUB
+from genshi.template.eval import Suite
+from genshi.template.interpolation import interpolate
 from genshi.template.directives import *
+
+if sys.version_info < (2, 4):
+    _ctxt2dict = lambda ctxt: ctxt.frames[0]
+else:
+    _ctxt2dict = lambda ctxt: ctxt
+
+__all__ = ['MarkupTemplate']
+__docformat__ = 'restructuredtext en'
 
 
 class MarkupTemplate(Template):
@@ -35,7 +47,8 @@ class MarkupTemplate(Template):
       <li>1</li><li>2</li><li>3</li>
     </ul>
     """
-    INCLUDE = StreamEventKind('INCLUDE')
+    EXEC = StreamEventKind('EXEC')
+    """Stream event kind representing a Python code suite to execute."""
 
     DIRECTIVE_NAMESPACE = Namespace('http://genshi.edgewall.org/')
     XINCLUDE_NAMESPACE = Namespace('http://www.w3.org/2001/XInclude')
@@ -54,17 +67,17 @@ class MarkupTemplate(Template):
                   ('strip', StripDirective)]
 
     def __init__(self, source, basedir=None, filename=None, loader=None,
-                 encoding=None):
-        """Initialize a template from either a string or a file-like object."""
+                 encoding=None, lookup='lenient'):
         Template.__init__(self, source, basedir=basedir, filename=filename,
-                          loader=loader, encoding=encoding)
-
-        self.filters.append(self._match)
+                          loader=loader, encoding=encoding, lookup=lookup)
+        # Make sure the include filter comes after the match filter
+        if loader:
+            self.filters.remove(self._include)
+        self.filters += [self._exec, self._match]
         if loader:
             self.filters.append(self._include)
 
     def _parse(self, source, encoding):
-        """Parse the template from an XML document."""
         streams = [[]] # stacked lists of events of the "compiled" template
         dirmap = {} # temporary mapping of directives to elements
         ns_prefix = {}
@@ -118,8 +131,9 @@ class MarkupTemplate(Template):
                         directives.append((cls, value, ns_prefix.copy(), pos))
                     else:
                         if value:
-                            value = list(self._interpolate(value, self.basedir,
-                                                           *pos))
+                            value = list(interpolate(value, self.basedir,
+                                                     pos[0], pos[1], pos[2],
+                                                     lookup=self.lookup))
                             if len(value) == 1 and value[0][0] is TEXT:
                                 value = value[0][1]
                         else:
@@ -137,7 +151,8 @@ class MarkupTemplate(Template):
                         include_href = new_attrs.get('href')
                         if not include_href:
                             raise TemplateSyntaxError('Include misses required '
-                                                      'attribute "href"', *pos)
+                                                      'attribute "href"',
+                                                      self.filepath, *pos[1:])
                         streams.append([])
                     elif tag.localname == 'fallback':
                         in_fallback += 1
@@ -169,9 +184,32 @@ class MarkupTemplate(Template):
                     stream[start_offset:] = [(SUB, (directives, substream),
                                               pos)]
 
+            elif kind is PI and data[0] == 'python':
+                try:
+                    # As Expat doesn't report whitespace between the PI target
+                    # and the data, we have to jump through some hoops here to
+                    # get correctly indented Python code
+                    # Unfortunately, we'll still probably not get the line
+                    # number quite right
+                    lines = [line.expandtabs() for line in data[1].splitlines()]
+                    first = lines[0]
+                    rest = dedent('\n'.join(lines[1:]))
+                    if first.rstrip().endswith(':') and not rest[0].isspace():
+                        rest = '\n'.join(['    ' + line for line
+                                          in rest.splitlines()])
+                    source = '\n'.join([first, rest])
+                    suite = Suite(source, self.filepath, pos[1],
+                                  lookup=self.lookup)
+                except SyntaxError, err:
+                    raise TemplateSyntaxError(err, self.filepath,
+                                              pos[1] + (err.lineno or 1) - 1,
+                                              pos[2] + (err.offset or 0))
+                stream.append((EXEC, suite, pos))
+
             elif kind is TEXT:
-                for kind, data, pos in self._interpolate(data, self.basedir,
-                                                         *pos):
+                for kind, data, pos in interpolate(data, self.basedir, pos[0],
+                                                   pos[1], pos[2],
+                                                   lookup=self.lookup):
                     stream.append((kind, data, pos))
 
             elif kind is COMMENT:
@@ -184,36 +222,13 @@ class MarkupTemplate(Template):
         assert len(streams) == 1
         return streams[0]
 
-    def _prepare(self, stream):
-        for kind, data, pos in Template._prepare(self, stream):
-            if kind is INCLUDE:
-                data = data[0], list(self._prepare(data[1]))
-            yield kind, data, pos
-
-    def _include(self, stream, ctxt):
-        """Internal stream filter that performs inclusion of external
-        template files.
+    def _exec(self, stream, ctxt):
+        """Internal stream filter that executes code in ``<?python ?>``
+        processing instructions.
         """
         for event in stream:
-            if event[0] is INCLUDE:
-                href, fallback = event[1]
-                if not isinstance(href, basestring):
-                    parts = []
-                    for subkind, subdata, subpos in self._eval(href, ctxt):
-                        if subkind is TEXT:
-                            parts.append(subdata)
-                    href = u''.join([x for x in parts if x is not None])
-                try:
-                    tmpl = self.loader.load(href, relative_to=event[2][0])
-                    for event in tmpl.generate(ctxt):
-                        yield event
-                except TemplateNotFound:
-                    if fallback is None:
-                        raise
-                    for filter_ in self.filters:
-                        fallback = filter_(iter(fallback), ctxt)
-                    for event in fallback:
-                        yield event
+            if event[0] is EXEC:
+                event[1].execute(_ctxt2dict(ctxt))
             else:
                 yield event
 
@@ -291,4 +306,4 @@ class MarkupTemplate(Template):
                 yield event
 
 
-INCLUDE = MarkupTemplate.INCLUDE
+EXEC = MarkupTemplate.EXEC

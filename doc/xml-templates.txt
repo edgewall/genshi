@@ -18,99 +18,16 @@ This document describes the template language and will be most useful as
 reference to those developing Genshi XML templates. Templates are XML files of
 some kind (such as XHTML) that include processing directives_ (elements or
 attributes identified by a separate namespace) that affect how the template is
-rendered, and template expressions_ that are dynamically substituted by
+rendered, and template expressions that are dynamically substituted by
 variable data.
+
+See `Genshi Templating Basics <templates.html>`_ for general information on
+embedding Python code in templates.
 
 
 .. contents:: Contents
    :depth: 3
 .. sectnum::
-
-----------
-Python API
-----------
-
-The Python code required for templating with Genshi is generally based on the
-following pattern:
-
-* Attain a ``MarkupTemplate`` object from a string or file object containing
-  the template XML source. This can either be done directly, or through a
-  ``TemplateLoader`` instance.
-* Call the ``generate()`` method of the template, passing any data that should
-  be made available to the template as keyword arguments.
-* Serialize the resulting stream using its ``render()`` method.
-
-For example::
-
-  from genshi.template import MarkupTemplate
-
-  tmpl = MarkupTemplate('<h1>$title</h1>')
-  stream = tmpl.generate(title='Hello, world!')
-  print stream.render('xhtml')
-
-That code would produce the following output::
-
-  <h1>Hello, world!</h1>
-
-However, if you want includes_ to work, you should attain the template instance
-through a ``TemplateLoader``, and load the template from a file::
-
-  from genshi.template import TemplateLoader
-
-  loader = TemplateLoader([templates_dir])
-  tmpl = loader.load('test.html')
-  stream = tmpl.generate(title='Hello, world!')
-  print stream.render('xhtml')
-
-
-.. _`expressions`:
-
---------------------
-Template Expressions
---------------------
-
-Python_ expressions can be used in text and attribute values. An expression is
-substituted with the result of its evaluation against the template data.
-Expressions need to prefixed with a dollar sign (``$``) and usually enclosed in
-curly braces (``{…}``).
-
-If the expression starts with a letter and contains only letters, digits, dots,
-and underscores, the curly braces may be omitted. In all other cases, the
-braces are required so that the template processor knows where the expression
-ends::
-
-  >>> from genshi.template import MarkupTemplate
-  >>> tmpl = MarkupTemplate('<em>${items[0].capitalize()} item</em>')
-  >>> print tmpl.generate(items=['first', 'second'])
-  <em>First item</em>
-
-Expressions support the full power of Python. In addition, it is possible to
-access items in a dictionary using “dotted notation” (i.e. as if they were
-attributes), and vice-versa (i.e. access attributes as if they were items in a
-dictionary)::
-
-  >>> from genshi.template import MarkupTemplate
-  >>> tmpl = MarkupTemplate('<em>${dict.foo}</em>')
-  >>> print tmpl.generate(dict={'foo': 'bar'})
-  <em>bar</em>
-
-Another difference is that you can access variables that are not defined, and
-won't get a ``NameError`` exception::
-
-  >>> from genshi.template import TextTemplate
-  >>> tmpl = TextTemplate('${doh}')
-  >>> print tmpl.generate()
-  <BLANKLINE>
-
-You **will** however get a ``NameError`` if you try to call an undefined 
-variable, or do anything else with it, such as accessing its attributes. If you
-need to know whether a variable is defined, you can check its type against the
-``Undefined`` class, for example in a `py:if`_ directive::
-
-  >>> from genshi.template import TextTemplate
-  >>> tmpl = TextTemplate('${type(doh) is Undefined}')
-  >>> print tmpl.generate()
-  True
 
 
 .. _`directives`:
@@ -207,9 +124,9 @@ This directive can also be used as an element::
 -------------
 
 The ``py:choose`` directive, in combination with the directives ``py:when``
-and ``py:otherwise`` provides advanced contional processing for rendering one
+and ``py:otherwise`` provides advanced conditional processing for rendering one
 of several alternatives. The first matching ``py:when`` branch is rendered, or,
-if no ``py:when`` branch matches, the ``py:otherwise`` branch is be rendered.
+if no ``py:when`` branch matches, the ``py:otherwise`` branch is rendered.
 
 If the ``py:choose`` directive is empty the nested ``py:when`` directives will
 be tested for truth::
@@ -360,8 +277,10 @@ This would result in the following output::
 
 Inside the body of a ``py:match`` directive, the ``select(path)`` function is
 made available so that parts or all of the original element can be incorporated
-in the output of the match template. See [wiki:GenshiStream#UsingXPath] for
-more information about this function.
+in the output of the match template. See `Using XPath`_ for more information
+about this function.
+
+.. _`Using XPath`: streams.html#using-xpath
 
 This directive can also be used as an element::
 
@@ -576,7 +495,7 @@ that Genshi currently only supports a small subset of XInclude.
 .. _`xinclude specification`: http://www.w3.org/TR/xinclude/
 
 Incudes in Genshi are fully dynamic: Just like normal attributes, the `href`
-attribute accepts expressions_, and directives_ can be used on the
+attribute accepts expressions, and directives_ can be used on the
 ``<xi:include />`` element just as on any other element, meaning you can do
 things like conditional includes::
 

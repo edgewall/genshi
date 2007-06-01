@@ -17,6 +17,7 @@ import shutil
 import tempfile
 import unittest
 
+from genshi.core import TEXT
 from genshi.template.loader import TemplateLoader
 from genshi.template.markup import MarkupTemplate
 
@@ -188,6 +189,35 @@ class TemplateLoaderTestCase(unittest.TestCase):
             f.close()
         loader = TemplateLoader([self.dirname], default_encoding='utf-8')
         loader.load('tmpl.html', encoding='iso-8859-1')
+
+    def test_load_with_callback(self):
+        fileobj = open(os.path.join(self.dirname, 'tmpl.html'), 'w')
+        try:
+            fileobj.write("""<html>
+              <p>Hello</p>
+            </html>""")
+        finally:
+            fileobj.close()
+
+        def template_loaded(template):
+            def my_filter(stream, ctxt):
+                for kind, data, pos in stream:
+                    if kind is TEXT and data.strip():
+                        data = ', '.join([data, data.lower()])
+                    yield kind, data, pos
+            template.filters.insert(0, my_filter)
+
+        loader = TemplateLoader([self.dirname], callback=template_loaded)
+        tmpl = loader.load('tmpl.html')
+        self.assertEqual("""<html>
+              <p>Hello, hello</p>
+            </html>""", tmpl.generate().render())
+
+        # Make sure the filter is only added once
+        tmpl = loader.load('tmpl.html')
+        self.assertEqual("""<html>
+              <p>Hello, hello</p>
+            </html>""", tmpl.generate().render())
 
 
 def suite():

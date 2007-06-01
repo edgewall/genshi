@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2006 Edgewall Software
+# Copyright (C) 2006-2007 Edgewall Software
 # All rights reserved.
 #
 # This software is licensed as described in the file COPYING, which
@@ -15,6 +15,8 @@
 
 import htmlentitydefs
 import re
+
+__docformat__ = 'restructuredtext en'
 
 
 class LRUCache(dict):
@@ -137,7 +139,9 @@ class LRUCache(dict):
 
 
 def flatten(items):
-    """Flattens a potentially nested sequence into a flat list:
+    """Flattens a potentially nested sequence into a flat list.
+    
+    :param items: the sequence to flatten
     
     >>> flatten((1, 2))
     [1, 2]
@@ -157,6 +161,21 @@ def flatten(items):
 def plaintext(text, keeplinebreaks=True):
     """Returns the text as a `unicode` string with all entities and tags
     removed.
+    
+    >>> plaintext('<b>1 &lt; 2</b>')
+    u'1 < 2'
+    
+    The `keeplinebreaks` parameter can be set to ``False`` to replace any line
+    breaks by simple spaces:
+    
+    >>> plaintext('''<b>1
+    ... &lt;
+    ... 2</b>''', keeplinebreaks=False)
+    u'1 < 2'
+    
+    :param text: the text to convert to plain text
+    :param keeplinebreaks: whether line breaks in the text should be kept intact
+    :return: the text with tags and entities removed
     """
     text = stripentities(striptags(text))
     if not keeplinebreaks:
@@ -206,7 +225,7 @@ def stripentities(text, keepxmlentities=False):
 
 _STRIPTAGS_RE = re.compile(r'<[^>]*?>')
 def striptags(text):
-    """Return a copy of the text with all XML/HTML tags removed.
+    """Return a copy of the text with any XML/HTML tags removed.
     
     >>> striptags('<span>Foo</span> bar')
     'Foo bar'
@@ -214,5 +233,8 @@ def striptags(text):
     'Foo'
     >>> striptags('Foo<br />')
     'Foo'
+    
+    :param text: the string to remove tags from
+    :return: the text with tags removed
     """
     return _STRIPTAGS_RE.sub('', text)

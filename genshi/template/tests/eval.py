@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2006 Edgewall Software
+# Copyright (C) 2006-2007 Edgewall Software
 # All rights reserved.
 #
 # This software is licensed as described in the file COPYING, which
@@ -15,7 +15,9 @@ import doctest
 import sys
 import unittest
 
-from genshi.template.eval import Expression, Undefined
+from genshi.core import Markup
+from genshi.template.eval import Expression, Suite, Undefined, UndefinedError, \
+                                 UNDEFINED
 
 
 class ExpressionTestCase(unittest.TestCase):
@@ -35,6 +37,10 @@ class ExpressionTestCase(unittest.TestCase):
         self.assertEqual(id, Expression('id').evaluate({}))
         self.assertEqual('bar', Expression('id').evaluate({'id': 'bar'}))
         self.assertEqual(None, Expression('id').evaluate({'id': None}))
+
+    def test_builtins(self):
+        expr = Expression('Markup')
+        self.assertEqual(expr.evaluate({}), Markup)
 
     def test_str_literal(self):
         self.assertEqual('foo', Expression('"foo"').evaluate({}))
@@ -314,88 +320,263 @@ class ExpressionTestCase(unittest.TestCase):
         expr = Expression("numbers[:-1]")
         self.assertEqual([0, 1, 2, 3], expr.evaluate({'numbers': range(5)}))
 
-    def test_error_access_undefined(self):
+    def test_access_undefined(self):
         expr = Expression("nothing", filename='index.html', lineno=50)
-        self.assertEqual(Undefined, type(expr.evaluate({})))
+        retval = expr.evaluate({})
+        assert isinstance(retval, Undefined)
+        self.assertEqual('nothing', retval._name)
+        assert retval._owner is UNDEFINED
 
-    def test_error_call_undefined(self):
-        expr = Expression("nothing()", filename='index.html', lineno=50)
+    def test_getattr_undefined(self):
+        class Something(object):
+            def __repr__(self):
+                return '<Something>'
+        something = Something()
+        expr = Expression('something.nil', filename='index.html', lineno=50)
+        retval = expr.evaluate({'something': something})
+        assert isinstance(retval, Undefined)
+        self.assertEqual('nil', retval._name)
+        assert retval._owner is something
+
+    def test_getitem_undefined_string(self):
+        class Something(object):
+            def __repr__(self):
+                return '<Something>'
+        something = Something()
+        expr = Expression('something["nil"]', filename='index.html', lineno=50)
+        retval = expr.evaluate({'something': something})
+        assert isinstance(retval, Undefined)
+        self.assertEqual('nil', retval._name)
+        assert retval._owner is something
+
+    def test_error_access_undefined(self):
+        expr = Expression("nothing", filename='index.html', lineno=50,
+                          lookup='strict')
         try:
             expr.evaluate({})
-            self.fail('Expected NameError')
-        except NameError, e:
+            self.fail('Expected UndefinedError')
+        except UndefinedError, e:
             exc_type, exc_value, exc_traceback = sys.exc_info()
             frame = exc_traceback.tb_next
             frames = []
             while frame.tb_next:
                 frame = frame.tb_next
                 frames.append(frame)
-            self.assertEqual('Variable "nothing" is not defined', str(e))
-            self.assertEqual('<Expression "nothing()">',
+            self.assertEqual('"nothing" not defined', str(e))
+            self.assertEqual("<Expression 'nothing'>",
                              frames[-3].tb_frame.f_code.co_name)
             self.assertEqual('index.html',
                              frames[-3].tb_frame.f_code.co_filename)
             self.assertEqual(50, frames[-3].tb_lineno)
 
     def test_error_getattr_undefined(self):
-        expr = Expression("nothing.nil", filename='index.html', lineno=50)
+        class Something(object):
+            def __repr__(self):
+                return '<Something>'
+        expr = Expression('something.nil', filename='index.html', lineno=50,
+                          lookup='strict')
         try:
-            expr.evaluate({})
-            self.fail('Expected NameError')
-        except NameError, e:
+            expr.evaluate({'something': Something()})
+            self.fail('Expected UndefinedError')
+        except UndefinedError, e:
+            self.assertEqual('<Something> has no member named "nil"', str(e))
             exc_type, exc_value, exc_traceback = sys.exc_info()
+            search_string = "<Expression 'something.nil'>"
             frame = exc_traceback.tb_next
-            frames = []
             while frame.tb_next:
                 frame = frame.tb_next
-                frames.append(frame)
-            self.assertEqual('Variable "nothing" is not defined', str(e))
-            self.assertEqual('<Expression "nothing.nil">',
-                             frames[-3].tb_frame.f_code.co_name)
-            self.assertEqual('index.html',
-                             frames[-3].tb_frame.f_code.co_filename)
-            self.assertEqual(50, frames[-3].tb_lineno)
+                code = frame.tb_frame.f_code
+                if code.co_name == search_string:
+                    break
+            else:
+                self.fail("never found the frame I was looking for")
+            self.assertEqual('index.html', code.co_filename)
+            self.assertEqual(50, frame.tb_lineno)
 
-    def test_error_getitem_undefined(self):
-        expr = Expression("nothing[0]", filename='index.html', lineno=50)
+    def test_error_getitem_undefined_string(self):
+        class Something(object):
+            def __repr__(self):
+                return '<Something>'
+        expr = Expression('something["nil"]', filename='index.html', lineno=50,
+                          lookup='strict')
         try:
-            expr.evaluate({})
-            self.fail('Expected NameError')
-        except NameError, e:
+            expr.evaluate({'something': Something()})
+            self.fail('Expected UndefinedError')
+        except UndefinedError, e:
+            self.assertEqual('<Something> has no member named "nil"', str(e))
             exc_type, exc_value, exc_traceback = sys.exc_info()
+            search_string = '''<Expression 'something["nil"]'>'''
             frame = exc_traceback.tb_next
-            frames = []
             while frame.tb_next:
                 frame = frame.tb_next
-                frames.append(frame)
-            self.assertEqual('Variable "nothing" is not defined', str(e))
-            self.assertEqual('<Expression "nothing[0]">',
-                             frames[-3].tb_frame.f_code.co_name)
-            self.assertEqual('index.html',
-                             frames[-3].tb_frame.f_code.co_filename)
-            self.assertEqual(50, frames[-3].tb_lineno)
+                code = frame.tb_frame.f_code
+                if code.co_name == search_string:
+                    break
+            else:
+                self.fail("never found the frame I was looking for")
+            self.assertEqual('index.html', code.co_filename)
+            self.assertEqual(50, frame.tb_lineno)
 
-    def test_error_getattr_nested_undefined(self):
-        expr = Expression("nothing.nil", filename='index.html', lineno=50)
-        val = expr.evaluate({'nothing': object()})
-        assert isinstance(val, Undefined)
-        self.assertEqual("nil", val._name)
 
-    def test_error_getitem_nested_undefined_string(self):
-        expr = Expression("nothing['bla']", filename='index.html', lineno=50)
-        val = expr.evaluate({'nothing': object()})
-        assert isinstance(val, Undefined)
-        self.assertEqual("bla", val._name)
+class SuiteTestCase(unittest.TestCase):
 
-    def test_error_getitem_nested_undefined_int(self):
-        expr = Expression("nothing[0]", filename='index.html', lineno=50)
-        self.assertRaises(TypeError, expr.evaluate, {'nothing': object()})
+    def test_assign(self):
+        suite = Suite("foo = 42")
+        data = {}
+        suite.execute(data)
+        self.assertEqual(42, data['foo'])
+
+    def test_def(self):
+        suite = Suite("def donothing(): pass")
+        data = {}
+        suite.execute(data)
+        assert 'donothing' in data
+        self.assertEqual(None, data['donothing']())
+
+    def test_def_with_multiple_statements(self):
+        suite = Suite("""def donothing():
+    if True:
+        return foo
+""")
+        data = {'foo': 'bar'}
+        suite.execute(data)
+        assert 'donothing' in data
+        self.assertEqual('bar', data['donothing']())
+
+    def test_delete(self):
+        suite = Suite("""foo = 42
+del foo
+""")
+        data = {}
+        suite.execute(data)
+        assert 'foo' not in data
+
+    def test_class(self):
+        suite = Suite("class plain(object): pass")
+        data = {}
+        suite.execute(data)
+        assert 'plain' in data
+
+    def test_import(self):
+        suite = Suite("from itertools import ifilter")
+        data = {}
+        suite.execute(data)
+        assert 'ifilter' in data
+
+    def test_for(self):
+        suite = Suite("""x = []
+for i in range(3):
+    x.append(i**2)
+""")
+        data = {}
+        suite.execute(data)
+        self.assertEqual([0, 1, 4], data['x'])
+
+    def test_if(self):
+        suite = Suite("""if foo == 42:
+    x = True
+""")
+        data = {'foo': 42}
+        suite.execute(data)
+        self.assertEqual(True, data['x'])
+
+    def test_raise(self):
+        suite = Suite("""raise NotImplementedError""")
+        self.assertRaises(NotImplementedError, suite.execute, {})
+
+    def test_try_except(self):
+        suite = Suite("""try:
+    import somemod
+except ImportError:
+    somemod = None
+else:
+    somemod.dosth()""")
+        data = {}
+        suite.execute(data)
+        self.assertEqual(None, data['somemod'])
+
+    def test_finally(self):
+        suite = Suite("""try:
+    x = 2
+finally:
+    x = None
+""")
+        data = {}
+        suite.execute(data)
+        self.assertEqual(None, data['x'])
+
+    def test_while_break(self):
+        suite = Suite("""x = 0
+while x < 5:
+    x += step
+    if x == 4:
+        break
+""")
+        data = {'step': 2}
+        suite.execute(data)
+        self.assertEqual(4, data['x'])
+
+    def test_augmented_attribute_assignment(self):
+        suite = Suite("d['k'] += 42")
+        d = {"k": 1}
+        suite.execute({"d": d})
+        self.assertEqual(43, d["k"])
+
+    def test_local_augmented_assign(self):
+        Suite("x = 1; x += 42; assert x == 43").execute({})
+
+    def test_assign_in_list(self):
+        suite = Suite("[d['k']] = 'foo',; assert d['k'] == 'foo'")
+        d = {"k": "bar"}
+        suite.execute({"d": d})
+        self.assertEqual("foo", d["k"])
+
+    def test_exec(self):
+        suite = Suite("x = 1; exec d['k']; assert x == 42, x")
+        suite.execute({"d": {"k": "x = 42"}})
+
+    def test_return(self):
+        suite = Suite("""
+def f():
+    return v
+
+assert f() == 42
+""")
+        suite.execute({"v": 42})
+
+    def test_assign_to_dict_item(self):
+        suite = Suite("d['k'] = 'foo'")
+        data = {'d': {}}
+        suite.execute(data)
+        self.assertEqual('foo', data['d']['k'])
+
+    def test_assign_to_attribute(self):
+        class Something(object): pass
+        something = Something()
+        suite = Suite("obj.attr = 'foo'")
+        data = {"obj": something}
+        suite.execute(data)
+        self.assertEqual('foo', something.attr)
+
+    def test_delattr(self):
+        class Something(object):
+            def __init__(self):
+                self.attr = 'foo'
+        obj = Something()
+        Suite("del obj.attr").execute({'obj': obj})
+        self.failIf(hasattr(obj, 'attr'))
+
+    def test_delitem(self):
+        d = {'k': 'foo'}
+        Suite("del d['k']").execute({'d': d})
+        self.failIf('k' in d, `d`)
 
 
 def suite():
     suite = unittest.TestSuite()
     suite.addTest(doctest.DocTestSuite(Expression.__module__))
     suite.addTest(unittest.makeSuite(ExpressionTestCase, 'test'))
+    suite.addTest(unittest.makeSuite(SuiteTestCase, 'test'))
     return suite
 
 if __name__ == '__main__':

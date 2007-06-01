@@ -18,9 +18,7 @@ class Root(controllers.RootController):
         log.debug("Happy TurboGears Controller Responding For Duty")
         return dict(now=time.ctime(),
                     widget=widgets.TextArea(name="widget_test",
-                                            default="This is a test of using "
-                                                    "TurboGears widgets with "
-                                                    "Genshi",
+                                            default="Lorem ipsum",
                                             rows=5, cols=40))
 
     @expose(template="genshi-text:genshitest.templates.plain",

@@ -16,7 +16,7 @@ import sys
 import unittest
 
 from genshi.template import directives, MarkupTemplate, TextTemplate, \
-                            TemplateRuntimeError
+                            TemplateRuntimeError, TemplateSyntaxError
 
 
 class AttrsDirectiveTestCase(unittest.TestCase):
@@ -384,6 +384,25 @@ class DefDirectiveTestCase(unittest.TestCase):
                       Hi, you!
         """, str(tmpl.generate()))
 
+    def test_function_with_star_args(self):
+        """
+        Verify that a named template function using "star arguments" works as
+        expected.
+        """
+        tmpl = MarkupTemplate("""<doc xmlns:py="http://genshi.edgewall.org/">
+          <div py:def="f(*args, **kwargs)">
+            ${repr(args)}
+            ${repr(kwargs)}
+          </div>
+          ${f(1, 2, a=3, b=4)}
+        </doc>""")
+        self.assertEqual("""<doc>
+          <div>
+            [1, 2]
+            {'a': 3, 'b': 4}
+          </div>
+        </doc>""", str(tmpl.generate()))
+
 
 class ForDirectiveTestCase(unittest.TestCase):
     """Tests for the `py:for` template directive."""
@@ -462,6 +481,7 @@ class ForDirectiveTestCase(unittest.TestCase):
         </doc>""", filename='test.html')
         try:
             list(tmpl.generate(foo=12))
+            self.fail('Expected TemplateRuntimeError')
         except TemplateRuntimeError, e:
             self.assertEqual('test.html', e.filename)
             if sys.version_info[:2] >= (2, 4):
@@ -837,6 +857,25 @@ class MatchDirectiveTestCase(unittest.TestCase):
     #    </div>""", str(tmpl.generate()))
 
 
+class ReplaceDirectiveTestCase(unittest.TestCase):
+    """Tests for the `py:replace` template directive."""
+
+    def test_replace_with_empty_value(self):
+        """
+        Verify that the directive raises an apprioriate exception when an empty
+        expression is supplied.
+        """
+        try:
+            tmpl = MarkupTemplate("""<doc xmlns:py="http://genshi.edgewall.org/">
+              <elem py:replace="">Foo</elem>
+            </doc>""", filename='test.html')
+            self.fail('Expected TemplateSyntaxError')
+        except TemplateSyntaxError, e:
+            self.assertEqual('test.html', e.filename)
+            if sys.version_info[:2] >= (2, 4):
+                self.assertEqual(2, e.lineno)
+
+
 class StripDirectiveTestCase(unittest.TestCase):
     """Tests for the `py:strip` template directive."""
 
@@ -951,6 +990,7 @@ def suite():
     suite.addTest(unittest.makeSuite(ForDirectiveTestCase, 'test'))
     suite.addTest(unittest.makeSuite(IfDirectiveTestCase, 'test'))
     suite.addTest(unittest.makeSuite(MatchDirectiveTestCase, 'test'))
+    suite.addTest(unittest.makeSuite(ReplaceDirectiveTestCase, 'test'))
     suite.addTest(unittest.makeSuite(StripDirectiveTestCase, 'test'))
     suite.addTest(unittest.makeSuite(WithDirectiveTestCase, 'test'))
     return suite

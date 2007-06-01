@@ -12,103 +12,18 @@ The language is similar to Cheetah_ or Velocity_.
 .. _velocity: http://jakarta.apache.org/velocity/
 
 This document describes the template language and will be most useful as
-reference to those developing Genshi text templates. Templates are XML files of some
-kind (such as XHTML) that include processing directives_ (elements or
-attributes identified by a separate namespace) that affect how the template is
-rendered, and template expressions_ that are dynamically substituted by
+reference to those developing Genshi text templates. Templates are text files of
+some kind that include processing directives_ that affect how the template is
+rendered, and template expressions that are dynamically substituted by
 variable data.
+
+See `Genshi Templating Basics <templates.html>`_ for general information on
+embedding Python code in templates.
 
 
 .. contents:: Contents
    :depth: 3
 .. sectnum::
-
-----------
-Python API
-----------
-
-The Python code required for templating with Genshi is generally based on the
-following pattern:
-
-* Attain a ``TextTemplate`` object from a string or file object containing the
-  template source. This can either be done directly, or through a
-  ``TemplateLoader`` instance.
-* Call the ``generate()`` method of the template, passing any data that should
-  be made available to the template as keyword arguments.
-* Serialize the resulting stream using its ``render()`` method.
-
-For example::
-
-  from genshi.template import TextTemplate
-
-  tmpl = TextTemplate('$title')
-  stream = tmpl.generate(title='Hello, world!')
-  print stream.render('text')
-
-That code would produce the following output::
-
-  Hello, world!
-
-Using a template loader provides the advantage that “compiled” templates are
-automatically cached, and only parsed again when the template file changes::
-
-  from genshi.template import TemplateLoader
-
-  loader = TemplateLoader([templates_dir])
-  tmpl = loader.load('test.txt' cls=TextTemplate)
-  stream = tmpl.generate(title='Hello, world!')
-  print stream.render('text')
-
-
-.. _`expressions`:
-
---------------------
-Template Expressions
---------------------
-
-Python_ expressions can be used in text and as arguments to directives_. An expression is substituted with the result of its evaluation against the
-template data. Expressions need to prefixed with a dollar sign (``$``) and 
-usually enclosed in curly braces (``{…}``).
-
-.. _python: http://www.python.org/
-
-If the expression starts with a letter and contains only letters, digits, dots,
-and underscores, the curly braces may be omitted. In all other cases, the
-braces are required so that the template processor knows where the expression
-ends::
-
-  >>> from genshi.template import TextTemplate
-  >>> tmpl = TextTemplate('${items[0].capitalize()} item')
-  >>> print tmpl.generate(items=['first', 'second'])
-  First item
-
-Expressions support the full power of Python. In addition, it is possible to
-access items in a dictionary using “dotted notation” (i.e. as if they were
-attributes), and vice-versa (i.e. access attributes as if they were items in
-a dictionary)::
-
-  >>> from genshi.template import TextTemplate
-  >>> tmpl = TextTemplate('${dict.foo}')
-  >>> print tmpl.generate(dict={'foo': 'bar'})
-  bar
-
-Another difference is that you can access variables that are not defined, and
-won't get a ``NameError`` exception::
-
-  >>> from genshi.template import TextTemplate
-  >>> tmpl = TextTemplate('${doh}')
-  >>> print tmpl.generate()
-  <BLANKLINE>
-
-You **will** however get a ``NameError`` if you try to call an undefined 
-variable, or do anything else with it, such as accessing its attributes. If you
-need to know whether a variable is defined, you can check its type against the
-``Undefined`` class, for example in an `#if`_ directive::
-
-  >>> from genshi.template import TextTemplate
-  >>> tmpl = TextTemplate('${type(doh) is Undefined}')
-  >>> print tmpl.generate()
-  True
 
 
 .. _`directives`:
@@ -267,6 +182,40 @@ without the parenthesis. For example::
 The above would be rendered to::
 
     Hello, world!
+
+
+.. _includes:
+.. _`#include`:
+
+``#include``
+------------
+
+To reuse common parts of template text across template files, you can include
+other files using the ``#include`` directive::
+
+  #include "base.txt"
+
+Any content included this way is inserted into the generated output. The
+included template sees the context data as it exists at the point of the
+include. `Macros`_ in the included template are also available to the including
+template after the point it was included.
+
+Include paths are relative to the filename of the template currently being
+processed. So if the example above was in the file "``myapp/mail.txt``"
+(relative to the template search path), the include directive would look for
+the included file at "``myapp/base.txt``". You can also use Unix-style
+relative paths, for example "``../base.txt``" to look in the parent directory.
+
+Just like other directives, the argument to the ``#include`` directive accepts
+any Python expression, so the path to the included template can be determined
+dynamically::
+
+  #include '%s.txt' % filename
+
+Note that a ``TemplateNotFound`` exception is raised if an included file can't
+be found.
+
+.. note:: The include directive for text templates was added in Genshi 0.5.
 
 
 Variable Binding

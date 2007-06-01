@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2006 Edgewall Software
+# Copyright (C) 2006-2007 Edgewall Software
 # All rights reserved.
 #
 # This software is licensed as described in the file COPYING, which
@@ -10,6 +10,10 @@
 # This software consists of voluntary contributions made by many
 # individuals. For the exact contribution history, see the revision
 # history and logs, available at http://genshi.edgewall.org/log/.
+
+"""Support for constructing markup streams from files, strings, or other
+sources.
+"""
 
 from itertools import chain
 from xml.parsers import expat
@@ -22,15 +26,21 @@ import htmlentitydefs
 from StringIO import StringIO
 
 from genshi.core import Attrs, QName, Stream, stripentities
-from genshi.core import DOCTYPE, START, END, START_NS, END_NS, TEXT, \
+from genshi.core import START, END, XML_DECL, DOCTYPE, TEXT, START_NS, END_NS, \
                         START_CDATA, END_CDATA, PI, COMMENT
 
 __all__ = ['ET', 'ParseError', 'XMLParser', 'XML', 'HTMLParser', 'HTML']
+__docformat__ = 'restructuredtext en'
 
 def ET(element):
-    """Convert a given ElementTree element to a markup stream."""
+    """Convert a given ElementTree element to a markup stream.
+    
+    :param element: an ElementTree element
+    :return: a markup stream
+    """
     tag_name = QName(element.tag.lstrip('{'))
-    attrs = Attrs(element.items())
+    attrs = Attrs([(QName(attr.lstrip('{')), value)
+                   for attr, value in element.items()])
 
     yield START, (tag_name, attrs), (None, -1, -1)
     if element.text:
@@ -45,12 +55,22 @@ def ET(element):
 
 class ParseError(Exception):
     """Exception raised when fatal syntax errors are found in the input being
-    parsed."""
+    parsed.
+    """
 
-    def __init__(self, message, filename='<string>', lineno=-1, offset=-1):
-        Exception.__init__(self, message)
+    def __init__(self, message, filename=None, lineno=-1, offset=-1):
+        """Exception initializer.
+        
+        :param message: the error message from the parser
+        :param filename: the path to the file that was parsed
+        :param lineno: the number of the line on which the error was encountered
+        :param offset: the column number where the error was encountered
+        """
         self.msg = message
-        self.filename = filename
+        if filename:
+            message += ', in ' + filename
+        Exception.__init__(self, message)
+        self.filename = filename or '<string>'
         self.lineno = lineno
         self.offset = offset
 
@@ -78,11 +98,12 @@ class XMLParser(object):
     def __init__(self, source, filename=None, encoding=None):
         """Initialize the parser for the given XML input.
         
-        @param source: the XML text as a file-like object
-        @param filename: the name of the file, if appropriate
-        @param encoding: the encoding of the file; if not specified, the
-            encoding is assumed to be ASCII, UTF-8, or UTF-16, or whatever the
-            encoding specified in the XML declaration (if any)
+        :param source: the XML text as a file-like object
+        :param filename: the name of the file, if appropriate
+        :param encoding: the encoding of the file; if not specified, the
+                         encoding is assumed to be ASCII, UTF-8, or UTF-16, or
+                         whatever the encoding specified in the XML declaration
+                         (if any)
         """
         self.source = source
         self.filename = filename
@@ -102,6 +123,7 @@ class XMLParser(object):
         parser.StartCdataSectionHandler = self._handle_start_cdata
         parser.EndCdataSectionHandler = self._handle_end_cdata
         parser.ProcessingInstructionHandler = self._handle_pi
+        parser.XmlDeclHandler = self._handle_xml_decl
         parser.CommentHandler = self._handle_comment
 
         # Tell Expat that we'll handle non-XML entities ourselves
@@ -119,6 +141,11 @@ class XMLParser(object):
         self._queue = []
 
     def parse(self):
+        """Generator that parses the XML source, yielding markup events.
+        
+        :return: a markup event stream
+        :raises ParseError: if the XML text is not well formed
+        """
         def _generate():
             try:
                 bufsize = 4 * 1024 # 4K
@@ -142,8 +169,6 @@ class XMLParser(object):
                         break
             except expat.ExpatError, e:
                 msg = str(e)
-                if self.filename:
-                    msg += ', in ' + self.filename
                 raise ParseError(msg, self.filename, e.lineno, e.offset)
         return Stream(_generate()).filter(_coalesce)
 
@@ -182,13 +207,18 @@ class XMLParser(object):
                 self.expat.CurrentColumnNumber)
 
     def _handle_start(self, tag, attrib):
-        self._enqueue(START, (QName(tag), Attrs(zip(*[iter(attrib)] * 2))))
+        attrs = Attrs([(QName(name), value) for name, value in
+                       zip(*[iter(attrib)] * 2)])
+        self._enqueue(START, (QName(tag), attrs))
 
     def _handle_end(self, tag):
         self._enqueue(END, QName(tag))
 
     def _handle_data(self, text):
         self._enqueue(TEXT, text)
+
+    def _handle_xml_decl(self, version, encoding, standalone):
+        self._enqueue(XML_DECL, (version, encoding, standalone))
 
     def _handle_doctype(self, name, sysid, pubid, has_internal_subset):
         self._enqueue(DOCTYPE, (name, pubid, sysid))
@@ -228,6 +258,23 @@ class XMLParser(object):
 
 
 def XML(text):
+    """Parse the given XML source and return a markup stream.
+    
+    Unlike with `XMLParser`, the returned stream is reusable, meaning it can be
+    iterated over multiple times:
+    
+    >>> xml = XML('<doc><elem>Foo</elem><elem>Bar</elem></doc>')
+    >>> print xml
+    <doc><elem>Foo</elem><elem>Bar</elem></doc>
+    >>> print xml.select('elem')
+    <elem>Foo</elem><elem>Bar</elem>
+    >>> print xml.select('elem/text()')
+    FooBar
+    
+    :param text: the XML source
+    :return: the parsed XML event stream
+    :raises ParseError: if the XML text is not well-formed
+    """
     return Stream(list(XMLParser(StringIO(text))))
 
 
@@ -256,9 +303,9 @@ class HTMLParser(html.HTMLParser, object):
     def __init__(self, source, filename=None, encoding='utf-8'):
         """Initialize the parser for the given HTML input.
         
-        @param source: the HTML text as a file-like object
-        @param filename: the name of the file, if known
-        @param filename: encoding of the file; ignored if the input is unicode
+        :param source: the HTML text as a file-like object
+        :param filename: the name of the file, if known
+        :param filename: encoding of the file; ignored if the input is unicode
         """
         html.HTMLParser.__init__(self)
         self.source = source
@@ -268,6 +315,11 @@ class HTMLParser(html.HTMLParser, object):
         self._open_tags = []
 
     def parse(self):
+        """Generator that parses the HTML source, yielding markup events.
+        
+        :return: a markup event stream
+        :raises ParseError: if the HTML text is not well formed
+        """
         def _generate():
             try:
                 bufsize = 4 * 1024 # 4K
@@ -291,8 +343,6 @@ class HTMLParser(html.HTMLParser, object):
                         break
             except html.HTMLParseError, e:
                 msg = '%s: line %d, column %d' % (e.msg, e.lineno, e.offset)
-                if self.filename:
-                    msg += ', in %s' % self.filename
                 raise ParseError(msg, self.filename, e.lineno, e.offset)
         return Stream(_generate()).filter(_coalesce)
 
@@ -315,7 +365,7 @@ class HTMLParser(html.HTMLParser, object):
                 value = unicode(name)
             elif not isinstance(value, unicode):
                 value = value.decode(self.encoding, 'replace')
-            fixed_attrib.append((name, stripentities(value)))
+            fixed_attrib.append((QName(name), stripentities(value)))
 
         self._enqueue(START, (QName(tag), Attrs(fixed_attrib)))
         if tag in self._EMPTY_ELEMS:
@@ -337,7 +387,10 @@ class HTMLParser(html.HTMLParser, object):
         self._enqueue(TEXT, text)
 
     def handle_charref(self, name):
-        text = unichr(int(name))
+        if name.lower().startswith('x'):
+            text = unichr(int(name[1:], 16))
+        else:
+            text = unichr(int(name))
         self._enqueue(TEXT, text)
 
     def handle_entityref(self, name):
@@ -358,6 +411,24 @@ class HTMLParser(html.HTMLParser, object):
 
 
 def HTML(text, encoding='utf-8'):
+    """Parse the given HTML source and return a markup stream.
+    
+    Unlike with `HTMLParser`, the returned stream is reusable, meaning it can be
+    iterated over multiple times:
+    
+    >>> html = HTML('<body><h1>Foo</h1></body>')
+    >>> print html
+    <body><h1>Foo</h1></body>
+    >>> print html.select('h1')
+    <h1>Foo</h1>
+    >>> print html.select('h1/text()')
+    Foo
+    
+    :param text: the HTML source
+    :return: the parsed XML event stream
+    :raises ParseError: if the HTML text is not well-formed, and error recovery
+                        fails
+    """
     return Stream(list(HTMLParser(StringIO(text), encoding=encoding)))
 
 def _coalesce(stream):

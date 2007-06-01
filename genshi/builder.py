@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2006 Edgewall Software
+# Copyright (C) 2006-2007 Edgewall Software
 # All rights reserved.
 #
 # This software is licensed as described in the file COPYING, which
@@ -11,9 +11,67 @@
 # individuals. For the exact contribution history, see the revision
 # history and logs, available at http://genshi.edgewall.org/log/.
 
+"""Support for programmatically generating markup streams from Python code using
+a very simple syntax. The main entry point to this module is the `tag` object
+(which is actually an instance of the ``ElementFactory`` class). You should
+rarely (if ever) need to directly import and use any of the other classes in
+this module.
+
+Elements can be created using the `tag` object using attribute access. For
+example:
+
+>>> doc = tag.p('Some text and ', tag.a('a link', href='http://example.org/'), '.')
+>>> doc
+<Element "p">
+
+This produces an `Element` instance which can be further modified to add child
+nodes and attributes. This is done by "calling" the element: positional
+arguments are added as child nodes (alternatively, the `Element.append` method
+can be used for that purpose), whereas keywords arguments are added as
+attributes:
+
+>>> doc(tag.br)
+<Element "p">
+>>> print doc
+<p>Some text and <a href="http://example.org/">a link</a>.<br/></p>
+
+If an attribute name collides with a Python keyword, simply append an underscore
+to the name:
+
+>>> doc(class_='intro')
+<Element "p">
+>>> print doc
+<p class="intro">Some text and <a href="http://example.org/">a link</a>.<br/></p>
+
+As shown above, an `Element` can easily be directly rendered to XML text by
+printing it or using the Python ``str()`` function. This is basically a
+shortcut for converting the `Element` to a stream and serializing that
+stream:
+
+>>> stream = doc.generate()
+>>> stream #doctest: +ELLIPSIS
+<genshi.core.Stream object at ...>
+>>> print stream
+<p class="intro">Some text and <a href="http://example.org/">a link</a>.<br/></p>
+
+
+The `tag` object also allows creating "fragments", which are basically lists
+of nodes (elements or text) that don't have a parent element. This can be useful
+for creating snippets of markup that are attached to a parent element later (for
+example in a template). Fragments are created by calling the `tag` object, which
+returns an object of type `Fragment`:
+
+>>> fragment = tag('Hello, ', tag.em('world'), '!')
+>>> fragment
+<Fragment>
+>>> print fragment
+Hello, <em>world</em>!
+"""
+
 from genshi.core import Attrs, Namespace, QName, Stream, START, END, TEXT
 
-__all__ = ['Fragment', 'Element', 'tag']
+__all__ = ['Fragment', 'Element', 'ElementFactory', 'tag']
+__docformat__ = 'restructuredtext en'
 
 
 class Fragment(object):
@@ -23,12 +81,17 @@ class Fragment(object):
     __slots__ = ['children']
 
     def __init__(self):
+        """Create a new fragment."""
         self.children = []
 
     def __add__(self, other):
         return Fragment()(self, other)
 
     def __call__(self, *args):
+        """Append any positional arguments as child nodes.
+        
+        :see: `append`
+        """
         map(self.append, args)
         return self
 
@@ -45,7 +108,11 @@ class Fragment(object):
         return unicode(self.generate())
 
     def append(self, node):
-        """Append an element or string as child node."""
+        """Append an element or string as child node.
+        
+        :param node: the node to append; can be an `Element`, `Fragment`, or a
+                     `Stream`, or a Python string or number
+        """
         if isinstance(node, (Stream, Element, basestring, int, float, long)):
             # For objects of a known/primitive type, we avoid the check for
             # whether it is iterable for better performance
@@ -72,7 +139,10 @@ class Fragment(object):
                 yield TEXT, child, (None, -1, -1)
 
     def generate(self):
-        """Return a markup event stream for the fragment."""
+        """Return a markup event stream for the fragment.
+        
+        :rtype: `Stream`
+        """
         return Stream(self._generate())
 
 
@@ -82,7 +152,7 @@ def _value_to_unicode(value):
     return unicode(value)
 
 def _kwargs_to_attrs(kwargs):
-    return [(k.rstrip('_').replace('_', '-'), _value_to_unicode(v))
+    return [(QName(k.rstrip('_').replace('_', '-')), _value_to_unicode(v))
             for k, v in kwargs.items() if v is not None]
 
 
@@ -163,7 +233,7 @@ class Element(Fragment):
     >>> from genshi.core import Namespace
     >>> xhtml = Namespace('http://www.w3.org/1999/xhtml')
     >>> print Element(xhtml.html, lang='en')
-    <html lang="en" xmlns="http://www.w3.org/1999/xhtml"/>
+    <html xmlns="http://www.w3.org/1999/xhtml" lang="en"/>
     """
     __slots__ = ['tag', 'attrib']
 
@@ -173,6 +243,13 @@ class Element(Fragment):
         self.attrib = Attrs(_kwargs_to_attrs(attrib))
 
     def __call__(self, *args, **kwargs):
+        """Append any positional arguments as child nodes, and keyword arguments
+        as attributes.
+        
+        :return: the element itself so that calls can be chained
+        :rtype: `Element`
+        :see: `Fragment.append`
+        """
         self.attrib |= Attrs(_kwargs_to_attrs(kwargs))
         Fragment.__call__(self, *args)
         return self
@@ -187,7 +264,10 @@ class Element(Fragment):
         yield END, self.tag, (None, -1, -1)
 
     def generate(self):
-        """Return a markup event stream for the fragment."""
+        """Return a markup event stream for the fragment.
+        
+        :rtype: `Stream`
+        """
         return Stream(self._generate())
 
 
@@ -213,14 +293,14 @@ class ElementFactory(object):
     
     >>> factory = ElementFactory('http://www.w3.org/1999/xhtml')
     >>> print factory.html(lang="en")
-    <html lang="en" xmlns="http://www.w3.org/1999/xhtml"/>
+    <html xmlns="http://www.w3.org/1999/xhtml" lang="en"/>
     
     The namespace for a specific element can be altered on an existing factory
     by specifying the new namespace using item access:
     
     >>> factory = ElementFactory()
     >>> print factory.html(factory['http://www.w3.org/2000/svg'].g(id=3))
-    <html><g id="3" xmlns="http://www.w3.org/2000/svg"/></html>
+    <html><g xmlns="http://www.w3.org/2000/svg" id="3"/></html>
     
     Usually, the `ElementFactory` class is not be used directly. Rather, the
     `tag` instance should be used to create elements.
@@ -229,23 +309,44 @@ class ElementFactory(object):
     def __init__(self, namespace=None):
         """Create the factory, optionally bound to the given namespace.
         
-        @param namespace: the namespace URI for any created elements, or `None`
-            for no namespace
+        :param namespace: the namespace URI for any created elements, or `None`
+                          for no namespace
         """
         if namespace and not isinstance(namespace, Namespace):
             namespace = Namespace(namespace)
         self.namespace = namespace
 
     def __call__(self, *args):
+        """Create a fragment that has the given positional arguments as child
+        nodes.
+
+        :return: the created `Fragment`
+        :rtype: `Fragment`
+        """
         return Fragment()(*args)
 
     def __getitem__(self, namespace):
-        """Return a new factory that is bound to the specified namespace."""
+        """Return a new factory that is bound to the specified namespace.
+        
+        :param namespace: the namespace URI or `Namespace` object
+        :return: an `ElementFactory` that produces elements bound to the given
+                 namespace
+        :rtype: `ElementFactory`
+        """
         return ElementFactory(namespace)
 
     def __getattr__(self, name):
-        """Create an `Element` with the given name."""
+        """Create an `Element` with the given name.
+        
+        :param name: the tag name of the element to create
+        :return: an `Element` with the specified name
+        :rtype: `Element`
+        """
         return Element(self.namespace and self.namespace[name] or name)
 
 
 tag = ElementFactory()
+"""Global `ElementFactory` bound to the default namespace.
+
+:type: `ElementFactory`
+"""

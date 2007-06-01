@@ -14,9 +14,8 @@
 import doctest
 import unittest
 
-from genshi import filters
 from genshi.input import HTML, ParseError
-from genshi.filters import HTMLFormFiller, HTMLSanitizer
+from genshi.filters.html import HTMLFormFiller, HTMLSanitizer
 
 
 class HTMLFormFillerTestCase(unittest.TestCase):
@@ -320,22 +319,35 @@ class HTMLSanitizerTestCase(unittest.TestCase):
         self.assertEquals(u'<div/>', unicode(html | HTMLSanitizer()))
 
     def test_sanitize_remove_style_scripts(self):
+        sanitizer = HTMLSanitizer(safe_attrs=HTMLSanitizer.SAFE_ATTRS | set(['style']))
         # Inline style with url() using javascript: scheme
         html = HTML('<DIV STYLE=\'background: url(javascript:alert("foo"))\'>')
-        self.assertEquals(u'<div/>', unicode(html | HTMLSanitizer()))
+        self.assertEquals(u'<div/>', unicode(html | sanitizer))
         # Inline style with url() using javascript: scheme, using control char
         html = HTML('<DIV STYLE=\'background: url(&#1;javascript:alert("foo"))\'>')
-        self.assertEquals(u'<div/>', unicode(html | HTMLSanitizer()))
+        self.assertEquals(u'<div/>', unicode(html | sanitizer))
         # Inline style with url() using javascript: scheme, in quotes
         html = HTML('<DIV STYLE=\'background: url("javascript:alert(foo)")\'>')
-        self.assertEquals(u'<div/>', unicode(html | HTMLSanitizer()))
+        self.assertEquals(u'<div/>', unicode(html | sanitizer))
         # IE expressions in CSS not allowed
         html = HTML('<DIV STYLE=\'width: expression(alert("foo"));\'>')
-        self.assertEquals(u'<div/>', unicode(html | HTMLSanitizer()))
+        self.assertEquals(u'<div/>', unicode(html | sanitizer))
         html = HTML('<DIV STYLE=\'background: url(javascript:alert("foo"));'
                                  'color: #fff\'>')
         self.assertEquals(u'<div style="color: #fff"/>',
-                          unicode(html | HTMLSanitizer()))
+                          unicode(html | sanitizer))
+        # Inline style with url() using javascript: scheme, using unicode
+        # escapes
+        html = HTML('<DIV STYLE=\'background: \\75rl(javascript:alert("foo"))\'>')
+        self.assertEquals(u'<div/>', unicode(html | sanitizer))
+        html = HTML('<DIV STYLE=\'background: \\000075rl(javascript:alert("foo"))\'>')
+        self.assertEquals(u'<div/>', unicode(html | sanitizer))
+        html = HTML('<DIV STYLE=\'background: \\75 rl(javascript:alert("foo"))\'>')
+        self.assertEquals(u'<div/>', unicode(html | sanitizer))
+        html = HTML('<DIV STYLE=\'background: \\000075 rl(javascript:alert("foo"))\'>')
+        self.assertEquals(u'<div/>', unicode(html | sanitizer))
+        html = HTML('<DIV STYLE=\'background: \\000075\r\nrl(javascript:alert("foo"))\'>')
+        self.assertEquals(u'<div/>', unicode(html | sanitizer))
 
     def test_sanitize_remove_src_javascript(self):
         html = HTML('<img src=\'javascript:alert("foo")\'>')
@@ -371,7 +383,7 @@ class HTMLSanitizerTestCase(unittest.TestCase):
 
 def suite():
     suite = unittest.TestSuite()
-    suite.addTest(doctest.DocTestSuite(filters))
+    suite.addTest(doctest.DocTestSuite(HTMLFormFiller.__module__))
     suite.addTest(unittest.makeSuite(HTMLFormFillerTestCase, 'test'))
     suite.addTest(unittest.makeSuite(HTMLSanitizerTestCase, 'test'))
     return suite

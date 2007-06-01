@@ -12,13 +12,23 @@
 # history and logs, available at http://genshi.edgewall.org/log/.
 
 import doctest
+import os
+import shutil
+import tempfile
 import unittest
 
+from genshi.template.loader import TemplateLoader
 from genshi.template.text import TextTemplate
 
 
 class TextTemplateTestCase(unittest.TestCase):
     """Tests for text template processing."""
+
+    def setUp(self):
+        self.dirname = tempfile.mkdtemp(suffix='markup_test')
+
+    def tearDown(self):
+        shutil.rmtree(self.dirname)
 
     def test_escaping(self):
         tmpl = TextTemplate('\\#escaped')
@@ -37,7 +47,7 @@ class TextTemplateTestCase(unittest.TestCase):
         #if foo
           bar
         #end 'if foo'""")
-        self.assertEqual('\n', str(tmpl.generate()))
+        self.assertEqual('\n', str(tmpl.generate(foo=False)))
 
     def test_latin1_encoded(self):
         text = u'$foo\xf6$bar'.encode('iso-8859-1')
@@ -74,7 +84,28 @@ class TextTemplateTestCase(unittest.TestCase):
 
 """, tmpl.generate(items=range(3)).render('text'))
 
+    def test_include(self):
+        file1 = open(os.path.join(self.dirname, 'tmpl1.txt'), 'w')
+        try:
+            file1.write("Included\n")
+        finally:
+            file1.close()
 
+        file2 = open(os.path.join(self.dirname, 'tmpl2.txt'), 'w')
+        try:
+            file2.write("""----- Included data below this line -----
+            #include tmpl1.txt
+            ----- Included data above this line -----""")
+        finally:
+            file2.close()
+
+        loader = TemplateLoader([self.dirname])
+        tmpl = loader.load('tmpl2.txt', cls=TextTemplate)
+        self.assertEqual("""----- Included data below this line -----
+Included
+            ----- Included data above this line -----""",
+                         tmpl.generate().render())
+        
 def suite():
     suite = unittest.TestSuite()
     suite.addTest(doctest.DocTestSuite(TextTemplate.__module__))

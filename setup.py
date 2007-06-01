@@ -20,6 +20,7 @@ try:
     from setuptools import setup
 except ImportError:
     from distutils.core import setup
+import sys
 
 
 class build_doc(Command):
@@ -34,7 +35,8 @@ class build_doc(Command):
 
     def run(self):
         from docutils.core import publish_cmdline
-        conf = os.path.join('doc', 'docutils.conf')
+        docutils_conf = os.path.join('doc', 'docutils.conf')
+        epydoc_conf = os.path.join('doc', 'epydoc.conf')
 
         for source in glob('doc/*.txt'):
             dest = os.path.splitext(source)[0] + '.html'
@@ -42,7 +44,23 @@ class build_doc(Command):
                    os.path.getmtime(dest) < os.path.getmtime(source):
                 print 'building documentation file %s' % dest
                 publish_cmdline(writer_name='html',
-                                argv=['--config=%s' % conf, source, dest])
+                                argv=['--config=%s' % docutils_conf, source,
+                                      dest])
+
+        try:
+            from epydoc import cli
+            old_argv = sys.argv[1:]
+            sys.argv[1:] = [
+                '--config=%s' % epydoc_conf,
+                '--no-private', # epydoc bug, not read from config
+                '--simple-term',
+                '--verbose'
+            ]
+            cli.cli()
+            sys.argv[1:] = old_argv
+
+        except ImportError:
+            print 'epydoc not installed, skipping API documentation.'
 
 
 class test_doc(Command):
@@ -63,13 +81,13 @@ class test_doc(Command):
 
 setup(
     name = 'Genshi',
-    version = '0.4',
+    version = '0.5',
     description = 'A toolkit for stream-based generation of output for the web',
     long_description = \
-"""Genshi is a Python library that provides an integrated set of components
-for parsing, generating, and processing HTML, XML or other textual content for
-output generation on the web. The major feature is a template language, which
-is heavily inspired by Kid.""",
+"""Genshi is a Python library that provides an integrated set of
+components for parsing, generating, and processing HTML, XML or
+other textual content for output generation on the web. The major
+feature is a template language, which is heavily inspired by Kid.""",
     author = 'Edgewall Software',
     author_email = 'info@edgewall.org',
     license = 'BSD',
@@ -90,7 +108,7 @@ is heavily inspired by Kid.""",
         'Topic :: Text Processing :: Markup :: XML'
     ],
     keywords = ['python.templating.engines'],
-    packages = ['genshi', 'genshi.template'],
+    packages = ['genshi', 'genshi.filters', 'genshi.template'],
     test_suite = 'genshi.tests.suite',
 
     extras_require = {'plugin': ['setuptools>=0.6a2']},
@@ -101,5 +119,5 @@ is heavily inspired by Kid.""",
     genshi-text = genshi.template.plugin:TextTemplateEnginePlugin[plugin]
     """,
 
-    cmdclass={'build_doc': build_doc, 'test_doc': test_doc}
+    cmdclass = {'build_doc': build_doc, 'test_doc': test_doc}
 )

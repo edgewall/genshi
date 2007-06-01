@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2006 Edgewall Software
+# Copyright (C) 2006-2007 Edgewall Software
 # All rights reserved.
 #
 # This software is licensed as described in the file COPYING, which
@@ -21,7 +21,7 @@ import unittest
 
 from genshi.core import Markup
 from genshi.input import XML
-from genshi.template.core import BadDirectiveError, TemplateSyntaxError
+from genshi.template.base import BadDirectiveError, TemplateSyntaxError
 from genshi.template.loader import TemplateLoader
 from genshi.template.markup import MarkupTemplate
 
@@ -183,7 +183,7 @@ class MarkupTemplateTestCase(unittest.TestCase):
         <div xmlns:py="http://genshi.edgewall.org/">
           \xf6
         </div>""".encode('iso-8859-1'), encoding='iso-8859-1')
-        self.assertEqual(u"""<div>
+        self.assertEqual(u"""<?xml version="1.0" encoding="iso-8859-1"?>\n<div>
           \xf6
         </div>""", unicode(tmpl.generate()))
 
@@ -194,6 +194,44 @@ class MarkupTemplateTestCase(unittest.TestCase):
         self.assertEqual(u"""<div>
           \xf6
         </div>""", unicode(tmpl.generate()))
+
+    def test_exec_import(self):
+        tmpl = MarkupTemplate(u"""<?python from datetime import timedelta ?>
+        <div xmlns:py="http://genshi.edgewall.org/">
+          ${timedelta(days=2)}
+        </div>""")
+        self.assertEqual(u"""<div>
+          2 days, 0:00:00
+        </div>""", str(tmpl.generate()))
+
+    def test_exec_def(self):
+        tmpl = MarkupTemplate(u"""
+        <?python
+        def foo():
+            return 42
+        ?>
+        <div xmlns:py="http://genshi.edgewall.org/">
+          ${foo()}
+        </div>""")
+        self.assertEqual(u"""<div>
+          42
+        </div>""", str(tmpl.generate()))
+
+    def test_namespace_on_removed_elem(self):
+        """
+        Verify that a namespace declaration on an element that is removed from
+        the generated stream does not get pushed up to the next non-stripped
+        element (see ticket #107).
+        """
+        tmpl = MarkupTemplate("""<?xml version="1.0"?>
+        <Test xmlns:py="http://genshi.edgewall.org/">
+          <Size py:if="0" xmlns:t="test">Size</Size>
+          <Item/>
+        </Test>""")
+        self.assertEqual("""<?xml version="1.0"?>\n<Test>
+          
+          <Item/>
+        </Test>""", str(tmpl.generate()))
 
     def test_include_in_loop(self):
         dirname = tempfile.mkdtemp(suffix='genshi_test')

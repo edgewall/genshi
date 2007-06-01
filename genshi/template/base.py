@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2006 Edgewall Software
+# Copyright (C) 2006-2007 Edgewall Software
 # All rights reserved.
 #
 # This software is licensed as described in the file COPYING, which
@@ -11,54 +11,63 @@
 # individuals. For the exact contribution history, see the revision
 # history and logs, available at http://genshi.edgewall.org/log/.
 
+"""Basic templating functionality."""
+
 try:
     from collections import deque
 except ImportError:
     class deque(list):
         def appendleft(self, x): self.insert(0, x)
         def popleft(self): return self.pop(0)
-import imp
 import os
-import re
 from StringIO import StringIO
 
 from genshi.core import Attrs, Stream, StreamEventKind, START, TEXT, _ensure
-from genshi.template.eval import Expression
+from genshi.input import ParseError
 
 __all__ = ['Context', 'Template', 'TemplateError', 'TemplateRuntimeError',
            'TemplateSyntaxError', 'BadDirectiveError']
+__docformat__ = 'restructuredtext en'
 
 
 class TemplateError(Exception):
     """Base exception class for errors related to template processing."""
 
-
-class TemplateRuntimeError(TemplateError):
-    """Exception raised when an the evualation of a Python expression in a
-    template causes an error."""
-
     def __init__(self, message, filename='<string>', lineno=-1, offset=-1):
-        self.msg = message
-        message = '%s (%s, line %d)' % (self.msg, filename, lineno)
-        TemplateError.__init__(self, message)
-        self.filename = filename
-        self.lineno = lineno
-        self.offset = offset
+        """Create the exception.
+        
+        :param message: the error message
+        :param filename: the filename of the template
+        :param lineno: the number of line in the template at which the error
+                       occurred
+        :param offset: the column number at which the error occurred
+        """
+        self.msg = message #: the error message string
+        if filename != '<string>' or lineno >= 0:
+            message = '%s (%s, line %d)' % (self.msg, filename, lineno)
+        Exception.__init__(self, message)
+        self.filename = filename #: the name of the template file
+        self.lineno = lineno #: the number of the line containing the error
+        self.offset = offset #: the offset on the line
 
 
 class TemplateSyntaxError(TemplateError):
     """Exception raised when an expression in a template causes a Python syntax
-    error."""
+    error, or the template is not well-formed.
+    """
 
     def __init__(self, message, filename='<string>', lineno=-1, offset=-1):
+        """Create the exception
+        
+        :param message: the error message
+        :param filename: the filename of the template
+        :param lineno: the number of line in the template at which the error
+                       occurred
+        :param offset: the column number at which the error occurred
+        """
         if isinstance(message, SyntaxError) and message.lineno is not None:
             message = str(message).replace(' (line %d)' % message.lineno, '')
-        self.msg = message
-        message = '%s (%s, line %d)' % (self.msg, filename, lineno)
-        TemplateError.__init__(self, message)
-        self.filename = filename
-        self.lineno = lineno
-        self.offset = offset
+        TemplateError.__init__(self, message, filename, lineno)
 
 
 class BadDirectiveError(TemplateSyntaxError):
@@ -70,8 +79,21 @@ class BadDirectiveError(TemplateSyntaxError):
     """
 
     def __init__(self, name, filename='<string>', lineno=-1):
-        message = 'bad directive "%s"' % name
-        TemplateSyntaxError.__init__(self, message, filename, lineno)
+        """Create the exception
+        
+        :param name: the name of the directive
+        :param filename: the filename of the template
+        :param lineno: the number of line in the template at which the error
+                       occurred
+        """
+        TemplateSyntaxError.__init__(self, 'bad directive "%s"' % name,
+                                     filename, lineno)
+
+
+class TemplateRuntimeError(TemplateError):
+    """Exception raised when an the evaluation of a Python expression in a
+    template causes an error.
+    """
 
 
 class Context(object):
@@ -100,22 +122,81 @@ class Context(object):
     """
 
     def __init__(self, **data):
+        """Initialize the template context with the given keyword arguments as
+        data.
+        """
         self.frames = deque([data])
         self.pop = self.frames.popleft
         self.push = self.frames.appendleft
         self._match_templates = []
 
+        # Helper functions for use in expressions
+        def defined(name):
+            """Return whether a variable with the specified name exists in the
+            expression scope."""
+            return name in self
+        def value_of(name, default=None):
+            """If a variable of the specified name is defined, return its value.
+            Otherwise, return the provided default value, or ``None``."""
+            return self.get(name, default)
+        data.setdefault('defined', defined)
+        data.setdefault('value_of', value_of)
+
     def __repr__(self):
         return repr(list(self.frames))
 
+    def __contains__(self, key):
+        """Return whether a variable exists in any of the scopes.
+        
+        :param key: the name of the variable
+        """
+        return self._find(key)[1] is not None
+
+    def __delitem__(self, key):
+        """Remove a variable from all scopes.
+        
+        :param key: the name of the variable
+        """
+        for frame in self.frames:
+            if key in frame:
+                del frame[key]
+
+    def __getitem__(self, key):
+        """Get a variables's value, starting at the current scope and going
+        upward.
+        
+        :param key: the name of the variable
+        :return: the variable value
+        :raises KeyError: if the requested variable wasn't found in any scope
+        """
+        value, frame = self._find(key)
+        if frame is None:
+            raise KeyError(key)
+        return value
+
+    def __len__(self):
+        """Return the number of distinctly named variables in the context.
+        
+        :return: the number of variables in the context
+        """
+        return len(self.items())
+
     def __setitem__(self, key, value):
-        """Set a variable in the current scope."""
+        """Set a variable in the current scope.
+        
+        :param key: the name of the variable
+        :param value: the variable value
+        """
         self.frames[0][key] = value
 
     def _find(self, key, default=None):
         """Retrieve a given variable's value and the frame it was found in.
 
-        Intented for internal use by directives.
+        Intended primarily for internal use by directives.
+        
+        :param key: the name of the variable
+        :param default: the default value to return when the variable is not
+                        found
         """
         for frame in self.frames:
             if key in frame:
@@ -125,22 +206,52 @@ class Context(object):
     def get(self, key, default=None):
         """Get a variable's value, starting at the current scope and going
         upward.
+        
+        :param key: the name of the variable
+        :param default: the default value to return when the variable is not
+                        found
         """
         for frame in self.frames:
             if key in frame:
                 return frame[key]
         return default
-    __getitem__ = get
+
+    def keys(self):
+        """Return the name of all variables in the context.
+        
+        :return: a list of variable names
+        """
+        keys = []
+        for frame in self.frames:
+            keys += [key for key in frame if key not in keys]
+        return keys
+
+    def items(self):
+        """Return a list of ``(name, value)`` tuples for all variables in the
+        context.
+        
+        :return: a list of variables
+        """
+        return [(key, self.get(key)) for key in self.keys()]
 
     def push(self, data):
-        """Push a new scope on the stack."""
+        """Push a new scope on the stack.
+        
+        :param data: the data dictionary to push on the context stack.
+        """
 
     def pop(self):
         """Pop the top-most scope from the stack."""
 
 
 def _apply_directives(stream, ctxt, directives):
-    """Apply the given directives to the stream."""
+    """Apply the given directives to the stream.
+    
+    :param stream: the stream the directives should be applied to
+    :param ctxt: the `Context`
+    :param directives: the list of directives to apply
+    :return: the stream with the given directives applied
+    """
     if directives:
         stream = directives[0](iter(stream), ctxt, directives[1:])
     return stream
@@ -165,12 +276,36 @@ class Template(object):
     """
     __metaclass__ = TemplateMeta
 
-    EXPR = StreamEventKind('EXPR') # an expression
-    SUB = StreamEventKind('SUB') # a "subprogram"
+    EXPR = StreamEventKind('EXPR')
+    """Stream event kind representing a Python expression."""
+
+    INCLUDE = StreamEventKind('INCLUDE')
+    """Stream event kind representing the inclusion of another template."""
+
+    SUB = StreamEventKind('SUB')
+    """Stream event kind representing a nested stream to which one or more
+    directives should be applied.
+    """
 
     def __init__(self, source, basedir=None, filename=None, loader=None,
-                 encoding=None):
-        """Initialize a template from either a string or a file-like object."""
+                 encoding=None, lookup='lenient'):
+        """Initialize a template from either a string, a file-like object, or
+        an already parsed markup stream.
+        
+        :param source: a string, file-like object, or markup stream to read the
+                       template from
+        :param basedir: the base directory containing the template file; when
+                        loaded from a `TemplateLoader`, this will be the
+                        directory on the template search path in which the
+                        template was found
+        :param filename: the name of the template file, relative to the given
+                         base directory
+        :param loader: the `TemplateLoader` to use for loading included
+                       templates
+        :param encoding: the encoding of the `source`
+        :param lookup: the variable lookup mechanism; either "lenient" (the
+                       default), "strict", or a custom lookup class
+        """
         self.basedir = basedir
         self.filename = filename
         if basedir and filename:
@@ -178,13 +313,19 @@ class Template(object):
         else:
             self.filepath = filename
         self.loader = loader
+        self.lookup = lookup
 
         if isinstance(source, basestring):
             source = StringIO(source)
         else:
             source = source
-        self.stream = list(self._prepare(self._parse(source, encoding)))
+        try:
+            self.stream = list(self._prepare(self._parse(source, encoding)))
+        except ParseError, e:
+            raise TemplateSyntaxError(e.msg, self.filepath, e.lineno, e.offset)
         self.filters = [self._flatten, self._eval]
+        if loader:
+            self.filters.append(self._include)
 
     def __repr__(self):
         return '<%s "%s">' % (self.__class__.__name__, self.filename)
@@ -196,54 +337,18 @@ class Template(object):
         directives that will be executed in the render stage. The input is
         split up into literal output (text that does not depend on the context
         data) and directives or expressions.
+        
+        :param source: a file-like object containing the XML source of the
+                       template, or an XML event stream
+        :param encoding: the encoding of the `source`
         """
         raise NotImplementedError
 
-    _FULL_EXPR_RE = re.compile(r'(?<!\$)\$\{(.+?)\}', re.DOTALL)
-    _SHORT_EXPR_RE = re.compile(r'(?<!\$)\$([a-zA-Z_][a-zA-Z0-9_\.]*)')
-
-    def _interpolate(cls, text, basedir=None, filename=None, lineno=-1,
-                     offset=0):
-        """Parse the given string and extract expressions.
-        
-        This method returns a list containing both literal text and `Expression`
-        objects.
-        
-        @param text: the text to parse
-        @param lineno: the line number at which the text was found (optional)
-        @param offset: the column number at which the text starts in the source
-            (optional)
-        """
-        filepath = filename
-        if filepath and basedir:
-            filepath = os.path.join(basedir, filepath)
-        def _interpolate(text, patterns, lineno=lineno, offset=offset):
-            for idx, grp in enumerate(patterns.pop(0).split(text)):
-                if idx % 2:
-                    try:
-                        yield EXPR, Expression(grp.strip(), filepath, lineno), \
-                              (filename, lineno, offset)
-                    except SyntaxError, err:
-                        raise TemplateSyntaxError(err, filepath, lineno,
-                                                  offset + (err.offset or 0))
-                elif grp:
-                    if patterns:
-                        for result in _interpolate(grp, patterns[:]):
-                            yield result
-                    else:
-                        yield TEXT, grp.replace('$$', '$'), \
-                              (filename, lineno, offset)
-                if '\n' in grp:
-                    lines = grp.splitlines()
-                    lineno += len(lines) - 1
-                    offset += len(lines[-1])
-                else:
-                    offset += len(grp)
-        return _interpolate(text, [cls._FULL_EXPR_RE, cls._SHORT_EXPR_RE])
-    _interpolate = classmethod(_interpolate)
-
     def _prepare(self, stream):
-        """Call the `attach` method of every directive found in the template."""
+        """Call the `attach` method of every directive found in the template.
+        
+        :param stream: the event stream of the template
+        """
         for kind, data, pos in stream:
             if kind is SUB:
                 directives = []
@@ -260,20 +365,9 @@ class Template(object):
                     for event in substream:
                         yield event
             else:
+                if kind is INCLUDE:
+                    data = data[0], list(self._prepare(data[1]))
                 yield kind, data, pos
-
-    def compile(self):
-        """Compile the template to a Python module, and return the module
-        object.
-        """
-        from genshi.template.inline import inline
-
-        name = (self.filename or '_some_ident').replace('.', '_')
-        module = imp.new_module(name)
-        source = u'\n'.join(list(inline(self)))
-        code = compile(source, self.filepath or '<string>', 'exec')
-        exec code in module.__dict__, module.__dict__
-        return module
 
     def generate(self, *args, **kwargs):
         """Apply the template to the given context data.
@@ -285,8 +379,8 @@ class Template(object):
         an instance of the `Context` class, and keyword arguments are ignored.
         This calling style is used for internal processing.
         
-        @return: a markup event stream representing the result of applying
-            the template to the context data.
+        :return: a markup event stream representing the result of applying
+                 the template to the context data.
         """
         if args:
             assert len(args) == 1
@@ -363,6 +457,37 @@ class Template(object):
             else:
                 yield event
 
+    def _include(self, stream, ctxt):
+        """Internal stream filter that performs inclusion of external
+        template files.
+        """
+        from genshi.template.loader import TemplateNotFound
+
+        for event in stream:
+            if event[0] is INCLUDE:
+                href, fallback = event[1]
+                if not isinstance(href, basestring):
+                    parts = []
+                    for subkind, subdata, subpos in self._eval(href, ctxt):
+                        if subkind is TEXT:
+                            parts.append(subdata)
+                    href = u''.join([x for x in parts if x is not None])
+                try:
+                    tmpl = self.loader.load(href, relative_to=event[2][0],
+                                            cls=self.__class__)
+                    for event in tmpl.generate(ctxt):
+                        yield event
+                except TemplateNotFound:
+                    if fallback is None:
+                        raise
+                    for filter_ in self.filters:
+                        fallback = filter_(iter(fallback), ctxt)
+                    for event in fallback:
+                        yield event
+            else:
+                yield event
+
 
 EXPR = Template.EXPR
+INCLUDE = Template.INCLUDE
 SUB = Template.SUB

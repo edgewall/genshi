@@ -4,19 +4,23 @@ Upgrading Genshi
 Upgrading from Genshi 0.3.x to 0.4.x
 ------------------------------------
 
-The `genshi.template` module has been refactored into a package with
-multiple modules. While code using the normal templating APIs should
-continue to work without problems, you should make sure to remove any
-leftover traces of the `template.py` file on the installation path.
-This is not necessary when Genshi was installed as a Python egg.
+The modules ``genshi.filters`` and ``genshi.template`` have been
+refactored into packages containing multiple modules. While code using
+the regular APIs should continue to work without problems, you should
+make sure to remove any leftover traces of the ``template.py`` file on
+the installation path. This is not necessary when Genshi was installed
+as a Python egg.
 
 Results of evaluating template expressions are no longer implicitly
 called if they are callable. If you have been using that feature, you
 will need to add the parenthesis to actually call the function.
 
 Instances of `genshi.core.Attrs` are now immutable. Filters
-manipulating the attributes in a stream may need to be updated. See
-the documentation of the `Attrs` class for more information.
+manipulating the attributes in a stream may need to be updated. Also,
+the `Attrs` class no longer automatically wraps all attribute names
+in `QName` objects, so users of the `Attrs` class need to do this
+themselves. See the documentation of the `Attrs` class for more
+information.
 
 
 Upgrading from Markup
@@ -40,7 +44,7 @@ the class:
 
 has been renamed to:
 
-  `markup.template.MarkupTemplate`
+  `genshi.template.MarkupTemplate`
 
 If you've been using the Template class directly, you'll need to
 update your code (a simple find/replace should do--the API itself

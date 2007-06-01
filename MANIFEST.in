@@ -1,5 +1,4 @@
 exclude doc/2000ft.graffle
-exclude doc/docutils.conf
 recursive-exclude doc/logo.lineform *
-exclude doc/Makefile
+include doc/api/*.*
 include doc/*.html

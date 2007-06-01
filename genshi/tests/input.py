@@ -71,7 +71,7 @@ bar</elem>'''
         <div>\xf6</div>
         """.encode('iso-8859-1')
         events = list(XMLParser(StringIO(text)))
-        kind, data, pos = events[1]
+        kind, data, pos = events[2]
         self.assertEqual(Stream.TEXT, kind)
         self.assertEqual(u'\xf6', data)
 
@@ -181,6 +181,33 @@ bar</elem>'''
         self.assertEqual(u'php', target)
         self.assertEqual(u'echo "Foobar"', data)
 
+    def test_xmldecl(self):
+        text = '<?xml version="1.0" ?><root />'
+        events = list(XMLParser(StringIO(text)))
+        kind, (version, encoding, standalone), pos = events[0]
+        self.assertEqual(Stream.XML_DECL, kind)
+        self.assertEqual(u'1.0', version)
+        self.assertEqual(None, encoding)
+        self.assertEqual(-1, standalone)
+
+    def test_xmldecl_encoding(self):
+        text = '<?xml version="1.0" encoding="utf-8" ?><root />'
+        events = list(XMLParser(StringIO(text)))
+        kind, (version, encoding, standalone), pos = events[0]
+        self.assertEqual(Stream.XML_DECL, kind)
+        self.assertEqual(u'1.0', version)
+        self.assertEqual(u'utf-8', encoding)
+        self.assertEqual(-1, standalone)
+
+    def test_xmldecl_standalone(self):
+        text = '<?xml version="1.0" standalone="yes" ?><root />'
+        events = list(XMLParser(StringIO(text)))
+        kind, (version, encoding, standalone), pos = events[0]
+        self.assertEqual(Stream.XML_DECL, kind)
+        self.assertEqual(u'1.0', version)
+        self.assertEqual(None, encoding)
+        self.assertEqual(1, standalone)
+
     def test_processing_instruction_trailing_qmark(self):
         text = '<?php echo "Foobar" ??>'
         events = list(HTMLParser(StringIO(text)))
@@ -221,6 +248,14 @@ bar</elem>'''
         self.assertEqual((Stream.TEXT, 'Foobar'), events[2][:2])
         self.assertEqual((Stream.END, 'b'), events[3][:2])
         self.assertEqual((Stream.END, 'span'), events[4][:2])
+
+    def test_hex_charref(self):
+        text = '<span>&#x27;</span>'
+        events = list(HTMLParser(StringIO(text)))
+        self.assertEqual(3, len(events))
+        self.assertEqual((Stream.START, ('span', ())), events[0][:2])
+        self.assertEqual((Stream.TEXT, "'"), events[1][:2])
+        self.assertEqual((Stream.END, 'span'), events[2][:2])
 
 
 def suite():

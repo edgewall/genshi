@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2006-2007 Edgewall Software
+# Copyright (C) 2007 Edgewall Software
 # All rights reserved.
 #
 # This software is licensed as described in the file COPYING, which
@@ -11,13 +11,9 @@
 # individuals. For the exact contribution history, see the revision
 # history and logs, available at http://genshi.edgewall.org/log/.
 
-"""Implementation of the template engine."""
+"""Implementation of a number of stream filters."""
 
-from genshi.template.base import Context, Template, TemplateError, \
-                                 TemplateRuntimeError, TemplateSyntaxError, \
-                                 BadDirectiveError
-from genshi.template.loader import TemplateLoader, TemplateNotFound
-from genshi.template.markup import MarkupTemplate
-from genshi.template.text import TextTemplate
+from genshi.filters.html import HTMLFormFiller, HTMLSanitizer
+from genshi.filters.i18n import Translator
 
 __docformat__ = 'restructuredtext en'

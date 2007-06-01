@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2006 Edgewall Software
+# Copyright (C) 2006-2007 Edgewall Software
 # Copyright (C) 2006 Matthew Good
 # All rights reserved.
 #
@@ -20,17 +20,17 @@ from pkg_resources import resource_filename
 
 from genshi.input import ET, HTML, XML
 from genshi.output import DocType
-from genshi.template.core import Context, Template
-from genshi.template.eval import Undefined
+from genshi.template.base import Template
 from genshi.template.loader import TemplateLoader
 from genshi.template.markup import MarkupTemplate
 from genshi.template.text import TextTemplate
 
-__all__ = ['ConfigurationError', 'MarkupTemplateEnginePlugin',
-           'TextTemplateEnginePlugin']
+__all__ = ['ConfigurationError', 'AbstractTemplateEnginePlugin',
+           'MarkupTemplateEnginePlugin', 'TextTemplateEnginePlugin']
+__docformat__ = 'restructuredtext en'
 
 
-class ConfigurationError(Exception):
+class ConfigurationError(ValueError):
     """Exception raised when invalid plugin options are encountered."""
 
 
@@ -50,17 +50,24 @@ class AbstractTemplateEnginePlugin(object):
         auto_reload = options.get('genshi.auto_reload', '1')
         if isinstance(auto_reload, basestring):
             auto_reload = auto_reload.lower() in ('1', 'on', 'yes', 'true')
-        search_path = options.get('genshi.search_path', '').split(':')
+        search_path = filter(None, options.get('genshi.search_path', '').split(':'))
+        self.use_package_naming = not search_path
         try:
             max_cache_size = int(options.get('genshi.max_cache_size', 25))
         except ValueError:
             raise ConfigurationError('Invalid value for max_cache_size: "%s"' %
                                      options.get('genshi.max_cache_size'))
 
+        lookup_errors = options.get('genshi.lookup_errors', 'lenient')
+        if lookup_errors not in ('lenient', 'strict'):
+            raise ConfigurationError('Unknown lookup errors mode "%s"' %
+                                     lookup_errors)
+
         self.loader = TemplateLoader(filter(None, search_path),
                                      auto_reload=auto_reload,
                                      max_cache_size=max_cache_size,
-                                     default_class=self.template_class)
+                                     default_class=self.template_class,
+                                     variable_lookup=lookup_errors)
 
     def load_template(self, templatename, template_string=None):
         """Find a template specified in python 'dot' notation, or load one from
@@ -69,11 +76,12 @@ class AbstractTemplateEnginePlugin(object):
         if template_string is not None:
             return self.template_class(template_string)
 
-        divider = templatename.rfind('.')
-        if divider >= 0:
-            package = templatename[:divider]
-            basename = templatename[divider + 1:] + self.extension
-            templatename = resource_filename(package, basename)
+        if self.use_package_naming:
+            divider = templatename.rfind('.')
+            if divider >= 0:
+                package = templatename[:divider]
+                basename = templatename[divider + 1:] + self.extension
+                templatename = resource_filename(package, basename)
 
         return self.loader.load(templatename)
 
@@ -94,17 +102,7 @@ class AbstractTemplateEnginePlugin(object):
         """Render the output to an event stream."""
         if not isinstance(template, Template):
             template = self.load_template(template)
-        ctxt = Context(**info)
-
-        # Some functions for Kid compatibility
-        def defined(name):
-            return ctxt.get(name, Undefined) is not Undefined
-        ctxt['defined'] = defined
-        def value_of(name, default=None):
-            return ctxt.get(name, default)
-        ctxt['value_of'] = value_of
-
-        return template.generate(ctxt)
+        return template.generate(**info)
 
 
 class MarkupTemplateEnginePlugin(AbstractTemplateEnginePlugin):
@@ -113,22 +111,21 @@ class MarkupTemplateEnginePlugin(AbstractTemplateEnginePlugin):
     template_class = MarkupTemplate
     extension = '.html'
 
-    doctypes = {'html': DocType.HTML, 'html-strict': DocType.HTML_STRICT,
-                'html-transitional': DocType.HTML_TRANSITIONAL,
-                'xhtml': DocType.XHTML, 'xhtml-strict': DocType.XHTML_STRICT,
-                'xhtml-transitional': DocType.XHTML_TRANSITIONAL}
-
     def __init__(self, extra_vars_func=None, options=None):
         AbstractTemplateEnginePlugin.__init__(self, extra_vars_func, options)
 
-        doctype = self.options.get('genshi.default_doctype')
-        if doctype and doctype not in self.doctypes:
-            raise ConfigurationError('Unknown doctype "%s"' % doctype)
-        self.default_doctype = self.doctypes.get(doctype)
+        default_doctype = self.options.get('genshi.default_doctype')
+        if default_doctype:
+            doctype = DocType.get(default_doctype)
+            if doctype is None:
+                raise ConfigurationError('Unknown doctype %r' % default_doctype)
+            self.default_doctype = doctype
+        else:
+            self.default_doctype = None
 
-        format = self.options.get('genshi.default_format', 'html')
+        format = self.options.get('genshi.default_format', 'html').lower()
         if format not in ('html', 'xhtml', 'xml', 'text'):
-            raise ConfigurationError('Unknown output format "%s"' % format)
+            raise ConfigurationError('Unknown output format %r' % format)
         self.default_format = format
 
     def _get_render_options(self, format=None):

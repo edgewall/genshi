@@ -70,7 +70,7 @@ class Stream(object):
         
         :param events: a sequence or iterable providing the events
         """
-        self.events = events
+        self.events = events #: The underlying iterable producing the events
 
     def __iter__(self):
         return iter(self.events)
@@ -114,6 +114,10 @@ class Stream(object):
         
         Commonly, serializers should be used at the end of the "pipeline";
         using them somewhere in the middle may produce unexpected results.
+        
+        :param function: the callable object that should be applied as a filter
+        :return: the filtered stream
+        :rtype: `Stream`
         """
         return Stream(_ensure(function(self)))
 
@@ -131,23 +135,28 @@ class Stream(object):
         is equivalent to::
         
             stream | filter1 | filter2
+        
+        :param filters: one or more callable objects that should be applied as
+                        filters
+        :return: the filtered stream
+        :rtype: `Stream`
         """
         return reduce(operator.or_, (self,) + filters)
 
     def render(self, method='xml', encoding='utf-8', **kwargs):
         """Return a string representation of the stream.
         
+        Any additional keyword arguments are passed to the serializer, and thus
+        depend on the `method` parameter value.
+        
         :param method: determines how the stream is serialized; can be either
                        "xml", "xhtml", "html", "text", or a custom serializer
                        class
         :param encoding: how the output string should be encoded; if set to
                          `None`, this method returns a `unicode` object
-
-        Any additional keyword arguments are passed to the serializer, and thus
-        depend on the `method` parameter value.
-        
-        :see: XMLSerializer.__init__, XHTMLSerializer.__init__,
-              HTMLSerializer.__init__, TextSerializer.__init__
+        :return: a `str` or `unicode` object
+        :rtype: `basestring`
+        :see: XMLSerializer, XHTMLSerializer, HTMLSerializer, TextSerializer
         """
         from genshi.output import encode
         generator = self.serialize(method=method, **kwargs)
@@ -161,6 +170,7 @@ class Stream(object):
         :param namespaces: mapping of namespace prefixes used in the path
         :param variables: mapping of variable names to values
         :return: the selected substream
+        :rtype: `Stream`
         :raises PathSyntaxError: if the given path expression is invalid or not
                                  supported
         """
@@ -175,15 +185,16 @@ class Stream(object):
         the serialized output incrementally, as opposed to returning a single
         string.
         
-        :param method: determines how the stream is serialized; can be either
-                       "xml", "xhtml", "html", "text", or a custom serializer
-                       class
-        
         Any additional keyword arguments are passed to the serializer, and thus
         depend on the `method` parameter value.
         
-        :see: XMLSerializer.__init__, XHTMLSerializer.__init__,
-              HTMLSerializer.__init__, TextSerializer.__init__
+        :param method: determines how the stream is serialized; can be either
+                       "xml", "xhtml", "html", "text", or a custom serializer
+                       class
+        :return: an iterator over the serialization results (`Markup` or
+                 `unicode` objects, depending on the serialization method)
+        :rtype: ``iterator``
+        :see: XMLSerializer, XHTMLSerializer, HTMLSerializer, TextSerializer
         """
         from genshi.output import get_serializer
         return get_serializer(method, **kwargs)(_ensure(self))
@@ -275,6 +286,9 @@ class Attrs(tuple):
     def __contains__(self, name):
         """Return whether the list includes an attribute with the specified
         name.
+        
+        :return: `True` if the list includes the attribute
+        :rtype: `bool`
         """
         for attr, _ in self:
             if attr == name:
@@ -286,6 +300,9 @@ class Attrs(tuple):
     def __or__(self, attrs):
         """Return a new instance that contains the attributes in `attrs` in
         addition to any already existing attributes.
+        
+        :return: a new instance with the merged attributes
+        :rtype: `Attrs`
         """
         repl = dict([(an, av) for an, av in attrs if an in self])
         return Attrs([(sn, repl.get(sn, sv)) for sn, sv in self] +
@@ -299,6 +316,10 @@ class Attrs(tuple):
     def __sub__(self, names):
         """Return a new instance with all attributes with a name in `names` are
         removed.
+        
+        :param names: the names of the attributes to remove
+        :return: a new instance with the attribute removed
+        :rtype: `Attrs`
         """
         if isinstance(names, basestring):
             names = (names,)
@@ -312,6 +333,7 @@ class Attrs(tuple):
         :param default: the value to return when the attribute does not exist
         :return: the attribute value, or the `default` value if that attribute
                  does not exist
+        :rtype: `object`
         """
         for attr, value in self:
             if attr == name:
@@ -326,6 +348,9 @@ class Attrs(tuple):
         
         >>> Attrs([('href', '#'), ('title', 'Foo')]).totuple()
         ('TEXT', u'#Foo', (None, -1, -1))
+        
+        :return: a `TEXT` event
+        :rtype: `tuple`
         """
         return TEXT, u''.join([x[1] for x in self]), (None, -1, -1)
 
@@ -373,6 +398,7 @@ class Markup(unicode):
         :param escape_quotes: whether double quote characters in the elements
                               should be escaped
         :return: the joined `Markup` object
+        :rtype: `Markup`
         :see: `escape`
         """
         return Markup(unicode(self).join([escape(item, quotes=escape_quotes)
@@ -396,7 +422,7 @@ class Markup(unicode):
         :param quotes: if ``True``, double quote characters are escaped in
                        addition to the other special characters
         :return: the escaped `Markup` string
-        :see: `genshi.core.escape`
+        :rtype: `Markup`
         """
         if not text:
             return cls()
@@ -416,6 +442,8 @@ class Markup(unicode):
         >>> Markup('1 &lt; 2').unescape()
         u'1 < 2'
         
+        :return: the unescaped string
+        :rtype: `unicode`
         :see: `genshi.core.unescape`
         """
         if not self:
@@ -433,6 +461,8 @@ class Markup(unicode):
         the core XML entities (``&amp;``, ``&apos;``, ``&gt;``, ``&lt;`` and
         ``&quot;``) are not stripped.
         
+        :return: a `Markup` instance with entities removed
+        :rtype: `Markup`
         :see: `genshi.util.stripentities`
         """
         return Markup(stripentities(self, keepxmlentities=keepxmlentities))
@@ -440,6 +470,8 @@ class Markup(unicode):
     def striptags(self):
         """Return a copy of the text with all XML/HTML tags removed.
         
+        :return: a `Markup` instance with all tags removed
+        :rtype: `Markup`
         :see: `genshi.util.striptags`
         """
         return Markup(striptags(self))
@@ -453,13 +485,15 @@ def unescape(text):
     >>> unescape(Markup('1 &lt; 2'))
     u'1 < 2'
     
-    If the provided `text` object is not a `Markup` instance, the text is
-    returned as-is.
+    If the provided `text` object is not a `Markup` instance, it is returned
+    unchanged.
     
     >>> unescape('1 &lt; 2')
     '1 &lt; 2'
     
     :param text: the text to unescape
+    :return: the unescsaped string
+    :rtype: `unicode`
     """
     if not isinstance(text, Markup):
         return text

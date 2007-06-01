@@ -77,6 +77,9 @@ class Path(object):
         """Create the path object from a string.
         
         :param text: the path expression
+        :param filename: the name of the file in which the path expression was
+                         found (used in error messages)
+        :param lineno: the line on which the expression was found
         """
         self.source = text
         self.paths = PathParser(text, filename, lineno).parse()
@@ -110,6 +113,7 @@ class Path(object):
         :param namespaces: (optional) a mapping of namespace prefixes to URIs
         :param variables: (optional) a mapping of variable names to values
         :return: the substream matching the path, or an empty stream
+        :rtype: `Stream`
         """
         if namespaces is None:
             namespaces = {}
@@ -159,6 +163,13 @@ class Path(object):
         ...     if test(event, {}, {}):
         ...         print event[0], repr(event[1])
         START (QName(u'child'), Attrs([(QName(u'id'), u'2')]))
+        
+        :param ignore_context: if `True`, the path is interpreted like a pattern
+                               in XSLT, meaning for example that it will match
+                               at any depth
+        :return: a function that can be used to test individual events in a
+                 stream against the path
+        :rtype: ``function``
         """
         paths = [(p, len(p), [0], [], [0] * len(p)) for p in [
             (ignore_context and [_DOTSLASHSLASH] or []) + p for p in self.paths

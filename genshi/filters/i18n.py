@@ -8,7 +8,7 @@ from gettext import gettext
 from opcode import opmap
 import re
 
-from genshi.core import Attrs, Namespace, QName, START, END, TEXT
+from genshi.core import Attrs, Namespace, QName, START, END, TEXT, _ensure
 from genshi.template.base import Template, EXPR, SUB
 from genshi.template.markup import EXEC
 
@@ -71,7 +71,8 @@ class Translator(object):
         QName('script'), QName('http://www.w3.org/1999/xhtml}script'),
         QName('style'), QName('http://www.w3.org/1999/xhtml}style')
     ])
-    INCLUDE_ATTRS = frozenset(['title', 'alt'])
+    INCLUDE_ATTRS = frozenset(['abbr', 'alt', 'label', 'prompt', 'standby',
+                               'summary', 'title'])
 
     def __init__(self, translate=gettext, ignore_tags=IGNORE_TAGS,
                  include_attrs=INCLUDE_ATTRS):
@@ -128,26 +129,27 @@ class Translator(object):
                     yield kind, data, pos
                     continue
 
-                new_attrs = list(attrs)
+                new_attrs = []
                 changed = False
                 for name, value in attrs:
-                    if name in include_attrs:
-                        if isinstance(value, basestring):
+                    newval = value
+                    if isinstance(value, basestring):
+                        if name in include_attrs:
                             newval = self.translate(value)
-                        else:
-                            newval = list(self(value, ctxt,
-                                search_text=name in include_attrs)
-                            )
-                        if newval != value:
-                            value = new_val
-                            changed = True
+                    else:
+                        newval = list(self(_ensure(value), ctxt,
+                            search_text=name in include_attrs)
+                        )
+                    if newval != value:
+                        value = newval
+                        changed = True
                     new_attrs.append((name, value))
                 if changed:
                     attrs = new_attrs
 
                 yield kind, (tag, attrs), pos
 
-            elif kind is TEXT:
+            elif search_text and kind is TEXT:
                 text = data.strip()
                 if text:
                     data = data.replace(text, translate(text))
@@ -164,7 +166,8 @@ class Translator(object):
     GETTEXT_FUNCTIONS = ('_', 'gettext', 'ngettext', 'dgettext', 'dngettext',
                          'ugettext', 'ungettext')
 
-    def extract(self, stream, gettext_functions=GETTEXT_FUNCTIONS):
+    def extract(self, stream, gettext_functions=GETTEXT_FUNCTIONS,
+                search_text=True):
         """Extract localizable strings from the given template stream.
         
         For every string found, this function yields a ``(lineno, function,
@@ -173,7 +176,8 @@ class Translator(object):
         * ``lineno`` is the number of the line on which the string was found,
         * ``function`` is the name of the ``gettext`` function used (if the
           string was extracted from embedded Python code), and
-        *  ``message`` is the string itself (a ``unicode`` object).
+        *  ``message`` is the string itself (a ``unicode`` object, or a tuple
+           of ``unicode`` objects for functions with multiple string arguments).
         
         >>> from genshi.template import MarkupTemplate
         >>> 
@@ -184,6 +188,7 @@ class Translator(object):
         ...   <body>
         ...     <h1>Example</h1>
         ...     <p>${_("Hello, %(name)s") % dict(name=username)}</p>
+        ...     <p>${ngettext("You have %d item", "You have %d items", num)}</p>
         ...   </body>
         ... </html>''', filename='example.html')
         >>> 
@@ -192,12 +197,19 @@ class Translator(object):
         3, None, u'Example'
         6, None, u'Example'
         7, '_', u'Hello, %(name)s'
-
+        8, 'ngettext', (u'You have %d item', u'You have %d items')
+        
         :param stream: the event stream to extract strings from; can be a
                        regular stream or a template stream
         :param gettext_functions: a sequence of function names that should be
                                   treated as gettext-style localization
                                   functions
+        :param search_text: whether the content of text nodes should be
+                            extracted (used internally)
+        
+        :note: Changed in 0.4.1: For a function with multiple string arguments
+               (such as ``ngettext``), a single item with a tuple of strings is
+               yielded, instead an item for each string argument.
         """
         tagname = None
         skip = 0
@@ -221,16 +233,18 @@ class Translator(object):
                     continue
 
                 for name, value in attrs:
-                    if name in self.include_attrs:
-                        if isinstance(value, basestring):
+                    if isinstance(value, basestring):
+                        if name in self.include_attrs:
                             text = value.strip()
                             if text:
                                 yield pos[1], None, text
-                        else:
-                            for lineno, funcname, text in harvest(value):
-                                yield lineno, funcname, text
+                    else:
+                        for lineno, funcname, text in self.extract(
+                                _ensure(value), gettext_functions,
+                                search_text=name in self.include_attrs):
+                            yield lineno, funcname, text
 
-            elif kind is TEXT:
+            elif search_text and kind is TEXT:
                 text = data.strip()
                 if text and filter(None, [ch.isalpha() for ch in text]):
                     yield pos[1], None, text
@@ -259,10 +273,14 @@ class Translator(object):
                             if not isinstance(arg, basestring):
                                 break
                             strings.append(unicode(arg))
-                    for string in strings:
-                        yield pos[1], funcname, string
+                    if len(strings) == 1:
+                        strings = strings[0]
+                    else:
+                        strings = tuple(strings)
+                    yield pos[1], funcname, strings
 
             elif kind is SUB:
                 subkind, substream = data
-                for lineno, funcname, text in self.harvest(substream):
+                for lineno, funcname, text in self.extract(substream,
+                                                           gettext_functions):
                     yield lineno, funcname, text

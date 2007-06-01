@@ -384,6 +384,25 @@ class DefDirectiveTestCase(unittest.TestCase):
                       Hi, you!
         """, str(tmpl.generate()))
 
+    def test_function_with_star_args(self):
+        """
+        Verify that a named template function using "star arguments" works as
+        expected.
+        """
+        tmpl = MarkupTemplate("""<doc xmlns:py="http://genshi.edgewall.org/">
+          <div py:def="f(*args, **kwargs)">
+            ${repr(args)}
+            ${repr(kwargs)}
+          </div>
+          ${f(1, 2, a=3, b=4)}
+        </doc>""")
+        self.assertEqual("""<doc>
+          <div>
+            [1, 2]
+            {'a': 3, 'b': 4}
+          </div>
+        </doc>""", str(tmpl.generate()))
+
 
 class ForDirectiveTestCase(unittest.TestCase):
     """Tests for the `py:for` template directive."""

@@ -139,7 +139,10 @@ class Fragment(object):
                 yield TEXT, child, (None, -1, -1)
 
     def generate(self):
-        """Return a markup event stream for the fragment."""
+        """Return a markup event stream for the fragment.
+        
+        :rtype: `Stream`
+        """
         return Stream(self._generate())
 
 
@@ -243,6 +246,8 @@ class Element(Fragment):
         """Append any positional arguments as child nodes, and keyword arguments
         as attributes.
         
+        :return: the element itself so that calls can be chained
+        :rtype: `Element`
         :see: `Fragment.append`
         """
         self.attrib |= Attrs(_kwargs_to_attrs(kwargs))
@@ -259,7 +264,10 @@ class Element(Fragment):
         yield END, self.tag, (None, -1, -1)
 
     def generate(self):
-        """Return a markup event stream for the fragment."""
+        """Return a markup event stream for the fragment.
+        
+        :rtype: `Stream`
+        """
         return Stream(self._generate())
 
 
@@ -313,6 +321,7 @@ class ElementFactory(object):
         nodes.
 
         :return: the created `Fragment`
+        :rtype: `Fragment`
         """
         return Fragment()(*args)
 
@@ -322,6 +331,7 @@ class ElementFactory(object):
         :param namespace: the namespace URI or `Namespace` object
         :return: an `ElementFactory` that produces elements bound to the given
                  namespace
+        :rtype: `ElementFactory`
         """
         return ElementFactory(namespace)
 
@@ -330,9 +340,13 @@ class ElementFactory(object):
         
         :param name: the tag name of the element to create
         :return: an `Element` with the specified name
+        :rtype: `Element`
         """
         return Element(self.namespace and self.namespace[name] or name)
 
 
 tag = ElementFactory()
-"""Global `ElementFactory` bound to the default namespace."""
+"""Global `ElementFactory` bound to the default namespace.
+
+:type: `ElementFactory`
+"""

@@ -88,8 +88,8 @@ class HTMLFormFiller(object):
                         type = attrs.get('type')
                         if type in ('checkbox', 'radio'):
                             name = attrs.get('name')
-                            if name:
-                                value = self.data.get(name)
+                            if name and name in self.data:
+                                value = self.data[name]
                                 declval = attrs.get('value')
                                 checked = False
                                 if isinstance(value, (list, tuple)):
@@ -109,29 +109,30 @@ class HTMLFormFiller(object):
                                     attrs -= 'checked'
                         elif type in (None, 'hidden', 'text'):
                             name = attrs.get('name')
-                            if name:
-                                value = self.data.get(name)
+                            if name and name in self.data:
+                                value = self.data[name]
                                 if isinstance(value, (list, tuple)):
                                     value = value[0]
                                 if value is not None:
                                     attrs |= [(QName('value'), unicode(value))]
                     elif tagname == 'select':
                         name = attrs.get('name')
-                        select_value = self.data.get(name)
-                        in_select = True
+                        if name in self.data:
+                            select_value = self.data[name]
+                            in_select = True
                     elif tagname == 'textarea':
                         name = attrs.get('name')
-                        textarea_value = self.data.get(name)
-                        if isinstance(textarea_value, (list, tuple)):
-                            textarea_value = textarea_value[0]
-                        in_textarea = True
+                        if name in self.data:
+                            textarea_value = self.data.get(name)
+                            if isinstance(textarea_value, (list, tuple)):
+                                textarea_value = textarea_value[0]
+                            in_textarea = True
                     elif in_select and tagname == 'option':
                         option_start = kind, data, pos
                         option_value = attrs.get('value')
                         in_option = True
                         continue
                 yield kind, (tag, attrs), pos
-
 
             elif in_form and kind is TEXT:
                 if in_select and in_option:

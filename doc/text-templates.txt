@@ -184,6 +184,40 @@ The above would be rendered to::
     Hello, world!
 
 
+.. _includes:
+.. _`#include`:
+
+``#include``
+------------
+
+To reuse common parts of template text across template files, you can include
+other files using the ``#include`` directive::
+
+  #include "base.txt"
+
+Any content included this way is inserted into the generated output. The
+included template sees the context data as it exists at the point of the
+include. `Macros`_ in the included template are also available to the including
+template after the point it was included.
+
+Include paths are relative to the filename of the template currently being
+processed. So if the example above was in the file "``myapp/mail.txt``"
+(relative to the template search path), the include directive would look for
+the included file at "``myapp/base.txt``". You can also use Unix-style
+relative paths, for example "``../base.txt``" to look in the parent directory.
+
+Just like other directives, the argument to the ``#include`` directive accepts
+any Python expression, so the path to the included template can be determined
+dynamically::
+
+  #include '%s.txt' % filename
+
+Note that a ``TemplateNotFound`` exception is raised if an included file can't
+be found.
+
+.. note:: The include directive for text templates was added in Genshi 0.5.
+
+
 Variable Binding
 ================
 

@@ -1,6 +1,23 @@
+Version 0.5
+http://svn.edgewall.org/repos/genshi/tags/0.5.0/
+(?, from branches/stable/0.5.x)
+
+ * Added #include directive for text templates (ticket #115).
+
+
+Version 0.4.2
+http://svn.edgewall.org/repos/genshi/tags/0.4.2/
+(?, from branches/stable/0.4.x)
+
+ * The `doctype` parameter of the markup serializers now also accepts the "name"
+   of the doctype as string, in addition to the `(name, pubid, sysid)` tuple.
+ * The I18n filter was not replacing the original attributes with the
+   translation, but instead adding a second attribute with the same name.
+
+
 Version 0.4.1
 http://svn.edgewall.org/repos/genshi/tags/0.4.1/
-(?, from branches/stable/0.4.x)
+(May 21 2007, from branches/stable/0.4.x)
 
  * Fix incorrect reference to translation function in the I18N filter.
  * The `ET()` function now correctly handles attributes with a namespace.
@@ -13,6 +30,20 @@ http://svn.edgewall.org/repos/genshi/tags/0.4.1/
    tuple for a given string.
  * Added frameset variants to the `DocType` constants for HTML 4.01 and XHTML
    1.0.
+ * Improved I18n extraction for pluralizable messages: for any translation
+   function with multiple string arguments (such as ``ngettext``), a single
+   item with a tuple of strings is yielded, instead an item for each string
+   argument.
+ * The `HTMLFormFiller` stream filter no longer alters form elements for which
+   the data element contains no corresponding item.
+ * Code in `<?python ?>` processing instructions no longer gets the special
+   treatment as Python code in template expressions, i.e. item and attribute
+   access are no longer interchangeable (which was broken in a number of ways
+   anyway, see ticket #113). This change does not affect expressions.
+ * Numerous fixes for the execution of Python code in `<?python ?>` processing
+   instructions (tickets #113 and #114).
+ * The `py:def` (and `#def`) directive now supports "star args" (i.e. `*args`
+   and `**kwargs`) in the function declaration (ticket #116).
 
 
 Version 0.4

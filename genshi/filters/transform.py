@@ -11,8 +11,16 @@
 # individuals. For the exact contribution history, see the revision
 # history and logs, available at http://genshi.edgewall.org/log/.
 
-"""A filter for generalised functional-style transformations of markup streams,
-inspired by JQuery.
+"""A filter for functional-style transformations of markup streams.
+
+The `Transformer` filter provides a variety of transformations that can be
+applied to parts of streams that match given XPath expressions. These
+transformations can be chained to achieve results that would be comparitively
+tedious to achieve by writing stream filters by hand. The approach of chaining
+node selection and transformation has been inspired by the `jQuery`_ Javascript
+library.
+
+ .. _`jQuery`: http://jquery.com/
 
 For example, the following transformation removes the ``<title>`` element from
 the ``<head>`` of the input document:
@@ -68,7 +76,7 @@ class Transformer(object):
     This is achieved by selecting the events to be transformed using XPath,
     then applying the transformations to the events matched by the path
     expression. Each marked event is in the form (mark, (kind, data, pos)),
-    where mark can be any of `ENTER`, `EXIT`, `INSIDE`, `OUTSIDE` or None.
+    where mark can be any of `ENTER`, `INSIDE`, `EXIT`, `OUTSIDE`, or `None`.
 
     The first three marks match `START` and `END` events, and any events
     contained `INSIDE` any selected XML/HTML element. A non-element match
@@ -78,28 +86,30 @@ class Transformer(object):
     >>> html = HTML('<html><head><title>Some Title</title></head>'
     ...             '<body>Some <em>body</em> text.</body></html>')
 
-    Transformations act on selected stream events matching an XPath. Here's an
-    example of removing some markup (title) selected by an expression:
+    Transformations act on selected stream events matching an XPath expression.
+    Here's an example of removing some markup (the title, in this case)
+    selected by an expression:
 
-    >>> print html | Transformer('.//title').remove()
+    >>> print html | Transformer('head/title').remove()
     <html><head/><body>Some <em>body</em> text.</body></html>
 
-    Inserted content can be passed in the form of a string, or a Genshi event
-    Stream, which includes ``genshi.builder.tag``:
+    Inserted content can be passed in the form of a string, or a markup event
+    stream, which includes streams generated programmatically via the
+    `builder` module:
 
     >>> from genshi.builder import tag
-    >>> print html | Transformer('.//body').prepend(tag.h1('Document Title'))
+    >>> print html | Transformer('body').prepend(tag.h1('Document Title'))
     <html><head><title>Some Title</title></head><body><h1>Document
     Title</h1>Some <em>body</em> text.</body></html>
 
     Each XPath expression determines the set of tags that will be acted upon by
-    subsequent transformations. In this example we select the <title> text, copy
-    it into a buffer, then select the ``<body>`` element and paste the copied
-    text into the body as ``<h1>`` enclosed text:
+    subsequent transformations. In this example we select the ``<title>`` text,
+    copy it into a buffer, then select the ``<body>`` element and paste the
+    copied text into the body as ``<h1>`` enclosed text:
 
     >>> buffer = []
-    >>> print html | Transformer('.//title/text()').copy(buffer) \\
-    ...     .select('.//body').prepend(tag.h1(buffer))
+    >>> print html | Transformer('head/title/text()').copy(buffer) \\
+    ...     .select('body').prepend(tag.h1(buffer))
     <html><head><title>Some Title</title></head><body><h1>Some Title</h1>Some
     <em>body</em> text.</body></html>
 
@@ -107,7 +117,7 @@ class Transformer(object):
     taken when using buffers, to ensure that buffers are cleared between
     transforms:
 
-    >>> emphasis = Transformer('.//em').setattr('class', 'emphasis')
+    >>> emphasis = Transformer('body//em').setattr('class', 'emphasis')
     >>> print html | emphasis
     <html><head><title>Some Title</title></head><body>Some <em
     class="emphasis">body</em> text.</body></html>
@@ -118,7 +128,7 @@ class Transformer(object):
     def __init__(self, path=None):
         """Construct a new transformation filter.
 
-        :param path: the XPath expression
+        :param path: an XPath expression (as string) or a `Path` instance
         """
         self.transforms = []
         if path:
@@ -127,7 +137,7 @@ class Transformer(object):
     def __call__(self, stream):
         """Apply the transform filter to the marked stream.
 
-        :param stream: The marked event stream to filter
+        :param stream: the marked event stream to filter
         :return: the transformed stream
         :rtype: `Stream`
         """
@@ -178,6 +188,7 @@ class Transformer(object):
         (None, ('END', QName(u'body'), (None, 1, 29)))
         <body>Some <em>test</em> text</body>
 
+        :param path: an XPath expression (as string) or a `Path` instance
         :return: the stream augmented by transformation marks
         :rtype: `Transformer`
         """
@@ -350,7 +361,7 @@ class Transformer(object):
 
     #{ Attribute manipulation
 
-    def setattr(self, key, value):
+    def setattr(self, name, value):
         """Add or replace an attribute to selected elements.
 
         Example:
@@ -361,12 +372,14 @@ class Transformer(object):
         <html><head><title>Some Title</title></head><body>Some <em
         class="emphasis">body</em> text.</body></html>
 
+        :param name: the name of the attribute
+        :param value: the value that should be set for the attribute
         :rtype: `Transformer`
         """
-        return self | SetAttr(key, value)
+        return self | SetAttr(name, value)
 
-    def delattr(self, key):
-        """Delete an attribute from selected elements.
+    def delattr(self, name):
+        """Remove an attribute from selected elements.
 
         Example:
 
@@ -377,9 +390,10 @@ class Transformer(object):
         <html><head><title>Some Title</title></head><body>Some <em>body</em>
         text.</body></html>
 
+        :param name: the name of the attribute to remove
         :rtype: `Transformer`
         """
-        return self | DelAttr(key)
+        return self | DelAttr(name)
 
     #{ Buffer operations
 
@@ -474,17 +488,20 @@ class Transformer(object):
 
 class Select(object):
     """Select and mark events that match an XPath expression."""
+
     def __init__(self, path):
         """Create selection.
 
-        :param path: XPath expression.
+        :param path: an XPath expression (as string) or a `Path` object
         """
-        self.path = Path(path)
+        if not isinstance(path, Path):
+            path = Path(path)
+        self.path = path
 
     def __call__(self, stream):
         """Apply the transform filter to the marked stream.
 
-        :param stream: The marked event stream to filter
+        :param stream: the marked event stream to filter
         """
         namespaces = {}
         variables = {}
@@ -521,7 +538,7 @@ def invert(stream):
     Specificaly, all input marks are converted to null marks, and all input
     null marks are converted to OUTSIDE marks.
 
-    :param stream: The marked event stream to filter
+    :param stream: the marked event stream to filter
     """
     for mark, event in stream:
         if mark:
@@ -532,7 +549,7 @@ def invert(stream):
 def empty(stream):
     """Empty selected elements of all content.
 
-    :param stream: The marked event stream to filter
+    :param stream: the marked event stream to filter
     """
     for mark, event in stream:
         if mark not in (INSIDE, OUTSIDE):
@@ -541,7 +558,7 @@ def empty(stream):
 def remove(stream):
     """Remove selection from the stream.
 
-    :param stream: The marked event stream to filter
+    :param stream: the marked event stream to filter
     """
     for mark, event in stream:
         if mark is None:
@@ -550,7 +567,7 @@ def remove(stream):
 def unwrap(stream):
     """Remove outtermost enclosing elements from selection.
 
-    :param stream: The marked event stream to filter
+    :param stream: the marked event stream to filter
     """
     for mark, event in stream:
         if mark not in (ENTER, EXIT):
@@ -599,7 +616,7 @@ class Trace(object):
     def __call__(self, stream):
         """Apply the transform filter to the marked stream.
 
-        :param stream: The marked event stream to filter
+        :param stream: the marked event stream to filter
         """
         for event in stream:
             print>>self.fileobj, self.prefix + str(event)
@@ -614,9 +631,9 @@ class Apply(object):
     def __init__(self, function, kind):
         """Create the transform.
 
-        :param function: The function to apply. The function must take one
-                         argument, the `data` element of each selected event.
-        :param kind: The Genshi event `kind` to apply ``function`` to.
+        :param function: the function to apply; the function must take one
+                         argument, the `data` element of each selected event
+        :param kind: the stream event ``kind`` to apply the `function` to
         """
         self.function = function
         self.kind = kind
@@ -665,6 +682,7 @@ class Injector(object):
 
 class Replace(Injector):
     """Replace selection with content."""
+
     def __call__(self, stream):
         """Apply the transform filter to the marked stream.
 
@@ -685,6 +703,7 @@ class Replace(Injector):
 
 class Before(Injector):
     """Insert content before selection."""
+
     def __call__(self, stream):
         """Apply the transform filter to the marked stream.
 
@@ -699,6 +718,7 @@ class Before(Injector):
 
 class After(Injector):
     """Insert content after selection."""
+
     def __call__(self, stream):
         """Apply the transform filter to the marked stream.
 
@@ -719,6 +739,7 @@ class After(Injector):
 
 class Prepend(Injector):
     """Prepend content to the inside of selected elements."""
+
     def __call__(self, stream):
         """Apply the transform filter to the marked stream.
 
@@ -733,6 +754,7 @@ class Prepend(Injector):
 
 class Append(Injector):
     """Append content after the content of selected elements."""
+
     def __call__(self, stream):
         """Apply the transform filter to the marked stream.
 
@@ -753,13 +775,14 @@ class Append(Injector):
 
 class SetAttr(object):
     """Set an attribute on selected elements."""
-    def __init__(self, key, value):
+
+    def __init__(self, name, value):
         """Construct transform.
 
-        :param key: Attribute to set.
-        :param value: Value of attribute.
+        :param name: name of the attribute that should be set
+        :param value: the value to set
         """
-        self.key = key
+        self.name = name
         self.value = value
 
     def __call__(self, stream):
@@ -769,17 +792,19 @@ class SetAttr(object):
         """
         for mark, (kind, data, pos) in stream:
             if mark is ENTER:
-                data = (data[0], data[1] | [(QName(self.key), self.value)])
+                data = (data[0], data[1] | [(QName(self.name), self.value)])
             yield mark, (kind, data, pos)
 
 
 class DelAttr(object):
     """Delete an attribute of selected elements."""
-    def __init__(self, key):
+
+    def __init__(self, name):
         """Construct transform.
 
-        :param key: The attribute to remove."""
-        self.key = key
+        :param name: the name of the attribute to remove
+        """
+        self.name = name
 
     def __call__(self, stream):
         """Apply the transform filter to the marked stream.
@@ -788,12 +813,13 @@ class DelAttr(object):
         """
         for mark, (kind, data, pos) in stream:
             if mark is ENTER:
-                data = (data[0], data[1] - self.key)
+                data = (data[0], data[1] - self.name)
             yield mark, (kind, data, pos)
 
 
 class Copy(object):
     """Copy selected events into a buffer for later insertion."""
+
     def __init__(self, buffer):
         """Create a Copy transform filter.
 
@@ -805,7 +831,7 @@ class Copy(object):
     def __call__(self, stream):
         """Apply the transform filter to the marked stream.
 
-        :param stream: The marked event stream to filter
+        :param stream: the marked event stream to filter
         """
         stream = list(stream)
         for mark, event in stream:
@@ -816,11 +842,13 @@ class Copy(object):
 
 class Cut(Copy):
     """Cut selected events into a buffer for later insertion and remove the
-    selection."""
+    selection.
+    """
+
     def __call__(self, stream):
         """Apply the transform filter to the marked stream.
 
-        :param stream: The marked event stream to filter
+        :param stream: the marked event stream to filter
         """
         stream = Copy.__call__(self, stream)
         return remove(stream)

@@ -12,6 +12,9 @@ from genshi.core import Attrs, Namespace, QName, START, END, TEXT, _ensure
 from genshi.template.base import Template, EXPR, SUB
 from genshi.template.markup import EXEC
 
+__all__ = ['Translator']
+__docformat__ = 'restructuredtext en'
+
 _LOAD_NAME = chr(opmap['LOAD_NAME'])
 _LOAD_CONST = chr(opmap['LOAD_CONST'])
 _CALL_FUNCTION = chr(opmap['CALL_FUNCTION'])

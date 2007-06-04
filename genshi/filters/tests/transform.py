@@ -14,12 +14,14 @@
 import doctest
 import unittest
 
+import genshi.filters.transform
+
+
 def suite():
-    from genshi.filters.tests import html, i18n, transform
-    suite = unittest.TestSuite()
-    suite.addTest(html.suite())
-    suite.addTest(i18n.suite())
-    suite.addTest(transform.suite())
+    from genshi.input import HTML
+    suite = doctest.DocTestSuite(genshi.filters.transform,
+                                 optionflags=doctest.NORMALIZE_WHITESPACE,
+                                 extraglobs={'HTML': HTML})
     return suite
 
 if __name__ == '__main__':

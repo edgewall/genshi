@@ -13,6 +13,17 @@
 
 """A filter for generalised functional-style transformations of markup streams,
 inspired by JQuery.
+
+For example, the following transformation removes the ``<title>`` element from
+the ``<head>`` of the input document:
+
+>>> html = HTML('<html><head><title>Some Title</title></head>'
+...             '<body>Some <em>body</em> text.</body></html>')
+>>> print html | Transformer('head/title').remove()
+<html><head/><body>Some <em>body</em> text.</body></html>
+
+The ``Transformer`` support a large number of useful transformations out of the
+box, but custom transformations can be added easily.
 """
 
 import sys
@@ -21,7 +32,7 @@ from genshi.path import Path
 from genshi.builder import Element
 from genshi.core import Stream, Attrs, QName, TEXT, START, END
 
-__all__ = ['Transformer', 'Injector', 'BEGIN', 'FINISH', 'INSIDE', 'OUTSIDE']
+__all__ = ['Transformer', 'Injector', 'ENTER', 'EXIT', 'INSIDE', 'OUTSIDE']
 
 
 class TransformMark(str):
@@ -33,10 +44,21 @@ class TransformMark(str):
         return cls._instances.setdefault(val, str.__new__(cls, val))
 
 
-BEGIN = TransformMark('BEGIN')
+ENTER = TransformMark('ENTER')
+"""Stream augmentation mark indicating that a selected range of events is being
+entered."""
+
 INSIDE = TransformMark('INSIDE')
+"""Stream augmentation mark indicating that processing is currently inside a
+selected range of events."""
+
 OUTSIDE = TransformMark('OUTSIDE')
-FINISH = TransformMark('FINISH')
+"""Stream augmentation mark indicating that processing is currently outside any
+selected range of events."""
+
+EXIT = TransformMark('EXIT')
+"""Stream augmentation mark indicating that a selected range of events is being
+exited."""
 
 
 class Transformer(object):
@@ -46,39 +68,38 @@ class Transformer(object):
     This is achieved by selecting the events to be transformed using XPath,
     then applying the transformations to the events matched by the path
     expression. Each marked event is in the form (mark, (kind, data, pos)),
-    where mark can be any of `BEGIN`, `FINISH`, `INSIDE`, `OUTSIDE` or None.
+    where mark can be any of `ENTER`, `EXIT`, `INSIDE`, `OUTSIDE` or None.
 
     The first three marks match `START` and `END` events, and any events
     contained `INSIDE` any selected XML/HTML element. A non-element match
     outside a `START`/`END` container (e.g. ``text()``) will yield an `OUTSIDE`
     mark.
 
-    >>> stream = HTML('<html><head><title>Some Title</title></head>'
-    ...               '<body>Some <em>body</em> text.</body></html>')
-    >>> short_stream = HTML('<body>Some <em>test</em> text</body>')
+    >>> html = HTML('<html><head><title>Some Title</title></head>'
+    ...             '<body>Some <em>body</em> text.</body></html>')
 
     Transformations act on selected stream events matching an XPath. Here's an
     example of removing some markup (title) selected by an expression:
 
-    >>> print stream | Transformer('.//title').remove()
+    >>> print html | Transformer('.//title').remove()
     <html><head/><body>Some <em>body</em> text.</body></html>
 
     Inserted content can be passed in the form of a string, or a Genshi event
     Stream, which includes ``genshi.builder.tag``:
 
     >>> from genshi.builder import tag
-    >>> print stream | Transformer('.//body').prepend(tag.h1('Document Title'))
+    >>> print html | Transformer('.//body').prepend(tag.h1('Document Title'))
     <html><head><title>Some Title</title></head><body><h1>Document
     Title</h1>Some <em>body</em> text.</body></html>
 
     Each XPath expression determines the set of tags that will be acted upon by
     subsequent transformations. In this example we select the <title> text, copy
-    it into a buffer, then select the <body> element and paste the copied text
-    into the body as <h1> enclosed text:
+    it into a buffer, then select the ``<body>`` element and paste the copied
+    text into the body as ``<h1>`` enclosed text:
 
     >>> buffer = []
-    >>> print stream | Transformer('.//title/text()').copy(buffer) \
-            .select('.//body').prepend(tag.h1(buffer))
+    >>> print html | Transformer('.//title/text()').copy(buffer) \\
+    ...     .select('.//body').prepend(tag.h1(buffer))
     <html><head><title>Some Title</title></head><body><h1>Some Title</h1>Some
     <em>body</em> text.</body></html>
 
@@ -87,11 +108,9 @@ class Transformer(object):
     transforms:
 
     >>> emphasis = Transformer('.//em').setattr('class', 'emphasis')
-    >>> print stream | emphasis
+    >>> print html | emphasis
     <html><head><title>Some Title</title></head><body>Some <em
     class="emphasis">body</em> text.</body></html>
-    >>> print HTML('<html><body><em>Emphasis</em></body></html>') | emphasis
-    <html><body><em class="emphasis">Emphasis</em></body></html>
     """
 
     __slots__ = ('transforms',)
@@ -152,9 +171,9 @@ class Transformer(object):
         >>> print html | Transformer().select('.//em').trace()
         (None, ('START', (QName(u'body'), Attrs()), (None, 1, 0)))
         (None, ('TEXT', u'Some ', (None, 1, 6)))
-        ('BEGIN', ('START', (QName(u'em'), Attrs()), (None, 1, 11)))
+        ('ENTER', ('START', (QName(u'em'), Attrs()), (None, 1, 11)))
         ('INSIDE', ('TEXT', u'test', (None, 1, 15)))
-        ('FINISH', ('END', QName(u'em'), (None, 1, 19)))
+        ('EXIT', ('END', QName(u'em'), (None, 1, 19)))
         (None, ('TEXT', u' text', (None, 1, 24)))
         (None, ('END', QName(u'body'), (None, 1, 29)))
         <body>Some <em>test</em> text</body>
@@ -300,7 +319,7 @@ class Transformer(object):
         return self | After(content)
 
     def prepend(self, content):
-        """Insert content after the BEGIN event of the selection.
+        """Insert content after the ENTER event of the selection.
 
         Inserting some new text at the start of the <body>:
 
@@ -428,9 +447,9 @@ class Transformer(object):
         >>> print html | Transformer('em').trace()
         (None, ('START', (QName(u'body'), Attrs()), (None, 1, 0)))
         (None, ('TEXT', u'Some ', (None, 1, 6)))
-        ('BEGIN', ('START', (QName(u'em'), Attrs()), (None, 1, 11)))
+        ('ENTER', ('START', (QName(u'em'), Attrs()), (None, 1, 11)))
         ('INSIDE', ('TEXT', u'test', (None, 1, 15)))
-        ('FINISH', ('END', QName(u'em'), (None, 1, 19)))
+        ('EXIT', ('END', QName(u'em'), (None, 1, 19)))
         (None, ('TEXT', u' text', (None, 1, 24)))
         (None, ('END', QName(u'body'), (None, 1, 29)))
         <body>Some <em>test</em> text</body>
@@ -475,7 +494,7 @@ class Select(object):
             result = test(event, {}, {})
             if result is True:
                 if event[0] is START:
-                    yield BEGIN, event
+                    yield ENTER, event
                     depth = 1
                     while depth > 0:
                         mark, subevent = stream.next()
@@ -484,14 +503,14 @@ class Select(object):
                         elif subevent[0] is END:
                             depth -= 1
                         if depth == 0:
-                            yield FINISH, subevent
+                            yield EXIT, subevent
                         else:
                             yield INSIDE, subevent
                         test(subevent, {}, {}, updateonly=True)
                 else:
                     yield OUTSIDE, event
             elif result:
-                yield BEGIN, result
+                yield ENTER, result
             else:
                 yield None, event
 
@@ -534,7 +553,7 @@ def unwrap(stream):
     :param stream: The marked event stream to filter
     """
     for mark, event in stream:
-        if mark not in (BEGIN, FINISH):
+        if mark not in (ENTER, EXIT):
             yield mark, event
 
 
@@ -672,7 +691,7 @@ class Before(Injector):
         :param stream: The marked event stream to filter
         """
         for mark, event in stream:
-            if mark in (BEGIN, OUTSIDE):
+            if mark in (ENTER, OUTSIDE):
                 for subevent in self._inject():
                     yield subevent
             yield mark, event
@@ -707,7 +726,7 @@ class Prepend(Injector):
         """
         for mark, event in stream:
             yield mark, event
-            if mark in (BEGIN, OUTSIDE):
+            if mark in (ENTER, OUTSIDE):
                 for subevent in self._inject():
                     yield subevent
 
@@ -721,10 +740,10 @@ class Append(Injector):
         """
         for mark, event in stream:
             yield mark, event
-            if mark is BEGIN:
+            if mark is ENTER:
                 while True:
                     mark, event = stream.next()
-                    if mark is FINISH:
+                    if mark is EXIT:
                         break
                     yield mark, event
                 for subevent in self._inject():
@@ -749,7 +768,7 @@ class SetAttr(object):
         :param stream: The marked event stream to filter
         """
         for mark, (kind, data, pos) in stream:
-            if mark is BEGIN:
+            if mark is ENTER:
                 data = (data[0], data[1] | [(QName(self.key), self.value)])
             yield mark, (kind, data, pos)
 
@@ -768,7 +787,7 @@ class DelAttr(object):
         :param stream: The marked event stream to filter
         """
         for mark, (kind, data, pos) in stream:
-            if mark is BEGIN:
+            if mark is ENTER:
                 data = (data[0], data[1] - self.key)
             yield mark, (kind, data, pos)
 

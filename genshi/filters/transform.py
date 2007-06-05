@@ -25,10 +25,21 @@ library.
 For example, the following transformation removes the ``<title>`` element from
 the ``<head>`` of the input document:
 
->>> html = HTML('<html><head><title>Some Title</title></head>'
-...             '<body>Some <em>body</em> text.</body></html>')
->>> print html | Transformer('head/title').remove()
-<html><head/><body>Some <em>body</em> text.</body></html>
+>>> from genshi.builder import tag
+>>> html = HTML('''<html>
+...  <head><title>Some Title</title></head>
+...  <body>
+...    Some <em>body</em> text.
+...  </body>
+... </html>''')
+>>> print html | Transformer('body/em').apply(unicode.upper, TEXT) \\
+...                                    .unwrap().wrap(tag.u)
+<html>
+  <head><title>Some Title</title></head>
+  <body>
+    Some <u>BODY</u> text.
+  </body>
+</html>
 
 The ``Transformer`` support a large number of useful transformations out of the
 box, but custom transformations can be added easily.
@@ -36,11 +47,12 @@ box, but custom transformations can be added easily.
 
 import sys
 
-from genshi.path import Path
 from genshi.builder import Element
-from genshi.core import Stream, Attrs, QName, TEXT, START, END
+from genshi.core import Stream, Attrs, QName, TEXT, START, END, _ensure
+from genshi.path import Path
 
-__all__ = ['Transformer', 'Injector', 'ENTER', 'EXIT', 'INSIDE', 'OUTSIDE']
+__all__ = ['Transformer', 'InjectorTransformation', 'ENTER', 'EXIT', 'INSIDE',
+           'OUTSIDE']
 
 
 class TransformMark(str):
@@ -123,7 +135,7 @@ class Transformer(object):
     class="emphasis">body</em> text.</body></html>
     """
 
-    __slots__ = ('transforms',)
+    __slots__ = ['transforms']
 
     def __init__(self, path=None):
         """Construct a new transformation filter.
@@ -132,7 +144,7 @@ class Transformer(object):
         """
         self.transforms = []
         if path:
-            self.transforms.append(Select(path))
+            self.transforms.append(SelectTransformation(path))
 
     def __call__(self, stream):
         """Apply the transform filter to the marked stream.
@@ -164,13 +176,13 @@ class Transformer(object):
         >>> print short_stream | (Transformer('.//em/text()') | upper)
         <body>Some <em>TEST</em> text</body>
         """
-        transform = Transformer()
-        transform.transforms = self.transforms[:]
+        transformer = Transformer()
+        transformer.transforms = self.transforms[:]
         if isinstance(function, Transformer):
-            transform.transforms.extend(function.transforms)
+            transformer.transforms.extend(function.transforms)
         else:
-            transform.transforms.append(function)
-        return transform
+            transformer.transforms.append(function)
+        return transformer
 
     #{ Selection operations
 
@@ -192,7 +204,7 @@ class Transformer(object):
         :return: the stream augmented by transformation marks
         :rtype: `Transformer`
         """
-        return self | Select(path)
+        return self | SelectTransformation(path)
 
     def invert(self):
         """Invert selection so that marked events become unmarked, and vice
@@ -214,7 +226,7 @@ class Transformer(object):
 
         :rtype: `Transformer`
         """
-        return self | invert
+        return self | InvertTransformation()
 
     #{ Deletion operations
 
@@ -231,7 +243,7 @@ class Transformer(object):
 
         :rtype: `Transformer`
         """
-        return self | empty
+        return self | EmptyTransformation()
 
     def remove(self):
         """Remove selection from the stream.
@@ -246,12 +258,12 @@ class Transformer(object):
 
         :rtype: `Transformer`
         """
-        return self | remove
+        return self | RemoveTransformation()
 
     #{ Direct element operations
 
     def unwrap(self):
-        """Remove outtermost enclosing elements from selection.
+        """Remove outermost enclosing elements from selection.
 
         Example:
 
@@ -263,8 +275,11 @@ class Transformer(object):
 
         :rtype: `Transformer`
         """
-        return self | unwrap
-
+        def _unwrap(stream):
+            for mark, event in stream:
+                if mark not in (ENTER, EXIT):
+                    yield mark, event
+        return self | UnwrapTransformation()
 
     def wrap(self, element):
         """Wrap selection in an element.
@@ -275,10 +290,10 @@ class Transformer(object):
         <html><head><title>Some Title</title></head><body>Some
         <strong><em>body</em></strong> text.</body></html>
 
-        :param element: Either a string tag name or a Genshi builder element.
+        :param element: either a tag name (as string) or an `Element` object
         :rtype: `Transformer`
         """
-        return self | Wrap(element)
+        return self | WrapTransformation(element)
 
     #{ Content insertion operations
 
@@ -294,7 +309,7 @@ class Transformer(object):
         :param content: Either an iterable of events or a string to insert.
         :rtype: `Transformer`
         """
-        return self | Replace(content)
+        return self | ReplaceTransformation(content)
 
     def before(self, content):
         """Insert content before selection.
@@ -311,7 +326,7 @@ class Transformer(object):
         :param content: Either an iterable of events or a string to insert.
         :rtype: `Transformer`
         """
-        return self | Before(content)
+        return self | BeforeTransformation(content)
 
     def after(self, content):
         """Insert content after selection.
@@ -327,7 +342,7 @@ class Transformer(object):
         :param content: Either an iterable of events or a string to insert.
         :rtype: `Transformer`
         """
-        return self | After(content)
+        return self | AfterTransformation(content)
 
     def prepend(self, content):
         """Insert content after the ENTER event of the selection.
@@ -343,7 +358,7 @@ class Transformer(object):
         :param content: Either an iterable of events or a string to insert.
         :rtype: `Transformer`
         """
-        return self | Prepend(content)
+        return self | PrependTransformation(content)
 
     def append(self, content):
         """Insert content before the END event of the selection.
@@ -357,7 +372,7 @@ class Transformer(object):
         :param content: Either an iterable of events or a string to insert.
         :rtype: `Transformer`
         """
-        return self | Append(content)
+        return self | AppendTransformation(content)
 
     #{ Attribute manipulation
 
@@ -376,7 +391,7 @@ class Transformer(object):
         :param value: the value that should be set for the attribute
         :rtype: `Transformer`
         """
-        return self | SetAttr(name, value)
+        return self | SetattrTransformation(name, value)
 
     def delattr(self, name):
         """Remove an attribute from selected elements.
@@ -393,7 +408,7 @@ class Transformer(object):
         :param name: the name of the attribute to remove
         :rtype: `Transformer`
         """
-        return self | DelAttr(name)
+        return self | DelattrTransformation(name)
 
     #{ Buffer operations
 
@@ -414,7 +429,7 @@ class Transformer(object):
         :rtype: `Transformer`
         :note: this transformation will buffer the entire input stream
         """
-        return self | Copy(buffer)
+        return self | CopyTransformation(buffer)
 
     def cut(self, buffer):
         """Copy selection into buffer and remove the selection from the stream.
@@ -433,7 +448,7 @@ class Transformer(object):
         :rtype: `Transformer`
         :note: this transformation will buffer the entire input stream
         """
-        return self | Cut(buffer)
+        return self | CutTransformation(buffer)
 
     #{ Miscellaneous operations
 
@@ -441,10 +456,9 @@ class Transformer(object):
         """Apply a function to the ``data`` element of events of ``kind`` in
         the selection.
 
-        >>> import string
         >>> html = HTML('<html><head><title>Some Title</title></head>'
         ...               '<body>Some <em>body</em> text.</body></html>')
-        >>> print html | Transformer('head/title').apply(string.upper, TEXT)
+        >>> print html | Transformer('head/title').apply(unicode.upper, TEXT)
         <html><head><title>SOME TITLE</title></head><body>Some <em>body</em>
         text.</body></html>
 
@@ -452,7 +466,7 @@ class Transformer(object):
         :param kind: the kind of event the function should be applied to
         :rtype: `Transformer`
         """
-        return self | Apply(function, kind)
+        return self | ApplyTransformation(function, kind)
 
     def trace(self, prefix='', fileobj=None):
         """Print events as they pass through the transform.
@@ -473,7 +487,7 @@ class Transformer(object):
                         the standard output stream
         :rtype: `Transformer`
         """
-        return self | Trace(prefix, fileobj=fileobj)
+        return self | TraceTransformation(prefix, fileobj=fileobj)
 
     # Internal methods
 
@@ -486,7 +500,7 @@ class Transformer(object):
             yield event
 
 
-class Select(object):
+class SelectTransformation(object):
     """Select and mark events that match an XPath expression."""
 
     def __init__(self, path):
@@ -532,49 +546,65 @@ class Select(object):
                 yield None, event
 
 
-def invert(stream):
+class InvertTransformation(object):
     """Invert selection so that marked events become unmarked, and vice versa.
 
     Specificaly, all input marks are converted to null marks, and all input
     null marks are converted to OUTSIDE marks.
-
-    :param stream: the marked event stream to filter
     """
-    for mark, event in stream:
-        if mark:
-            yield None, event
-        else:
-            yield OUTSIDE, event
 
-def empty(stream):
-    """Empty selected elements of all content.
+    def __call__(self, stream):
+        """Apply the transform filter to the marked stream.
 
-    :param stream: the marked event stream to filter
-    """
-    for mark, event in stream:
-        if mark not in (INSIDE, OUTSIDE):
-            yield mark, event
-
-def remove(stream):
-    """Remove selection from the stream.
-
-    :param stream: the marked event stream to filter
-    """
-    for mark, event in stream:
-        if mark is None:
-            yield mark, event
-
-def unwrap(stream):
-    """Remove outtermost enclosing elements from selection.
-
-    :param stream: the marked event stream to filter
-    """
-    for mark, event in stream:
-        if mark not in (ENTER, EXIT):
-            yield mark, event
+        :param stream: the marked event stream to filter
+        """
+        for mark, event in stream:
+            if mark:
+                yield None, event
+            else:
+                yield OUTSIDE, event
 
 
-class Wrap(object):
+class EmptyTransformation(object):
+    """Empty selected elements of all content."""
+
+    def __call__(self, stream):
+        """Apply the transform filter to the marked stream.
+
+        :param stream: the marked event stream to filter
+        """
+        for mark, event in stream:
+            if mark not in (INSIDE, OUTSIDE):
+                yield mark, event
+
+
+class RemoveTransformation(object):
+    """Remove selection from the stream."""
+
+    def __call__(self, stream):
+        """Apply the transform filter to the marked stream.
+
+        :param stream: the marked event stream to filter
+        """
+        for mark, event in stream:
+            if mark is None:
+                yield mark, event
+
+
+class UnwrapTransformation(object):
+    """Remove outtermost enclosing elements from selection."""
+
+    def __call__(self, stream):
+        """Apply the transform filter to the marked stream.
+
+        :param stream: the marked event stream to filter
+        """
+        for mark, event in stream:
+            if mark not in (ENTER, EXIT):
+                yield mark, event
+
+
+class WrapTransformation(object):
     """Wrap selection in an element."""
 
     def __init__(self, element):
@@ -601,7 +631,7 @@ class Wrap(object):
                 yield mark, event
 
 
-class Trace(object):
+class TraceTransformation(object):
     """Print events as they pass through the transform."""
 
     def __init__(self, prefix='', fileobj=None):
@@ -623,7 +653,7 @@ class Trace(object):
             yield event
 
 
-class Apply(object):
+class ApplyTransformation(object):
     """Apply a function to the `data` element of events of ``kind`` in the
     selection.
     """
@@ -644,17 +674,17 @@ class Apply(object):
         :param stream: The marked event stream to filter
         """
         for mark, (kind, data, pos) in stream:
-            if mark and kind == self.kind:
+            if mark and self.kind in (None, kind):
                 yield mark, (kind, self.function(data), pos)
             else:
                 yield mark, (kind, data, pos)
 
 
-class Injector(object):
+class InjectorTransformation(object):
     """Abstract base class for transformations that inject content into a
     stream.
 
-    >>> class Top(Injector):
+    >>> class Top(InjectorTransformation):
     ...     def __call__(self, stream):
     ...         for event in self._inject():
     ...             yield event
@@ -673,14 +703,11 @@ class Injector(object):
         self.content = content
 
     def _inject(self):
-        if isinstance(self.content, basestring):
-            yield None, (TEXT, self.content, (None, -1, -1))
-        else:
-            for event in self.content:
-                yield None, event
+        for event in _ensure(self.content):
+            yield None, event
 
 
-class Replace(Injector):
+class ReplaceTransformation(InjectorTransformation):
     """Replace selection with content."""
 
     def __call__(self, stream):
@@ -701,7 +728,7 @@ class Replace(Injector):
                 yield mark, event
 
 
-class Before(Injector):
+class BeforeTransformation(InjectorTransformation):
     """Insert content before selection."""
 
     def __call__(self, stream):
@@ -716,7 +743,7 @@ class Before(Injector):
             yield mark, event
 
 
-class After(Injector):
+class AfterTransformation(InjectorTransformation):
     """Insert content after selection."""
 
     def __call__(self, stream):
@@ -737,7 +764,7 @@ class After(Injector):
                 yield mark, event
 
 
-class Prepend(Injector):
+class PrependTransformation(InjectorTransformation):
     """Prepend content to the inside of selected elements."""
 
     def __call__(self, stream):
@@ -752,7 +779,7 @@ class Prepend(Injector):
                     yield subevent
 
 
-class Append(Injector):
+class AppendTransformation(InjectorTransformation):
     """Append content after the content of selected elements."""
 
     def __call__(self, stream):
@@ -773,7 +800,7 @@ class Append(Injector):
                 yield mark, event
 
 
-class SetAttr(object):
+class SetattrTransformation(object):
     """Set an attribute on selected elements."""
 
     def __init__(self, name, value):
@@ -796,7 +823,7 @@ class SetAttr(object):
             yield mark, (kind, data, pos)
 
 
-class DelAttr(object):
+class DelattrTransformation(object):
     """Delete an attribute of selected elements."""
 
     def __init__(self, name):
@@ -817,7 +844,7 @@ class DelAttr(object):
             yield mark, (kind, data, pos)
 
 
-class Copy(object):
+class CopyTransformation(object):
     """Copy selected events into a buffer for later insertion."""
 
     def __init__(self, buffer):
@@ -840,7 +867,7 @@ class Copy(object):
         return stream
 
 
-class Cut(Copy):
+class CutTransformation(CopyTransformation, RemoveTransformation):
     """Cut selected events into a buffer for later insertion and remove the
     selection.
     """
@@ -850,12 +877,5 @@ class Cut(Copy):
 
         :param stream: the marked event stream to filter
         """
-        stream = Copy.__call__(self, stream)
-        return remove(stream)
-
-
-if __name__ == '__main__':
-    import doctest
-    from genshi.input import HTML
-    doctest.testmod(optionflags=doctest.NORMALIZE_WHITESPACE,
-                    extraglobs={'HTML': HTML})
+        stream = CopyTransformation.__call__(self, stream)
+        return RemoveTransformation.__call__(self, stream)

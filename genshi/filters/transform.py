@@ -51,8 +51,8 @@ from genshi.builder import Element
 from genshi.core import Stream, Attrs, QName, TEXT, START, END, _ensure
 from genshi.path import Path
 
-__all__ = ['Transformer', 'InjectorTransformation', 'ENTER', 'EXIT', 'INSIDE',
-           'OUTSIDE']
+__all__ = ['Transformer', 'StreamBuffer', 'InjectorTransformation', 'ENTER',
+           'EXIT', 'INSIDE', 'OUTSIDE']
 
 
 class TransformMark(str):
@@ -119,7 +119,7 @@ class Transformer(object):
     copy it into a buffer, then select the ``<body>`` element and paste the
     copied text into the body as ``<h1>`` enclosed text:
 
-    >>> buffer = []
+    >>> buffer = StreamBuffer()
     >>> print html | Transformer('head/title/text()').copy(buffer) \\
     ...     .select('body').prepend(tag.h1(buffer))
     <html><head><title>Some Title</title></head><body><h1>Some Title</h1>Some
@@ -416,7 +416,7 @@ class Transformer(object):
         """Copy selection into buffer.
 
         >>> from genshi.builder import tag
-        >>> buffer = []
+        >>> buffer = StreamBuffer()
         >>> html = HTML('<html><head><title>Some Title</title></head>'
         ...             '<body>Some <em>body</em> text.</body></html>')
         >>> print html | Transformer('.//title/text()').copy(buffer) \\
@@ -435,7 +435,7 @@ class Transformer(object):
         """Copy selection into buffer and remove the selection from the stream.
 
         >>> from genshi.builder import tag
-        >>> buffer = []
+        >>> buffer = StreamBuffer()
         >>> html = HTML('<html><head><title>Some Title</title></head>'
         ...             '<body>Some <em>body</em> text.</body></html>')
         >>> print html | Transformer('.//em/text()').cut(buffer) \\
@@ -844,22 +844,42 @@ class DelattrTransformation(object):
             yield mark, (kind, data, pos)
 
 
+class StreamBuffer(Stream):
+    """Stream event buffer used for cut and copy transformations."""
+
+    def __init__(self):
+        """Create the buffer."""
+        Stream.__init__(self, [])
+
+    def append(self, event):
+        """Add an event to the buffer.
+        
+        :param event: the markup event to add
+        """
+        self.events.append(event)
+
+    def reset(self):
+        """Reset the buffer so that it's empty."""
+        del self.events[:]
+
+
 class CopyTransformation(object):
     """Copy selected events into a buffer for later insertion."""
 
     def __init__(self, buffer):
-        """Create a Copy transform filter.
+        """Create the copy transformation.
 
-        :param buffer: A list-like object (must support .append() and be
-                       iterable) where the buffered events will be stored.
+        :param buffer: the `StreamBuffer` in which the selection should be
+                       stored
         """
         self.buffer = buffer
 
     def __call__(self, stream):
-        """Apply the transform filter to the marked stream.
+        """Apply the transformation to the marked stream.
 
         :param stream: the marked event stream to filter
         """
+        self.buffer.reset()
         stream = list(stream)
         for mark, event in stream:
             if mark:

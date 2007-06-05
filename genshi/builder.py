@@ -121,7 +121,7 @@ class Fragment(object):
             self.children.extend(node.children)
         elif node is not None:
             try:
-                self.append(Stream(iter(node)))
+                map(self.append, iter(node))
             except TypeError:
                 self.children.append(node)
 

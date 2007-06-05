@@ -424,8 +424,8 @@ class Transformer(object):
         <html><head><title>Some Title</title></head><body><h1>Some Title</h1>Some
         <em>body</em> text.</body></html>
 
-        :param buffer: a list-like object (must support .append() and be
-                       iterable) where the selection will be buffered.
+        :param buffer: the `StreamBuffer` in which the selection should be
+                       stored
         :rtype: `Transformer`
         :note: this transformation will buffer the entire input stream
         """
@@ -443,8 +443,8 @@ class Transformer(object):
         <html><head><title>Some Title</title></head><body>Some
         <em/><h1>body</h1> text.</body></html>
 
-        :param buffer: a list-like object (must support .append() and be
-                       iterable) where the selection will be buffered.
+        :param buffer: the `StreamBuffer` in which the selection should be
+                       stored
         :rtype: `Transformer`
         :note: this transformation will buffer the entire input stream
         """

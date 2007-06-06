@@ -15,17 +15,24 @@
 
 >>> from genshi.input import XML
 >>> doc = XML('''<doc>
-...  <items count="2">
+...  <items count="4">
 ...       <item status="new">
 ...         <summary>Foo</summary>
 ...       </item>
 ...       <item status="closed">
 ...         <summary>Bar</summary>
 ...       </item>
+...       <item status="closed" resolution="invalid">
+...         <summary>Baz</summary>
+...       </item>
+...       <item status="closed" resolution="fixed">
+...         <summary>Waz</summary>
+...       </item>
 ...   </items>
 ... </doc>''')
->>> print doc.select('items/item[@status="closed"]/summary/text()')
-Bar
+>>> print doc.select('items/item[@status="closed" and '
+...     '(@resolution="invalid" or not(@resolution))]/summary/text()')
+BarBaz
 
 Because the XPath engine operates on markup streams (as opposed to tree
 structures), it only implements a subset of the full XPath 1.0 language.
@@ -476,11 +483,24 @@ class PathParser(object):
         return expr
 
     def _relational_expr(self):
-        expr = self._primary_expr()
+        expr = self._sub_expr()
         while self.cur_token in ('>', '>=', '<', '>='):
             op = _operator_map[self.cur_token]
             self.next_token()
-            expr = op(expr, self._primary_expr())
+            expr = op(expr, self._sub_expr())
+        return expr
+
+    def _sub_expr(self):
+        token = self.cur_token
+        if token != '(':
+            return self._primary_expr()
+        self.next_token()
+        expr = self._or_expr()
+        if self.cur_token != ')':
+            raise PathSyntaxError('Expected ")" to close sub-expression, '
+                                  'but found "%s"' % self.cur_token,
+                                  self.filename, self.lineno)
+        self.next_token()
         return expr
 
     def _primary_expr(self):

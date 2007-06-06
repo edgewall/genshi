@@ -121,7 +121,7 @@ class Transformer(object):
 
     >>> buffer = StreamBuffer()
     >>> print html | Transformer('head/title/text()').copy(buffer) \\
-    ...     .select('body').prepend(tag.h1(buffer))
+    ...     .end().select('body').prepend(tag.h1(buffer))
     <html><head><title>Some Title</title></head><body><h1>Some Title</h1>Some
     <em>body</em> text.</body></html>
 
@@ -187,7 +187,8 @@ class Transformer(object):
     #{ Selection operations
 
     def select(self, path):
-        """Mark events matching the given XPath expression.
+        """Mark events matching the given XPath expression, within the current
+        selection.
 
         >>> html = HTML('<body>Some <em>test</em> text</body>')
         >>> print html | Transformer().select('.//em').trace()
@@ -227,6 +228,27 @@ class Transformer(object):
         :rtype: `Transformer`
         """
         return self | InvertTransformation()
+
+    def end(self):
+        """End current selection, allowing all events to be selected.
+
+        Example:
+
+        >>> html = HTML('<body>Some <em>test</em> text</body>')
+        >>> print html | Transformer('//em').end().trace()
+        ('OUTSIDE', ('START', (QName(u'body'), Attrs()), (None, 1, 0)))
+        ('OUTSIDE', ('TEXT', u'Some ', (None, 1, 6)))
+        ('OUTSIDE', ('START', (QName(u'em'), Attrs()), (None, 1, 11)))
+        ('OUTSIDE', ('TEXT', u'test', (None, 1, 15)))
+        ('OUTSIDE', ('END', QName(u'em'), (None, 1, 19)))
+        ('OUTSIDE', ('TEXT', u' text', (None, 1, 24)))
+        ('OUTSIDE', ('END', QName(u'body'), (None, 1, 29)))
+        <body>Some <em>test</em> text</body>
+
+        :return: the stream augmented by transformation marks
+        :rtype: `Transformer`
+        """
+        return self | EndTransformation()
 
     #{ Deletion operations
 
@@ -420,7 +442,7 @@ class Transformer(object):
         >>> html = HTML('<html><head><title>Some Title</title></head>'
         ...             '<body>Some <em>body</em> text.</body></html>')
         >>> print html | Transformer('title/text()').copy(buffer) \\
-        ...     .select('body').prepend(tag.h1(buffer))
+        ...     .end().select('body').prepend(tag.h1(buffer))
         <html><head><title>Some Title</title></head><body><h1>Some
         Title</h1>Some <em>body</em> text.</body></html>
 
@@ -430,7 +452,7 @@ class Transformer(object):
         >>> print buffer
         Some Title
         >>> print html | Transformer('head/title/text()').copy(buffer) \\
-        ...     .select('body/em').copy(buffer).select('body') \\
+        ...     .end().select('body/em').copy(buffer).end().select('body') \\
         ...     .prepend(tag.h1(buffer))
         <html><head><title>Some
         Title</title></head><body><h1><em>body</em></h1>Some <em>body</em>
@@ -454,7 +476,7 @@ class Transformer(object):
         >>> html = HTML('<html><head><title>Some Title</title></head>'
         ...             '<body>Some <em>body</em> text.</body></html>')
         >>> print html | Transformer('.//em/text()').cut(buffer) \\
-        ...     .select('.//em').after(tag.h1(buffer))
+        ...     .end().select('.//em').after(tag.h1(buffer))
         <html><head><title>Some Title</title></head><body>Some
         <em/><h1>body</h1> text.</body></html>
 
@@ -508,7 +530,7 @@ class Transformer(object):
 
     def _mark(self, stream):
         for event in stream:
-            yield None, event
+            yield OUTSIDE, event
 
     def _unmark(self, stream):
         for mark, event in stream:
@@ -537,6 +559,9 @@ class SelectTransformation(object):
         test = self.path.test()
         stream = iter(stream)
         for mark, event in stream:
+            if mark is None:
+                yield mark, event
+                continue
             result = test(event, {}, {})
             if result is True:
                 if event[0] is START:
@@ -578,6 +603,18 @@ class InvertTransformation(object):
                 yield None, event
             else:
                 yield OUTSIDE, event
+
+
+class EndTransformation(object):
+    """End the current selection."""
+
+    def __call__(self, stream):
+        """Apply the transform filter to the marked stream.
+
+        :param stream: the marked event stream to filter
+        """
+        for mark, event in stream:
+            yield OUTSIDE, event
 
 
 class EmptyTransformation(object):

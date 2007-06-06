@@ -24,7 +24,7 @@ A stream can be attained in a number of ways. It can be:
 For example, the functions ``XML()`` and ``HTML()`` can be used to convert
 literal XML or HTML text to a markup stream:
 
-.. code-block:: python
+.. code-block:: pycon
 
   >>> from genshi import XML
   >>> stream = XML('<p class="intro">Some text and '
@@ -43,7 +43,7 @@ of the form ``(kind, data, pos)``, where:
 * ``pos`` is a ``(filename, lineno, column)`` tuple that describes where the
   event “comes from”.
 
-.. code-block:: python
+.. code-block:: pycon
 
   >>> for kind, data, pos in stream:
   ...     print kind, `data`, pos
@@ -139,7 +139,7 @@ web). The latter returns a single string, by default UTF-8 encoded.
 
 Here's the output from ``serialize()``:
 
-.. code-block:: python
+.. code-block:: pycon
 
   >>> for output in stream.serialize():
   ...     print `output`
@@ -155,7 +155,7 @@ Here's the output from ``serialize()``:
 
 And here's the output from ``render()``:
 
-.. code-block:: python
+.. code-block:: pycon
 
   >>> print stream.render()
   <p class="intro">Some text and <a href="http://example.org/">a link</a>.<br/></p>
@@ -164,7 +164,7 @@ Both methods can be passed a ``method`` parameter that determines how exactly
 the events are serialzed to text. This parameter can be either “xml” (the
 default), “xhtml”, “html”, “text”, or a custom serializer class:
 
-.. code-block:: python
+.. code-block:: pycon
 
   >>> print stream.render('html')
   <p class="intro">Some text and <a href="http://example.org/">a link</a>.<br></p>
@@ -178,7 +178,7 @@ defaults to “UTF-8”. If set to ``None``, the result will be a unicode string
 The different serializer classes in ``genshi.output`` can also be used
 directly:
 
-.. code-block:: python
+.. code-block:: pycon
 
   >>> from genshi.filters import HTMLSanitizer
   >>> from genshi.output import TextSerializer
@@ -187,7 +187,7 @@ directly:
 
 The pipe operator allows a nicer syntax:
 
-.. code-block:: python
+.. code-block:: pycon
 
   >>> print stream | HTMLSanitizer() | TextSerializer()
   Some text and a link.
@@ -228,7 +228,7 @@ Using XPath
 XPath can be used to extract a specific subset of the stream via the
 ``select()`` method:
 
-.. code-block:: python
+.. code-block:: pycon
 
   >>> substream = stream.select('a')
   >>> substream
@@ -241,7 +241,7 @@ on a generator. Once it has been serialized, it will have been fully consumed,
 and cannot be rendered again. To work around this, you can wrap such a stream
 in a ``list``:
 
-.. code-block:: python
+.. code-block:: pycon
 
   >>> from genshi import Stream
   >>> substream = Stream(list(stream.select('a')))

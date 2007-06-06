@@ -26,7 +26,9 @@ you.
 
 ``HTMLFormFiller`` takes a dictionary of data to populate the form with, where
 the keys should match the names of form elements, and the values determine the
-values of those controls. For example::
+values of those controls. For example:
+
+.. code-block:: pycon
 
   >>> from genshi.filters import HTMLFormFiller
   >>> from genshi.template import MarkupTemplate
@@ -90,7 +92,9 @@ HTML Sanitizer
 
 The filter ``genshi.filters.html.HTMLSanitizer`` filter can be used to clean up
 user-submitted HTML markup, removing potentially dangerous constructs that could
-be used for various kinds of abuse, such as cross-site scripting (XSS) attacks::
+be used for various kinds of abuse, such as cross-site scripting (XSS) attacks:
+
+.. code-block:: pycon
 
   >>> from genshi.filters import HTMLSanitizer
   >>> from genshi.input import HTML
@@ -115,7 +119,9 @@ Inline ``style`` attributes are forbidden by default. If you allow them, the
 filter will still perform sanitization on the contents any encountered inline
 styles: the proprietary ``expression()`` function (supported only by Internet
 Explorer) is removed, and any property using an ``url()`` which a potentially
-dangerous URL scheme (such as ``javascript:``) are also stripped out::
+dangerous URL scheme (such as ``javascript:``) are also stripped out:
+
+.. code-block:: pycon
 
   >>> from genshi.filters import HTMLSanitizer
   >>> from genshi.input import HTML
@@ -142,7 +148,9 @@ Transformer
 The filter ``genshi.filters.transform.Transformer`` provides a convenient way to
 transform or otherwise work with markup event streams. It allows you to specify
 which parts of the stream you're interested in with XPath expressions, and then
-attach a variety of transformations to the parts that match::
+attach a variety of transformations to the parts that match:
+
+.. code-block:: pycon
 
   >>> from genshi.builder import tag
   >>> from genshi.core import TEXT
@@ -176,7 +184,9 @@ A number of commonly useful transformations are available for this filter.
 Please consult the API documentation a complete list.
 
 In addition, you can also perform custom transformations. For example, the
-following defines a transformation that changes the name of a tag::
+following defines a transformation that changes the name of a tag:
+
+.. code-block:: pycon
 
   >>> from genshi import QName
   >>> from genshi.filters.transform import ENTER, EXIT
@@ -197,7 +207,9 @@ stream. In this case we define a class, so that we can initialize it with the
 tag name.
 
 Custom transformations can be applied using the `|` operator on the transformer
-instance::
+instance:
+
+.. code-block:: pycon
 
   >>> xform = Transformer('body//em').apply(unicode.upper, TEXT)
   >>> xform |= RenameTransformation('u')
@@ -209,6 +221,7 @@ instance::
     </body>
   </html>
 
+.. note:: The transformation filter was added in Genshi 0.5.
 
 
 Translator
@@ -223,3 +236,5 @@ The ``Translator`` class also defines the ``extract`` class method, which can
 be used to extract localizable messages from a template.
 
 Please refer to the API documentation for more information on this filter.
+
+.. note:: The translation filter was added in Genshi 0.4.

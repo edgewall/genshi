@@ -67,5 +67,10 @@ div.admonition, div.attention, div.caution, div.danger, div.error, div.hint,
 div.important, div.note, div.tip, div.warning {
   border: none; color: #333; font-style: italic; margin: 1em 2em;
 }
-p.admonition-title { margin-bottom: 0; }
-div.note, div.warning { font-style: italic; }
+div.attention p.admonition-title, div.caution p.admonition-title, div.danger
+p.admonition-title, div.error p.admonition-title,
+div.warning p.admonition-title {
+  color: #b00;
+}
+p.admonition-title { margin-bottom: 0; text-transform: uppercase; }
+tt.docutils { background-color: transparent; }

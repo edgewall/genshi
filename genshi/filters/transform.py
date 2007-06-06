@@ -51,8 +51,8 @@ from genshi.builder import Element
 from genshi.core import Stream, Attrs, QName, TEXT, START, END, _ensure
 from genshi.path import Path
 
-__all__ = ['Transformer', 'StreamBuffer', 'InjectorTransformation', 'ENTER',
-           'EXIT', 'INSIDE', 'OUTSIDE']
+__all__ = ['Transformer', 'StreamBuffer', 'AttributeBuffer',
+           'InjectorTransformation', 'ENTER', 'EXIT', 'INSIDE', 'OUTSIDE']
 
 
 class TransformMark(str):
@@ -75,6 +75,10 @@ selected element."""
 OUTSIDE = TransformMark('OUTSIDE')
 """Stream augmentation mark indicating that a match occurred outside a selected
 element."""
+
+ATTRIBUTE = TransformMark('ATTRIBUTE')
+"""Stream augmentation mark indicating that a an element attribute was
+selected."""
 
 EXIT = TransformMark('EXIT')
 """Stream augmentation mark indicating that a selected element is being
@@ -129,7 +133,7 @@ class Transformer(object):
     taken when using buffers, to ensure that buffers are cleared between
     transforms:
 
-    >>> emphasis = Transformer('body//em').setattr('class', 'emphasis')
+    >>> emphasis = Transformer('body//em').attr('class', 'emphasis')
     >>> print html | emphasis
     <html><head><title>Some Title</title></head><body>Some <em
     class="emphasis">body</em> text.</body></html>
@@ -398,39 +402,44 @@ class Transformer(object):
 
     #{ Attribute manipulation
 
-    def setattr(self, name, value):
-        """Add or replace an attribute to selected elements.
+    def attr(self, name, value):
+        """Add, replace or delete an attribute on selected elements.
 
-        Example:
+        If `value` evaulates to `None` the attribute will be deleted from the
+        element:
 
         >>> html = HTML('<html><head><title>Some Title</title></head>'
-        ...             '<body>Some <em>body</em> text.</body></html>')
-        >>> print html | Transformer('.//em').setattr('class', 'emphasis')
+        ...             '<body>Some <em class="before">body</em> <em>text</em>.</body>'
+        ...             '</html>')
+        >>> print html | Transformer('body/em').attr('class', None)
+        <html><head><title>Some Title</title></head><body>Some <em>body</em>
+        <em>text</em>.</body></html>
+
+        Otherwise the attribute will be set to `value`:
+
+        >>> print html | Transformer('body/em').attr('class', 'emphasis')
         <html><head><title>Some Title</title></head><body>Some <em
-        class="emphasis">body</em> text.</body></html>
+        class="emphasis">body</em> <em class="emphasis">text</em>.</body></html>
+
+        If `value` is a callable it will be called with the attribute name and
+        the `START` event for the matching element. Its return value will then
+        be used to set the attribute:
+
+        >>> def print_attr(name, event):
+        ...     attrs = event[1][1]
+        ...     print attrs
+        ...     return attrs.get(name)
+        >>> print html | Transformer('body/em').attr('class', print_attr)
+        Attrs([(QName(u'class'), u'before')])
+        Attrs()
+        <html><head><title>Some Title</title></head><body>Some <em
+        class="before">body</em> <em>text</em>.</body></html>
 
         :param name: the name of the attribute
-        :param value: the value that should be set for the attribute
+        :param value: the value that should be set for the attribute.
         :rtype: `Transformer`
         """
-        return self | SetattrTransformation(name, value)
-
-    def delattr(self, name):
-        """Remove an attribute from selected elements.
-
-        Example:
-
-        >>> html = HTML('<html><head><title>Some Title</title></head>'
-        ...             '<body>Some <em class="emphasis">body</em> '
-        ...             'text.</body></html>')
-        >>> print html | Transformer('.//*[@class="emphasis"]').delattr('class')
-        <html><head><title>Some Title</title></head><body>Some <em>body</em>
-        text.</body></html>
-
-        :param name: the name of the attribute to remove
-        :rtype: `Transformer`
-        """
-        return self | DelattrTransformation(name)
+        return self | AttrTransformation(name, value)
 
     #{ Buffer operations
 
@@ -581,7 +590,8 @@ class SelectTransformation(object):
                 else:
                     yield OUTSIDE, event
             elif result:
-                yield ENTER, result
+                yield None, event
+                yield ATTRIBUTE, result
             else:
                 yield None, event
 
@@ -852,7 +862,7 @@ class AppendTransformation(InjectorTransformation):
                 yield mark, event
 
 
-class SetattrTransformation(object):
+class AttrTransformation(object):
     """Set an attribute on selected elements."""
 
     def __init__(self, name, value):
@@ -869,31 +879,20 @@ class SetattrTransformation(object):
 
         :param stream: The marked event stream to filter
         """
+        callable_value = callable(self.value)
         for mark, (kind, data, pos) in stream:
             if mark is ENTER:
-                data = (data[0], data[1] | [(QName(self.name), self.value)])
+                if callable_value:
+                    value = self.value(self.name, (kind, data, pos))
+                else:
+                    value = self.value
+                if value is None:
+                    attrs = data[1] - [QName(self.name)]
+                else:
+                    attrs = data[1] | [(QName(self.name), value)]
+                data = (data[0], attrs)
             yield mark, (kind, data, pos)
 
-
-class DelattrTransformation(object):
-    """Delete an attribute of selected elements."""
-
-    def __init__(self, name):
-        """Construct transform.
-
-        :param name: the name of the attribute to remove
-        """
-        self.name = name
-
-    def __call__(self, stream):
-        """Apply the transform filter to the marked stream.
-
-        :param stream: The marked event stream to filter
-        """
-        for mark, (kind, data, pos) in stream:
-            if mark is ENTER:
-                data = (data[0], data[1] - self.name)
-            yield mark, (kind, data, pos)
 
 
 class StreamBuffer(Stream):
@@ -905,7 +904,7 @@ class StreamBuffer(Stream):
 
     def append(self, event):
         """Add an event to the buffer.
-        
+
         :param event: the markup event to add
         """
         self.events.append(event)

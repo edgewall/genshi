@@ -22,7 +22,9 @@ A stream can be attained in a number of ways. It can be:
 * programmatically generated.
 
 For example, the functions ``XML()`` and ``HTML()`` can be used to convert
-literal XML or HTML text to a markup stream::
+literal XML or HTML text to a markup stream:
+
+.. code-block:: python
 
   >>> from genshi import XML
   >>> stream = XML('<p class="intro">Some text and '
@@ -41,7 +43,7 @@ of the form ``(kind, data, pos)``, where:
 * ``pos`` is a ``(filename, lineno, column)`` tuple that describes where the
   event “comes from”.
 
-::
+.. code-block:: python
 
   >>> for kind, data, pos in stream:
   ...     print kind, `data`, pos
@@ -64,7 +66,9 @@ One important feature of markup streams is that you can apply *filters* to the
 stream, either filters that come with Genshi, or your own custom filters.
 
 A filter is simply a callable that accepts the stream as parameter, and returns
-the filtered stream::
+the filtered stream:
+
+.. code-block:: python
 
   def noop(stream):
       """A filter that doesn't actually do anything with the stream."""
@@ -72,17 +76,23 @@ the filtered stream::
           yield kind, data, pos
 
 Filters can be applied in a number of ways. The simplest is to just call the
-filter directly::
+filter directly:
+
+.. code-block:: python
 
   stream = noop(stream)
 
 The ``Stream`` class also provides a ``filter()`` method, which takes an
-arbitrary number of filter callables and applies them all::
+arbitrary number of filter callables and applies them all:
+
+.. code-block:: python
 
   stream = stream.filter(noop)
 
 Finally, filters can also be applied using the *bitwise or* operator (``|``),
-which allows a syntax similar to pipes on Unix shells::
+which allows a syntax similar to pipes on Unix shells:
+
+.. code-block:: python
 
   stream = stream | noop
 
@@ -90,17 +100,23 @@ One example of a filter included with Genshi is the ``HTMLSanitizer`` in
 ``genshi.filters``. It processes a stream of HTML markup, and strips out any
 potentially dangerous constructs, such as Javascript event handlers.
 ``HTMLSanitizer`` is not a function, but rather a class that implements
-``__call__``, which means instances of the class are callable::
+``__call__``, which means instances of the class are callable:
+
+.. code-block:: python
 
   stream = stream | HTMLSanitizer()
 
 Both the ``filter()`` method and the pipe operator allow easy chaining of
-filters::
+filters:
+
+.. code-block:: python
 
   from genshi.filters import HTMLSanitizer
   stream = stream.filter(noop, HTMLSanitizer())
 
-That is equivalent to::
+That is equivalent to:
+
+.. code-block:: python
 
   stream = stream | noop | HTMLSanitizer()
 
@@ -121,7 +137,9 @@ The ``Stream`` class provides two methods for serialization: ``serialize()`` and
 (which are basically unicode strings that are considered safe for output on the
 web). The latter returns a single string, by default UTF-8 encoded.
 
-Here's the output from ``serialize()``::
+Here's the output from ``serialize()``:
+
+.. code-block:: python
 
   >>> for output in stream.serialize():
   ...     print `output`
@@ -135,14 +153,18 @@ Here's the output from ``serialize()``::
   <Markup u'<br/>'>
   <Markup u'</p>'>
 
-And here's the output from ``render()``::
+And here's the output from ``render()``:
+
+.. code-block:: python
 
   >>> print stream.render()
   <p class="intro">Some text and <a href="http://example.org/">a link</a>.<br/></p>
 
 Both methods can be passed a ``method`` parameter that determines how exactly
 the events are serialzed to text. This parameter can be either “xml” (the
-default), “xhtml”, “html”, “text”, or a custom serializer class::
+default), “xhtml”, “html”, “text”, or a custom serializer class:
+
+.. code-block:: python
 
   >>> print stream.render('html')
   <p class="intro">Some text and <a href="http://example.org/">a link</a>.<br></p>
@@ -154,14 +176,18 @@ In addition, the ``render()`` method takes an ``encoding`` parameter, which
 defaults to “UTF-8”. If set to ``None``, the result will be a unicode string.
 
 The different serializer classes in ``genshi.output`` can also be used
-directly::
+directly:
+
+.. code-block:: python
 
   >>> from genshi.filters import HTMLSanitizer
   >>> from genshi.output import TextSerializer
   >>> print ''.join(TextSerializer()(HTMLSanitizer()(stream)))
   Some text and a link.
 
-The pipe operator allows a nicer syntax::
+The pipe operator allows a nicer syntax:
+
+.. code-block:: python
 
   >>> print stream | HTMLSanitizer() | TextSerializer()
   Some text and a link.
@@ -200,7 +226,9 @@ Using XPath
 ===========
 
 XPath can be used to extract a specific subset of the stream via the
-``select()`` method::
+``select()`` method:
+
+.. code-block:: python
 
   >>> substream = stream.select('a')
   >>> substream
@@ -211,7 +239,9 @@ XPath can be used to extract a specific subset of the stream via the
 Often, streams cannot be reused: in the above example, the sub-stream is based
 on a generator. Once it has been serialized, it will have been fully consumed,
 and cannot be rendered again. To work around this, you can wrap such a stream
-in a ``list``::
+in a ``list``:
+
+.. code-block:: python
 
   >>> from genshi import Stream
   >>> substream = Stream(list(stream.select('a')))
@@ -251,7 +281,9 @@ For this kind of event, the ``data`` item is a tuple of the form
 ``(tagname, attrs)``, where ``tagname`` is a ``QName`` instance describing the
 qualified name of the tag, and ``attrs`` is an ``Attrs`` instance containing
 the attribute names and values associated with the tag (excluding namespace
-declarations)::
+declarations):
+
+.. code-block:: python
 
   START, (QName(u'p'), Attrs([(u'class', u'intro')])), pos
 
@@ -260,7 +292,9 @@ END
 The closing tag of an element.
 
 The ``data`` item of end events consists of just a ``QName`` instance
-describing the qualified name of the tag::
+describing the qualified name of the tag:
+
+.. code-block:: python
 
   END, QName(u'p'), pos
 
@@ -268,7 +302,9 @@ TEXT
 ----
 Character data outside of elements and comments.
 
-For text events, the ``data`` item should be a unicode object::
+For text events, the ``data`` item should be a unicode object:
+
+.. code-block:: python
 
   TEXT, u'Hello, world!', pos
 
@@ -279,7 +315,9 @@ The start of a namespace mapping, binding a namespace prefix to a URI.
 The ``data`` item of this kind of event is a tuple of the form
 ``(prefix, uri)``, where ``prefix`` is the namespace prefix and ``uri`` is the
 full URI to which the prefix is bound. Both should be unicode objects. If the
-namespace is not bound to any prefix, the ``prefix`` item is an empty string::
+namespace is not bound to any prefix, the ``prefix`` item is an empty string:
+
+.. code-block:: python
 
   START_NS, (u'svg', u'http://www.w3.org/2000/svg'), pos
 
@@ -288,7 +326,9 @@ END_NS
 The end of a namespace mapping.
 
 The ``data`` item of such events consists of only the namespace prefix (a
-unicode object)::
+unicode object):
+
+.. code-block:: python
 
   END_NS, u'svg', pos
 
@@ -299,7 +339,9 @@ A document type declaration.
 For this type of event, the ``data`` item is a tuple of the form
 ``(name, pubid, sysid)``, where ``name`` is the name of the root element,
 ``pubid`` is the public identifier of the DTD (or ``None``), and ``sysid`` is
-the system identifier of the DTD (or ``None``)::
+the system identifier of the DTD (or ``None``):
+
+.. code-block:: python
 
   DOCTYPE, (u'html', u'-//W3C//DTD XHTML 1.0 Transitional//EN', \
             u'http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd'), pos
@@ -309,7 +351,9 @@ COMMENT
 A comment.
 
 For such events, the ``data`` item is a unicode object containing all character
-data between the comment delimiters::
+data between the comment delimiters:
+
+.. code-block:: python
 
   COMMENT, u'Commented out', pos
 
@@ -320,7 +364,9 @@ A processing instruction.
 The ``data`` item is a tuple of the form ``(target, data)`` for processing
 instructions, where ``target`` is the target of the PI (used to identify the
 application by which the instruction should be processed), and ``data`` is text
-following the target (excluding the terminating question mark)::
+following the target (excluding the terminating question mark):
+
+.. code-block:: python
 
   PI, (u'php', u'echo "Yo" '), pos
 
@@ -328,7 +374,9 @@ START_CDATA
 -----------
 Marks the beginning of a ``CDATA`` section.
 
-The ``data`` item for such events is always ``None``::
+The ``data`` item for such events is always ``None``:
+
+.. code-block:: python
 
   START_CDATA, None, pos
 
@@ -336,6 +384,8 @@ END_CDATA
 ---------
 Marks the end of a ``CDATA`` section.
 
-The ``data`` item for such events is always ``None``::
+The ``data`` item for such events is always ``None``:
+
+.. code-block:: python
 
   END_CDATA, None, pos

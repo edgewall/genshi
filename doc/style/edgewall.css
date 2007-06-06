@@ -1,4 +1,5 @@
-@import(docutils.css);
+@import url(docutils.css);
+@import url(pygments.css);
 
 html, body { height: 100%; margin: 0; padding: 0; }
 html, body { background: #4b4d4d url(bkgnd_pattern.png); color: #000; }
@@ -45,8 +46,9 @@ h1.title, div.document#genshi h1 { border: none; color: #666;
 h1.title { background: url(vertbars.png) repeat-x; }
 div.document#genshi h1.title { text-indent: -4000px; }
 div.document#genshi h1 { text-align: center; }
-pre.literal-block { background: #d7d7d7; border: 1px solid #e6e6e6; color: #000;
-  margin: 1em 1em; padding: .25em; overflow: auto;
+pre.literal-block, div.highlight pre { background: #f4f4f4;
+  border: 1px solid #e6e6e6; color: #000; margin: 1em 1em; padding: .25em;
+  overflow: auto;
 }
 
 div.contents { font-size: 90%; position: absolute; position: fixed;
@@ -61,7 +63,9 @@ div.contents :link:hover, div.contents :visited:hover { background: #000;
   color: #fff;
 }
 
-p.admonition-title { font-weight: bold; margin-bottom: 0; }
-div.note, div.warning { font-style: italic; margin-left: 2em;
-  margin-right: 2em;
+div.admonition, div.attention, div.caution, div.danger, div.error, div.hint,
+div.important, div.note, div.tip, div.warning {
+  border: none; color: #333; font-style: italic; margin: 1em 2em;
 }
+p.admonition-title { margin-bottom: 0; }
+div.note, div.warning { font-style: italic; }

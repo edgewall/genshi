@@ -54,6 +54,11 @@ class TextTemplateTestCase(unittest.TestCase):
         tmpl = TextTemplate(text, encoding='iso-8859-1')
         self.assertEqual(u'x\xf6y', unicode(tmpl.generate(foo='x', bar='y')))
 
+    def test_unicode_input(self):
+        text = u'$foo\xf6$bar'
+        tmpl = TextTemplate(text)
+        self.assertEqual(u'x\xf6y', unicode(tmpl.generate(foo='x', bar='y')))
+
     def test_empty_lines1(self):
         tmpl = TextTemplate("""Your items:
 

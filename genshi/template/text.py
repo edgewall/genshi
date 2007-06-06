@@ -64,10 +64,10 @@ class TextTemplate(Template):
         stream = [] # list of events of the "compiled" template
         dirmap = {} # temporary mapping of directives to elements
         depth = 0
-        if not encoding:
-            encoding = 'utf-8'
 
-        source = source.read().decode(encoding, 'replace')
+        source = source.read()
+        if isinstance(source, str):
+            source = source.decode(encoding or 'utf-8', 'replace')
         offset = 0
         lineno = 1
 

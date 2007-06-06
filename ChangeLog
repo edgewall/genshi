@@ -16,6 +16,7 @@ http://svn.edgewall.org/repos/genshi/tags/0.4.2/
    of the doctype as string, in addition to the `(name, pubid, sysid)` tuple.
  * The I18n filter was not replacing the original attributes with the
    translation, but instead adding a second attribute with the same name.
+ * `TextTemplate` can now handle unicode source (ticket #125).
 
 
 Version 0.4.1

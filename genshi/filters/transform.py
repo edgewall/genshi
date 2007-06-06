@@ -65,19 +65,19 @@ class TransformMark(str):
 
 
 ENTER = TransformMark('ENTER')
-"""Stream augmentation mark indicating that a selected range of events is being
+"""Stream augmentation mark indicating that a selected element is being
 entered."""
 
 INSIDE = TransformMark('INSIDE')
 """Stream augmentation mark indicating that processing is currently inside a
-selected range of events."""
+selected element."""
 
 OUTSIDE = TransformMark('OUTSIDE')
-"""Stream augmentation mark indicating that processing is currently outside any
-selected range of events."""
+"""Stream augmentation mark indicating that a match occurred outside a selected
+element."""
 
 EXIT = TransformMark('EXIT')
-"""Stream augmentation mark indicating that a selected range of events is being
+"""Stream augmentation mark indicating that a selected element is being
 exited."""
 
 

@@ -62,24 +62,25 @@ You can also use XPath variable references (``$var``) inside predicates.
 Querying Streams
 ----------------
 
-::
+The ``Stream`` class provides a ``select(path)`` function that can be used to
+retrieve subsets of the stream:
 
-  from genshi.input import XML
+.. code-block:: pycon
 
-  doc = XML('''<doc>
-   <items count="2">
-        <item status="new">
-          <summary>Foo</summary>
-        </item>
-        <item status="closed">
-          <summary>Bar</summary>
-        </item>
-    </items>
-  </doc>''')
-  print doc.select('items/item[@status="closed"]/summary/text()')
-
-This would result in the following output::
-
+  >>> from genshi.input import XML
+  
+  >>> doc = XML('''<doc>
+  ...   <items count="2">
+  ...     <item status="new">
+  ...       <summary>Foo</summary>
+  ...     </item>
+  ...     <item status="closed">
+  ...       <summary>Bar</summary>
+  ...     </item>
+  ...    </items>
+  ... </doc>''')
+  
+  >>> print doc.select('items/item[@status="closed"]/summary/text()')
   Bar
 
 

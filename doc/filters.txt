@@ -164,12 +164,14 @@ attach a variety of transformations to the parts that match:
   ...   </body>
   ... </html>''')
   
-  >>> print html | Transformer('body//em').apply(unicode.upper, TEXT) \
-  ...                                     .unwrap().wrap(tag.u)
+  >>> print html | Transformer('body/em').apply(unicode.upper, TEXT) \
+  ...                                    .unwrap().wrap(tag.u).end() \
+  ...                                    .select('body/u') \
+  ...                                    .prepend('underlined ')
   <html>
     <head><title>Some Title</title></head>
     <body>
-      Some <u>BODY</u> text.
+      Some <u>underlined BODY</u> text.
     </body>
   </html>
 
@@ -177,8 +179,9 @@ This example sets up a transformation that:
 
  1. matches any `<em>` element anywhere in the body,
  2. uppercases any text nodes in the element,
- 3. strips off the `<em>` start and close tags, and
- 4. wraps the content in a `<u>` tag.
+ 3. strips off the `<em>` start and close tags,
+ 4. wraps the content in a `<u>` tag, and
+ 5. inserts the text `underlind` inside the `<u>` tag.
 
 A number of commonly useful transformations are available for this filter.
 Please consult the API documentation a complete list.

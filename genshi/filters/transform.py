@@ -76,9 +76,8 @@ OUTSIDE = TransformMark('OUTSIDE')
 """Stream augmentation mark indicating that a match occurred outside a selected
 element."""
 
-ATTRIBUTE = TransformMark('ATTRIBUTE')
-"""Stream augmentation mark indicating that a an element attribute was
-selected."""
+ATTR = TransformMark('ATTR')
+"""Stream augmentation mark indicating a selected element attribute."""
 
 EXIT = TransformMark('EXIT')
 """Stream augmentation mark indicating that a selected element is being
@@ -301,10 +300,6 @@ class Transformer(object):
 
         :rtype: `Transformer`
         """
-        def _unwrap(stream):
-            for mark, event in stream:
-                if mark not in (ENTER, EXIT):
-                    yield mark, event
         return self | UnwrapTransformation()
 
     def wrap(self, element):
@@ -469,6 +464,20 @@ class Transformer(object):
         >>> print buffer
         <em>body</em>
 
+        Element attributes can also be copied for later use:
+
+        >>> html = HTML('<html><head><title>Some Title</title></head>'
+        ...             '<body><em>Some</em> <em class="before">body</em>'
+        ...             '<em>text</em>.</body></html>')
+        >>> buffer = StreamBuffer()
+        >>> def apply_attr(name, entry):
+        ...     return list(buffer)[0][1][1].get('class')
+        >>> print html | Transformer('body/em[@class]/@class').copy(buffer) \\
+        ...     .end().select('body/em[not(@class)]').attr('class', apply_attr)
+        <html><head><title>Some Title</title></head><body><em
+        class="before">Some</em> <em class="before">body</em><em
+        class="before">text</em>.</body></html>
+
 
         :param buffer: the `StreamBuffer` in which the selection should be
                        stored
@@ -543,7 +552,8 @@ class Transformer(object):
 
     def _unmark(self, stream):
         for mark, event in stream:
-            yield event
+            if event[0] is not None:
+                yield event
 
 
 class SelectTransformation(object):
@@ -572,6 +582,8 @@ class SelectTransformation(object):
                 yield mark, event
                 continue
             result = test(event, {}, {})
+            # XXX This is effectively genshi.core._ensure() for transform
+            # streams.
             if result is True:
                 if event[0] is START:
                     yield ENTER, event
@@ -589,9 +601,13 @@ class SelectTransformation(object):
                         test(subevent, {}, {}, updateonly=True)
                 else:
                     yield OUTSIDE, event
-            elif result:
+            elif isinstance(result, Attrs):
+                # XXX  Selected *attributes* are given a "kind" of None to
+                # indicate they are not really part of the stream.
+                yield ATTR, (None, (QName(event[1][0] + '@*'), result), event[2])
                 yield None, event
-                yield ATTRIBUTE, result
+            elif result:
+                yield None, (TEXT, unicode(result), (None, -1, -1))
             else:
                 yield None, event
 
@@ -938,15 +954,41 @@ class CopyTransformation(object):
         return stream
 
 
-class CutTransformation(CopyTransformation, RemoveTransformation):
+class CutTransformation(object):
     """Cut selected events into a buffer for later insertion and remove the
     selection.
     """
+
+    def __init__(self, buffer):
+        """Create the cut transformation.
+
+        :param buffer: the `StreamBuffer` in which the selection should be
+                       stored
+        """
+        self.buffer = buffer
 
     def __call__(self, stream):
         """Apply the transform filter to the marked stream.
 
         :param stream: the marked event stream to filter
         """
-        stream = CopyTransformation.__call__(self, stream)
-        return RemoveTransformation.__call__(self, stream)
+        out_stream = []
+        attributes = None
+        for mark, (kind, data, pos) in stream:
+            if attributes:
+                assert kind is START
+                data = (data[0], data[1] - attributes)
+                attributes = None
+            if mark:
+                # There is some magic here. ATTR marked events are pushed into
+                # the stream *before* the START event they originated from.
+                # This allows cut() to strip out the attributes from START
+                # event as would be expected.
+                if mark is ATTR:
+                    self.buffer.append((kind, data, pos))
+                    attributes = [name for name, _ in data[1]]
+                else:
+                    self.buffer.append((kind, data, pos))
+            else:
+                out_stream.append((mark, (kind, data, pos)))
+        return out_stream

@@ -51,8 +51,8 @@ from genshi.builder import Element
 from genshi.core import Stream, Attrs, QName, TEXT, START, END, _ensure
 from genshi.path import Path
 
-__all__ = ['Transformer', 'StreamBuffer', 'AttributeBuffer',
-           'InjectorTransformation', 'ENTER', 'EXIT', 'INSIDE', 'OUTSIDE']
+__all__ = ['Transformer', 'StreamBuffer', 'InjectorTransformation', 'ENTER',
+           'EXIT', 'INSIDE', 'OUTSIDE']
 
 
 class TransformMark(str):

@@ -229,7 +229,11 @@ class Path(object):
                             for predicate in predicates:
                                 pretval = predicate(kind, data, pos, namespaces,
                                                     variables)
-                                if type(pretval) is float:
+                                if type(pretval) is float: # FIXME <- need to
+                                                           # check this for
+                                                           # other types that
+                                                           # can be coerced to
+                                                           # float
                                     counter[cursor] += 1
                                     if counter[cursor] != int(pretval):
                                         pretval = False
@@ -510,7 +514,7 @@ class PathParser(object):
             return StringLiteral(token[1:-1])
         elif token[0].isdigit() or token[0] == '.':
             self.next_token()
-            return NumberLiteral(float(token))
+            return NumberLiteral(as_float(token))
         elif token == '$':
             token = self.next_token()
             self.next_token()
@@ -545,6 +549,35 @@ class PathParser(object):
             raise PathSyntaxError('Unsupported function "%s"' % name,
                                   self.filename, self.lineno)
         return cls(*args)
+
+
+# Type coercion
+
+def as_scalar(value):
+    """Convert value to a scalar. If a single element Attrs() object is passed
+    the value of the single attribute will be returned."""
+    if isinstance(value, Attrs):
+        assert len(value) == 1
+        return value[0][1]
+    else:
+        return value
+
+def as_float(value):
+    # FIXME - if value is a bool it will be coerced to 0.0 and consequently
+    # compared as a float. This is probably not ideal.
+    return float(as_scalar(value))
+
+def as_long(value):
+    return long(as_scalar(value))
+
+def as_string(value):
+    value = as_scalar(value)
+    if value is False:
+        return u''
+    return unicode(value)
+
+def as_bool(value):
+    return bool(as_scalar(value))
 
 
 # Node tests
@@ -592,7 +625,7 @@ class LocalNameTest(object):
     def __call__(self, kind, data, pos, namespaces, variables):
         if kind is START:
             if self.principal_type is ATTRIBUTE and self.name in data[1]:
-                return data[1].get(self.name)
+                return Attrs([(self.name, data[1].get(self.name))])
             else:
                 return data[0].localname == self.name
     def __repr__(self):
@@ -611,7 +644,7 @@ class QualifiedNameTest(object):
         qname = QName('%s}%s' % (namespaces.get(self.prefix), self.name))
         if kind is START:
             if self.principal_type is ATTRIBUTE and qname in data[1]:
-                return data[1].get(qname)
+                return Attrs([(self.name, data[1].get(self.name))])
             else:
                 return data[0] == qname
     def __repr__(self):
@@ -674,7 +707,7 @@ class BooleanFunction(Function):
         self.expr = expr
     def __call__(self, kind, data, pos, namespaces, variables):
         val = self.expr(kind, data, pos, namespaces, variables)
-        return bool(val)
+        return as_bool(val)
     def __repr__(self):
         return 'boolean(%r)' % self.expr
 
@@ -687,7 +720,7 @@ class CeilingFunction(Function):
         self.number = number
     def __call__(self, kind, data, pos, namespaces, variables):
         number = self.number(kind, data, pos, namespaces, variables)
-        return ceil(float(number))
+        return ceil(as_float(number))
     def __repr__(self):
         return 'ceiling(%r)' % self.number
 
@@ -702,7 +735,7 @@ class ConcatFunction(Function):
         strings = []
         for item in [expr(kind, data, pos, namespaces, variables)
                      for expr in self.exprs]:
-            strings.append(item)
+            strings.append(as_string(item))
         return u''.join(strings)
     def __repr__(self):
         return 'concat(%s)' % ', '.join([repr(expr) for expr in self.exprs])
@@ -718,7 +751,7 @@ class ContainsFunction(Function):
     def __call__(self, kind, data, pos, namespaces, variables):
         string1 = self.string1(kind, data, pos, namespaces, variables)
         string2 = self.string2(kind, data, pos, namespaces, variables)
-        return string2 in string1
+        return as_string(string2) in as_string(string1)
     def __repr__(self):
         return 'contains(%r, %r)' % (self.string1, self.string2)
 
@@ -739,7 +772,7 @@ class FloorFunction(Function):
         self.number = number
     def __call__(self, kind, data, pos, namespaces, variables):
         number = self.number(kind, data, pos, namespaces, variables)
-        return floor(float(number))
+        return floor(as_float(number))
     def __repr__(self):
         return 'floor(%r)' % self.number
 
@@ -784,7 +817,7 @@ class NotFunction(Function):
     def __init__(self, expr):
         self.expr = expr
     def __call__(self, kind, data, pos, namespaces, variables):
-        return not self.expr(kind, data, pos, namespaces, variables)
+        return not as_bool(self.expr(kind, data, pos, namespaces, variables))
     def __repr__(self):
         return 'not(%s)' % self.expr
 
@@ -799,7 +832,7 @@ class NormalizeSpaceFunction(Function):
         self.expr = expr
     def __call__(self, kind, data, pos, namespaces, variables):
         string = self.expr(kind, data, pos, namespaces, variables)
-        return self._normalize(' ', string.strip())
+        return self._normalize(' ', as_string(string).strip())
     def __repr__(self):
         return 'normalize-space(%s)' % repr(self.expr)
 
@@ -810,7 +843,7 @@ class NumberFunction(Function):
         self.expr = expr
     def __call__(self, kind, data, pos, namespaces, variables):
         val = self.expr(kind, data, pos, namespaces, variables)
-        return float(val)
+        return as_float(val)
     def __repr__(self):
         return 'number(%r)' % self.expr
 
@@ -823,7 +856,7 @@ class RoundFunction(Function):
         self.number = number
     def __call__(self, kind, data, pos, namespaces, variables):
         number = self.number(kind, data, pos, namespaces, variables)
-        return round(float(number))
+        return round(as_float(number))
     def __repr__(self):
         return 'round(%r)' % self.number
 
@@ -838,7 +871,7 @@ class StartsWithFunction(Function):
     def __call__(self, kind, data, pos, namespaces, variables):
         string1 = self.string1(kind, data, pos, namespaces, variables)
         string2 = self.string2(kind, data, pos, namespaces, variables)
-        return string1.startswith(string2)
+        return as_string(string1).startswith(as_string(string2))
     def __repr__(self):
         return 'starts-with(%r, %r)' % (self.string1, self.string2)
 
@@ -851,7 +884,7 @@ class StringLengthFunction(Function):
         self.expr = expr
     def __call__(self, kind, data, pos, namespaces, variables):
         string = self.expr(kind, data, pos, namespaces, variables)
-        return len(string)
+        return len(as_string(string))
     def __repr__(self):
         return 'string-length(%r)' % self.expr
 
@@ -870,7 +903,7 @@ class SubstringFunction(Function):
         length = 0
         if self.length is not None:
             length = self.length(kind, data, pos, namespaces, variables)
-        return string[int(start):len(string) - int(length)]
+        return string[as_long(start):len(as_string(string)) - as_long(length)]
     def __repr__(self):
         if self.length is not None:
             return 'substring(%r, %r, %r)' % (self.string, self.start,
@@ -887,8 +920,8 @@ class SubstringAfterFunction(Function):
         self.string1 = string1
         self.string2 = string2
     def __call__(self, kind, data, pos, namespaces, variables):
-        string1 = self.string1(kind, data, pos, namespaces, variables)
-        string2 = self.string2(kind, data, pos, namespaces, variables)
+        string1 = as_string(self.string1(kind, data, pos, namespaces, variables))
+        string2 = as_string(self.string2(kind, data, pos, namespaces, variables))
         index = string1.find(string2)
         if index >= 0:
             return string1[index + len(string2):]
@@ -905,8 +938,8 @@ class SubstringBeforeFunction(Function):
         self.string1 = string1
         self.string2 = string2
     def __call__(self, kind, data, pos, namespaces, variables):
-        string1 = self.string1(kind, data, pos, namespaces, variables)
-        string2 = self.string2(kind, data, pos, namespaces, variables)
+        string1 = as_string(self.string1(kind, data, pos, namespaces, variables))
+        string2 = as_string(self.string2(kind, data, pos, namespaces, variables))
         index = string1.find(string2)
         if index >= 0:
             return string1[:index]
@@ -924,9 +957,9 @@ class TranslateFunction(Function):
         self.fromchars = fromchars
         self.tochars = tochars
     def __call__(self, kind, data, pos, namespaces, variables):
-        string = self.string(kind, data, pos, namespaces, variables)
-        fromchars = self.fromchars(kind, data, pos, namespaces, variables)
-        tochars = self.tochars(kind, data, pos, namespaces, variables)
+        string = as_string(self.string(kind, data, pos, namespaces, variables))
+        fromchars = as_string(self.fromchars(kind, data, pos, namespaces, variables))
+        tochars = as_string(self.tochars(kind, data, pos, namespaces, variables))
         table = dict(zip([ord(c) for c in fromchars],
                          [ord(c) for c in tochars]))
         return string.translate(table)
@@ -1000,11 +1033,11 @@ class AndOperator(object):
         self.lval = lval
         self.rval = rval
     def __call__(self, kind, data, pos, namespaces, variables):
-        lval = self.lval(kind, data, pos, namespaces, variables)
+        lval = as_bool(self.lval(kind, data, pos, namespaces, variables))
         if not lval:
             return False
         rval = self.rval(kind, data, pos, namespaces, variables)
-        return bool(rval)
+        return as_bool(rval)
     def __repr__(self):
         return '%s and %s' % (self.lval, self.rval)
 
@@ -1015,8 +1048,8 @@ class EqualsOperator(object):
         self.lval = lval
         self.rval = rval
     def __call__(self, kind, data, pos, namespaces, variables):
-        lval = self.lval(kind, data, pos, namespaces, variables)
-        rval = self.rval(kind, data, pos, namespaces, variables)
+        lval = as_scalar(self.lval(kind, data, pos, namespaces, variables))
+        rval = as_scalar(self.rval(kind, data, pos, namespaces, variables))
         return lval == rval
     def __repr__(self):
         return '%s=%s' % (self.lval, self.rval)
@@ -1028,8 +1061,8 @@ class NotEqualsOperator(object):
         self.lval = lval
         self.rval = rval
     def __call__(self, kind, data, pos, namespaces, variables):
-        lval = self.lval(kind, data, pos, namespaces, variables)
-        rval = self.rval(kind, data, pos, namespaces, variables)
+        lval = as_scalar(self.lval(kind, data, pos, namespaces, variables))
+        rval = as_scalar(self.rval(kind, data, pos, namespaces, variables))
         return lval != rval
     def __repr__(self):
         return '%s!=%s' % (self.lval, self.rval)
@@ -1041,11 +1074,11 @@ class OrOperator(object):
         self.lval = lval
         self.rval = rval
     def __call__(self, kind, data, pos, namespaces, variables):
-        lval = self.lval(kind, data, pos, namespaces, variables)
+        lval = as_bool(self.lval(kind, data, pos, namespaces, variables))
         if lval:
             return True
         rval = self.rval(kind, data, pos, namespaces, variables)
-        return bool(rval)
+        return as_bool(rval)
     def __repr__(self):
         return '%s or %s' % (self.lval, self.rval)
 
@@ -1058,7 +1091,7 @@ class GreaterThanOperator(object):
     def __call__(self, kind, data, pos, namespaces, variables):
         lval = self.lval(kind, data, pos, namespaces, variables)
         rval = self.rval(kind, data, pos, namespaces, variables)
-        return float(lval) > float(rval)
+        return as_float(lval) > as_float(rval)
     def __repr__(self):
         return '%s>%s' % (self.lval, self.rval)
 
@@ -1071,7 +1104,7 @@ class GreaterThanOrEqualOperator(object):
     def __call__(self, kind, data, pos, namespaces, variables):
         lval = self.lval(kind, data, pos, namespaces, variables)
         rval = self.rval(kind, data, pos, namespaces, variables)
-        return float(lval) >= float(rval)
+        return as_float(lval) >= as_float(rval)
     def __repr__(self):
         return '%s>=%s' % (self.lval, self.rval)
 
@@ -1084,7 +1117,7 @@ class LessThanOperator(object):
     def __call__(self, kind, data, pos, namespaces, variables):
         lval = self.lval(kind, data, pos, namespaces, variables)
         rval = self.rval(kind, data, pos, namespaces, variables)
-        return float(lval) < float(rval)
+        return as_float(lval) < as_float(rval)
     def __repr__(self):
         return '%s<%s' % (self.lval, self.rval)
 
@@ -1097,7 +1130,7 @@ class LessThanOrEqualOperator(object):
     def __call__(self, kind, data, pos, namespaces, variables):
         lval = self.lval(kind, data, pos, namespaces, variables)
         rval = self.rval(kind, data, pos, namespaces, variables)
-        return float(lval) <= float(rval)
+        return as_float(lval) <= as_float(rval)
     def __repr__(self):
         return '%s<=%s' % (self.lval, self.rval)
 

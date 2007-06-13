@@ -17,6 +17,8 @@ http://svn.edgewall.org/repos/genshi/tags/0.4.2/
  * The I18n filter was not replacing the original attributes with the
    translation, but instead adding a second attribute with the same name.
  * `TextTemplate` can now handle unicode source (ticket #125).
+ * A `<?python ?>` processing instruction containing trailing whitespace no
+   longer causes a syntax error (ticket #127).
 
 
 Version 0.4.1

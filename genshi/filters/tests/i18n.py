@@ -66,6 +66,23 @@ class TranslatorTestCase(unittest.TestCase):
         self.assertEqual(1, len(messages))
         self.assertEqual((2, None, u'Foo'), messages[0])
 
+    def test_ignore_tag_with_fixed_xml_lang(self):
+        tmpl = MarkupTemplate("""<html xmlns:py="http://genshi.edgewall.org/">
+          <p xml:lang="en">(c) 2007 Edgewall Software</p>
+        </html>""")
+        translator = Translator()
+        messages = list(translator.extract(tmpl.stream))
+        self.assertEqual(0, len(messages))
+
+    def test_extract_tag_with_variable_xml_lang(self):
+        tmpl = MarkupTemplate("""<html xmlns:py="http://genshi.edgewall.org/">
+          <p xml:lang="${lang}">(c) 2007 Edgewall Software</p>
+        </html>""")
+        translator = Translator()
+        messages = list(translator.extract(tmpl.stream))
+        self.assertEqual(1, len(messages))
+        self.assertEqual((2, None, u'(c) 2007 Edgewall Software'), messages[0])
+
 
 def suite():
     suite = unittest.TestSuite()

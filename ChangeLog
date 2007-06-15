@@ -19,6 +19,9 @@ http://svn.edgewall.org/repos/genshi/tags/0.4.2/
  * `TextTemplate` can now handle unicode source (ticket #125).
  * A `<?python ?>` processing instruction containing trailing whitespace no
    longer causes a syntax error (ticket #127).
+ * The I18n filter now skips the content of elements that have an `xml:lang`
+   attribute with a fixed string value. Basically, `xml:lang` can now be used
+   as a flag to mark specific sections as not needing localization.
 
 
 Version 0.4.1

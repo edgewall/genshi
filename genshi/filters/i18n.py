@@ -8,7 +8,8 @@ from gettext import gettext
 from opcode import opmap
 import re
 
-from genshi.core import Attrs, Namespace, QName, START, END, TEXT, _ensure
+from genshi.core import Attrs, Namespace, QName, START, END, TEXT, \
+                        XML_NAMESPACE, _ensure
 from genshi.template.base import Template, EXPR, SUB
 from genshi.template.markup import EXEC
 
@@ -68,6 +69,10 @@ class Translator(object):
         <p>Hallo, Hans</p>
       </body>
     </html>
+
+    Note that elements defining ``xml:lang`` attributes that do not contain
+    variable expressions are ignored by this filter. That can be used to
+    exclude specific parts of a template from being extracted and translated.
     """
 
     IGNORE_TAGS = frozenset([
@@ -109,25 +114,24 @@ class Translator(object):
         include_attrs = self.include_attrs
         translate = self.translate
         skip = 0
+        xml_lang = XML_NAMESPACE['lang']
 
         for kind, data, pos in stream:
 
             # skip chunks that should not be localized
             if skip:
                 if kind is START:
-                    tag, attrs = data
-                    if tag in ignore_tags:
-                        skip += 1
+                    skip += 1
                 elif kind is END:
-                    if tag in ignore_tags:
-                        skip -= 1
+                    skip -= 1
                 yield kind, data, pos
                 continue
 
             # handle different events that can be localized
             if kind is START:
                 tag, attrs = data
-                if tag in ignore_tags:
+                if tag in self.ignore_tags or \
+                        isinstance(attrs.get(xml_lang), basestring):
                     skip += 1
                     yield kind, data, pos
                     continue
@@ -216,22 +220,20 @@ class Translator(object):
         """
         tagname = None
         skip = 0
+        xml_lang = XML_NAMESPACE['lang']
 
         for kind, data, pos in stream:
             if skip:
                 if kind is START:
-                    tag, attrs = data
-                    if tag in self.ignore_tags:
-                        skip += 1
+                    skip += 1
                 if kind is END:
-                    tag = data
-                    if tag in self.ignore_tags:
-                        skip -= 1
+                    skip -= 1
                 continue
 
             if kind is START:
                 tag, attrs = data
-                if tag in self.ignore_tags:
+                if tag in self.ignore_tags or \
+                        isinstance(attrs.get(xml_lang), basestring):
                     skip += 1
                     continue
 

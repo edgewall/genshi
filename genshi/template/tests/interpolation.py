@@ -60,6 +60,12 @@ class InterpolateTestCase(unittest.TestCase):
         self.assertEqual(TEXT, parts[0][0])
         self.assertEqual('$bla', parts[0][1])
 
+    def test_interpolate_short_escaped_2(self):
+        parts = list(interpolate('my $$bla = 2'))
+        self.assertEqual(1, len(parts))
+        self.assertEqual(TEXT, parts[0][0])
+        self.assertEqual('my $bla = 2', parts[0][1])
+
     def test_interpolate_short_doubleescaped(self):
         parts = list(interpolate('$$$bla'))
         self.assertEqual(2, len(parts))

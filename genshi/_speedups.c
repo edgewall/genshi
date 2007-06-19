@@ -49,7 +49,7 @@ escape(PyObject *text, int quotes)
     PyObject *args, *ret;
     PyUnicodeObject *in, *out;
     Py_UNICODE *inp, *outp;
-    int i, len, inn, outn;
+    int len, inn, outn;
 
     if (PyObject_TypeCheck(text, &MarkupType)) {
         Py_INCREF(text);
@@ -418,7 +418,7 @@ static PyObject *
 Markup_stripentities(PyObject* self, PyObject *args, PyObject *kwds)
 {
     static char *kwlist[] = {"keepxmlentities", 0};
-    PyObject *module, *func, *result, *args2;
+    PyObject *result, *args2;
     char keepxml = 0;
 
     if (!PyArg_ParseTupleAndKeywords(args, kwds, "|b", kwlist, &keepxml)) {
@@ -445,7 +445,7 @@ PyDoc_STRVAR(striptags__doc__,
 static PyObject *
 Markup_striptags(PyObject* self)
 {
-    PyObject *module, *func, *result, *args;
+    PyObject *result, *args;
 
     if (striptags == NULL) return NULL;
     result = PyObject_CallFunction(striptags, "O", self);

@@ -525,7 +525,7 @@ PyTypeObject MarkupType = {
     Markup_methods,/*tp_methods*/
     0,          /*tp_members*/
     0,          /*tp_getset*/
-    &PyUnicode_Type, /*tp_base*/
+    0,          /*tp_base*/
     0,          /*tp_dict*/
     
     0,          /*tp_descr_get*/
@@ -548,6 +548,10 @@ PyMODINIT_FUNC
 init_speedups(void)
 {
     PyObject *module;
+
+    /* Workaround for quirk in Visual Studio, see
+        <http://www.python.it/faq/faq-3.html#3.24> */
+    MarkupType.tp_base = &PyUnicode_Type;
 
     if (PyType_Ready(&MarkupType) < 0)
         return;

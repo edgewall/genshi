@@ -26,5 +26,6 @@ which is heavily inspired by Kid.
 * `Text Template Language <text-templates.html>`_
 * `Using Stream Filters <filters.html>`_
 * `Using XPath <xpath.html>`_
+* `Internationalization and Localization <i18n.html>`_
 * `Using the Templating Plugin <plugin.html>`_
 * `Generated API Documentation <api/index.html>`_

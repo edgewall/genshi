@@ -11,9 +11,9 @@ import re
 from genshi.core import Attrs, Namespace, QName, START, END, TEXT, \
                         XML_NAMESPACE, _ensure
 from genshi.template.base import Template, EXPR, SUB
-from genshi.template.markup import EXEC
+from genshi.template.markup import MarkupTemplate, EXEC
 
-__all__ = ['Translator']
+__all__ = ['Translator', 'extract']
 __docformat__ = 'restructuredtext en'
 
 _LOAD_NAME = chr(opmap['LOAD_NAME'])
@@ -289,3 +289,38 @@ class Translator(object):
                 for lineno, funcname, text in self.extract(substream,
                                                            gettext_functions):
                     yield lineno, funcname, text
+
+
+def extract(fileobj, keywords, comment_tags, options):
+    """Babel extraction method for Genshi templates.
+    
+    :param fileobj: the file-like object the messages should be extracted from
+    :param keywords: a list of keywords (i.e. function names) that should be
+                     recognized as translation functions
+    :param comment_tags: a list of translator tags to search for and include
+                         in the results
+    :param options: a dictionary of additional options (optional)
+    :return: an iterator over ``(lineno, funcname, message, comments)`` tuples
+    :rtype: ``iterator``
+    """
+    template_class = options.get('template_class', MarkupTemplate)
+    if isinstance(template_class, basestring):
+        module, clsname = template_class.split(':', 1)
+        template_class = getattr(__import__(module, {}, {}, [clsname]), clsname)
+    encoding = options.get('encoding', None)
+
+    ignore_tags = options.get('ignore_tags', Translator.IGNORE_TAGS)
+    if isinstance(ignore_tags, basestring):
+        ignore_tags = ignore_tags.split()
+    ignore_tags = [QName(tag) for tag in ignore_tags]
+    include_attrs = options.get('include_attrs', Translator.INCLUDE_ATTRS)
+    if isinstance(include_attrs, basestring):
+        include_attrs = include_attrs.split()
+    include_attrs = [QName(attr) for attr in include_attrs]
+
+    tmpl = template_class(fileobj, filename=getattr(fileobj, 'name', None),
+                          encoding=encoding)
+    translator = Translator(None, ignore_tags, include_attrs)
+    for lineno, func, message in translator.extract(tmpl.stream,
+                                                    gettext_functions=keywords):
+        yield lineno, func, message, []

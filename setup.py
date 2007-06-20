@@ -25,10 +25,17 @@ import sys
 
 class build_doc(Command):
     description = 'Builds the documentation'
-    user_options = []
+    user_options = [
+        ('force', None,
+         "force regeneration even if no reStructuredText files have changed"),
+        ('without-apidocs', None,
+         "whether to skip the generation of API documentaton"),
+    ]
+    boolean_options = ['force', 'without-apidocs']
 
     def initialize_options(self):
-        pass
+        self.force = False
+        self.without_apidocs = False
 
     def finalize_options(self):
         pass
@@ -38,8 +45,8 @@ class build_doc(Command):
         from docutils.nodes import raw
         from docutils.parsers import rst
 
-        docutils_conf = os.path.join('doc', 'docutils.conf')
-        epydoc_conf = os.path.join('doc', 'epydoc.conf')
+        docutils_conf = os.path.join('doc', 'conf', 'docutils.ini')
+        epydoc_conf = os.path.join('doc', 'conf', 'epydoc.ini')
 
         try:
             from pygments import highlight
@@ -60,26 +67,28 @@ class build_doc(Command):
 
         for source in glob('doc/*.txt'):
             dest = os.path.splitext(source)[0] + '.html'
-            if not os.path.exists(dest) or \
-                   os.path.getmtime(dest) < os.path.getmtime(source):
+            if self.force or not os.path.exists(dest) or \
+                    os.path.getmtime(dest) < os.path.getmtime(source):
                 print 'building documentation file %s' % dest
                 publish_cmdline(writer_name='html',
                                 argv=['--config=%s' % docutils_conf, source,
                                       dest])
 
-        try:
-            from epydoc import cli
-            old_argv = sys.argv[1:]
-            sys.argv[1:] = [
-                '--config=%s' % epydoc_conf,
-                '--no-private', # epydoc bug, not read from config
-                '--simple-term',
-                '--verbose'
-            ]
-            cli.cli()
-            sys.argv[1:] = old_argv
-        except ImportError:
-            print 'epydoc not installed, skipping API documentation.'
+        if not self.without_apidocs:
+            try:
+                from epydoc import cli
+                old_argv = sys.argv[1:]
+                sys.argv[1:] = [
+                    '--config=%s' % epydoc_conf,
+                    '--no-private', # epydoc bug, not read from config
+                    '--simple-term',
+                    '--verbose'
+                ]
+                cli.cli()
+                sys.argv[1:] = old_argv
+
+            except ImportError:
+                print 'epydoc not installed, skipping API documentation.'
 
 
 class test_doc(Command):
@@ -132,6 +141,9 @@ feature is a template language, which is heavily inspired by Kid.""",
 
     extras_require = {'plugin': ['setuptools>=0.6a2']},
     entry_points = """
+    [babel.extractors]
+    genshi = genshi.filters.i18n:extract
+    
     [python.templating.engines]
     genshi = genshi.template.plugin:MarkupTemplateEnginePlugin[plugin]
     genshi-markup = genshi.template.plugin:MarkupTemplateEnginePlugin[plugin]

@@ -13,7 +13,7 @@ http://svn.edgewall.org/repos/genshi/tags/0.5.0/
 
 Version 0.4.2
 http://svn.edgewall.org/repos/genshi/tags/0.4.2/
-(?, from branches/stable/0.4.x)
+(Jun 20, from branches/stable/0.4.x)
 
  * The `doctype` parameter of the markup serializers now also accepts the "name"
    of the doctype as string, in addition to the `(name, pubid, sysid)` tuple.
@@ -25,6 +25,7 @@ http://svn.edgewall.org/repos/genshi/tags/0.4.2/
  * The I18n filter now skips the content of elements that have an `xml:lang`
    attribute with a fixed string value. Basically, `xml:lang` can now be used
    as a flag to mark specific sections as not needing localization.
+ * Added plugin for message extraction via Babel (http://babel.edgewall.org/).
 
 
 Version 0.4.1

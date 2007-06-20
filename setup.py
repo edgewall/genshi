@@ -139,10 +139,13 @@ feature is a template language, which is heavily inspired by Kid.""",
     packages = ['genshi', 'genshi.filters', 'genshi.template'],
     test_suite = 'genshi.tests.suite',
 
-    extras_require = {'plugin': ['setuptools>=0.6a2']},
+    extras_require = {
+        'i18n': ['Babel>=0.8'],
+        'plugin': ['setuptools>=0.6a2']
+    },
     entry_points = """
     [babel.extractors]
-    genshi = genshi.filters.i18n:extract
+    genshi = genshi.filters.i18n:extract[i18n]
     
     [python.templating.engines]
     genshi = genshi.template.plugin:MarkupTemplateEnginePlugin[plugin]

@@ -16,7 +16,7 @@ from StringIO import StringIO
 import unittest
 
 from genshi.template import MarkupTemplate
-from genshi.filters.i18n import Translator
+from genshi.filters.i18n import Translator, extract
 
 
 class TranslatorTestCase(unittest.TestCase):
@@ -84,10 +84,52 @@ class TranslatorTestCase(unittest.TestCase):
         self.assertEqual((2, None, u'(c) 2007 Edgewall Software'), messages[0])
 
 
+class ExtractTestCase(unittest.TestCase):
+
+    def test_markup_template_extraction(self):
+        buf = StringIO("""<html xmlns:py="http://genshi.edgewall.org/">
+          <head>
+            <title>Example</title>
+          </head>
+          <body>
+            <h1>Example</h1>
+            <p>${_("Hello, %(name)s") % dict(name=username)}</p>
+            <p>${ngettext("You have %d item", "You have %d items", num)}</p>
+          </body>
+        </html>""")
+        results = list(extract(buf, ['_', 'ngettext'], [], {}))
+        self.assertEqual([
+            (3, None, u'Example', []),
+            (6, None, u'Example', []),
+            (7, '_', u'Hello, %(name)s', []),
+            (8, 'ngettext', (u'You have %d item', u'You have %d items'), []),
+        ], results)
+
+    def test_text_template_extraction(self):
+        buf = StringIO("""${_("Dear %(name)s") % {'name': name}},
+        
+        ${ngettext("Your item:", "Your items", len(items))}
+        #for item in items
+         * $item
+        #end
+        
+        All the best,
+        Foobar""")
+        results = list(extract(buf, ['_', 'ngettext'], [], {
+            'template_class': 'genshi.template:TextTemplate'
+        }))
+        self.assertEqual([
+            (1, '_', u'Dear %(name)s', []),
+            (3, 'ngettext', (u'Your item:', u'Your items'), []),
+            (7, None, u'All the best,\n        Foobar', [])
+        ], results)
+
+
 def suite():
     suite = unittest.TestSuite()
-    suite.addTest(unittest.makeSuite(TranslatorTestCase, 'test'))
     suite.addTests(doctest.DocTestSuite(Translator.__module__))
+    suite.addTest(unittest.makeSuite(TranslatorTestCase, 'test'))
+    suite.addTest(unittest.makeSuite(ExtractTestCase, 'test'))
     return suite
 
 if __name__ == '__main__':

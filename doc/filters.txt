@@ -164,7 +164,7 @@ attach a variety of transformations to the parts that match:
   ...   </body>
   ... </html>''')
   
-  >>> print html | Transformer('body/em').apply(unicode.upper, TEXT) \
+  >>> print html | Transformer('body/em').map(unicode.upper, TEXT) \
   ...                                    .unwrap().wrap(tag.u).end() \
   ...                                    .select('body/u') \
   ...                                    .prepend('underlined ')
@@ -181,7 +181,7 @@ This example sets up a transformation that:
  2. uppercases any text nodes in the element,
  3. strips off the `<em>` start and close tags,
  4. wraps the content in a `<u>` tag, and
- 5. inserts the text `underlind` inside the `<u>` tag.
+ 5. inserts the text `underlined` inside the `<u>` tag.
 
 A number of commonly useful transformations are available for this filter.
 Please consult the API documentation a complete list.
@@ -209,13 +209,13 @@ A transformation can be any callable object that accepts an augmented event
 stream. In this case we define a class, so that we can initialize it with the
 tag name.
 
-Custom transformations can be applied using the `|` operator on the transformer
-instance:
+Custom transformations can be applied using the `apply()` method of a
+transformer instance:
 
 .. code-block:: pycon
 
-  >>> xform = Transformer('body//em').apply(unicode.upper, TEXT)
-  >>> xform |= RenameTransformation('u')
+  >>> xform = Transformer('body//em').map(unicode.upper, TEXT) \
+  >>> xform = xform.apply(RenameTransformation('u'))
   >>> print html | xform
   <html>
     <head><title>Some Title</title></head>

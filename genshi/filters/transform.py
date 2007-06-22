@@ -32,7 +32,7 @@ the ``<head>`` of the input document:
 ...    Some <em>body</em> text.
 ...  </body>
 ... </html>''')
->>> print html | Transformer('body/em').apply(unicode.upper, TEXT) \\
+>>> print html | Transformer('body/em').map(unicode.upper, TEXT) \\
 ...                                    .unwrap().wrap(tag.u)
 <html>
   <head><title>Some Title</title></head>
@@ -45,6 +45,7 @@ The ``Transformer`` support a large number of useful transformations out of the
 box, but custom transformations can be added easily.
 """
 
+import re
 import sys
 
 from genshi.builder import Element
@@ -161,8 +162,8 @@ class Transformer(object):
             transforms = link(transforms)
         return Stream(self._unmark(transforms))
 
-    def __or__(self, function):
-        """Combine transformations.
+    def apply(self, function):
+        """Apply a transformation to the stream.
 
         Transformations can be chained, similar to stream filters. Any callable
         accepting a marked stream can be used as a transform.
@@ -176,7 +177,7 @@ class Transformer(object):
         ...         else:
         ...             yield mark, (kind, data, pos)
         >>> short_stream = HTML('<body>Some <em>test</em> text</body>')
-        >>> print short_stream | (Transformer('.//em/text()') | upper)
+        >>> print short_stream | Transformer('.//em/text()').apply(upper)
         <body>Some <em>TEST</em> text</body>
         """
         transformer = Transformer()
@@ -208,7 +209,7 @@ class Transformer(object):
         :return: the stream augmented by transformation marks
         :rtype: `Transformer`
         """
-        return self | SelectTransformation(path)
+        return self.apply(SelectTransformation(path))
 
     def invert(self):
         """Invert selection so that marked events become unmarked, and vice
@@ -230,7 +231,7 @@ class Transformer(object):
 
         :rtype: `Transformer`
         """
-        return self | InvertTransformation()
+        return self.apply(InvertTransformation())
 
     def end(self):
         """End current selection, allowing all events to be selected.
@@ -251,7 +252,7 @@ class Transformer(object):
         :return: the stream augmented by transformation marks
         :rtype: `Transformer`
         """
-        return self | EndTransformation()
+        return self.apply(EndTransformation())
 
     #{ Deletion operations
 
@@ -268,7 +269,7 @@ class Transformer(object):
 
         :rtype: `Transformer`
         """
-        return self | EmptyTransformation()
+        return self.apply(EmptyTransformation())
 
     def remove(self):
         """Remove selection from the stream.
@@ -283,7 +284,7 @@ class Transformer(object):
 
         :rtype: `Transformer`
         """
-        return self | RemoveTransformation()
+        return self.apply(RemoveTransformation())
 
     #{ Direct element operations
 
@@ -300,7 +301,7 @@ class Transformer(object):
 
         :rtype: `Transformer`
         """
-        return self | UnwrapTransformation()
+        return self.apply(UnwrapTransformation())
 
     def wrap(self, element):
         """Wrap selection in an element.
@@ -314,7 +315,7 @@ class Transformer(object):
         :param element: either a tag name (as string) or an `Element` object
         :rtype: `Transformer`
         """
-        return self | WrapTransformation(element)
+        return self.apply(WrapTransformation(element))
 
     #{ Content insertion operations
 
@@ -330,7 +331,7 @@ class Transformer(object):
         :param content: Either an iterable of events or a string to insert.
         :rtype: `Transformer`
         """
-        return self | ReplaceTransformation(content)
+        return self.apply(ReplaceTransformation(content))
 
     def before(self, content):
         """Insert content before selection.
@@ -347,7 +348,7 @@ class Transformer(object):
         :param content: Either an iterable of events or a string to insert.
         :rtype: `Transformer`
         """
-        return self | BeforeTransformation(content)
+        return self.apply(BeforeTransformation(content))
 
     def after(self, content):
         """Insert content after selection.
@@ -363,7 +364,7 @@ class Transformer(object):
         :param content: Either an iterable of events or a string to insert.
         :rtype: `Transformer`
         """
-        return self | AfterTransformation(content)
+        return self.apply(AfterTransformation(content))
 
     def prepend(self, content):
         """Insert content after the ENTER event of the selection.
@@ -379,7 +380,7 @@ class Transformer(object):
         :param content: Either an iterable of events or a string to insert.
         :rtype: `Transformer`
         """
-        return self | PrependTransformation(content)
+        return self.apply(PrependTransformation(content))
 
     def append(self, content):
         """Insert content before the END event of the selection.
@@ -393,7 +394,7 @@ class Transformer(object):
         :param content: Either an iterable of events or a string to insert.
         :rtype: `Transformer`
         """
-        return self | AppendTransformation(content)
+        return self.apply(AppendTransformation(content))
 
     #{ Attribute manipulation
 
@@ -434,7 +435,7 @@ class Transformer(object):
         :param value: the value that should be set for the attribute.
         :rtype: `Transformer`
         """
-        return self | AttrTransformation(name, value)
+        return self.apply(AttrTransformation(name, value))
 
     #{ Buffer operations
 
@@ -484,7 +485,7 @@ class Transformer(object):
         :rtype: `Transformer`
         :note: this transformation will buffer the entire input stream
         """
-        return self | CopyTransformation(buffer)
+        return self.apply(CopyTransformation(buffer))
 
     def cut(self, buffer):
         """Copy selection into buffer and remove the selection from the stream.
@@ -503,17 +504,32 @@ class Transformer(object):
         :rtype: `Transformer`
         :note: this transformation will buffer the entire input stream
         """
-        return self | CutTransformation(buffer)
+        return self.apply(CutTransformation(buffer))
 
     #{ Miscellaneous operations
 
-    def apply(self, function, kind):
-        """Apply a function to the ``data`` element of events of ``kind`` in
+    def filter(self, filter):
+        """Apply a normal stream filter to the selection. The filter is called
+        once for each contiguous block of marked events.
+
+        >>> from genshi.filters.html import HTMLSanitizer
+        >>> html = HTML('<html><body>Some text<script>alert(document.cookie)'
+        ...             '</script> and some more text</body></html>')
+        >>> print html | Transformer('body/*').filter(HTMLSanitizer())
+        <html><body>Some text and some more text</body></html>
+
+        :param filter: The stream filter to apply.
+        :rtype: `Transformer`
+        """
+        return self.apply(FilterTransformation(filter))
+
+    def map(self, function, kind):
+        """Applies a function to the ``data`` element of events of ``kind`` in
         the selection.
 
         >>> html = HTML('<html><head><title>Some Title</title></head>'
         ...               '<body>Some <em>body</em> text.</body></html>')
-        >>> print html | Transformer('head/title').apply(unicode.upper, TEXT)
+        >>> print html | Transformer('head/title').map(unicode.upper, TEXT)
         <html><head><title>SOME TITLE</title></head><body>Some <em>body</em>
         text.</body></html>
 
@@ -521,7 +537,24 @@ class Transformer(object):
         :param kind: the kind of event the function should be applied to
         :rtype: `Transformer`
         """
-        return self | ApplyTransformation(function, kind)
+        return self.apply(MapTransformation(function, kind))
+
+    def substitute(self, pattern, replace, count=1):
+        """Replace text matching a regular expression.
+
+        Refer to the documentation for ``re.sub()`` for details.
+
+        >>> html = HTML('<html><body>Some text, some more text and '
+        ...             '<b>some bold text</b></body></html>')
+        >>> print html | Transformer('body').substitute('(?i)some', 'SOME')
+        <html><body>SOME text, some more text and <b>SOME bold text</b></body></html>
+
+        :param pattern: A regular expression object or string.
+        :param replace: Replacement pattern.
+        :param count: Number of replacements to make in each text fragment.
+        :rtype: `Transformer`
+        """
+        return self.apply(SubstituteTransformation(pattern, replace, count))
 
     def trace(self, prefix='', fileobj=None):
         """Print events as they pass through the transform.
@@ -542,7 +575,7 @@ class Transformer(object):
                         the standard output stream
         :rtype: `Transformer`
         """
-        return self | TraceTransformation(prefix, fileobj=fileobj)
+        return self.apply(TraceTransformation(prefix, fileobj=fileobj))
 
     # Internal methods
 
@@ -731,7 +764,41 @@ class TraceTransformation(object):
             yield event
 
 
-class ApplyTransformation(object):
+class FilterTransformation(object):
+    """Apply a normal stream filter to the selection. The filter is called once
+    for each contiguous block of marked events."""
+
+    def __init__(self, filter):
+        """Create the transform.
+
+        :param filter: The stream filter to apply.
+        """
+        self.filter = filter
+
+    def __call__(self, stream):
+        """Apply the transform filter to the marked stream.
+
+        :param stream: The marked event stream to filter
+        """
+        def flush(queue):
+            if queue:
+                for event in self.filter(queue):
+                    yield OUTSIDE, event
+                del queue[:]
+
+        queue = []
+        for mark, event in stream:
+            if mark:
+                queue.append(event)
+            else:
+                for event in flush(queue):
+                    yield event
+                yield None, event
+        for event in flush(queue):
+            yield event
+
+
+class MapTransformation(object):
     """Apply a function to the `data` element of events of ``kind`` in the
     selection.
     """
@@ -758,6 +825,36 @@ class ApplyTransformation(object):
                 yield mark, (kind, data, pos)
 
 
+class SubstituteTransformation(object):
+    """Replace text matching a regular expression.
+
+    Refer to the documentation for ``re.sub()`` for details.
+    """
+    def __init__(self, pattern, replace, count=1):
+        """Create the transform.
+
+        :param pattern: A regular expression object, or string.
+        :param replace: Replacement pattern.
+        :param count: Number of replacements to make in each text fragment.
+        """
+        if isinstance(pattern, basestring):
+            self.pattern = re.compile(pattern)
+        else:
+            self.pattern = pattern
+        self.count = count
+        self.replace = replace
+
+    def __call__(self, stream):
+        """Apply the transform filter to the marked stream.
+
+        :param stream: The marked event stream to filter
+        """
+        for mark, (kind, data, pos) in stream:
+            if kind is TEXT:
+                data = self.pattern.sub(self.replace, data, self.count)
+            yield mark, (kind, data, pos)
+
+
 class InjectorTransformation(object):
     """Abstract base class for transformations that inject content into a
     stream.
@@ -769,7 +866,7 @@ class InjectorTransformation(object):
     ...         for event in stream:
     ...             yield event
     >>> html = HTML('<body>Some <em>test</em> text</body>')
-    >>> print html | (Transformer('.//em') | Top('Prefix '))
+    >>> print html | Transformer('.//em').apply(Top('Prefix '))
     Prefix <body>Some <em>test</em> text</body>
     """
     def __init__(self, content):

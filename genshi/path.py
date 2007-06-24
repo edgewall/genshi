@@ -755,6 +755,27 @@ class ContainsFunction(Function):
     def __repr__(self):
         return 'contains(%r, %r)' % (self.string1, self.string2)
 
+class MatchesFunction(Function):
+    """The `matches` function, which returns whether a string matches a regular
+    expression.
+    """
+    __slots__ = ['string1', 'string2']
+    flag_mapping = {'s': re.S, 'm': re.M, 'i': re.I, 'x': re.X}
+
+    def __init__(self, string1, string2, flags=''):
+        self.string1 = string1
+        self.string2 = string2
+        self.flags = self._map_flags(flags)
+    def __call__(self, kind, data, pos, namespaces, variables):
+        string1 = as_string(self.string1(kind, data, pos, namespaces, variables))
+        string2 = as_string(self.string2(kind, data, pos, namespaces, variables))
+        return re.search(string2, string1, self.flags)
+    def _map_flags(self, flags):
+        return reduce(lambda a, b: a | b,
+                      [self.flag_map[flag] for flag in flags], re.U)
+    def __repr__(self):
+        return 'contains(%r, %r)' % (self.string1, self.string2)
+
 class FalseFunction(Function):
     """The `false` function, which always returns the boolean `false` value."""
     __slots__ = []
@@ -977,17 +998,16 @@ class TrueFunction(Function):
 
 _function_map = {'boolean': BooleanFunction, 'ceiling': CeilingFunction,
                  'concat': ConcatFunction, 'contains': ContainsFunction,
-                 'false': FalseFunction, 'floor': FloorFunction,
-                 'local-name': LocalNameFunction, 'name': NameFunction,
-                 'namespace-uri': NamespaceUriFunction,
+                 'matches': MatchesFunction, 'false': FalseFunction, 'floor':
+                 FloorFunction, 'local-name': LocalNameFunction, 'name':
+                 NameFunction, 'namespace-uri': NamespaceUriFunction,
                  'normalize-space': NormalizeSpaceFunction, 'not': NotFunction,
                  'number': NumberFunction, 'round': RoundFunction,
-                 'starts-with': StartsWithFunction,
-                 'string-length': StringLengthFunction,
-                 'substring': SubstringFunction,
-                 'substring-after': SubstringAfterFunction,
-                 'substring-before': SubstringBeforeFunction,
-                 'translate': TranslateFunction, 'true': TrueFunction}
+                 'starts-with': StartsWithFunction, 'string-length':
+                 StringLengthFunction, 'substring': SubstringFunction,
+                 'substring-after': SubstringAfterFunction, 'substring-before':
+                 SubstringBeforeFunction, 'translate': TranslateFunction,
+                 'true': TrueFunction}
 
 # Literals & Variables
 

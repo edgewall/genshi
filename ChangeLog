@@ -11,6 +11,14 @@ http://svn.edgewall.org/repos/genshi/tags/0.5.0/
    understand.
 
 
+Version 0.4.3
+http://svn.edgewall.org/repos/genshi/tags/0.4.3/
+(?, from branches/stable/0.4.x)
+
+ * The I18n filter no longer extracts or translates literal strings in
+   attribute values that also contain expressions.
+
+
 Version 0.4.2
 http://svn.edgewall.org/repos/genshi/tags/0.4.2/
 (Jun 20, from branches/stable/0.4.x)

@@ -158,7 +158,7 @@ class Translator(object):
                             newval = self.translate(value)
                     else:
                         newval = list(self(_ensure(value), ctxt,
-                            search_text=name in include_attrs)
+                            search_text=False)
                         )
                     if newval != value:
                         value = newval
@@ -259,7 +259,7 @@ class Translator(object):
                     else:
                         for lineno, funcname, text in self.extract(
                                 _ensure(value), gettext_functions,
-                                search_text=name in self.include_attrs):
+                                search_text=False):
                             yield lineno, funcname, text
 
             elif search_text and kind is TEXT:

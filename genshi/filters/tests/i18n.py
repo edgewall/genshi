@@ -83,6 +83,14 @@ class TranslatorTestCase(unittest.TestCase):
         self.assertEqual(1, len(messages))
         self.assertEqual((2, None, u'(c) 2007 Edgewall Software'), messages[0])
 
+    def test_ignore_attribute_with_expression(self):
+        tmpl = MarkupTemplate("""<html xmlns:py="http://genshi.edgewall.org/">
+          <input type="submit" value="Reply" title="Reply to comment $num" />
+        </html>""")
+        translator = Translator()
+        messages = list(translator.extract(tmpl.stream))
+        self.assertEqual(0, len(messages))
+
 
 class ExtractTestCase(unittest.TestCase):
 

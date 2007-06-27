@@ -9,6 +9,8 @@ http://svn.edgewall.org/repos/genshi/tags/0.5.0/
  * When using HTML or XHTML serialization, the `xml:lang` attribute is
    automatically translated to the `lang` attribute which HTML user agents
    understand.
+ * Added support for the XPath 2 `matches()` function in XPath expressions,
+   which allow matching against regular expressions.
 
 
 Version 0.4.3

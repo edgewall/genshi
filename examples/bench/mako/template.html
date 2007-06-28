@@ -7,7 +7,7 @@
   </head>
   <body>
     <%def name="greeting(name)">
-      <p>Hello, ${name}!</p>
+      <p>Hello, ${name | h}!</p>
     </%def>
   
     <%include file="header.html"/>
@@ -20,7 +20,7 @@
     % if items:
       <ul>
         % for idx, item in enumerate(items):
-          <li ${idx+1==len(items) and "class='last'" or ""}>${item}</li>
+          <li ${idx+1==len(items) and "class='last'" or ""}>${item | h}</li>
         % endfor
       </ul>
     % endif

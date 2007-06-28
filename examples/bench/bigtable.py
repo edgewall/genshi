@@ -41,9 +41,9 @@ except ImportError:
     DjangoContext = DjangoTemplate = None
 
 try:
-    from myghty.interp import Interpreter as MyghtyInterpreter
+    from mako.template import Template as MakoTemplate
 except ImportError:
-    MyghtyInterpreter = None
+    MakoTemplate = None
 
 table = [dict(a=1,b=2,c=3,d=4,e=5,f=6,g=7,h=8,i=9,j=10)
           for x in range(1000)]
@@ -74,23 +74,21 @@ if DjangoTemplate:
         context = DjangoContext({'table': table})
         django_tmpl.render(context)
 
-if MyghtyInterpreter:
-    interpreter = MyghtyInterpreter()
-    component = interpreter.make_component("""
+if MakoTemplate:
+    mako_tmpl = MakoTemplate("""
 <table>
-% for row in ARGS['table']:
-   <tr>
-%    for col in row.values():
-     <td><% col %></td>
-%
-%
-   </tr>
+  % for row in table:
+    <tr>
+      % for col in row.values():
+        <td>${ col | h  }</td>
+      % endfor
+    </tr>
+  % endfor
 </table>
 """)
-    def test_myghty():
-        """Myghty Template"""
-        buf = StringIO()
-        interpreter.execute(component, request_args={'table':table}, out_buffer=buf)
+    def test_mako():
+        """Mako Template"""
+        mako_tmpl.render(table=table)
 
 def test_genshi():
     """Genshi template"""
@@ -186,7 +184,7 @@ if neo_cgi:
 
 def run(which=None, number=10):
     tests = ['test_builder', 'test_genshi', 'test_genshi_builder',
-             'test_myghty', 'test_kid', 'test_kid_et', 'test_et', 'test_cet',
+             'test_mako', 'test_kid', 'test_kid_et', 'test_et', 'test_cet',
              'test_clearsilver', 'test_django']
 
     if which:

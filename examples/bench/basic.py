@@ -9,7 +9,7 @@ from StringIO import StringIO
 import sys
 import timeit
 
-__all__ = ['clearsilver', 'mako', 'django', 'kid', 'genshi', 'cheetah']
+__all__ = ['clearsilver', 'mako', 'django', 'kid', 'genshi', 'simpletal']
 
 def genshi(dirname, verbose=False):
     from genshi.template import TemplateLoader

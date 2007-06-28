@@ -288,7 +288,7 @@ class Template(object):
     """
 
     def __init__(self, source, basedir=None, filename=None, loader=None,
-                 encoding=None, lookup='lenient'):
+                 encoding=None, lookup='lenient', allow_exec=True):
         """Initialize a template from either a string, a file-like object, or
         an already parsed markup stream.
         
@@ -305,6 +305,10 @@ class Template(object):
         :param encoding: the encoding of the `source`
         :param lookup: the variable lookup mechanism; either "lenient" (the
                        default), "strict", or a custom lookup class
+        :param allow_exec: whether Python code blocks in templates should be
+                           allowed
+        
+        :note: Changed in 0.5: Added the `allow_exec` argument
         """
         self.basedir = basedir
         self.filename = filename
@@ -314,6 +318,7 @@ class Template(object):
             self.filepath = filename
         self.loader = loader
         self.lookup = lookup
+        self.allow_exec = allow_exec
 
         if isinstance(source, basestring):
             source = StringIO(source)

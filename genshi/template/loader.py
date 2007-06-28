@@ -73,7 +73,7 @@ class TemplateLoader(object):
     """
     def __init__(self, search_path=None, auto_reload=False,
                  default_encoding=None, max_cache_size=25, default_class=None,
-                 variable_lookup='lenient', callback=None):
+                 variable_lookup='lenient', allow_exec=True, callback=None):
         """Create the template laoder.
         
         :param search_path: a list of absolute path names that should be
@@ -90,12 +90,15 @@ class TemplateLoader(object):
         :param variable_lookup: the variable lookup mechanism; either "lenient"
                                 (the default), "strict", or a custom lookup
                                 class
+        :param allow_exec: whether to allow Python code blocks in templates
         :param callback: (optional) a callback function that is invoked after a
                          template was initialized by this loader; the function
                          is passed the template object as only argument. This
                          callback can be used for example to add any desired
                          filters to the template
         :see: `LenientLookup`, `StrictLookup`
+        
+        :note: Changed in 0.5: Added the `allow_exec` argument
         """
         from genshi.template.markup import MarkupTemplate
 
@@ -108,6 +111,7 @@ class TemplateLoader(object):
         self.default_encoding = default_encoding
         self.default_class = default_class or MarkupTemplate
         self.variable_lookup = variable_lookup
+        self.allow_exec = allow_exec
         if callback is not None and not callable(callback):
             raise TypeError('The "callback" parameter needs to be callable')
         self.callback = callback
@@ -199,8 +203,9 @@ class TemplateLoader(object):
                             filename = os.path.join(dirname, filename)
                             dirname = ''
                         tmpl = cls(fileobj, basedir=dirname, filename=filename,
-                                   loader=self, lookup=self.variable_lookup,
-                                   encoding=encoding)
+                                   loader=self, encoding=encoding,
+                                   lookup=self.variable_lookup,
+                                   allow_exec=self.allow_exec)
                         if self.callback:
                             self.callback(tmpl)
                         self._cache[filename] = tmpl

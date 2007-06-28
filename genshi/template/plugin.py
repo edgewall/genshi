@@ -67,11 +67,18 @@ class AbstractTemplateEnginePlugin(object):
             raise ConfigurationError('Unknown lookup errors mode "%s"' %
                                      lookup_errors)
 
+        try:
+            allow_exec = bool(options.get('genshi.allow_exec', True))
+        except ValueError:
+            raise ConfigurationError('Invalid value for allow_exec "%s"' %
+                                     options.get('genshi.allow_exec'))
+
         self.loader = TemplateLoader(filter(None, search_path),
                                      auto_reload=auto_reload,
                                      max_cache_size=max_cache_size,
                                      default_class=self.template_class,
                                      variable_lookup=lookup_errors,
+                                     allow_exec=allow_exec,
                                      callback=loader_callback)
 
     def load_template(self, templatename, template_string=None):

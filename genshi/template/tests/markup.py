@@ -449,6 +449,32 @@ class MarkupTemplateTestCase(unittest.TestCase):
         finally:
             shutil.rmtree(dirname)
 
+    def test_allow_exec_false(self): 
+        xml = ("""<?python
+          title = "A Genshi Template"
+          ?>
+          <html xmlns:py="http://genshi.edgewall.org/">
+            <head>
+              <title py:content="title">This is replaced.</title>
+            </head>
+        </html>""")
+        try:
+            tmpl = MarkupTemplate(xml, filename='test.html',
+                                  allow_exec=False)
+            self.fail('Expected SyntaxError')
+        except TemplateSyntaxError, e:
+            pass
+
+    def test_allow_exec_true(self): 
+        xml = ("""<?python
+          title = "A Genshi Template"
+          ?>
+          <html xmlns:py="http://genshi.edgewall.org/">
+            <head>
+              <title py:content="title">This is replaced.</title>
+            </head>
+        </html>""")
+        tmpl = MarkupTemplate(xml, filename='test.html', allow_exec=True)
 
 def suite():
     suite = unittest.TestSuite()

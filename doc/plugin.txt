@@ -101,6 +101,14 @@ The following is a list of configuration options that Genshi supports. These may
 or may not be made available by your framework. TurboGears 1.0, for example,
 only passes a fixed set of options to all plugins.
 
+``genshi.allow_exec``
+--------------------------
+Whether the Python code blocks should be permitted in templates. Specify "yes"
+to allow code blocks (which is the default), or "no" otherwise. Please note
+that disallowing code blocks in templates does not turn Genshi into a
+sandboxable template engine; there are sufficient ways to do harm even using
+plain expressions.
+
 ``genshi.auto_reload``
 ----------------------
 Whether the template loader should check the last modification time of template 

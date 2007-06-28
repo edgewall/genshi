@@ -11,6 +11,8 @@ http://svn.edgewall.org/repos/genshi/tags/0.5.0/
    understand.
  * Added support for the XPath 2 `matches()` function in XPath expressions,
    which allow matching against regular expressions.
+ * Support for Python code blocks in templates can now be disabled
+   (ticket #123).
 
 
 Version 0.4.3

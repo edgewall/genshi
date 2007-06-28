@@ -240,6 +240,14 @@ mixing application code into templates, which is generally considered bad
 design. If you're using many code blocks, that may be a sign that you should
 move such code into separate Python modules.
 
+If you'd rather not allow the use of Python code blocks in templates, you can
+simply set the ``allow_exec`` parameter (available on the ``Template`` and the
+``TemplateLoader`` initializers) to ``False``. In that case Genshi will raise
+a syntax error when a ``<?python ?>`` processing instruction is encountered.
+But please note that disallowing code blocks in templates does not turn Genshi
+into a sandboxable template engine; there are sufficient ways to do harm even
+using plain expressions.
+
 .. note:: Code blocks are not currently supported in text templates.
 
 

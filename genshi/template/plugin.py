@@ -58,6 +58,10 @@ class AbstractTemplateEnginePlugin(object):
             raise ConfigurationError('Invalid value for max_cache_size: "%s"' %
                                      options.get('genshi.max_cache_size'))
 
+        loader_callback = options.get('genshi.loader_callback', None)
+        if loader_callback and not callable(loader_callback):
+            raise ConfigurationError('loader callback must be a function')
+
         lookup_errors = options.get('genshi.lookup_errors', 'lenient')
         if lookup_errors not in ('lenient', 'strict'):
             raise ConfigurationError('Unknown lookup errors mode "%s"' %
@@ -67,7 +71,8 @@ class AbstractTemplateEnginePlugin(object):
                                      auto_reload=auto_reload,
                                      max_cache_size=max_cache_size,
                                      default_class=self.template_class,
-                                     variable_lookup=lookup_errors)
+                                     variable_lookup=lookup_errors,
+                                     callback=loader_callback)
 
     def load_template(self, templatename, template_string=None):
         """Find a template specified in python 'dot' notation, or load one from

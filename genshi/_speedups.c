@@ -185,9 +185,22 @@ PyDoc_STRVAR(escape__doc__,
 "Create a Markup instance from a string and escape special characters\n\
 it may contain (<, >, & and \").\n\
 \n\
+>>> escape('\"1 < 2\"')\n\
+<Markup u'&#34;1 &lt; 2&#34;'>\n\
+\n\
 If the `quotes` parameter is set to `False`, the \" character is left\n\
 as is. Escaping quotes is generally only required for strings that are\n\
-to be used in attribute values.");
+to be used in attribute values.\n\
+\n\
+>>> escape('\"1 < 2\"', quotes=False)\n\
+<Markup u'\"1 &lt; 2\"'>\n\
+\n\
+:param text: the text to escape\n\
+:param quotes: if ``True``, double quote characters are escaped in\n\
+               addition to the other special characters\n\
+:return: the escaped `Markup` string\n\
+:rtype: `Markup`\n\
+");
 
 static PyObject *
 Markup_escape(PyTypeObject* type, PyObject *args, PyObject *kwds)
@@ -208,6 +221,22 @@ Markup_escape(PyTypeObject* type, PyObject *args, PyObject *kwds)
     }
     return escape(text, quotes);
 }
+
+PyDoc_STRVAR(join__doc__,
+"Return a `Markup` object which is the concatenation of the strings\n\
+in the given sequence, where this `Markup` object is the separator\n\
+between the joined elements.\n\
+\n\
+Any element in the sequence that is not a `Markup` instance is\n\
+automatically escaped.\n\
+\n\
+:param seq: the sequence of strings to join\n\
+:param escape_quotes: whether double quote characters in the elements\n\
+                      should be escaped\n\
+:return: the joined `Markup` object\n\
+:rtype: `Markup`\n\
+:see: `escape`\n\
+");
 
 static PyObject *
 Markup_join(PyObject *self, PyObject *args, PyObject *kwds)
@@ -386,7 +415,15 @@ Markup_repr(PyObject *self)
 }
 
 PyDoc_STRVAR(unescape__doc__,
-"Reverse-escapes &, <, > and \" and returns a `unicode` object.");
+"Reverse-escapes &, <, >, and \" and returns a `unicode` object.\n\
+\n\
+>>> Markup('1 &lt; 2').unescape()\n\
+u'1 < 2'\n\
+\n\
+:return: the unescaped string\n\
+:rtype: `unicode`\n\
+:see: `genshi.core.unescape`\n\
+");
 
 static PyObject *
 Markup_unescape(PyObject* self)
@@ -411,8 +448,13 @@ PyDoc_STRVAR(stripentities__doc__,
 replaced by the equivalent UTF-8 characters.\n\
 \n\
 If the `keepxmlentities` parameter is provided and evaluates to `True`,\n\
-the core XML entities (&amp;, &apos;, &gt;, &lt; and &quot;) are not\n\
-stripped.");
+the core XML entities (``&amp;``, ``&apos;``, ``&gt;``, ``&lt;`` and\n\
+``&quot;``) are not stripped.\n\
+\n\
+:return: a `Markup` instance with entities removed\n\
+:rtype: `Markup`\n\
+:see: `genshi.util.stripentities`\n\
+");
 
 static PyObject *
 Markup_stripentities(PyObject* self, PyObject *args, PyObject *kwds)
@@ -440,7 +482,12 @@ Markup_stripentities(PyObject* self, PyObject *args, PyObject *kwds)
 }
 
 PyDoc_STRVAR(striptags__doc__,
-"Return a copy of the text with all XML/HTML tags removed.");
+"""Return a copy of the text with all XML/HTML tags removed.\n\
+\n\
+:return: a `Markup` instance with all tags removed\n\
+:rtype: `Markup`\n\
+:see: `genshi.util.striptags`\n\
+");
 
 static PyObject *
 Markup_striptags(PyObject* self)
@@ -467,8 +514,8 @@ typedef struct {
 
 static PyMethodDef Markup_methods[] = {
     {"escape", (PyCFunction) Markup_escape,
-     METH_VARARGS|METH_CLASS|METH_KEYWORDS,  escape__doc__},
-    {"join", (PyCFunction)Markup_join, METH_VARARGS|METH_KEYWORDS},
+     METH_VARARGS|METH_CLASS|METH_KEYWORDS, escape__doc__},
+    {"join", (PyCFunction)Markup_join, METH_VARARGS|METH_KEYWORDS, join__doc__},
     {"unescape", (PyCFunction)Markup_unescape, METH_NOARGS, unescape__doc__},
     {"stripentities", (PyCFunction) Markup_stripentities,
      METH_VARARGS|METH_KEYWORDS, stripentities__doc__},
@@ -478,11 +525,11 @@ static PyMethodDef Markup_methods[] = {
 };
 
 static PyNumberMethods Markup_as_number = {
-        Markup_add, /*nb_add*/
-        0, /*nb_subtract*/
-        Markup_mul, /*nb_multiply*/
-        0, /*nb_divide*/
-        Markup_mod, /*nb_remainder*/
+    Markup_add, /*nb_add*/
+    0, /*nb_subtract*/
+    Markup_mul, /*nb_multiply*/
+    0, /*nb_divide*/
+    Markup_mod, /*nb_remainder*/
 };
 
 PyTypeObject MarkupType = {

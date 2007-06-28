@@ -476,6 +476,7 @@ class MarkupTemplateTestCase(unittest.TestCase):
         </html>""")
         tmpl = MarkupTemplate(xml, filename='test.html', allow_exec=True)
 
+
 def suite():
     suite = unittest.TestSuite()
     suite.addTest(doctest.DocTestSuite(MarkupTemplate.__module__))

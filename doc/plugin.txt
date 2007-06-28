@@ -190,6 +190,16 @@ well-formed XML, you should probably use the **html** option for your web sites.
 
 .. _`Understanding HTML, XML and XHTML`: http://webkit.org/blog/?p=68
 
+``genshi.loader_callback``
+--------------------------
+The callback function that should be invoked whenever the template loader loads
+a new template.
+
+.. note:: Unlike the other options, this option can **not** be passed as
+          a string value, but rather must be a reference to the actual function.
+          That effectively means it can not be set from (non-Python)
+          configuration files.
+
 ``genshi.lookup_errors``
 ------------------------
 The error handling style to use in template expressions. Can be either

@@ -279,6 +279,8 @@ class XHTMLSerializer(XMLSerializer):
                 for attr, value in attrib:
                     if attr in boolean_attrs:
                         value = attr
+                    elif attr == u'xml:lang' and u'lang' not in attrib:
+                        buf += [' lang="', escape(value), '"']
                     buf += [' ', attr, '="', escape(value), '"']
                 if kind is EMPTY:
                     if tag in empty_elems:
@@ -354,7 +356,9 @@ class HTMLSerializer(XHTMLSerializer):
         if strip_whitespace:
             self.filters.append(WhitespaceFilter(self._PRESERVE_SPACE,
                                                  self._NOESCAPE_ELEMS))
-        self.filters.append(NamespaceStripper('http://www.w3.org/1999/xhtml'))
+        self.filters.append(NamespaceFlattener(prefixes={
+            'http://www.w3.org/1999/xhtml': ''
+        }))
 
     def __call__(self, stream):
         boolean_attrs = self._BOOLEAN_ATTRS
@@ -375,7 +379,10 @@ class HTMLSerializer(XHTMLSerializer):
                     if attr in boolean_attrs:
                         if value:
                             buf += [' ', attr]
-                    else:
+                    elif ':' in attr:
+                        if attr == 'xml:lang' and u'lang' not in attrib:
+                            buf += [' lang="', escape(value), '"']
+                    elif attr != 'xmlns':
                         buf += [' ', attr, '="', escape(value), '"']
                 buf.append('>')
                 if kind is EMPTY:
@@ -584,60 +591,6 @@ class NamespaceFlattener(object):
 
             else:
                 yield kind, data, pos
-
-
-class NamespaceStripper(object):
-    r"""Stream filter that removes all namespace information from a stream, and
-    optionally strips out all tags not in a given namespace.
-    
-    :param namespace: the URI of the namespace that should not be stripped. If
-                      not set, only elements with no namespace are included in
-                      the output.
-    
-    >>> from genshi.input import XML
-    >>> xml = XML('''<doc xmlns="NS1" xmlns:two="NS2">
-    ...   <two:item/>
-    ... </doc>''')
-    >>> for kind, data, pos in NamespaceStripper(Namespace('NS1'))(xml):
-    ...     print kind, repr(data)
-    START (u'doc', Attrs())
-    TEXT u'\n  '
-    TEXT u'\n'
-    END u'doc'
-    """
-
-    def __init__(self, namespace=None):
-        if namespace is not None:
-            self.namespace = Namespace(namespace)
-        else:
-            self.namespace = {}
-
-    def __call__(self, stream):
-        namespace = self.namespace
-
-        for kind, data, pos in stream:
-
-            if kind is START or kind is EMPTY:
-                tag, attrs = data
-                if tag.namespace and tag not in namespace:
-                    continue
-
-                new_attrs = []
-                for attr, value in attrs:
-                    if not attr.namespace or attr in namespace:
-                        new_attrs.append((attr, value))
-
-                data = tag.localname, Attrs(new_attrs)
-
-            elif kind is END:
-                if data.namespace and data not in namespace:
-                    continue
-                data = data.localname
-
-            elif kind is START_NS or kind is END_NS:
-                continue
-
-            yield kind, data, pos
 
 
 class WhitespaceFilter(object):

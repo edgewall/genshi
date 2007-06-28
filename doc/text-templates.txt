@@ -57,7 +57,9 @@ Conditional Sections
 ``#if``
 ---------
 
-The content is only rendered if the expression evaluates to a truth value::
+The content is only rendered if the expression evaluates to a truth value:
+
+.. code-block:: genshitext
 
   #if foo
     ${bar}
@@ -82,7 +84,9 @@ several alternatives. The first matching ``#when`` branch is rendered, or, if
 no ``#when`` branch matches, the ``#otherwise`` branch is be rendered.
 
 If the ``#choose`` directive has no argument the nested ``#when`` directives
-will be tested for truth::
+will be tested for truth:
+
+.. code-block:: genshitext
 
   The answer is:
   #choose
@@ -103,7 +107,9 @@ This would produce the following output::
       1
 
 If the ``#choose`` does have an argument, the nested ``#when`` directives will
-be tested for equality to the parent ``#choose`` value::
+be tested for equality to the parent ``#choose`` value:
+
+.. code-block:: genshitext
 
   The answer is:
   #choose 1
@@ -132,7 +138,9 @@ Looping
 ``#for``
 ----------
 
-The content is repeated for every item in an iterable::
+The content is repeated for every item in an iterable:
+
+.. code-block:: genshitext
 
   Your items:
   #for item in items
@@ -158,7 +166,9 @@ Snippet Reuse
 
 The ``#def`` directive can be used to create macros, i.e. snippets of template
 text that have a name and optionally some parameters, and that can be inserted
-in other places::
+in other places:
+
+.. code-block:: genshitext
 
   #def greeting(name)
     Hello, ${name}!
@@ -172,7 +182,9 @@ The above would be rendered to::
     Hello, everyone else!
 
 If a macro doesn't require parameters, it can be defined as well as called
-without the parenthesis. For example::
+without the parenthesis. For example:
+
+.. code-block:: genshitext
 
   #def greeting
     Hello, world!
@@ -191,7 +203,9 @@ The above would be rendered to::
 ------------
 
 To reuse common parts of template text across template files, you can include
-other files using the ``#include`` directive::
+other files using the ``#include`` directive:
+
+.. code-block:: genshitext
 
   #include "base.txt"
 
@@ -208,7 +222,9 @@ relative paths, for example "``../base.txt``" to look in the parent directory.
 
 Just like other directives, the argument to the ``#include`` directive accepts
 any Python expression, so the path to the included template can be determined
-dynamically::
+dynamically:
+
+.. code-block:: genshitext
 
   #include '%s.txt' % filename
 
@@ -232,7 +248,9 @@ efficient. For example, if you need use the expression ``author.posts`` more
 than once, and that actually results in a database query, assigning the results
 to a variable using this directive would probably help.
 
-For example::
+For example:
+
+.. code-block:: genshitext
 
   Magic numbers!
   #with y=7; z=x+10

@@ -137,6 +137,9 @@ def lex(text, textpos, filepath):
             yield True, text[offset + 1:pos].strip()
 
         elif not escaped and next == PREFIX:
+            if offset > pos:
+                yield False, text[pos:offset]
+                pos = offset
             escaped = True
             pos = offset + 1
 

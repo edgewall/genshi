@@ -1,3 +1,16 @@
+# -*- coding: utf-8 -*-
+#
+# Copyright (C) 2007 Edgewall Software
+# All rights reserved.
+#
+# This software is licensed as described in the file COPYING, which
+# you should have received as part of this distribution. The terms
+# are also available at http://genshi.edgewall.org/wiki/License.
+#
+# This software consists of voluntary contributions made by many
+# individuals. For the exact contribution history, see the revision
+# history and logs, available at http://genshi.edgewall.org/log/.
+
 """Utilities for internationalization and localization of templates."""
 
 try:
@@ -8,9 +21,13 @@ from gettext import gettext
 from opcode import opmap
 import re
 
-from genshi.core import Attrs, Namespace, QName, START, END, TEXT, _ensure
+from genshi.core import Attrs, Namespace, QName, START, END, TEXT, \
+                        XML_NAMESPACE, _ensure
 from genshi.template.base import Template, EXPR, SUB
-from genshi.template.markup import EXEC
+from genshi.template.markup import MarkupTemplate, EXEC
+
+__all__ = ['Translator', 'extract']
+__docformat__ = 'restructuredtext en'
 
 _LOAD_NAME = chr(opmap['LOAD_NAME'])
 _LOAD_CONST = chr(opmap['LOAD_CONST'])
@@ -65,6 +82,10 @@ class Translator(object):
         <p>Hallo, Hans</p>
       </body>
     </html>
+
+    Note that elements defining ``xml:lang`` attributes that do not contain
+    variable expressions are ignored by this filter. That can be used to
+    exclude specific parts of a template from being extracted and translated.
     """
 
     IGNORE_TAGS = frozenset([
@@ -106,25 +127,24 @@ class Translator(object):
         include_attrs = self.include_attrs
         translate = self.translate
         skip = 0
+        xml_lang = XML_NAMESPACE['lang']
 
         for kind, data, pos in stream:
 
             # skip chunks that should not be localized
             if skip:
                 if kind is START:
-                    tag, attrs = data
-                    if tag in ignore_tags:
-                        skip += 1
+                    skip += 1
                 elif kind is END:
-                    if tag in ignore_tags:
-                        skip -= 1
+                    skip -= 1
                 yield kind, data, pos
                 continue
 
             # handle different events that can be localized
             if kind is START:
                 tag, attrs = data
-                if tag in ignore_tags:
+                if tag in self.ignore_tags or \
+                        isinstance(attrs.get(xml_lang), basestring):
                     skip += 1
                     yield kind, data, pos
                     continue
@@ -138,7 +158,7 @@ class Translator(object):
                             newval = self.translate(value)
                     else:
                         newval = list(self(_ensure(value), ctxt,
-                            search_text=name in include_attrs)
+                            search_text=False)
                         )
                     if newval != value:
                         value = newval
@@ -213,22 +233,20 @@ class Translator(object):
         """
         tagname = None
         skip = 0
+        xml_lang = XML_NAMESPACE['lang']
 
         for kind, data, pos in stream:
             if skip:
                 if kind is START:
-                    tag, attrs = data
-                    if tag in self.ignore_tags:
-                        skip += 1
+                    skip += 1
                 if kind is END:
-                    tag = data
-                    if tag in self.ignore_tags:
-                        skip -= 1
+                    skip -= 1
                 continue
 
             if kind is START:
                 tag, attrs = data
-                if tag in self.ignore_tags:
+                if tag in self.ignore_tags or \
+                        isinstance(attrs.get(xml_lang), basestring):
                     skip += 1
                     continue
 
@@ -241,7 +259,7 @@ class Translator(object):
                     else:
                         for lineno, funcname, text in self.extract(
                                 _ensure(value), gettext_functions,
-                                search_text=name in self.include_attrs):
+                                search_text=False):
                             yield lineno, funcname, text
 
             elif search_text and kind is TEXT:
@@ -284,3 +302,38 @@ class Translator(object):
                 for lineno, funcname, text in self.extract(substream,
                                                            gettext_functions):
                     yield lineno, funcname, text
+
+
+def extract(fileobj, keywords, comment_tags, options):
+    """Babel extraction method for Genshi templates.
+    
+    :param fileobj: the file-like object the messages should be extracted from
+    :param keywords: a list of keywords (i.e. function names) that should be
+                     recognized as translation functions
+    :param comment_tags: a list of translator tags to search for and include
+                         in the results
+    :param options: a dictionary of additional options (optional)
+    :return: an iterator over ``(lineno, funcname, message, comments)`` tuples
+    :rtype: ``iterator``
+    """
+    template_class = options.get('template_class', MarkupTemplate)
+    if isinstance(template_class, basestring):
+        module, clsname = template_class.split(':', 1)
+        template_class = getattr(__import__(module, {}, {}, [clsname]), clsname)
+    encoding = options.get('encoding', None)
+
+    ignore_tags = options.get('ignore_tags', Translator.IGNORE_TAGS)
+    if isinstance(ignore_tags, basestring):
+        ignore_tags = ignore_tags.split()
+    ignore_tags = [QName(tag) for tag in ignore_tags]
+    include_attrs = options.get('include_attrs', Translator.INCLUDE_ATTRS)
+    if isinstance(include_attrs, basestring):
+        include_attrs = include_attrs.split()
+    include_attrs = [QName(attr) for attr in include_attrs]
+
+    tmpl = template_class(fileobj, filename=getattr(fileobj, 'name', None),
+                          encoding=encoding)
+    translator = Translator(None, ignore_tags, include_attrs)
+    for lineno, func, message in translator.extract(tmpl.stream,
+                                                    gettext_functions=keywords):
+        yield lineno, func, message, []

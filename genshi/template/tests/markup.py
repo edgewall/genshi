@@ -195,6 +195,17 @@ class MarkupTemplateTestCase(unittest.TestCase):
           \xf6
         </div>""", unicode(tmpl.generate()))
 
+    def test_exec_with_trailing_space(self):
+        """
+        Verify that a code block processing instruction with trailing space
+        does not cause a syntax error (see ticket #127).
+        """
+        MarkupTemplate(u"""<foo>
+          <?python
+            bar = 42
+          ?>
+        </foo>""")
+
     def test_exec_import(self):
         tmpl = MarkupTemplate(u"""<?python from datetime import timedelta ?>
         <div xmlns:py="http://genshi.edgewall.org/">

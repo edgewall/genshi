@@ -194,6 +194,16 @@ class XMLSerializerTestCase(unittest.TestCase):
 
 class XHTMLSerializerTestCase(unittest.TestCase):
 
+    def test_xml_lang(self):
+        text = '<p xml:lang="en">English text</p>'
+        output = XML(text).render(XHTMLSerializer)
+        self.assertEqual('<p lang="en" xml:lang="en">English text</p>', output)
+
+    def test_xml_lang_nodup(self):
+        text = '<p xml:lang="en" lang="en">English text</p>'
+        output = XML(text).render(XHTMLSerializer)
+        self.assertEqual('<p xml:lang="en" lang="en">English text</p>', output)
+
     def test_textarea_whitespace(self):
         content = '\nHey there.  \n\n    I am indented.\n'
         stream = XML('<textarea name="foo">%s</textarea>' % content)
@@ -323,6 +333,16 @@ class XHTMLSerializerTestCase(unittest.TestCase):
 
 
 class HTMLSerializerTestCase(unittest.TestCase):
+
+    def test_xml_lang(self):
+        text = '<p xml:lang="en">English text</p>'
+        output = XML(text).render(HTMLSerializer)
+        self.assertEqual('<p lang="en">English text</p>', output)
+
+    def test_xml_lang_nodup(self):
+        text = '<p lang="en" xml:lang="en">English text</p>'
+        output = XML(text).render(HTMLSerializer)
+        self.assertEqual('<p lang="en">English text</p>', output)
 
     def test_textarea_whitespace(self):
         content = '\nHey there.  \n\n    I am indented.\n'

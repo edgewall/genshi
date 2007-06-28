@@ -32,7 +32,9 @@ used for control flow and variable substitution. Markup templates should be
 used to generate any kind of HTML or XML output, as they provide many advantages
 over simple text-based templates (such as automatic escaping of strings).
 
-The following illustrates a very basic Genshi markup template::
+The following illustrates a very basic Genshi markup template:
+
+.. code-block:: genshi
 
   <?python
     title = "A Genshi Template"
@@ -60,7 +62,9 @@ This example shows:
 (c) usage of templates directives (``py:content`` and ``py:for``)
 (d) an inline Python expression (``${fruit}``).
 
-The template would generate output similar to this::
+The template would generate output similar to this:
+
+.. code-block:: genshi
 
   <html>
     <head>
@@ -79,7 +83,9 @@ The template would generate output similar to this::
 
 A *text template* is a simple plain text document that can also contain embedded
 Python code. Text templates can be used to generate simple *non-markup* text
-formats, such as the body of an plain text email. For example::
+formats, such as the body of an plain text email. For example:
+
+.. code-block:: genshitext
 
   Dear $name,
   
@@ -103,7 +109,9 @@ following pattern:
   be made available to the template as keyword arguments.
 * Serialize the resulting stream using its ``render()`` method.
 
-For example::
+For example:
+
+.. code-block:: pycon
 
   >>> from genshi.template import MarkupTemplate
   >>> tmpl = MarkupTemplate('<h1>Hello, $name!</h1>')
@@ -111,7 +119,9 @@ For example::
   >>> print stream.render()
   <h1>Hello, world!</h1>
 
-Using a text template is similar::
+Using a text template is similar:
+
+.. code-block:: pycon
 
   >>> from genshi.template import TextTemplate
   >>> tmpl = TextTemplate('Hello, $name!')
@@ -129,7 +139,9 @@ Using a template loader provides the advantage that “compiled” templates are
 automatically cached, and only parsed again when the template file changes. In
 addition, it enables the use of a *template search path*, allowing template
 directories to be spread across different file-system locations. Using a
-template loader would generally look as follows::
+template loader would generally look as follows:
+
+.. code-block:: python
 
   from genshi.template import TemplateLoader
   loader = TemplateLoader([templates_dir1, templates_dir2])
@@ -158,7 +170,9 @@ to prefixed with a dollar sign (``$``) and usually enclosed in curly braces
 If the expression starts with a letter and contains only letters, digits, dots,
 and underscores, the curly braces may be omitted. In all other cases, the
 braces are required so that the template processor knows where the expression
-ends::
+ends:
+
+.. code-block:: pycon
 
   >>> from genshi.template import MarkupTemplate
   >>> tmpl = MarkupTemplate('<em>${items[0].capitalize()} item</em>')
@@ -168,7 +182,9 @@ ends::
 Expressions support the full power of Python. In addition, it is possible to
 access items in a dictionary using “dotted notation” (i.e. as if they were
 attributes), and vice-versa (i.e. access attributes as if they were items in a
-dictionary)::
+dictionary):
+
+.. code-block:: pycon
 
   >>> from genshi.template import MarkupTemplate
   >>> tmpl = MarkupTemplate('<em>${dict.foo}</em>')
@@ -188,7 +204,9 @@ Code Blocks
 ===========
 
 XML templates also support full Python code blocks using the ``<?python ?>``
-processing instruction::
+processing instruction:
+
+.. code-block:: genshi
 
   <div>
     <?python
@@ -198,7 +216,9 @@ processing instruction::
     ${greeting('world')}
   </div>
 
-This will produce the following output::
+This will produce the following output:
+
+.. code-block:: genshi
 
   <div>
     <b>Hello, world!</b>
@@ -229,7 +249,9 @@ Error Handling
 ==============
 
 By default, Genshi allows you to access variables that are not defined, without
-raising a ``NameError`` exception as regular Python code would::
+raising a ``NameError`` exception as regular Python code would:
+
+.. code-block:: pycon
 
   >>> from genshi.template import MarkupTemplate
   >>> tmpl = MarkupTemplate('<p>${doh}</p>')
@@ -237,7 +259,9 @@ raising a ``NameError`` exception as regular Python code would::
   <p></p>
 
 You *will* however get an exception if you try to call an undefined variable, or
-do anything else with it, such as accessing its attributes::
+do anything else with it, such as accessing its attributes:
+
+.. code-block:: pycon
 
   >>> from genshi.template import MarkupTemplate
   >>> tmpl = MarkupTemplate('<p>${doh.oops}</p>')
@@ -247,7 +271,9 @@ do anything else with it, such as accessing its attributes::
   UndefinedError: "doh" not defined
 
 If you need to know whether a variable is defined, you can check its type
-against the ``Undefined`` class, for example in a conditional directive::
+against the ``Undefined`` class, for example in a conditional directive:
+
+.. code-block:: pycon
 
   >>> from genshi.template import MarkupTemplate
   >>> tmpl = MarkupTemplate('<p>${type(doh) is not Undefined}</p>')
@@ -266,7 +292,9 @@ silently.
 
 This mode can be chosen by passing the ``lookup='strict'`` keyword argument to
 the template initializer, or by passing the ``variable_lookup='strict'`` keyword
-argument to the ``TemplateLoader`` initializer::
+argument to the ``TemplateLoader`` initializer:
+
+.. code-block:: pycon
 
   >>> from genshi.template import MarkupTemplate
   >>> tmpl = MarkupTemplate('<p>${doh}</p>', lookup='strict')

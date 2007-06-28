@@ -11,10 +11,18 @@
 # individuals. For the exact contribution history, see the revision
 # history and logs, available at http://genshi.edgewall.org/log/.
 
-"""Implementation of a number of stream filters."""
+import doctest
+import unittest
 
-from genshi.filters.html import HTMLFormFiller, HTMLSanitizer
-from genshi.filters.i18n import Translator
-from genshi.filters.transform import Transformer
+import genshi.filters.transform
 
-__docformat__ = 'restructuredtext en'
+
+def suite():
+    from genshi.input import HTML
+    suite = doctest.DocTestSuite(genshi.filters.transform,
+                                 optionflags=doctest.NORMALIZE_WHITESPACE,
+                                 extraglobs={'HTML': HTML})
+    return suite
+
+if __name__ == '__main__':
+    unittest.main(defaultTest='suite')

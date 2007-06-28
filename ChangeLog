@@ -3,16 +3,44 @@ http://svn.edgewall.org/repos/genshi/tags/0.5.0/
 (?, from branches/stable/0.5.x)
 
  * Added #include directive for text templates (ticket #115).
+ * Added new markup transformation filter contributed by Alec Thomas. This
+   provides gorgeous jQuery-inspired stream transformation capabilities based
+   on XPath expressions.
+ * When using HTML or XHTML serialization, the `xml:lang` attribute is
+   automatically translated to the `lang` attribute which HTML user agents
+   understand.
+ * Added support for the XPath 2 `matches()` function in XPath expressions,
+   which allow matching against regular expressions.
+
+
+Version 0.4.3
+http://svn.edgewall.org/repos/genshi/tags/0.4.3/
+(?, from branches/stable/0.4.x)
+
+ * The I18n filter no longer extracts or translates literal strings in
+   attribute values that also contain expressions.
+ * Added `loader_callback` option to plugin interface, which allows specifying
+   a callback function that the template loader should invoke whenever a new
+   template is loaded (ticket #130). Note that the value for this option can
+   not be specified as a string, only as an actual function object, which means
+   it is not available for use through configuration files.
 
 
 Version 0.4.2
 http://svn.edgewall.org/repos/genshi/tags/0.4.2/
-(?, from branches/stable/0.4.x)
+(Jun 20, from branches/stable/0.4.x)
 
  * The `doctype` parameter of the markup serializers now also accepts the "name"
    of the doctype as string, in addition to the `(name, pubid, sysid)` tuple.
  * The I18n filter was not replacing the original attributes with the
    translation, but instead adding a second attribute with the same name.
+ * `TextTemplate` can now handle unicode source (ticket #125).
+ * A `<?python ?>` processing instruction containing trailing whitespace no
+   longer causes a syntax error (ticket #127).
+ * The I18n filter now skips the content of elements that have an `xml:lang`
+   attribute with a fixed string value. Basically, `xml:lang` can now be used
+   as a flag to mark specific sections as not needing localization.
+ * Added plugin for message extraction via Babel (http://babel.edgewall.org/).
 
 
 Version 0.4.1

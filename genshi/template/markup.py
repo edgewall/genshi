@@ -193,7 +193,7 @@ class MarkupTemplate(Template):
                     # number quite right
                     lines = [line.expandtabs() for line in data[1].splitlines()]
                     first = lines[0]
-                    rest = dedent('\n'.join(lines[1:]))
+                    rest = dedent('\n'.join(lines[1:])).rstrip()
                     if first.rstrip().endswith(':') and not rest[0].isspace():
                         rest = '\n'.join(['    ' + line for line
                                           in rest.splitlines()])

@@ -19,6 +19,11 @@ http://svn.edgewall.org/repos/genshi/tags/0.4.3/
 
  * The I18n filter no longer extracts or translates literal strings in
    attribute values that also contain expressions.
+ * Added `loader_callback` option to plugin interface, which allows specifying
+   a callback function that the template loader should invoke whenever a new
+   template is loaded (ticket #130). Note that the value for this option can
+   not be specified as a string, only as an actual function object, which means
+   it is not available for use through configuration files.
 
 
 Version 0.4.2

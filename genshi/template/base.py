@@ -354,6 +354,8 @@ class Template(object):
         
         :param stream: the event stream of the template
         """
+        from genshi.template.loader import TemplateNotFound
+
         for kind, data, pos in stream:
             if kind is SUB:
                 directives = []
@@ -371,7 +373,27 @@ class Template(object):
                         yield event
             else:
                 if kind is INCLUDE:
-                    data = data[0], list(self._prepare(data[1]))
+                    href, fallback = data
+                    if isinstance(href, basestring) and \
+                            not getattr(self.loader, 'auto_reload', True):
+                        # If the path to the included template is static, and
+                        # auto-reloading is disabled on the template loader,
+                        # the template is inlined into the stream
+                        try:
+                            tmpl = self.loader.load(href, relative_to=pos[0],
+                                                    cls=self.__class__)
+                            for event in tmpl.stream:
+                                yield event
+                        except TemplateNotFound:
+                            if fallback is None:
+                                raise
+                            for event in self._prepare(fallback):
+                                yield event
+                        continue
+                    else:
+                        # Otherwise the include is performed at run time
+                        data = href, list(self._prepare(fallback))
+
                 yield kind, data, pos
 
     def generate(self, *args, **kwargs):

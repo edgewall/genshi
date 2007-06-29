@@ -69,6 +69,10 @@ class TemplateLoader(object):
     >>> loader.load(os.path.basename(path)) is template
     True
     
+    The `auto_reload` option can be used to control whether a template should
+    be automatically reloaded when the file it was loaded from has been
+    changed. Disable this automatic reloading to improve performance.
+    
     >>> os.remove(path)
     """
     def __init__(self, search_path=None, auto_reload=False,
@@ -107,7 +111,11 @@ class TemplateLoader(object):
             self.search_path = []
         elif isinstance(self.search_path, basestring):
             self.search_path = [self.search_path]
+
         self.auto_reload = auto_reload
+        """Whether templates should be reloaded when the underlying file is
+        changed"""
+
         self.default_encoding = default_encoding
         self.default_class = default_class or MarkupTemplate
         self.variable_lookup = variable_lookup
@@ -117,7 +125,7 @@ class TemplateLoader(object):
         self.callback = callback
         self._cache = LRUCache(max_cache_size)
         self._mtime = {}
-        self._lock = threading.Lock()
+        self._lock = threading.RLock()
 
     def load(self, filename, relative_to=None, cls=None, encoding=None):
         """Load the template with the given name.

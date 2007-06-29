@@ -115,10 +115,10 @@ Whether the template loader should check the last modification time of template
 files, and automatically reload them if they have been changed. Specify "yes"
 to enable this reloading (which is the default), or "no" to turn it off.
 
-.. note:: You may want to disable reloading in a production environment to gain
-          a slight (and possible even negligible) improvement in loading
-          performance, but then you'll have to manually restart the server
-          process anytime the templates are updated.
+You probably want to disable reloading in a production environment to improve
+performance of both templating loading and the processing of includes. But
+remember that you'll then have to manually restart the server process anytime
+the templates are updated.
 
 ``genshi.default_doctype``
 --------------------------

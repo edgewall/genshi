@@ -449,6 +449,60 @@ class MarkupTemplateTestCase(unittest.TestCase):
         finally:
             shutil.rmtree(dirname)
 
+    def test_include_inlined(self):
+        dirname = tempfile.mkdtemp(suffix='genshi_test')
+        try:
+            file1 = open(os.path.join(dirname, 'tmpl1.html'), 'w')
+            try:
+                file1.write("""<div>Included</div>""")
+            finally:
+                file1.close()
+
+            file2 = open(os.path.join(dirname, 'tmpl2.html'), 'w')
+            try:
+                file2.write("""<html xmlns:xi="http://www.w3.org/2001/XInclude"
+                                     xmlns:py="http://genshi.edgewall.org/">
+                  <xi:include href="tmpl1.html" />
+                </html>""")
+            finally:
+                file2.close()
+
+            loader = TemplateLoader([dirname], auto_reload=False)
+            tmpl = loader.load('tmpl2.html')
+            # if not inlined the following would be 5
+            self.assertEqual(7, len(tmpl.stream))
+            self.assertEqual("""<html>
+                  <div>Included</div>
+                </html>""", tmpl.generate().render())
+        finally:
+            shutil.rmtree(dirname)
+
+    def test_include_inlined_in_loop(self):
+        dirname = tempfile.mkdtemp(suffix='genshi_test')
+        try:
+            file1 = open(os.path.join(dirname, 'tmpl1.html'), 'w')
+            try:
+                file1.write("""<div>Included $idx</div>""")
+            finally:
+                file1.close()
+
+            file2 = open(os.path.join(dirname, 'tmpl2.html'), 'w')
+            try:
+                file2.write("""<html xmlns:xi="http://www.w3.org/2001/XInclude"
+                                     xmlns:py="http://genshi.edgewall.org/">
+                  <xi:include href="tmpl1.html" py:for="idx in range(3)" />
+                </html>""")
+            finally:
+                file2.close()
+
+            loader = TemplateLoader([dirname], auto_reload=False)
+            tmpl = loader.load('tmpl2.html')
+            self.assertEqual("""<html>
+                  <div>Included 0</div><div>Included 1</div><div>Included 2</div>
+                </html>""", tmpl.generate().render())
+        finally:
+            shutil.rmtree(dirname)
+
     def test_allow_exec_false(self): 
         xml = ("""<?python
           title = "A Genshi Template"

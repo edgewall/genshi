@@ -587,13 +587,13 @@ class ChooseDirective(Directive):
     attach = classmethod(attach)
 
     def __call__(self, stream, ctxt, directives):
-        frame = dict({'_choose.matched': False})
+        info = [False, None]
         if self.expr:
-            frame['_choose.value'] = self.expr.evaluate(ctxt)
-        ctxt.push(frame)
+            info[1] = self.expr.evaluate(ctxt)
+        ctxt._choice_stack.append(info)
         for event in _apply_directives(stream, ctxt, directives):
             yield event
-        ctxt.pop()
+        ctxt._choice_stack.pop()
 
 
 class WhenDirective(Directive):
@@ -616,26 +616,26 @@ class WhenDirective(Directive):
     attach = classmethod(attach)
 
     def __call__(self, stream, ctxt, directives):
-        matched, frame = ctxt._find('_choose.matched')
-        if not frame:
+        info = ctxt._choice_stack and ctxt._choice_stack[-1]
+        if not info:
             raise TemplateRuntimeError('"when" directives can only be used '
                                        'inside a "choose" directive',
                                        self.filename, *stream.next()[2][1:])
-        if matched:
+        if info[0]:
             return []
-        if not self.expr and '_choose.value' not in frame:
+        if not self.expr and not info[1]:
             raise TemplateRuntimeError('either "choose" or "when" directive '
                                        'must have a test expression',
                                        self.filename, *stream.next()[2][1:])
-        if '_choose.value' in frame:
-            value = frame['_choose.value']
+        if info[1]:
+            value = info[1]
             if self.expr:
                 matched = value == self.expr.evaluate(ctxt)
             else:
                 matched = bool(value)
         else:
             matched = bool(self.expr.evaluate(ctxt))
-        frame['_choose.matched'] = matched
+        info[0] = matched
         if not matched:
             return []
 
@@ -655,14 +655,14 @@ class OtherwiseDirective(Directive):
         self.filename = template.filepath
 
     def __call__(self, stream, ctxt, directives):
-        matched, frame = ctxt._find('_choose.matched')
-        if not frame:
+        info = ctxt._choice_stack and ctxt._choice_stack[-1]
+        if not info:
             raise TemplateRuntimeError('an "otherwise" directive can only be '
                                        'used inside a "choose" directive',
                                        self.filename, *stream.next()[2][1:])
-        if matched:
+        if info[0]:
             return []
-        frame['_choose.matched'] = True
+        info[0] = True
 
         return _apply_directives(stream, ctxt, directives)
 

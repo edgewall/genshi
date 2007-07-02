@@ -30,6 +30,8 @@ http://svn.edgewall.org/repos/genshi/tags/0.4.3/
    template is loaded (ticket #130). Note that the value for this option can
    not be specified as a string, only as an actual function object, which means
    it is not available for use through configuration files.
+ * The I18n filter now extracts messages from gettext functions even inside
+   ignored tags (ticket #132).
 
 
 Version 0.4.2

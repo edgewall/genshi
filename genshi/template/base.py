@@ -129,6 +129,7 @@ class Context(object):
         self.pop = self.frames.popleft
         self.push = self.frames.appendleft
         self._match_templates = []
+        self._choice_stack = []
 
         # Helper functions for use in expressions
         def defined(name):

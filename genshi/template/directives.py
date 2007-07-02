@@ -15,7 +15,7 @@
 
 import compiler
 
-from genshi.core import Attrs, QName, Stream
+from genshi.core import QName, Stream
 from genshi.path import Path
 from genshi.template.base import TemplateRuntimeError, TemplateSyntaxError, \
                                  EXPR, _apply_directives
@@ -66,7 +66,10 @@ class Directive(object):
         
         :param template: the `Template` object
         :param stream: the event stream associated with the directive
-        :param value: the argument value for the directive
+        :param value: the argument value for the directive; if the directive was
+                      specified as an element, this will be an `Attrs` instance
+                      with all specified attributes, otherwise it will be a
+                      `unicode` object with just the attribute value
         :param namespaces: a mapping of namespace URIs to prefixes
         :param pos: a ``(filename, lineno, offset)`` tuple describing the
                     location where the directive was found in the source
@@ -247,8 +250,6 @@ class DefDirective(Directive):
     """
     __slots__ = ['name', 'args', 'star_args', 'dstar_args', 'defaults']
 
-    ATTRIBUTE = 'function'
-
     def __init__(self, args, template, namespaces=None, lineno=-1, offset=-1):
         Directive.__init__(self, None, template, namespaces, lineno, offset)
         ast = _parse(args).node
@@ -273,6 +274,13 @@ class DefDirective(Directive):
                 self.dstar_args = ast.dstar_args.name
         else:
             self.name = ast.name
+
+    def attach(cls, template, stream, value, namespaces, pos):
+        if type(value) is dict:
+            value = value.get('function')
+        return super(DefDirective, cls).attach(template, stream, value,
+                                               namespaces, pos)
+    attach = classmethod(attach)
 
     def __call__(self, stream, ctxt, directives):
         stream = list(stream)
@@ -329,8 +337,6 @@ class ForDirective(Directive):
     """
     __slots__ = ['assign', 'filename']
 
-    ATTRIBUTE = 'each'
-
     def __init__(self, value, template, namespaces=None, lineno=-1, offset=-1):
         if ' in ' not in value:
             raise TemplateSyntaxError('"in" keyword missing in "for" directive',
@@ -341,6 +347,13 @@ class ForDirective(Directive):
         self.filename = template.filepath
         Directive.__init__(self, value.strip(), template, namespaces, lineno,
                            offset)
+
+    def attach(cls, template, stream, value, namespaces, pos):
+        if type(value) is dict:
+            value = value.get('each')
+        return super(ForDirective, cls).attach(template, stream, value,
+                                               namespaces, pos)
+    attach = classmethod(attach)
 
     def __call__(self, stream, ctxt, directives):
         iterable = self.expr.evaluate(ctxt)
@@ -380,7 +393,12 @@ class IfDirective(Directive):
     """
     __slots__ = []
 
-    ATTRIBUTE = 'test'
+    def attach(cls, template, stream, value, namespaces, pos):
+        if type(value) is dict:
+            value = value.get('test')
+        return super(IfDirective, cls).attach(template, stream, value,
+                                              namespaces, pos)
+    attach = classmethod(attach)
 
     def __call__(self, stream, ctxt, directives):
         if self.expr.evaluate(ctxt):
@@ -407,12 +425,17 @@ class MatchDirective(Directive):
     """
     __slots__ = ['path', 'namespaces']
 
-    ATTRIBUTE = 'path'
-
     def __init__(self, value, template, namespaces=None, lineno=-1, offset=-1):
         Directive.__init__(self, None, template, namespaces, lineno, offset)
         self.path = Path(value, template.filepath, lineno)
         self.namespaces = namespaces or {}
+
+    def attach(cls, template, stream, value, namespaces, pos):
+        if type(value) is dict:
+            value = value.get('path')
+        return super(MatchDirective, cls).attach(template, stream, value,
+                                                 namespaces, pos)
+    attach = classmethod(attach)
 
     def __call__(self, stream, ctxt, directives):
         ctxt._match_templates.append((self.path.test(ignore_context=True),
@@ -556,7 +579,12 @@ class ChooseDirective(Directive):
     """
     __slots__ = ['matched', 'value']
 
-    ATTRIBUTE = 'test'
+    def attach(cls, template, stream, value, namespaces, pos):
+        if type(value) is dict:
+            value = value.get('test')
+        return super(ChooseDirective, cls).attach(template, stream, value,
+                                                  namespaces, pos)
+    attach = classmethod(attach)
 
     def __call__(self, stream, ctxt, directives):
         frame = dict({'_choose.matched': False})
@@ -576,11 +604,16 @@ class WhenDirective(Directive):
     """
     __slots__ = ['filename']
 
-    ATTRIBUTE = 'test'
-
     def __init__(self, value, template, namespaces=None, lineno=-1, offset=-1):
         Directive.__init__(self, value, template, namespaces, lineno, offset)
         self.filename = template.filepath
+
+    def attach(cls, template, stream, value, namespaces, pos):
+        if type(value) is dict:
+            value = value.get('test')
+        return super(WhenDirective, cls).attach(template, stream, value,
+                                                namespaces, pos)
+    attach = classmethod(attach)
 
     def __call__(self, stream, ctxt, directives):
         matched, frame = ctxt._find('_choose.matched')
@@ -649,8 +682,6 @@ class WithDirective(Directive):
     """
     __slots__ = ['vars']
 
-    ATTRIBUTE = 'vars'
-
     def __init__(self, value, template, namespaces=None, lineno=-1, offset=-1):
         Directive.__init__(self, None, template, namespaces, lineno, offset)
         self.vars = []
@@ -672,6 +703,13 @@ class WithDirective(Directive):
                                                                   self.tagname)
             raise TemplateSyntaxError(err, template.filepath, lineno,
                                       offset + (err.offset or 0))
+
+    def attach(cls, template, stream, value, namespaces, pos):
+        if type(value) is dict:
+            value = value.get('vars')
+        return super(WithDirective, cls).attach(template, stream, value,
+                                                namespaces, pos)
+    attach = classmethod(attach)
 
     def __call__(self, stream, ctxt, directives):
         frame = {}

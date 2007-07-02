@@ -118,8 +118,9 @@ class MarkupTemplate(Template):
                     if cls is None:
                         raise BadDirectiveError(tag.localname, self.filepath,
                                                 pos[1])
-                    value = attrs.get(getattr(cls, 'ATTRIBUTE', None), '')
-                    directives.append((cls, value, ns_prefix.copy(), pos))
+                    args = dict([(name.localname, value) for name, value
+                                 in attrs if not name.namespace])
+                    directives.append((cls, args, ns_prefix.copy(), pos))
                     strip = True
 
                 new_attrs = []

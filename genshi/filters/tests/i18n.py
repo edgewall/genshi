@@ -132,6 +132,30 @@ class ExtractTestCase(unittest.TestCase):
             (7, None, u'All the best,\n        Foobar', [])
         ], results)
 
+    def test_extraction_inside_ignored_tags(self):
+        buf = StringIO("""<html xmlns:py="http://genshi.edgewall.org/">
+          <script type="text/javascript">
+            $('#llist').tabs({
+              remote: true,
+              spinner: "${_('Please wait...')}"
+            });
+          </script>
+        </html>""")
+        results = list(extract(buf, ['_'], [], {}))
+        self.assertEqual([
+            (5, '_', u'Please wait...', []),
+        ], results)
+
+    def test_extraction_inside_ignored_tags_with_directives(self):
+        buf = StringIO("""<html xmlns:py="http://genshi.edgewall.org/">
+          <script type="text/javascript">
+            <py:if test="foobar">
+              alert("This shouldn't be extracted");
+            </py:if>
+          </script>
+        </html>""")
+        self.assertEqual([], list(extract(buf, ['_'], [], {})))
+
 
 def suite():
     suite = unittest.TestSuite()

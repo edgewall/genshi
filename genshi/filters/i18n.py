@@ -236,14 +236,14 @@ class Translator(object):
         xml_lang = XML_NAMESPACE['lang']
 
         for kind, data, pos in stream:
+
             if skip:
                 if kind is START:
                     skip += 1
                 if kind is END:
                     skip -= 1
-                continue
 
-            if kind is START:
+            if kind is START and not skip:
                 tag, attrs = data
                 if tag in self.ignore_tags or \
                         isinstance(attrs.get(xml_lang), basestring):
@@ -262,7 +262,7 @@ class Translator(object):
                                 search_text=False):
                             yield lineno, funcname, text
 
-            elif search_text and kind is TEXT:
+            elif not skip and search_text and kind is TEXT:
                 text = data.strip()
                 if text and filter(None, [ch.isalpha() for ch in text]):
                     yield pos[1], None, text
@@ -299,8 +299,9 @@ class Translator(object):
 
             elif kind is SUB:
                 subkind, substream = data
-                for lineno, funcname, text in self.extract(substream,
-                                                           gettext_functions):
+                messages = self.extract(substream, gettext_functions,
+                                        search_text=search_text and not skip)
+                for lineno, funcname, text in messages:
                     yield lineno, funcname, text
 
 

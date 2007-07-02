@@ -165,7 +165,7 @@ class AttrsDirective(Directive):
     def __call__(self, stream, ctxt, directives):
         def _generate():
             kind, (tag, attrib), pos  = stream.next()
-            attrs = self.expr.evaluate(ctxt)
+            attrs = self.expr.evaluate(ctxt.data)
             if attrs:
                 if isinstance(attrs, Stream):
                     try:
@@ -295,7 +295,7 @@ class DefDirective(Directive):
                     if name in kwargs:
                         val = kwargs.pop(name)
                     else:
-                        val = self.defaults.get(name).evaluate(ctxt)
+                        val = self.defaults.get(name).evaluate(ctxt.data)
                     scope[name] = val
             if not self.star_args is None:
                 scope[self.star_args] = args
@@ -314,7 +314,7 @@ class DefDirective(Directive):
         # Store the function reference in the bottom context frame so that it
         # doesn't get popped off before processing the template has finished
         # FIXME: this makes context data mutable as a side-effect
-        ctxt.frames[-1][self.name] = function
+        ctxt.data[self.name] = function
 
         return []
 
@@ -356,7 +356,7 @@ class ForDirective(Directive):
     attach = classmethod(attach)
 
     def __call__(self, stream, ctxt, directives):
-        iterable = self.expr.evaluate(ctxt)
+        iterable = self.expr.evaluate(ctxt.data)
         if iterable is None:
             return
 
@@ -401,7 +401,7 @@ class IfDirective(Directive):
     attach = classmethod(attach)
 
     def __call__(self, stream, ctxt, directives):
-        if self.expr.evaluate(ctxt):
+        if self.expr.evaluate(ctxt.data):
             return _apply_directives(stream, ctxt, directives)
         return []
 
@@ -519,7 +519,7 @@ class StripDirective(Directive):
 
     def __call__(self, stream, ctxt, directives):
         def _generate():
-            if self.expr.evaluate(ctxt):
+            if self.expr.evaluate(ctxt.data):
                 stream.next() # skip start tag
                 previous = stream.next()
                 for event in stream:
@@ -589,7 +589,7 @@ class ChooseDirective(Directive):
     def __call__(self, stream, ctxt, directives):
         info = [False, None]
         if self.expr:
-            info[1] = self.expr.evaluate(ctxt)
+            info[1] = self.expr.evaluate(ctxt.data)
         ctxt._choice_stack.append(info)
         for event in _apply_directives(stream, ctxt, directives):
             yield event
@@ -630,11 +630,11 @@ class WhenDirective(Directive):
         if info[1]:
             value = info[1]
             if self.expr:
-                matched = value == self.expr.evaluate(ctxt)
+                matched = value == self.expr.evaluate(ctxt.data)
             else:
                 matched = bool(value)
         else:
-            matched = bool(self.expr.evaluate(ctxt))
+            matched = bool(self.expr.evaluate(ctxt.data))
         info[0] = matched
         if not matched:
             return []
@@ -715,9 +715,10 @@ class WithDirective(Directive):
         frame = {}
         ctxt.push(frame)
         for targets, expr in self.vars:
-            value = expr.evaluate(ctxt)
+            value = expr.evaluate(ctxt.data)
             for assign in targets:
                 assign(frame, value)
+            ctxt.replace(frame)
         for event in _apply_directives(stream, ctxt, directives):
             yield event
         ctxt.pop()

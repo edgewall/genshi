@@ -13,12 +13,6 @@
 
 """Basic templating functionality."""
 
-try:
-    from collections import deque
-except ImportError:
-    class deque(list):
-        def appendleft(self, x): self.insert(0, x)
-        def popleft(self): return self.pop(0)
 import os
 from StringIO import StringIO
 
@@ -116,7 +110,6 @@ class Context(object):
     >>> ctxt.get('other')
     1
     >>> ctxt.pop()
-    {'one': 'frost'}
     >>> ctxt.get('one')
     'foo'
     """
@@ -125,17 +118,16 @@ class Context(object):
         """Initialize the template context with the given keyword arguments as
         data.
         """
-        self.frames = deque([data])
-        self.pop = self.frames.popleft
-        self.push = self.frames.appendleft
-        self._match_templates = []
-        self._choice_stack = []
+        self.data = data
+        self._restorers = [] # functions that reverse stack changes
+        self._match_templates = [] # for match directives
+        self._choice_stack = [] # for choose/when/otherwise
 
         # Helper functions for use in expressions
         def defined(name):
             """Return whether a variable with the specified name exists in the
             expression scope."""
-            return name in self
+            return name in self.data
         def value_of(name, default=None):
             """If a variable of the specified name is defined, return its value.
             Otherwise, return the provided default value, or ``None``."""
@@ -143,106 +135,39 @@ class Context(object):
         data.setdefault('defined', defined)
         data.setdefault('value_of', value_of)
 
+        self.get = self.data.get
+
     def __repr__(self):
-        return repr(list(self.frames))
-
-    def __contains__(self, key):
-        """Return whether a variable exists in any of the scopes.
-        
-        :param key: the name of the variable
-        """
-        return self._find(key)[1] is not None
-
-    def __delitem__(self, key):
-        """Remove a variable from all scopes.
-        
-        :param key: the name of the variable
-        """
-        for frame in self.frames:
-            if key in frame:
-                del frame[key]
-
-    def __getitem__(self, key):
-        """Get a variables's value, starting at the current scope and going
-        upward.
-        
-        :param key: the name of the variable
-        :return: the variable value
-        :raises KeyError: if the requested variable wasn't found in any scope
-        """
-        value, frame = self._find(key)
-        if frame is None:
-            raise KeyError(key)
-        return value
-
-    def __len__(self):
-        """Return the number of distinctly named variables in the context.
-        
-        :return: the number of variables in the context
-        """
-        return len(self.items())
-
-    def __setitem__(self, key, value):
-        """Set a variable in the current scope.
-        
-        :param key: the name of the variable
-        :param value: the variable value
-        """
-        self.frames[0][key] = value
-
-    def _find(self, key, default=None):
-        """Retrieve a given variable's value and the frame it was found in.
-
-        Intended primarily for internal use by directives.
-        
-        :param key: the name of the variable
-        :param default: the default value to return when the variable is not
-                        found
-        """
-        for frame in self.frames:
-            if key in frame:
-                return frame[key], frame
-        return default, None
-
-    def get(self, key, default=None):
-        """Get a variable's value, starting at the current scope and going
-        upward.
-        
-        :param key: the name of the variable
-        :param default: the default value to return when the variable is not
-                        found
-        """
-        for frame in self.frames:
-            if key in frame:
-                return frame[key]
-        return default
-
-    def keys(self):
-        """Return the name of all variables in the context.
-        
-        :return: a list of variable names
-        """
-        keys = []
-        for frame in self.frames:
-            keys += [key for key in frame if key not in keys]
-        return keys
-
-    def items(self):
-        """Return a list of ``(name, value)`` tuples for all variables in the
-        context.
-        
-        :return: a list of variables
-        """
-        return [(key, self.get(key)) for key in self.keys()]
+        return '<%s %r>' % (type(self).__name__, self.data)
 
     def push(self, data):
         """Push a new scope on the stack.
         
         :param data: the data dictionary to push on the context stack.
         """
+        def _restorer(key, d=self.data):
+            if key in d:
+                def f(d=d, val=d.get(key)):
+                    d[key] = val
+            else:
+                def f(d=d):
+                    if key in d: del d[key]
+            return f
+        self._restorers.append([_restorer(k) for k in data])
+        self.data.update(data)
 
     def pop(self):
         """Pop the top-most scope from the stack."""
+        for restore in self._restorers.pop():
+            restore()
+
+    def replace(self, data):
+        """Replace the top-most scope with the given data.
+        
+        :param data: the data dictionary to replace the top-most frame with
+        """
+        self.pop()
+        self.push(data)
 
 
 def _apply_directives(stream, ctxt, directives):
@@ -453,7 +378,7 @@ class Template(object):
                 yield kind, (tag, Attrs(new_attrs)), pos
 
             elif kind is EXPR:
-                result = data.evaluate(ctxt)
+                result = data.evaluate(ctxt.data)
                 if result is not None:
                     # First check for a string, otherwise the iterable test below
                     # succeeds, and the string will be chopped up into individual

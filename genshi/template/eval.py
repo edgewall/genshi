@@ -133,7 +133,7 @@ class Expression(Code):
         __traceback_hide__ = 'before_and_this'
         _globals = self._globals
         _globals['data'] = data
-        return eval(self.code, _globals, {'data': data})
+        return eval(self.code, _globals, data)
 
 
 class Suite(Code):
@@ -261,7 +261,7 @@ class LookupBase(object):
         return val
     lookup_name = classmethod(lookup_name)
 
-    def lookup_attr(cls, data, obj, key):
+    def lookup_attr(cls, obj, key):
         __traceback_hide__ = True
         if hasattr(obj, key):
             return getattr(obj, key)
@@ -271,7 +271,7 @@ class LookupBase(object):
             return cls.undefined(key, owner=obj)
     lookup_attr = classmethod(lookup_attr)
 
-    def lookup_item(cls, data, obj, key):
+    def lookup_item(cls, obj, key):
         __traceback_hide__ = True
         if len(key) == 1:
             key = key[0]
@@ -738,12 +738,12 @@ class ExpressionASTTransformer(TemplateASTTransformer):
 
     def visitGetattr(self, node):
         return ast.CallFunc(ast.Name('_lookup_attr'), [
-            ast.Name('data'), self.visit(node.expr),
+            self.visit(node.expr),
             ast.Const(node.attrname)
         ])
 
     def visitSubscript(self, node):
         return ast.CallFunc(ast.Name('_lookup_item'), [
-            ast.Name('data'), self.visit(node.expr),
+            self.visit(node.expr),
             ast.Tuple([self.visit(sub) for sub in node.subs])
         ])

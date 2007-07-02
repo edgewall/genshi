@@ -233,7 +233,7 @@ class MarkupTemplate(Template):
         """
         for event in stream:
             if event[0] is EXEC:
-                event[1].execute(_ctxt2dict(ctxt))
+                event[1].execute(ctxt.data)
             else:
                 yield event
 

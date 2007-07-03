@@ -332,6 +332,8 @@ class HTMLSanitizerTestCase(unittest.TestCase):
         # IE expressions in CSS not allowed
         html = HTML('<DIV STYLE=\'width: expression(alert("foo"));\'>')
         self.assertEquals(u'<div/>', unicode(html | sanitizer))
+        html = HTML('<DIV STYLE=\'width: e/**/xpression(alert("foo"));\'>')
+        self.assertEquals(u'<div/>', unicode(html | sanitizer))
         html = HTML('<DIV STYLE=\'background: url(javascript:alert("foo"));'
                                  'color: #fff\'>')
         self.assertEquals(u'<div style="color: #fff"/>',

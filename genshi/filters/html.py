@@ -285,7 +285,9 @@ class HTMLSanitizer(object):
                     elif attr == 'style':
                         # Remove dangerous CSS declarations from inline styles
                         decls = []
-                        value = self._replace_unicode_escapes(value)
+                        value = self._strip_css_comments(
+                            self._replace_unicode_escapes(value)
+                        )
                         for decl in filter(None, value.split(';')):
                             is_evil = False
                             if 'expression' in decl:
@@ -322,3 +324,8 @@ class HTMLSanitizer(object):
         def _repl(match):
             return unichr(int(match.group(1), 16))
         return self._UNICODE_ESCAPE(_repl, self._NORMALIZE_NEWLINES('\n', text))
+
+    _CSS_COMMENTS = re.compile(r'/\*.*?\*/').sub
+
+    def _strip_css_comments(self, text):
+        return self._CSS_COMMENTS('', text)

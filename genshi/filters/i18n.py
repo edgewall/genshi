@@ -275,11 +275,6 @@ class Translator(object):
             if kind is START and not skip:
                 tag, attrs = data
 
-                if msgbuf:
-                    msgbuf.append(kind, data, pos)
-                elif i18n_msg in attrs:
-                    msgbuf = MessageBuffer(pos[1])
-
                 if tag in self.ignore_tags or \
                         isinstance(attrs.get(xml_lang), basestring):
                     skip += 1
@@ -297,6 +292,11 @@ class Translator(object):
                                 search_text=False):
                             yield lineno, funcname, text
 
+                if msgbuf:
+                    msgbuf.append(kind, data, pos)
+                elif i18n_msg in attrs:
+                    msgbuf = MessageBuffer(pos[1])
+
             elif not skip and search_text and kind is TEXT:
                 if not msgbuf:
                     text = data.strip()
@@ -312,33 +312,8 @@ class Translator(object):
                     msgbuf = None
 
             elif kind is EXPR or kind is EXEC:
-                consts = dict([(n, chr(i) + '\x00') for i, n in
-                               enumerate(data.code.co_consts)])
-                gettext_locs = [consts[n] for n in gettext_functions
-                                if n in consts]
-                ops = [
-                    _LOAD_CONST, '(', '|'.join(gettext_locs), ')',
-                    _CALL_FUNCTION, '.\x00',
-                    '((?:', _BINARY_ADD, '|', _LOAD_CONST, '.\x00)+)'
-                ]
-                for loc, opcodes in re.findall(''.join(ops), data.code.co_code):
-                    funcname = data.code.co_consts[ord(loc[0])]
-                    strings = []
-                    opcodes = iter(opcodes)
-                    for opcode in opcodes:
-                        if opcode == _BINARY_ADD:
-                            arg = strings.pop()
-                            strings[-1] += arg
-                        else:
-                            arg = data.code.co_consts[ord(opcodes.next())]
-                            opcodes.next() # skip second byte
-                            if not isinstance(arg, basestring):
-                                break
-                            strings.append(unicode(arg))
-                    if len(strings) == 1:
-                        strings = strings[0]
-                    else:
-                        strings = tuple(strings)
+                for funcname, strings in extract_from_code(data.code,
+                                                           gettext_functions):
                     yield pos[1], funcname, strings
 
             elif kind is SUB:
@@ -397,6 +372,50 @@ class MessageBuffer(object):
                 else:
                     yield event
 
+
+def extract_from_code(code, gettext_functions):
+    """Extract strings from Python bytecode.
+    
+    >>> from genshi.template.eval import Expression
+    
+    >>> expr = Expression('_("Hello")')
+    >>> list(extract_from_code(expr.code, Translator.GETTEXT_FUNCTIONS))
+    [('_', u'Hello')]
+
+    >>> expr = Expression('ngettext("You have %(num)s item", '
+    ...                            '"You have %(num)s items", num)')
+    >>> list(extract_from_code(expr.code, Translator.GETTEXT_FUNCTIONS))
+    [('ngettext', (u'You have %(num)s item', u'You have %(num)s items'))]
+    
+    :param code: the code object
+    :param gettext_functions: a sequence of function names
+    """
+    consts = dict([(n, chr(i) + '\x00') for i, n in enumerate(code.co_consts)])
+    gettext_locs = [consts[n] for n in gettext_functions if n in consts]
+    ops = [
+        _LOAD_CONST, '(', '|'.join(gettext_locs), ')',
+        _CALL_FUNCTION, '.\x00',
+        '((?:', _BINARY_ADD, '|', _LOAD_CONST, '.\x00)+)'
+    ]
+    for loc, opcodes in re.findall(''.join(ops), code.co_code):
+        funcname = code.co_consts[ord(loc[0])]
+        strings = []
+        opcodes = iter(opcodes)
+        for opcode in opcodes:
+            if opcode == _BINARY_ADD:
+                arg = strings.pop()
+                strings[-1] += arg
+            else:
+                arg = code.co_consts[ord(opcodes.next())]
+                opcodes.next() # skip second byte
+                if not isinstance(arg, basestring):
+                    break
+                strings.append(unicode(arg))
+        if len(strings) == 1:
+            strings = strings[0]
+        else:
+            strings = tuple(strings)
+        yield funcname, strings
 
 def parse_msg(string, regex=re.compile(r'(?:\[(\d+)\:)|\]')):
     """Parse a message using Genshi compound message formatting.

@@ -587,9 +587,9 @@ class ChooseDirective(Directive):
     attach = classmethod(attach)
 
     def __call__(self, stream, ctxt, directives):
-        info = [False, None]
+        info = [False, bool(self.expr), None]
         if self.expr:
-            info[1] = self.expr.evaluate(ctxt)
+            info[2] = self.expr.evaluate(ctxt)
         ctxt._choice_stack.append(info)
         for event in _apply_directives(stream, ctxt, directives):
             yield event
@@ -628,7 +628,7 @@ class WhenDirective(Directive):
                                        'must have a test expression',
                                        self.filename, *stream.next()[2][1:])
         if info[1]:
-            value = info[1]
+            value = info[2]
             if self.expr:
                 matched = value == self.expr.evaluate(ctxt)
             else:

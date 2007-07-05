@@ -21,8 +21,8 @@ from gettext import gettext
 from opcode import opmap
 import re
 
-from genshi.core import Attrs, Namespace, QName, START, END, TEXT, \
-                        XML_NAMESPACE, _ensure
+from genshi.core import Attrs, Namespace, QName, START, END, TEXT, START_NS, \
+                        END_NS, XML_NAMESPACE, _ensure
 from genshi.template.base import Template, EXPR, SUB
 from genshi.template.markup import MarkupTemplate, EXEC
 
@@ -33,6 +33,8 @@ _LOAD_NAME = chr(opmap['LOAD_NAME'])
 _LOAD_CONST = chr(opmap['LOAD_CONST'])
 _CALL_FUNCTION = chr(opmap['CALL_FUNCTION'])
 _BINARY_ADD = chr(opmap['BINARY_ADD'])
+
+I18N_NAMESPACE = Namespace('http://genshi.edgewall.org/i18n')
 
 
 class Translator(object):
@@ -108,7 +110,7 @@ class Translator(object):
         self.ignore_tags = ignore_tags
         self.include_attrs = include_attrs
 
-    def __call__(self, stream, ctxt=None, search_text=True):
+    def __call__(self, stream, ctxt=None, search_text=True, msgbuf=None):
         """Translate any localizable strings in the given stream.
         
         This function shouldn't be called directly. Instead, an instance of
@@ -121,12 +123,15 @@ class Translator(object):
         :param ctxt: the template context (not used)
         :param search_text: whether text nodes should be translated (used
                             internally)
+        :param msgbuf: a `MessageBuffer` object or `None` (used internally)
         :return: the localized stream
         """
         ignore_tags = self.ignore_tags
         include_attrs = self.include_attrs
         translate = self.translate
         skip = 0
+        i18n_msg = I18N_NAMESPACE['msg']
+        ns_prefixes = []
         xml_lang = XML_NAMESPACE['lang']
 
         for kind, data, pos in stream:
@@ -158,7 +163,7 @@ class Translator(object):
                             newval = self.translate(value)
                     else:
                         newval = list(self(_ensure(value), ctxt,
-                            search_text=False)
+                            search_text=False, msgbuf=msgbuf)
                         )
                     if newval != value:
                         value = newval
@@ -167,18 +172,42 @@ class Translator(object):
                 if changed:
                     attrs = new_attrs
 
+                if msgbuf:
+                    msgbuf.append(kind, data, pos)
+                    continue
+                elif i18n_msg in attrs:
+                    msgbuf = MessageBuffer()
+                    attrs -= i18n_msg
+
                 yield kind, (tag, attrs), pos
 
             elif search_text and kind is TEXT:
-                text = data.strip()
-                if text:
-                    data = data.replace(text, translate(text))
-                yield kind, data, pos
+                if not msgbuf:
+                    text = data.strip()
+                    if text:
+                        data = data.replace(text, translate(text))
+                    yield kind, data, pos
+                else:
+                    msgbuf.append(kind, data, pos)
+
+            elif not skip and msgbuf and kind is END:
+                msgbuf.append(kind, data, pos)
+                if not msgbuf.depth:
+                    for event in msgbuf.translate(translate(msgbuf.format())):
+                        yield event
+                    msgbuf = None
+                    yield kind, data, pos
 
             elif kind is SUB:
                 subkind, substream = data
-                new_substream = list(self(substream, ctxt))
+                new_substream = list(self(substream, ctxt, msgbuf=msgbuf))
                 yield kind, (subkind, new_substream), pos
+
+            elif kind is START_NS and data[1] == I18N_NAMESPACE:
+                ns_prefixes.append(data[0])
+
+            elif kind is END_NS and data in ns_prefixes:
+                ns_prefixes.remove(data)
 
             else:
                 yield kind, data, pos
@@ -187,7 +216,7 @@ class Translator(object):
                          'ugettext', 'ungettext')
 
     def extract(self, stream, gettext_functions=GETTEXT_FUNCTIONS,
-                search_text=True):
+                search_text=True, msgbuf=None):
         """Extract localizable strings from the given template stream.
         
         For every string found, this function yields a ``(lineno, function,
@@ -231,8 +260,8 @@ class Translator(object):
                (such as ``ngettext``), a single item with a tuple of strings is
                yielded, instead an item for each string argument.
         """
-        tagname = None
         skip = 0
+        i18n_msg = I18N_NAMESPACE['msg']
         xml_lang = XML_NAMESPACE['lang']
 
         for kind, data, pos in stream:
@@ -245,6 +274,12 @@ class Translator(object):
 
             if kind is START and not skip:
                 tag, attrs = data
+
+                if msgbuf:
+                    msgbuf.append(kind, data, pos)
+                elif i18n_msg in attrs:
+                    msgbuf = MessageBuffer(pos[1])
+
                 if tag in self.ignore_tags or \
                         isinstance(attrs.get(xml_lang), basestring):
                     skip += 1
@@ -263,9 +298,18 @@ class Translator(object):
                             yield lineno, funcname, text
 
             elif not skip and search_text and kind is TEXT:
-                text = data.strip()
-                if text and filter(None, [ch.isalpha() for ch in text]):
-                    yield pos[1], None, text
+                if not msgbuf:
+                    text = data.strip()
+                    if text and filter(None, [ch.isalpha() for ch in text]):
+                        yield pos[1], None, text
+                else:
+                    msgbuf.append(kind, data, pos)
+
+            elif not skip and msgbuf and kind is END:
+                msgbuf.append(kind, data, pos)
+                if not msgbuf.depth:
+                    yield msgbuf.lineno, None, msgbuf.format()
+                    msgbuf = None
 
             elif kind is EXPR or kind is EXEC:
                 consts = dict([(n, chr(i) + '\x00') for i, n in
@@ -300,10 +344,98 @@ class Translator(object):
             elif kind is SUB:
                 subkind, substream = data
                 messages = self.extract(substream, gettext_functions,
-                                        search_text=search_text and not skip)
+                                        search_text=search_text and not skip,
+                                        msgbuf=msgbuf)
                 for lineno, funcname, text in messages:
                     yield lineno, funcname, text
 
+
+class MessageBuffer(object):
+    """Helper class for managing localizable mixed content."""
+
+    def __init__(self, lineno=-1):
+        self.lineno = lineno
+        self.strings = []
+        self.events = {}
+        self.depth = 1
+        self.order = 1
+        self.stack = [0]
+
+    def append(self, kind, data, pos):
+        if kind is TEXT:
+            self.strings.append(data)
+            self.events.setdefault(self.stack[-1], []).append(None)
+        else:
+            if kind is START:
+                self.strings.append(u'[%d:' % self.order)
+                self.events.setdefault(self.order, []).append((kind, data, pos))
+                self.stack.append(self.order)
+                self.depth += 1
+                self.order += 1
+            elif kind is END:
+                self.depth -= 1
+                if self.depth:
+                    self.events[self.stack[-1]].append((kind, data, pos))
+                    self.strings.append(u']')
+                    self.stack.pop()
+
+    def format(self):
+        return u''.join(self.strings).strip()
+
+    def translate(self, string):
+        parts = parse_msg(string)
+        for order, string in parts:
+            events = self.events[order]
+            while events:
+                event = self.events[order].pop(0)
+                if not event:
+                    if not string:
+                        break
+                    yield TEXT, string, (None, -1, -1)
+                    if not self.events[order] or not self.events[order][0]:
+                        break
+                else:
+                    yield event
+
+
+def parse_msg(string, regex=re.compile(r'(?:\[(\d+)\:)|\]')):
+    """Parse a message using Genshi compound message formatting.
+
+    >>> parse_msg("See [1:Help].")
+    [(0, 'See '), (1, 'Help'), (0, '.')]
+
+    >>> parse_msg("See [1:our [2:Help] page] for details.")
+    [(0, 'See '), (1, 'our '), (2, 'Help'), (1, ' page'), (0, ' for details.')]
+
+    >>> parse_msg("[2:Details] finden Sie in [1:Hilfe].")
+    [(2, 'Details'), (0, ' finden Sie in '), (1, 'Hilfe'), (0, '.')]
+    
+    >>> parse_msg("[1:] Bilder pro Seite anzeigen.")
+    [(1, ''), (0, ' Bilder pro Seite anzeigen.')]
+    """
+    parts = []
+    stack = [0]
+    while True:
+        mo = regex.search(string)
+        if not mo:
+            break
+
+        if mo.start() or stack[-1]:
+            parts.append((stack[-1], string[:mo.start()]))
+        string = string[mo.end():]
+
+        orderno = mo.group(1)
+        if orderno is not None:
+            stack.append(int(orderno))
+        else:
+            stack.pop()
+        if not stack:
+            break
+
+    if string:
+        parts.append((stack[-1], string))
+
+    return parts
 
 def extract(fileobj, keywords, comment_tags, options):
     """Babel extraction method for Genshi templates.

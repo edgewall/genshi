@@ -91,6 +91,159 @@ class TranslatorTestCase(unittest.TestCase):
         messages = list(translator.extract(tmpl.stream))
         self.assertEqual(0, len(messages))
 
+    def test_extract_i18n_msg(self):
+        tmpl = MarkupTemplate("""<html xmlns:py="http://genshi.edgewall.org/"
+            xmlns:i18n="http://genshi.edgewall.org/i18n">
+          <p i18n:msg="">
+            Please see <a href="help.html">Help</a> for details.
+          </p>
+        </html>""")
+        translator = Translator()
+        messages = list(translator.extract(tmpl.stream))
+        self.assertEqual(1, len(messages))
+        self.assertEqual('Please see [1:Help] for details.', messages[0][2])
+
+    def test_translate_i18n_msg(self):
+        tmpl = MarkupTemplate("""<html xmlns:py="http://genshi.edgewall.org/"
+            xmlns:i18n="http://genshi.edgewall.org/i18n">
+          <p i18n:msg="">
+            Please see <a href="help.html">Help</a> for details.
+          </p>
+        </html>""")
+        gettext = lambda s: u"Für Details siehe bitte [1:Hilfe]."
+        tmpl.filters.insert(0, Translator(gettext))
+        self.assertEqual("""<html>
+          <p>Für Details siehe bitte <a href="help.html">Hilfe</a>.</p>
+        </html>""", tmpl.generate().render())
+
+    def test_extract_i18n_msg_nested(self):
+        tmpl = MarkupTemplate("""<html xmlns:py="http://genshi.edgewall.org/"
+            xmlns:i18n="http://genshi.edgewall.org/i18n">
+          <p i18n:msg="">
+            Please see <a href="help.html"><em>Help</em> page</a> for details.
+          </p>
+        </html>""")
+        translator = Translator()
+        messages = list(translator.extract(tmpl.stream))
+        self.assertEqual(1, len(messages))
+        self.assertEqual('Please see [1:[2:Help] page] for details.',
+                         messages[0][2])
+
+    def test_translate_i18n_msg_nested(self):
+        tmpl = MarkupTemplate("""<html xmlns:py="http://genshi.edgewall.org/"
+            xmlns:i18n="http://genshi.edgewall.org/i18n">
+          <p i18n:msg="">
+            Please see <a href="help.html"><em>Help</em> page</a> for details.
+          </p>
+        </html>""")
+        gettext = lambda s: u"Für Details siehe bitte [1:[2:Hilfeseite]]."
+        tmpl.filters.insert(0, Translator(gettext))
+        self.assertEqual("""<html>
+          <p>Für Details siehe bitte <a href="help.html"><em>Hilfeseite</em></a>.</p>
+        </html>""", tmpl.generate().render())
+
+    def test_extract_i18n_msg_empty(self):
+        tmpl = MarkupTemplate("""<html xmlns:py="http://genshi.edgewall.org/"
+            xmlns:i18n="http://genshi.edgewall.org/i18n">
+          <p i18n:msg="">
+            Show me <input type="text" name="num" /> entries per page.
+          </p>
+        </html>""")
+        translator = Translator()
+        messages = list(translator.extract(tmpl.stream))
+        self.assertEqual(1, len(messages))
+        self.assertEqual('Show me [1:] entries per page.', messages[0][2])
+
+    def test_translate_i18n_msg_empty(self):
+        tmpl = MarkupTemplate("""<html xmlns:py="http://genshi.edgewall.org/"
+            xmlns:i18n="http://genshi.edgewall.org/i18n">
+          <p i18n:msg="">
+            Show me <input type="text" name="num" /> entries per page.
+          </p>
+        </html>""")
+        gettext = lambda s: u"[1:] Einträge pro Seite anzeigen."
+        tmpl.filters.insert(0, Translator(gettext))
+        self.assertEqual("""<html>
+          <p><input type="text" name="num"/> Einträge pro Seite anzeigen.</p>
+        </html>""", tmpl.generate().render())
+
+    def test_extract_i18n_msg_multiple(self):
+        tmpl = MarkupTemplate("""<html xmlns:py="http://genshi.edgewall.org/"
+            xmlns:i18n="http://genshi.edgewall.org/i18n">
+          <p i18n:msg="">
+            Please see <a href="help.html">Help</a> for <em>details</em>.
+          </p>
+        </html>""")
+        translator = Translator()
+        messages = list(translator.extract(tmpl.stream))
+        self.assertEqual(1, len(messages))
+        self.assertEqual('Please see [1:Help] for [2:details].', messages[0][2])
+
+    def test_translate_i18n_msg_multiple(self):
+        tmpl = MarkupTemplate("""<html xmlns:py="http://genshi.edgewall.org/"
+            xmlns:i18n="http://genshi.edgewall.org/i18n">
+          <p i18n:msg="">
+            Please see <a href="help.html">Help</a> for <em>details</em>.
+          </p>
+        </html>""")
+        gettext = lambda s: u"Für [2:Details] siehe bitte [1:Hilfe]."
+        tmpl.filters.insert(0, Translator(gettext))
+        self.assertEqual("""<html>
+          <p>Für <em>Details</em> siehe bitte <a href="help.html">Hilfe</a>.</p>
+        </html>""", tmpl.generate().render())
+
+    def test_extract_i18n_msg_multiple_empty(self):
+        tmpl = MarkupTemplate("""<html xmlns:py="http://genshi.edgewall.org/"
+            xmlns:i18n="http://genshi.edgewall.org/i18n">
+          <p i18n:msg="">
+            Show me <input type="text" name="num" /> entries per page, starting at page <input type="text" name="num" />.
+          </p>
+        </html>""")
+        translator = Translator()
+        messages = list(translator.extract(tmpl.stream))
+        self.assertEqual(1, len(messages))
+        self.assertEqual('Show me [1:] entries per page, starting at page [2:].',
+                         messages[0][2])
+
+    def test_translate_i18n_msg_multiple_empty(self):
+        tmpl = MarkupTemplate("""<html xmlns:py="http://genshi.edgewall.org/"
+            xmlns:i18n="http://genshi.edgewall.org/i18n">
+          <p i18n:msg="">
+            Show me <input type="text" name="num" /> entries per page, starting at page <input type="text" name="num" />.
+          </p>
+        </html>""")
+        gettext = lambda s: u"[1:] Einträge pro Seite, beginnend auf Seite [2:]."
+        tmpl.filters.insert(0, Translator(gettext))
+        self.assertEqual("""<html>
+          <p><input type="text" name="num"/> Eintr\xc3\xa4ge pro Seite, beginnend auf Seite <input type="text" name="num"/>.</p>
+        </html>""", tmpl.generate().render())
+
+    def test_extract_i18n_msg_with_directive(self):
+        tmpl = MarkupTemplate("""<html xmlns:py="http://genshi.edgewall.org/"
+            xmlns:i18n="http://genshi.edgewall.org/i18n">
+          <p i18n:msg="">
+            Show me <input type="text" name="num" py:attrs="{'value': x}" /> entries per page.
+          </p>
+        </html>""")
+        translator = Translator()
+        messages = list(translator.extract(tmpl.stream))
+        self.assertEqual(1, len(messages))
+        self.assertEqual('Show me [1:] entries per page.', messages[0][2])
+
+    # FIXME: this currently fails :-/
+#    def test_translate_i18n_msg_with_directive(self):
+#        tmpl = MarkupTemplate("""<html xmlns:py="http://genshi.edgewall.org/"
+#            xmlns:i18n="http://genshi.edgewall.org/i18n">
+#          <p i18n:msg="">
+#            Show me <input type="text" name="num" py:attrs="{'value': x}" /> entries per page.
+#          </p>
+#        </html>""")
+#        gettext = lambda s: u"[1:] Einträge pro Seite anzeigen."
+#        tmpl.filters.insert(0, Translator(gettext))
+#        self.assertEqual("""<html>
+#          <p><input type="text" name="num" value="x"/> Einträge pro Seite anzeigen.</p>
+#        </html>""", tmpl.generate().render())
+
 
 class ExtractTestCase(unittest.TestCase):
 

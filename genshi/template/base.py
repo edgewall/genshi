@@ -152,6 +152,7 @@ class Context(object):
         :param key: the name of the variable
         """
         return self._find(key)[1] is not None
+    has_key = __contains__
 
     def __delitem__(self, key):
         """Remove a variable from all scopes.

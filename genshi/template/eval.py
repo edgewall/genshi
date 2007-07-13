@@ -392,6 +392,7 @@ BUILTINS = __builtin__.__dict__.copy()
 BUILTINS.update({'Markup': Markup, 'Undefined': Undefined})
 CONSTANTS = frozenset(['False', 'True', 'None', 'NotImplemented', 'Ellipsis'])
 
+
 class ASTTransformer(object):
     """General purpose base class for AST transformations.
     

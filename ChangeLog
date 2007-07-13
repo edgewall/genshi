@@ -32,6 +32,8 @@ http://svn.edgewall.org/repos/genshi/tags/0.4.3/
    it is not available for use through configuration files.
  * The I18n filter now extracts messages from gettext functions even inside
    ignored tags (ticket #132).
+ * The HTML sanitizer now strips any CSS comments in style attributes, which
+   could previously be used to hide malicious property values.
 
 
 Version 0.4.2

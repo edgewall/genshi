@@ -191,7 +191,7 @@ which you add the filter:
   from genshi.template import TemplateLoader
   
   def template_loaded(template):
-      template.filters.insert(0, , Translator(translations.ugettext))
+      template.filters.insert(0, Translator(translations.ugettext))
   
   loader = TemplateLoader('templates', callback=template_loaded)
   template = loader.load("...")

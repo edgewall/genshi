@@ -28,7 +28,8 @@ class TranslatorTestCase(unittest.TestCase):
         translator = Translator()
         messages = list(translator.extract(tmpl.stream))
         self.assertEqual(1, len(messages))
-        self.assertEqual((2, 'ngettext', (u'Singular', u'Plural')), messages[0])
+        self.assertEqual((2, 'ngettext', (u'Singular', u'Plural', None)),
+                         messages[0])
 
     def test_extract_included_attribute_text(self):
         tmpl = MarkupTemplate("""<html xmlns:py="http://genshi.edgewall.org/">
@@ -263,7 +264,8 @@ class ExtractTestCase(unittest.TestCase):
             (3, None, u'Example', []),
             (6, None, u'Example', []),
             (7, '_', u'Hello, %(name)s', []),
-            (8, 'ngettext', (u'You have %d item', u'You have %d items'), []),
+            (8, 'ngettext', (u'You have %d item', u'You have %d items', None),
+                             []),
         ], results)
 
     def test_text_template_extraction(self):
@@ -281,8 +283,26 @@ class ExtractTestCase(unittest.TestCase):
         }))
         self.assertEqual([
             (1, '_', u'Dear %(name)s', []),
-            (3, 'ngettext', (u'Your item:', u'Your items'), []),
+            (3, 'ngettext', (u'Your item:', u'Your items', None), []),
             (7, None, u'All the best,\n        Foobar', [])
+        ], results)
+
+    def test_extraction_with_keyword_arg(self):
+        buf = StringIO("""<html xmlns:py="http://genshi.edgewall.org/">
+          ${gettext('Foobar', foo='bar')}
+        </html>""")
+        results = list(extract(buf, ['gettext'], [], {}))
+        self.assertEqual([
+            (2, 'gettext', (u'Foobar'), []),
+        ], results)
+
+    def test_extraction_with_nonstring_arg(self):
+        buf = StringIO("""<html xmlns:py="http://genshi.edgewall.org/">
+          ${dgettext(curdomain, 'Foobar')}
+        </html>""")
+        results = list(extract(buf, ['dgettext'], [], {}))
+        self.assertEqual([
+            (2, 'dgettext', (None, u'Foobar'), []),
         ], results)
 
     def test_extraction_inside_ignored_tags(self):

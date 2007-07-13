@@ -13,12 +13,12 @@
 
 """Utilities for internationalization and localization of templates."""
 
+from compiler import ast
 try:
     frozenset
 except NameError:
     from sets import ImmutableSet as frozenset
 from gettext import gettext
-from opcode import opmap
 import re
 
 from genshi.core import Attrs, Namespace, QName, START, END, TEXT, START_NS, \
@@ -28,11 +28,6 @@ from genshi.template.markup import MarkupTemplate, EXEC
 
 __all__ = ['Translator', 'extract']
 __docformat__ = 'restructuredtext en'
-
-_LOAD_NAME = chr(opmap['LOAD_NAME'])
-_LOAD_CONST = chr(opmap['LOAD_CONST'])
-_CALL_FUNCTION = chr(opmap['CALL_FUNCTION'])
-_BINARY_ADD = chr(opmap['BINARY_ADD'])
 
 I18N_NAMESPACE = Namespace('http://genshi.edgewall.org/i18n')
 
@@ -246,7 +241,7 @@ class Translator(object):
         3, None, u'Example'
         6, None, u'Example'
         7, '_', u'Hello, %(name)s'
-        8, 'ngettext', (u'You have %d item', u'You have %d items')
+        8, 'ngettext', (u'You have %d item', u'You have %d items', None)
         
         :param stream: the event stream to extract strings from; can be a
                        regular stream or a template stream
@@ -312,7 +307,7 @@ class Translator(object):
                     msgbuf = None
 
             elif kind is EXPR or kind is EXEC:
-                for funcname, strings in extract_from_code(data.code,
+                for funcname, strings in extract_from_code(data,
                                                            gettext_functions):
                     yield pos[1], funcname, strings
 
@@ -379,43 +374,38 @@ def extract_from_code(code, gettext_functions):
     >>> from genshi.template.eval import Expression
     
     >>> expr = Expression('_("Hello")')
-    >>> list(extract_from_code(expr.code, Translator.GETTEXT_FUNCTIONS))
+    >>> list(extract_from_code(expr, Translator.GETTEXT_FUNCTIONS))
     [('_', u'Hello')]
 
     >>> expr = Expression('ngettext("You have %(num)s item", '
     ...                            '"You have %(num)s items", num)')
-    >>> list(extract_from_code(expr.code, Translator.GETTEXT_FUNCTIONS))
-    [('ngettext', (u'You have %(num)s item', u'You have %(num)s items'))]
+    >>> list(extract_from_code(expr, Translator.GETTEXT_FUNCTIONS))
+    [('ngettext', (u'You have %(num)s item', u'You have %(num)s items', None))]
     
-    :param code: the code object
+    :param code: the `Code` object
+    :type code: `genshi.template.eval.Code`
     :param gettext_functions: a sequence of function names
     """
-    consts = dict([(n, chr(i) + '\x00') for i, n in enumerate(code.co_consts)])
-    gettext_locs = [consts[n] for n in gettext_functions if n in consts]
-    ops = [
-        _LOAD_CONST, '(', '|'.join(gettext_locs), ')',
-        _CALL_FUNCTION, '.\x00',
-        '((?:', _BINARY_ADD, '|', _LOAD_CONST, '.\x00)+)'
-    ]
-    for loc, opcodes in re.findall(''.join(ops), code.co_code):
-        funcname = code.co_consts[ord(loc[0])]
-        strings = []
-        opcodes = iter(opcodes)
-        for opcode in opcodes:
-            if opcode == _BINARY_ADD:
-                arg = strings.pop()
-                strings[-1] += arg
+    def _walk(node):
+        if isinstance(node, ast.CallFunc) and isinstance(node.node, ast.Name) \
+                and node.node.name in gettext_functions:
+            strings = []
+            for arg in node.args:
+                if isinstance(arg, ast.Const) \
+                        and isinstance(arg.value, basestring):
+                    strings.append(unicode(arg.value))
+                elif not isinstance(arg, ast.Keyword):
+                    strings.append(None)
+            if len(strings) == 1:
+                strings = strings[0]
             else:
-                arg = code.co_consts[ord(opcodes.next())]
-                opcodes.next() # skip second byte
-                if not isinstance(arg, basestring):
-                    break
-                strings.append(unicode(arg))
-        if len(strings) == 1:
-            strings = strings[0]
+                strings = tuple(strings)
+            yield node.node.name, strings
         else:
-            strings = tuple(strings)
-        yield funcname, strings
+            for child in node.getChildNodes():
+                for funcname, strings in _walk(child):
+                    yield funcname, strings
+    return _walk(code.ast)
 
 def parse_msg(string, regex=re.compile(r'(?:\[(\d+)\:)|\]')):
     """Parse a message using Genshi compound message formatting.

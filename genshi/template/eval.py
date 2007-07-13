@@ -390,7 +390,7 @@ def _compile(node, source=None, mode='eval', filename=None, lineno=-1):
 
 BUILTINS = __builtin__.__dict__.copy()
 BUILTINS.update({'Markup': Markup, 'Undefined': Undefined})
-
+CONSTANTS = frozenset(['False', 'True', 'None', 'NotImplemented', 'Ellipsis'])
 
 class ASTTransformer(object):
     """General purpose base class for AST transformations.
@@ -654,7 +654,7 @@ class TemplateASTTransformer(ASTTransformer):
     """
 
     def __init__(self):
-        self.locals = []
+        self.locals = [CONSTANTS, set()]
 
     def visitConst(self, node):
         if isinstance(node.value, str):

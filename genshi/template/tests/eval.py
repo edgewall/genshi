@@ -457,6 +457,15 @@ del foo
         suite.execute(data)
         assert 'plain' in data
 
+    def test_class_with_methods(self):
+        suite = Suite("""class plain(object):
+    def donothing():
+        pass
+""")
+        data = {}
+        suite.execute(data)
+        assert 'plain' in data
+
     def test_import(self):
         suite = Suite("from itertools import ifilter")
         data = {}

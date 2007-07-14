@@ -443,7 +443,7 @@ class ASTTransformer(object):
 
     def visitClass(self, node):
         return self._clone(node, node.name, [self.visit(x) for x in node.bases],
-            node.doc, node.code
+            node.doc, self.visit(node.code)
         )
 
     def visitFunction(self, node):

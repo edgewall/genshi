@@ -34,6 +34,8 @@ http://svn.edgewall.org/repos/genshi/tags/0.4.3/
    ignored tags (ticket #132).
  * The HTML sanitizer now strips any CSS comments in style attributes, which
    could previously be used to hide malicious property values.
+ * Attribute access in template expressions no longer silently ignores
+   exceptions other than `AttributeError` raised in the attribute accessor.
 
 
 Version 0.4.2

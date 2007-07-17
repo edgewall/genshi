@@ -338,6 +338,14 @@ class ExpressionTestCase(unittest.TestCase):
         self.assertEqual('nil', retval._name)
         assert retval._owner is something
 
+    def test_getattr_exception(self):
+        class Something(object):
+            def prop(self):
+                raise NotImplementedError
+            prop = property(prop)
+        self.assertRaises(NotImplementedError,
+                          Expression('s.prop').evaluate, {'s': Something()})
+
     def test_getitem_undefined_string(self):
         class Something(object):
             def __repr__(self):
@@ -348,6 +356,13 @@ class ExpressionTestCase(unittest.TestCase):
         assert isinstance(retval, Undefined)
         self.assertEqual('nil', retval._name)
         assert retval._owner is something
+
+    def test_getitem_exception(self):
+        class Something(object):
+            def __getitem__(self, key):
+                raise NotImplementedError
+        self.assertRaises(NotImplementedError,
+                          Expression('s["foo"]').evaluate, {'s': Something()})
 
     def test_error_access_undefined(self):
         expr = Expression("nothing", filename='index.html', lineno=50,

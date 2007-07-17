@@ -259,18 +259,19 @@ class LookupBase(object):
         if val is UNDEFINED:
             val = BUILTINS.get(name, val)
             if val is UNDEFINED:
-                return cls.undefined(name)
+                val = cls.undefined(name)
         return val
     lookup_name = classmethod(lookup_name)
 
     def lookup_attr(cls, data, obj, key):
         __traceback_hide__ = True
-        if hasattr(obj, key):
-            return getattr(obj, key)
-        try:
-            return obj[key]
-        except (KeyError, TypeError):
-            return cls.undefined(key, owner=obj)
+        val = getattr(obj, key, UNDEFINED)
+        if val is UNDEFINED:
+            try:
+                val = obj[key]
+            except (KeyError, TypeError):
+                val = cls.undefined(key, owner=obj)
+        return val
     lookup_attr = classmethod(lookup_attr)
 
     def lookup_item(cls, data, obj, key):
@@ -283,7 +284,7 @@ class LookupBase(object):
             if isinstance(key, basestring):
                 val = getattr(obj, key, UNDEFINED)
                 if val is UNDEFINED:
-                    return cls.undefined(key, owner=obj)
+                    val = cls.undefined(key, owner=obj)
                 return val
             raise
     lookup_item = classmethod(lookup_item)

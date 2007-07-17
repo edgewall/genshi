@@ -318,6 +318,10 @@ class HTMLSanitizerTestCase(unittest.TestCase):
         html = HTML('<div onclick=\'alert("foo")\' />')
         self.assertEquals(u'<div/>', unicode(html | HTMLSanitizer()))
 
+    def test_sanitize_remove_comments(self):
+        html = HTML('''<div><!-- conditional comment crap --></div>''')
+        self.assertEquals(u'<div/>', unicode(html | HTMLSanitizer()))
+
     def test_sanitize_remove_style_scripts(self):
         sanitizer = HTMLSanitizer(safe_attrs=HTMLSanitizer.SAFE_ATTRS | set(['style']))
         # Inline style with url() using javascript: scheme

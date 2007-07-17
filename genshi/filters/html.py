@@ -20,7 +20,7 @@ except NameError:
 import re
 
 from genshi.core import Attrs, QName, stripentities
-from genshi.core import END, START, TEXT
+from genshi.core import END, START, TEXT, COMMENT
 
 __all__ = ['HTMLFormFiller', 'HTMLSanitizer']
 __docformat__ = 'restructuredtext en'
@@ -206,6 +206,9 @@ class HTMLSanitizer(object):
     well as a lot of other things. However, the style tag is still excluded by
     default because it is very hard for such sanitizing to be completely safe,
     especially considering how much error recovery current web browsers perform.
+    
+    :warn: Note that this special processing of CSS is currently only applied to
+           style attributes, **not** style elements.
     """
 
     SAFE_TAGS = frozenset(['a', 'abbr', 'acronym', 'address', 'area', 'b',
@@ -247,9 +250,13 @@ class HTMLSanitizer(object):
         :param uri_attrs: a set of names of attributes that contain URIs
         """
         self.safe_tags = safe_tags
+        "The set of tag names that are considered safe."
         self.safe_attrs = safe_attrs
+        "The set of attribute names that are considered safe."
         self.uri_attrs = uri_attrs
+        "The set of names of attributes that may contain URIs."
         self.safe_schemes = safe_schemes
+        "The set of URI schemes that are considered safe."
 
     def __call__(self, stream):
         """Apply the filter to the given stream.
@@ -257,12 +264,6 @@ class HTMLSanitizer(object):
         :param stream: the markup event stream to filter
         """
         waiting_for = None
-
-        def _get_scheme(href):
-            if ':' not in href:
-                return None
-            chars = [char for char in href.split(':', 1)[0] if char.isalnum()]
-            return ''.join(chars).lower()
 
         for kind, data, pos in stream:
             if kind is START:
@@ -280,24 +281,11 @@ class HTMLSanitizer(object):
                         continue
                     elif attr in self.uri_attrs:
                         # Don't allow URI schemes such as "javascript:"
-                        if _get_scheme(value) not in self.safe_schemes:
+                        if not self.is_safe_uri(value):
                             continue
                     elif attr == 'style':
                         # Remove dangerous CSS declarations from inline styles
-                        decls = []
-                        value = self._strip_css_comments(
-                            self._replace_unicode_escapes(value)
-                        )
-                        for decl in filter(None, value.split(';')):
-                            is_evil = False
-                            if 'expression' in decl:
-                                is_evil = True
-                            for m in re.finditer(r'url\s*\(([^)]+)', decl):
-                                if _get_scheme(m.group(1)) not in self.safe_schemes:
-                                    is_evil = True
-                                    break
-                            if not is_evil:
-                                decls.append(decl.strip())
+                        decls = self.sanitize_css(value)
                         if not decls:
                             continue
                         value = '; '.join(decls)
@@ -313,9 +301,76 @@ class HTMLSanitizer(object):
                 else:
                     yield kind, data, pos
 
-            else:
+            elif kind is not COMMENT:
                 if not waiting_for:
                     yield kind, data, pos
+
+    def is_safe_uri(self, uri):
+        """Determine whether the given URI is to be considered safe for
+        inclusion in the output.
+        
+        The default implementation checks whether the scheme of the URI is in
+        the set of allowed URIs (`safe_schemes`).
+        
+        >>> sanitizer = HTMLSanitizer()
+        >>> sanitizer.is_safe_uri('http://example.org/')
+        True
+        >>> sanitizer.is_safe_uri('javascript:alert(document.cookie)')
+        False
+        
+        :param uri: the URI to check
+        :return: `True` if the URI can be considered safe, `False` otherwise
+        :rtype: `bool`
+        """
+        if ':' not in uri:
+            return True # This is a relative URI
+        chars = [char for char in uri.split(':', 1)[0] if char.isalnum()]
+        return ''.join(chars).lower() in self.safe_schemes
+
+    def sanitize_css(self, text):
+        """Remove potentially dangerous property declarations from CSS code.
+        
+        In particular, properties using the CSS ``url()`` function with a scheme
+        that is not considered safe are removed:
+        
+        >>> sanitizer = HTMLSanitizer()
+        >>> sanitizer.sanitize_css(u'''
+        ...   background: url(javascript:alert("foo"));
+        ...   color: #000;
+        ... ''')
+        [u'color: #000']
+        
+        Also, the proprietary Internet Explorer function ``expression()`` is
+        always stripped:
+        
+        >>> sanitizer.sanitize_css(u'''
+        ...   background: #fff;
+        ...   color: #000;
+        ...   width: e/**/xpression(alert("foo"));
+        ... ''')
+        [u'background: #fff', u'color: #000']
+        
+        :param text: the CSS text; this is expected to be `unicode` and to not
+                     contain any character or numeric references
+        :return: a list of declarations that are considered safe
+        :rtype: `list`
+        """
+        decls = []
+        text = self._strip_css_comments(self._replace_unicode_escapes(text))
+        for decl in filter(None, text.split(';')):
+            decl = decl.strip()
+            if not decl:
+                continue
+            is_evil = False
+            if 'expression' in decl:
+                is_evil = True
+            for match in re.finditer(r'url\s*\(([^)]+)', decl):
+                if not self.is_safe_uri(match.group(1)):
+                    is_evil = True
+                    break
+            if not is_evil:
+                decls.append(decl.strip())
+        return decls
 
     _NORMALIZE_NEWLINES = re.compile(r'\r\n').sub
     _UNICODE_ESCAPE = re.compile(r'\\([0-9a-fA-F]{1,6})\s?').sub

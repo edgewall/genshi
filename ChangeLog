@@ -21,7 +21,7 @@ http://svn.edgewall.org/repos/genshi/tags/0.5.0/
 
 Version 0.4.3
 http://svn.edgewall.org/repos/genshi/tags/0.4.3/
-(?, from branches/stable/0.4.x)
+(Jul 17 2007, from branches/stable/0.4.x)
 
  * The I18n filter no longer extracts or translates literal strings in
    attribute values that also contain expressions.
@@ -43,7 +43,7 @@ http://svn.edgewall.org/repos/genshi/tags/0.4.3/
 
 Version 0.4.2
 http://svn.edgewall.org/repos/genshi/tags/0.4.2/
-(Jun 20, from branches/stable/0.4.x)
+(Jun 20 2007, from branches/stable/0.4.x)
 
  * The `doctype` parameter of the markup serializers now also accepts the "name"
    of the doctype as string, in addition to the `(name, pubid, sysid)` tuple.

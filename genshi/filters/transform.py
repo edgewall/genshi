@@ -43,6 +43,8 @@ the ``<head>`` of the input document:
 
 The ``Transformer`` support a large number of useful transformations out of the
 box, but custom transformations can be added easily.
+
+:since: version 0.5
 """
 
 import re

@@ -321,6 +321,7 @@ class HTMLSanitizer(object):
         :param uri: the URI to check
         :return: `True` if the URI can be considered safe, `False` otherwise
         :rtype: `bool`
+        :since: version 0.4.3
         """
         if ':' not in uri:
             return True # This is a relative URI
@@ -354,6 +355,7 @@ class HTMLSanitizer(object):
                      contain any character or numeric references
         :return: a list of declarations that are considered safe
         :rtype: `list`
+        :since: version 0.4.3
         """
         decls = []
         text = self._strip_css_comments(self._replace_unicode_escapes(text))

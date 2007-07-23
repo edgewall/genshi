@@ -11,7 +11,10 @@
 # individuals. For the exact contribution history, see the revision
 # history and logs, available at http://genshi.edgewall.org/log/.
 
-"""Utilities for internationalization and localization of templates."""
+"""Utilities for internationalization and localization of templates.
+
+:since: version 0.4
+"""
 
 from compiler import ast
 try:
@@ -321,7 +324,10 @@ class Translator(object):
 
 
 class MessageBuffer(object):
-    """Helper class for managing localizable mixed content."""
+    """Helper class for managing localizable mixed content.
+    
+    :since: version 0.5
+    """
 
     def __init__(self, lineno=-1):
         self.lineno = lineno
@@ -385,6 +391,7 @@ def extract_from_code(code, gettext_functions):
     :param code: the `Code` object
     :type code: `genshi.template.eval.Code`
     :param gettext_functions: a sequence of function names
+    :since: version 0.5
     """
     def _walk(node):
         if isinstance(node, ast.CallFunc) and isinstance(node.node, ast.Name) \
@@ -421,6 +428,8 @@ def parse_msg(string, regex=re.compile(r'(?:\[(\d+)\:)|\]')):
     
     >>> parse_msg("[1:] Bilder pro Seite anzeigen.")
     [(1, ''), (0, ' Bilder pro Seite anzeigen.')]
+    
+    :since: version 0.5
     """
     parts = []
     stack = [0]

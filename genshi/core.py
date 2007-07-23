@@ -166,6 +166,27 @@ class Stream(object):
         """Return a new stream that contains the events matching the given
         XPath expression.
         
+        >>> from genshi import HTML
+        >>> stream = HTML('<doc><elem>foo</elem><elem>bar</elem></doc>')
+        >>> print stream.select('elem')
+        <elem>foo</elem><elem>bar</elem>
+        >>> print stream.select('elem/text()')
+        foobar
+        
+        Note that the outermost element of the stream becomes the *context
+        node* for the XPath test. That means that the expression "doc" would
+        not match anything in the example above, because it only tests against
+        child elements of the outermost element:
+        
+        >>> print stream.select('doc')
+        <BLANKLINE>
+        
+        You can use the "." expression to match the context node itself
+        (although that usually makes little sense):
+        
+        >>> print stream.select('.')
+        <doc><elem>foo</elem><elem>bar</elem></doc>
+        
         :param path: a string containing the XPath expression
         :param namespaces: mapping of namespace prefixes used in the path
         :param variables: mapping of variable names to values

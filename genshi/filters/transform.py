@@ -146,9 +146,9 @@ class Transformer(object):
 
         :param path: an XPath expression (as string) or a `Path` instance
         """
-        self.transforms = []
-        if path:
-            self.transforms.append(SelectTransformation(path))
+        if path is None:
+            path = '.'
+        self.transforms = [SelectTransformation(path)]
 
     def __call__(self, stream):
         """Apply the transform filter to the marked stream.
@@ -732,7 +732,10 @@ class WrapTransformation(object):
                     yield None, prefix
                 yield mark, event
                 while True:
-                    mark, event = stream.next()
+                    try:
+                        mark, event = stream.next()
+                    except StopIteration:
+                        yield None, element[-1]
                     if not mark:
                         break
                     yield mark, event
@@ -912,9 +915,15 @@ class BeforeTransformation(InjectorTransformation):
         :param stream: The marked event stream to filter
         """
         for mark, event in stream:
-            if mark in (ENTER, OUTSIDE):
+            if mark is not None:
                 for subevent in self._inject():
                     yield subevent
+                yield mark, event
+                while True:
+                    mark, event = stream.next()
+                    if not mark:
+                        break
+                    yield mark, event
             yield mark, event
 
 
@@ -930,7 +939,10 @@ class AfterTransformation(InjectorTransformation):
             yield mark, event
             if mark:
                 while True:
-                    mark, event = stream.next()
+                    try:
+                        mark, event = stream.next()
+                    except StopIteration:
+                        break
                     if not mark:
                         break
                     yield mark, event

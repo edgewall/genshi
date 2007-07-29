@@ -796,8 +796,8 @@ class FilterTransformation(object):
             if mark:
                 queue.append(event)
             else:
-                for event in flush(queue):
-                    yield event
+                for queue_event in flush(queue):
+                    yield queue_event
                 yield None, event
         for event in flush(queue):
             yield event

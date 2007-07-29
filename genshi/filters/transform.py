@@ -143,13 +143,11 @@ class Transformer(object):
 
     __slots__ = ['transforms']
 
-    def __init__(self, path=None):
+    def __init__(self, path='.'):
         """Construct a new transformation filter.
 
         :param path: an XPath expression (as string) or a `Path` instance
         """
-        if path is None:
-            path = '.'
         self.transforms = [SelectTransformation(path)]
 
     def __call__(self, stream):
@@ -558,6 +556,16 @@ class Transformer(object):
         """
         return self.apply(SubstituteTransformation(pattern, replace, count))
 
+    def rename(self, name):
+        """Rename matching elements.
+
+        >>> html = HTML('<html><body>Some text, some more text and '
+        ...             '<b>some bold text</b></body></html>')
+        >>> print html | Transformer('body/b').rename('strong')
+        <html><body>Some text, some more text and <strong>some bold text</strong></body></html>
+        """
+        return self.apply(RenameTransformation(name))
+
     def trace(self, prefix='', fileobj=None):
         """Print events as they pass through the transform.
 
@@ -857,6 +865,28 @@ class SubstituteTransformation(object):
         for mark, (kind, data, pos) in stream:
             if kind is TEXT:
                 data = self.pattern.sub(self.replace, data, self.count)
+            yield mark, (kind, data, pos)
+
+
+class RenameTransformation(object):
+    """Rename matching elements."""
+    def __init__(self, name):
+        """Create the transform.
+
+        :param name: New element name.
+        """
+        self.name = QName(name)
+
+    def __call__(self, stream):
+        """Apply the transform filter to the marked stream.
+
+        :param stream: The marked event stream to filter
+        """
+        for mark, (kind, data, pos) in stream:
+            if mark is ENTER:
+                data = self.name, data[1]
+            elif mark is EXIT:
+                data = self.name
             yield mark, (kind, data, pos)
 
 

@@ -1,3 +1,10 @@
+Version 0.4.4
+http://svn.edgewall.org/repos/genshi/tags/0.4.4/
+(?, from branches/stable/0.4.x)
+
+ * Fixed augmented assignment to local variables in Python code blocks.
+
+
 Version 0.4.3
 http://svn.edgewall.org/repos/genshi/tags/0.4.3/
 (?, from branches/stable/0.4.x)

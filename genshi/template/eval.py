@@ -249,7 +249,8 @@ class LookupBase(object):
         return {
             '_lookup_name': cls.lookup_name,
             '_lookup_attr': cls.lookup_attr,
-            '_lookup_item': cls.lookup_item
+            '_lookup_item': cls.lookup_item,
+            'UndefinedError': UndefinedError
         }
     globals = classmethod(globals)
 
@@ -653,7 +654,8 @@ class TemplateASTTransformer(ASTTransformer):
         return node
 
     def visitAugAssign(self, node):
-        if isinstance(node.node, ast.Name):
+        if isinstance(node.node, ast.Name) \
+                and node.node.name not in flatten(self.locals[-1]):
             name = node.node.name
             node.node = ast.Subscript(ast.Name('data'), 'OP_APPLY',
                                       [ast.Const(name)])

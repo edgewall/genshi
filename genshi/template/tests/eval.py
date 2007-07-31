@@ -549,6 +549,15 @@ while x < 5:
     def test_local_augmented_assign(self):
         Suite("x = 1; x += 42; assert x == 43").execute({})
 
+    def test_augmented_assign_in_def(self):
+        d = {}
+        Suite("""def foo():
+    i = 1
+    i += 1
+    return i
+x = foo()""").execute(d)
+        self.assertEqual(2, d['x'])
+
     def test_assign_in_list(self):
         suite = Suite("[d['k']] = 'foo',; assert d['k'] == 'foo'")
         d = {"k": "bar"}

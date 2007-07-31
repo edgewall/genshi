@@ -15,6 +15,11 @@
 
 import htmlentitydefs
 import re
+try:
+    set
+except NameError:
+    from sets import ImmutableSet as frozenset
+    from sets import Set as set
 
 __docformat__ = 'restructuredtext en'
 
@@ -152,7 +157,7 @@ def flatten(items):
     """
     retval = []
     for item in items:
-        if isinstance(item, (list, tuple)):
+        if isinstance(item, (frozenset, list, set, tuple)):
             retval += flatten(item)
         else:
             retval.append(item)

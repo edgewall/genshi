@@ -655,7 +655,7 @@ class TemplateASTTransformer(ASTTransformer):
 
     def visitAugAssign(self, node):
         if isinstance(node.node, ast.Name) \
-                and node.node.name not in flatten(self.locals[-1]):
+                and node.node.name not in flatten(self.locals):
             name = node.node.name
             node.node = ast.Subscript(ast.Name('data'), 'OP_APPLY',
                                       [ast.Const(name)])

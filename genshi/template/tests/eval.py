@@ -558,6 +558,16 @@ while x < 5:
 x = foo()""").execute(d)
         self.assertEqual(2, d['x'])
 
+    def test_augmented_assign_in_loop_in_def(self):
+        d = {}
+        Suite("""def foo():
+    i = 0
+    for n in range(5):
+        i += n
+    return i
+x = foo()""").execute(d)
+        self.assertEqual(10, d['x'])
+
     def test_assign_in_list(self):
         suite = Suite("[d['k']] = 'foo',; assert d['k'] == 'foo'")
         d = {"k": "bar"}

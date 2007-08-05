@@ -69,7 +69,9 @@ class HTMLFormFiller(object):
         """
         in_form = in_select = in_option = in_textarea = False
         select_value = option_value = textarea_value = None
-        option_start = option_text = None
+        option_start = None
+        option_text = []
+        no_option_value = False
 
         for kind, data, pos in stream:
 
@@ -94,13 +96,13 @@ class HTMLFormFiller(object):
                                 checked = False
                                 if isinstance(value, (list, tuple)):
                                     if declval:
-                                        checked = declval in [str(v) for v
+                                        checked = declval in [unicode(v) for v
                                                               in value]
                                     else:
                                         checked = bool(filter(None, value))
                                 else:
                                     if declval:
-                                        checked = declval == str(value)
+                                        checked = declval == unicode(value)
                                     elif type == 'checkbox':
                                         checked = bool(value)
                                 if checked:
@@ -130,15 +132,18 @@ class HTMLFormFiller(object):
                     elif in_select and tagname == 'option':
                         option_start = kind, data, pos
                         option_value = attrs.get('value')
+                        if option_value is None:
+                            no_option_value = True
+                            option_value = ''
                         in_option = True
                         continue
                 yield kind, (tag, attrs), pos
 
             elif in_form and kind is TEXT:
                 if in_select and in_option:
-                    if option_value is None:
-                        option_value = data
-                    option_text = kind, data, pos
+                    if no_option_value:
+                        option_value += data
+                    option_text.append((kind, data, pos))
                     continue
                 elif in_textarea:
                     continue
@@ -153,10 +158,10 @@ class HTMLFormFiller(object):
                     select_value = None
                 elif in_select and tagname == 'option':
                     if isinstance(select_value, (tuple, list)):
-                        selected = option_value in [str(v) for v
+                        selected = option_value in [unicode(v) for v
                                                     in select_value]
                     else:
-                        selected = option_value == str(select_value)
+                        selected = option_value == unicode(select_value)
                     okind, (tag, attrs), opos = option_start
                     if selected:
                         attrs |= [(QName('selected'), 'selected')]
@@ -164,9 +169,12 @@ class HTMLFormFiller(object):
                         attrs -= 'selected'
                     yield okind, (tag, attrs), opos
                     if option_text:
-                        yield option_text
+                        for event in option_text:
+                            yield event
                     in_option = False
-                    option_start = option_text = option_value = None
+                    no_option_value = False
+                    option_start = option_value = None
+                    option_text = []
                 elif tagname == 'textarea':
                     if textarea_value:
                         yield TEXT, unicode(textarea_value), pos

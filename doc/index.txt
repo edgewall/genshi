@@ -1,8 +1,8 @@
 .. -*- mode: rst; encoding: utf-8 -*-
 
-======
-Genshi
-======
+=======
+Preface
+=======
 
 .. image:: logo.png
    :width: 225

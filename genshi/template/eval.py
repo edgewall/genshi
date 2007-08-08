@@ -638,7 +638,7 @@ class TemplateASTTransformer(ASTTransformer):
     """
 
     def __init__(self):
-        self.locals = [CONSTANTS, set()]
+        self.locals = [CONSTANTS]
 
     def visitConst(self, node):
         if isinstance(node.value, str):
@@ -649,7 +649,7 @@ class TemplateASTTransformer(ASTTransformer):
         return node
 
     def visitAssName(self, node):
-        if self.locals:
+        if len(self.locals) > 1:
             self.locals[-1].add(node.name)
         return node
 
@@ -670,6 +670,8 @@ class TemplateASTTransformer(ASTTransformer):
             return ASTTransformer.visitAugAssign(self, node)
 
     def visitClass(self, node):
+        if len(self.locals) > 1:
+            self.locals[-1].add(node.name)
         self.locals.append(set())
         try:
             return ASTTransformer.visitClass(self, node)
@@ -684,6 +686,8 @@ class TemplateASTTransformer(ASTTransformer):
             self.locals.pop()
 
     def visitFunction(self, node):
+        if len(self.locals) > 1:
+            self.locals[-1].add(node.name)
         self.locals.append(set(node.argnames))
         try:
             return ASTTransformer.visitFunction(self, node)
@@ -714,12 +718,11 @@ class TemplateASTTransformer(ASTTransformer):
     def visitName(self, node):
         # If the name refers to a local inside a lambda, list comprehension, or
         # generator expression, leave it alone
-        for frame in self.locals:
-            if node.name in frame:
-                return node
-        # Otherwise, translate the name ref into a context lookup
-        func_args = [ast.Name('data'), ast.Const(node.name)]
-        return ast.CallFunc(ast.Name('_lookup_name'), func_args)
+        if node.name not in flatten(self.locals):
+            # Otherwise, translate the name ref into a context lookup
+            func_args = [ast.Name('data'), ast.Const(node.name)]
+            node = ast.CallFunc(ast.Name('_lookup_name'), func_args)
+        return node
 
 
 class ExpressionASTTransformer(TemplateASTTransformer):

@@ -449,7 +449,8 @@ class SuiteTestCase(unittest.TestCase):
         self.assertEqual(None, data['donothing']())
 
     def test_def_with_multiple_statements(self):
-        suite = Suite("""def donothing():
+        suite = Suite("""
+def donothing():
     if True:
         return foo
 """)
@@ -457,6 +458,35 @@ class SuiteTestCase(unittest.TestCase):
         suite.execute(data)
         assert 'donothing' in data
         self.assertEqual('bar', data['donothing']())
+
+    def test_def_using_nonlocal(self):
+        suite = Suite("""
+values = []
+def add(value):
+    if value not in values:
+        values.append(value)
+add('foo')
+add('bar')
+""")
+        data = {}
+        suite.execute(data)
+        self.assertEqual(['foo', 'bar'], data['values'])
+
+    def test_def_nested(self):
+        suite = Suite("""
+def doit():
+    values = []
+    def add(value):
+        if value not in values:
+            values.append(value)
+    add('foo')
+    add('bar')
+    return values
+x = doit()
+""")
+        data = {}
+        suite.execute(data)
+        self.assertEqual(['foo', 'bar'], data['x'])
 
     def test_delete(self):
         suite = Suite("""foo = 42
@@ -471,6 +501,19 @@ del foo
         data = {}
         suite.execute(data)
         assert 'plain' in data
+
+    def test_class_in_def(self):
+        suite = Suite("""
+def create():
+    class Foobar(object):
+        def __str__(self):
+            return 'foobar'
+    return Foobar()
+x = create()
+""")
+        data = {}
+        suite.execute(data)
+        self.assertEqual('foobar', str(data['x']))
 
     def test_class_with_methods(self):
         suite = Suite("""class plain(object):

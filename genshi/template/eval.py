@@ -688,6 +688,8 @@ class TemplateASTTransformer(ASTTransformer):
             return ASTTransformer.visitAugAssign(self, node)
 
     def visitClass(self, node):
+        if self.locals:
+            self.locals[-1].add(node.name)
         self.locals.append(set())
         node = ASTTransformer.visitClass(self, node)
         self.locals.pop()
@@ -700,6 +702,8 @@ class TemplateASTTransformer(ASTTransformer):
         return node
 
     def visitFunction(self, node):
+        if self.locals:
+            self.locals[-1].add(node.name)
         self.locals.append(set(node.argnames))
         node = ASTTransformer.visitFunction(self, node)
         self.locals.pop()
@@ -726,12 +730,11 @@ class TemplateASTTransformer(ASTTransformer):
     def visitName(self, node):
         # If the name refers to a local inside a lambda, list comprehension, or
         # generator expression, leave it alone
-        for frame in self.locals:
-            if node.name in frame:
-                return node
-        # Otherwise, translate the name ref into a context lookup
-        func_args = [ast.Name('data'), ast.Const(node.name)]
-        return ast.CallFunc(ast.Name('_lookup_name'), func_args)
+        if node.name not in flatten(self.locals):
+            # Otherwise, translate the name ref into a context lookup
+            func_args = [ast.Name('data'), ast.Const(node.name)]
+            node = ast.CallFunc(ast.Name('_lookup_name'), func_args)
+        return node
 
 
 class ExpressionASTTransformer(TemplateASTTransformer):

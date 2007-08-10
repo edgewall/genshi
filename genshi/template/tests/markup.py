@@ -22,7 +22,7 @@ import unittest
 from genshi.core import Markup
 from genshi.input import XML
 from genshi.template.base import BadDirectiveError, TemplateSyntaxError
-from genshi.template.loader import TemplateLoader
+from genshi.template.loader import TemplateLoader, TemplateNotFound
 from genshi.template.markup import MarkupTemplate
 
 
@@ -351,6 +351,23 @@ class MarkupTemplateTestCase(unittest.TestCase):
         finally:
             shutil.rmtree(dirname)
 
+    def test_error_when_include_not_found(self):
+        dirname = tempfile.mkdtemp(suffix='genshi_test')
+        try:
+            file2 = open(os.path.join(dirname, 'tmpl2.html'), 'w')
+            try:
+                file2.write("""<html xmlns:xi="http://www.w3.org/2001/XInclude">
+                  <xi:include href="tmpl1.html"/>
+                </html>""")
+            finally:
+                file2.close()
+
+            loader = TemplateLoader([dirname], auto_reload=True)
+            tmpl = loader.load('tmpl2.html')
+            self.assertRaises(TemplateNotFound, tmpl.generate().render)
+        finally:
+            shutil.rmtree(dirname)
+
     def test_fallback_when_include_not_found(self):
         dirname = tempfile.mkdtemp(suffix='genshi_test')
         try:
@@ -397,7 +414,7 @@ class MarkupTemplateTestCase(unittest.TestCase):
             loader = TemplateLoader([dirname])
             tmpl = loader.load('tmpl3.html')
             self.assertEqual("""<html>
-                  <div>Included</div>
+                      <div>Included</div>
                 </html>""", tmpl.generate().render())
         finally:
             shutil.rmtree(dirname)
@@ -422,7 +439,36 @@ class MarkupTemplateTestCase(unittest.TestCase):
             loader = TemplateLoader([dirname])
             tmpl = loader.load('tmpl3.html')
             self.assertEqual("""<html>
-                        Missing
+                      Missing
+                </html>""", tmpl.generate().render())
+        finally:
+            shutil.rmtree(dirname)
+
+    def test_nested_include_in_fallback(self):
+        dirname = tempfile.mkdtemp(suffix='genshi_test')
+        try:
+            file1 = open(os.path.join(dirname, 'tmpl2.html'), 'w')
+            try:
+                file1.write("""<div>Included</div>""")
+            finally:
+                file1.close()
+
+            file2 = open(os.path.join(dirname, 'tmpl3.html'), 'w')
+            try:
+                file2.write("""<html xmlns:xi="http://www.w3.org/2001/XInclude">
+                  <xi:include href="tmpl2.html">
+                    <xi:fallback>
+                      <xi:include href="tmpl1.html" />
+                    </xi:fallback>
+                  </xi:include>
+                </html>""")
+            finally:
+                file2.close()
+
+            loader = TemplateLoader([dirname])
+            tmpl = loader.load('tmpl3.html')
+            self.assertEqual("""<html>
+                  <div>Included</div>
                 </html>""", tmpl.generate().render())
         finally:
             shutil.rmtree(dirname)

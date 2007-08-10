@@ -392,7 +392,7 @@ class Template(object):
                             for event in self._prepare(fallback):
                                 yield event
                         continue
-                    else:
+                    elif fallback:
                         # Otherwise the include is performed at run time
                         data = href, list(self._prepare(fallback))
 

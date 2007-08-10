@@ -26,6 +26,11 @@ http://svn.edgewall.org/repos/genshi/tags/0.4.4/
  * Fixed augmented assignment to local variables in Python code blocks.
  * Fixed handling of nested function and class definitions in Python code
    blocks.
+ * Includes were not raising `TemplateNotFound` exceptions even when no
+   fallback has been specified. That has been corrected.
+ * The template loader now raises a `TemplateNotFound` error when a previously
+   cached template is removed or renamed, where it previously was passing up
+   an `OSError`.
 
 
 Version 0.4.3

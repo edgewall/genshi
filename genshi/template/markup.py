@@ -83,8 +83,8 @@ class MarkupTemplate(Template):
         dirmap = {} # temporary mapping of directives to elements
         ns_prefix = {}
         depth = 0
-        in_fallback = 0
-        include_href = None
+        fallbacks = []
+        includes = []
 
         if not isinstance(source, Stream):
             source = XMLParser(source, filename=self.filename,
@@ -155,9 +155,11 @@ class MarkupTemplate(Template):
                             raise TemplateSyntaxError('Include misses required '
                                                       'attribute "href"',
                                                       self.filepath, *pos[1:])
+                        includes.append(include_href)
                         streams.append([])
                     elif tag.localname == 'fallback':
-                        in_fallback += 1
+                        streams.append([])
+                        fallbacks.append(streams[-1])
 
                 else:
                     stream.append((kind, (tag, new_attrs), pos))
@@ -167,12 +169,16 @@ class MarkupTemplate(Template):
             elif kind is END:
                 depth -= 1
 
-                if in_fallback and data == self.XINCLUDE_NAMESPACE['fallback']:
-                    in_fallback -= 1
+                if fallbacks and data == self.XINCLUDE_NAMESPACE['fallback']:
+                    assert streams.pop() is fallbacks[-1]
                 elif data == self.XINCLUDE_NAMESPACE['include']:
-                    fallback = streams.pop()
+                    fallback = None
+                    if len(fallbacks) == len(includes):
+                        fallback = fallbacks.pop()
+                    streams.pop() # discard anything between the include tags
+                                  # and the fallback element
                     stream = streams[-1]
-                    stream.append((INCLUDE, (include_href, fallback), pos))
+                    stream.append((INCLUDE, (includes.pop(), fallback), pos))
                 else:
                     stream.append((kind, data, pos))
 

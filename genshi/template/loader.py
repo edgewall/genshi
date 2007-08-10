@@ -174,7 +174,7 @@ class TemplateLoader(object):
                 if not self.auto_reload or \
                         os.path.getmtime(tmpl.filepath) == self._mtime[filename]:
                     return tmpl
-            except KeyError:
+            except KeyError, OSError:
                 pass
 
             search_path = self.search_path

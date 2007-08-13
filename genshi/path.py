@@ -39,6 +39,7 @@ structures), it only implements a subset of the full XPath 1.0 language.
 """
 
 from math import ceil, floor
+import operator
 import re
 
 from genshi.core import Stream, Attrs, Namespace, QName
@@ -771,7 +772,7 @@ class MatchesFunction(Function):
         string2 = as_string(self.string2(kind, data, pos, namespaces, variables))
         return re.search(string2, string1, self.flags)
     def _map_flags(self, flags):
-        return reduce(lambda a, b: a | b,
+        return reduce(operator.or_,
                       [self.flag_map[flag] for flag in flags], re.U)
     def __repr__(self):
         return 'contains(%r, %r)' % (self.string1, self.string2)

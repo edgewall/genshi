@@ -316,6 +316,12 @@ class Attrs(tuple):
                 return True
 
     def __getslice__(self, i, j):
+        """Return a slice of the attributes list.
+        
+        >>> attrs = Attrs([('href', '#'), ('title', 'Foo')])
+        >>> attrs[1:]
+        Attrs([('title', 'Foo')])
+        """
         return Attrs(tuple.__getslice__(self, i, j))
 
     def __or__(self, attrs):

@@ -21,6 +21,17 @@ from genshi.filters.i18n import Translator, extract
 
 class TranslatorTestCase(unittest.TestCase):
 
+    def test_extract_without_text(self):
+        tmpl = MarkupTemplate("""<html xmlns:py="http://genshi.edgewall.org/">
+          <p title="Bar">Foo</p>
+          ${ngettext("Singular", "Plural", num)}
+        </html>""")
+        translator = Translator(extract_text=False)
+        messages = list(translator.extract(tmpl.stream))
+        self.assertEqual(1, len(messages))
+        self.assertEqual((3, 'ngettext', (u'Singular', u'Plural', None)),
+                         messages[0])
+
     def test_extract_plural_form(self):
         tmpl = MarkupTemplate("""<html xmlns:py="http://genshi.edgewall.org/">
           ${ngettext("Singular", "Plural", num)}

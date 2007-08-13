@@ -96,17 +96,21 @@ class Translator(object):
                                'summary', 'title'])
 
     def __init__(self, translate=gettext, ignore_tags=IGNORE_TAGS,
-                 include_attrs=INCLUDE_ATTRS):
+                 include_attrs=INCLUDE_ATTRS, extract_text=True):
         """Initialize the translator.
         
         :param translate: the translation function, for example ``gettext`` or
                           ``ugettext``.
         :param ignore_tags: a set of tag names that should not be localized
         :param include_attrs: a set of attribute names should be localized
+        :param extract_text: whether the content of text nodes should be
+                             extracted, or only text in explicit ``gettext``
+                             function calls
         """
         self.translate = translate
         self.ignore_tags = ignore_tags
         self.include_attrs = include_attrs
+        self.extract_text = extract_text
 
     def __call__(self, stream, ctxt=None, search_text=True, msgbuf=None):
         """Translate any localizable strings in the given stream.
@@ -127,6 +131,8 @@ class Translator(object):
         ignore_tags = self.ignore_tags
         include_attrs = self.include_attrs
         translate = self.translate
+        if not self.extract_text:
+            search_text = False
         skip = 0
         i18n_msg = I18N_NAMESPACE['msg']
         ns_prefixes = []
@@ -156,7 +162,7 @@ class Translator(object):
                 changed = False
                 for name, value in attrs:
                     newval = value
-                    if isinstance(value, basestring):
+                    if search_text and isinstance(value, basestring):
                         if name in include_attrs:
                             newval = self.translate(value)
                     else:
@@ -258,6 +264,8 @@ class Translator(object):
                (such as ``ngettext``), a single item with a tuple of strings is
                yielded, instead an item for each string argument.
         """
+        if not self.extract_text:
+            search_text = False
         skip = 0
         i18n_msg = I18N_NAMESPACE['msg']
         xml_lang = XML_NAMESPACE['lang']
@@ -279,7 +287,7 @@ class Translator(object):
                     continue
 
                 for name, value in attrs:
-                    if isinstance(value, basestring):
+                    if search_text and isinstance(value, basestring):
                         if name in self.include_attrs:
                             text = value.strip()
                             if text:
@@ -454,6 +462,7 @@ def parse_msg(string, regex=re.compile(r'(?:\[(\d+)\:)|\]')):
         parts.append((stack[-1], string))
 
     return parts
+
 
 def extract(fileobj, keywords, comment_tags, options):
     """Babel extraction method for Genshi templates.

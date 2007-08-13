@@ -36,6 +36,8 @@ http://svn.edgewall.org/repos/genshi/tags/0.4.4/
  * The template loader now raises a `TemplateNotFound` error when a previously
    cached template is removed or renamed, where it previously was passing up
    an `OSError`.
+ * The Genshi I18n filter can be configured to only extract messages found in
+   `gettext` function calls, ignoring any text nodes and attribute values.
 
 
 Version 0.4.3

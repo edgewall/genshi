@@ -145,19 +145,30 @@ set it to ``genshi.template:TextTemplate`` for `text templates`_.
 .. _`text templates`: text-templates.html
 
 ``encoding``
-------------------
+------------
 The encoding of the template file. This is only used for text templates. The
 default is to assume “utf-8”.
 
 ``include_attrs``
-------------------
+-----------------
 Comma-separated list of attribute names that should be considered to have 
 localizable values. Only used for markup templates.
 
-``include_tags``
-------------------
+``ignore_tags``
+---------------
 Comma-separated list of tag names that should be ignored. Only used for markup 
 templates.
+
+``extract_text``
+----------------
+Whether text outside explicit ``gettext`` function calls should be extracted.
+By default, any text nodes not inside ignored tags, and values of attribute in
+the ``include_attrs`` list are extracted. If this option is disabled, only 
+strings in ``gettext`` function calls are extracted.
+
+.. note:: If you disable this option, it's not necessary to add the translation
+          filter as described above. You only need to make sure that the
+          template has access to the ``gettext`` functions it uses.
 
 
 Translation

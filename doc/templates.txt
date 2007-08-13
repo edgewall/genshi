@@ -116,8 +116,11 @@ For example:
   >>> from genshi.template import MarkupTemplate
   >>> tmpl = MarkupTemplate('<h1>Hello, $name!</h1>')
   >>> stream = tmpl.generate(name='world')
-  >>> print stream.render()
+  >>> print stream.render('xhtml')
   <h1>Hello, world!</h1>
+
+.. note:: See the Serialization_ section of the `Markup Streams`_ page for
+          information on configuring template output options.
 
 Using a text template is similar:
 
@@ -126,13 +129,15 @@ Using a text template is similar:
   >>> from genshi.template import TextTemplate
   >>> tmpl = TextTemplate('Hello, $name!')
   >>> stream = tmpl.generate(name='world')
-  >>> print stream.render()
+  >>> print stream.render('text')
   Hello, world!
 
-.. note:: See the Serialization_ section of the `Markup Streams`_ page for
-          information on configuring template output options.
+.. note:: If you want to use text templates, you should consider using the
+          ``NewTextTemplate`` class instead of simply ``TextTemplate``. See
+          the `Text Template Language`_ page.
 
 .. _serialization: streams.html#serialization
+.. _`Text Template Language`: text-templates.html
 .. _`Markup Streams`: streams.html
 
 Using a template loader provides the advantage that “compiled” templates are

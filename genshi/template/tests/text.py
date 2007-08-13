@@ -18,10 +18,10 @@ import tempfile
 import unittest
 
 from genshi.template.loader import TemplateLoader
-from genshi.template.text import TextTemplate
+from genshi.template.text import OldTextTemplate, NewTextTemplate
 
 
-class TextTemplateTestCase(unittest.TestCase):
+class OldTextTemplateTestCase(unittest.TestCase):
     """Tests for text template processing."""
 
     def setUp(self):
@@ -31,19 +31,19 @@ class TextTemplateTestCase(unittest.TestCase):
         shutil.rmtree(self.dirname)
 
     def test_escaping(self):
-        tmpl = TextTemplate('\\#escaped')
+        tmpl = OldTextTemplate('\\#escaped')
         self.assertEqual('#escaped', str(tmpl.generate()))
 
     def test_comment(self):
-        tmpl = TextTemplate('## a comment')
+        tmpl = OldTextTemplate('## a comment')
         self.assertEqual('', str(tmpl.generate()))
 
     def test_comment_escaping(self):
-        tmpl = TextTemplate('\\## escaped comment')
+        tmpl = OldTextTemplate('\\## escaped comment')
         self.assertEqual('## escaped comment', str(tmpl.generate()))
 
     def test_end_with_args(self):
-        tmpl = TextTemplate("""
+        tmpl = OldTextTemplate("""
         #if foo
           bar
         #end 'if foo'""")
@@ -51,16 +51,16 @@ class TextTemplateTestCase(unittest.TestCase):
 
     def test_latin1_encoded(self):
         text = u'$foo\xf6$bar'.encode('iso-8859-1')
-        tmpl = TextTemplate(text, encoding='iso-8859-1')
+        tmpl = OldTextTemplate(text, encoding='iso-8859-1')
         self.assertEqual(u'x\xf6y', unicode(tmpl.generate(foo='x', bar='y')))
 
     def test_unicode_input(self):
         text = u'$foo\xf6$bar'
-        tmpl = TextTemplate(text)
+        tmpl = OldTextTemplate(text)
         self.assertEqual(u'x\xf6y', unicode(tmpl.generate(foo='x', bar='y')))
 
     def test_empty_lines1(self):
-        tmpl = TextTemplate("""Your items:
+        tmpl = OldTextTemplate("""Your items:
 
         #for item in items
           * ${item}
@@ -73,7 +73,7 @@ class TextTemplateTestCase(unittest.TestCase):
 """, tmpl.generate(items=range(3)).render('text'))
 
     def test_empty_lines2(self):
-        tmpl = TextTemplate("""Your items:
+        tmpl = OldTextTemplate("""Your items:
 
         #for item in items
           * ${item}
@@ -105,16 +105,108 @@ class TextTemplateTestCase(unittest.TestCase):
             file2.close()
 
         loader = TemplateLoader([self.dirname])
-        tmpl = loader.load('tmpl2.txt', cls=TextTemplate)
+        tmpl = loader.load('tmpl2.txt', cls=OldTextTemplate)
         self.assertEqual("""----- Included data below this line -----
 Included
             ----- Included data above this line -----""",
                          tmpl.generate().render())
-        
+
+
+class NewTextTemplateTestCase(unittest.TestCase):
+    """Tests for text template processing."""
+
+    def setUp(self):
+        self.dirname = tempfile.mkdtemp(suffix='markup_test')
+
+    def tearDown(self):
+        shutil.rmtree(self.dirname)
+
+    def test_escaping(self):
+        tmpl = NewTextTemplate('\\{% escaped %}')
+        self.assertEqual('{% escaped %}', str(tmpl.generate()))
+
+    def test_comment(self):
+        tmpl = NewTextTemplate('{# a comment #}')
+        self.assertEqual('', str(tmpl.generate()))
+
+    def test_comment_escaping(self):
+        tmpl = NewTextTemplate('\\{# escaped comment #}')
+        self.assertEqual('{# escaped comment #}', str(tmpl.generate()))
+
+    def test_end_with_args(self):
+        tmpl = NewTextTemplate("""
+{% if foo %}
+  bar
+{% end 'if foo' %}""")
+        self.assertEqual('\n', str(tmpl.generate(foo=False)))
+
+    def test_latin1_encoded(self):
+        text = u'$foo\xf6$bar'.encode('iso-8859-1')
+        tmpl = NewTextTemplate(text, encoding='iso-8859-1')
+        self.assertEqual(u'x\xf6y', unicode(tmpl.generate(foo='x', bar='y')))
+
+    def test_unicode_input(self):
+        text = u'$foo\xf6$bar'
+        tmpl = NewTextTemplate(text)
+        self.assertEqual(u'x\xf6y', unicode(tmpl.generate(foo='x', bar='y')))
+
+    def test_empty_lines1(self):
+        tmpl = NewTextTemplate("""Your items:
+
+{% for item in items %}\
+  * ${item}
+{% end %}""")
+        self.assertEqual("""Your items:
+
+  * 0
+  * 1
+  * 2
+""", tmpl.generate(items=range(3)).render('text'))
+
+    def test_empty_lines2(self):
+        tmpl = NewTextTemplate("""Your items:
+
+{% for item in items %}\
+  * ${item}
+
+{% end %}""")
+        self.assertEqual("""Your items:
+
+  * 0
+
+  * 1
+
+  * 2
+
+""", tmpl.generate(items=range(3)).render('text'))
+
+    def test_include(self):
+        file1 = open(os.path.join(self.dirname, 'tmpl1.txt'), 'w')
+        try:
+            file1.write("Included\n")
+        finally:
+            file1.close()
+
+        file2 = open(os.path.join(self.dirname, 'tmpl2.txt'), 'w')
+        try:
+            file2.write("""----- Included data below this line -----
+{% include tmpl1.txt %}
+----- Included data above this line -----""")
+        finally:
+            file2.close()
+
+        loader = TemplateLoader([self.dirname])
+        tmpl = loader.load('tmpl2.txt', cls=NewTextTemplate)
+        self.assertEqual("""----- Included data below this line -----
+Included
+----- Included data above this line -----""", tmpl.generate().render())
+
+
 def suite():
     suite = unittest.TestSuite()
-    suite.addTest(doctest.DocTestSuite(TextTemplate.__module__))
-    suite.addTest(unittest.makeSuite(TextTemplateTestCase, 'test'))
+    suite.addTest(doctest.DocTestSuite(NewTextTemplate.__module__))
+    suite.addTest(unittest.makeSuite(OldTextTemplateTestCase, 'test'))
+    suite.addTest(unittest.makeSuite(NewTextTemplateTestCase, 'test'))
     return suite
 
 if __name__ == '__main__':

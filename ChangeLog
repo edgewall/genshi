@@ -17,6 +17,11 @@ http://svn.edgewall.org/repos/genshi/tags/0.5.0/
    only if the template loader is not set to do automatic reloading. Included
    templates are basically inlined into the including template, which can
    speed up rendering of that template a bit.
+ * Added new syntax for text templates, which is more powerful and flexible
+   with respect to white-space and line breaks. The old syntax is still
+   available and the default for now, but in a future release the new syntax
+   will become the default, and some time affter that the old syntax will be
+   removed.
 
 
 Version 0.4.4

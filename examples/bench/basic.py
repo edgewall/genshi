@@ -9,7 +9,8 @@ from StringIO import StringIO
 import sys
 import timeit
 
-__all__ = ['clearsilver', 'mako', 'django', 'kid', 'genshi', 'simpletal']
+__all__ = ['clearsilver', 'mako', 'django', 'kid', 'genshi', 'genshi_text',
+           'simpletal']
 
 def genshi(dirname, verbose=False):
     from genshi.template import TemplateLoader
@@ -19,6 +20,20 @@ def genshi(dirname, verbose=False):
         data = dict(title='Just a test', user='joe',
                     items=['Number %d' % num for num in range(1, 15)])
         return template.generate(**data).render('xhtml')
+
+    if verbose:
+        print render()
+    return render
+
+def genshi_text(dirname, verbose=False):
+    from genshi.core import escape
+    from genshi.template import TemplateLoader, NewTextTemplate
+    loader = TemplateLoader([dirname], auto_reload=False)
+    template = loader.load('template.txt', cls=NewTextTemplate)
+    def render():
+        data = dict(escape=escape, title='Just a test', user='joe',
+                    items=['Number %d' % num for num in range(1, 15)])
+        return template.generate(**data).render('text')
 
     if verbose:
         print render()

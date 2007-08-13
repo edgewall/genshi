@@ -18,7 +18,7 @@ import unittest
 
 from genshi.core import Stream
 from genshi.output import DocType
-from genshi.template import MarkupTemplate, TextTemplate
+from genshi.template import MarkupTemplate, TextTemplate, NewTextTemplate
 from genshi.template.plugin import ConfigurationError, \
                                    MarkupTemplateEnginePlugin, \
                                    TextTemplateEnginePlugin
@@ -184,6 +184,15 @@ class TextTemplateEnginePluginTestCase(unittest.TestCase):
             'genshi.default_encoding': 'iso-8859-15',
         })
         self.assertEqual('iso-8859-15', plugin.default_encoding)
+
+    def test_init_with_new_syntax(self):
+        plugin = TextTemplateEnginePlugin(options={
+            'genshi.new_text_syntax': 'yes',
+        })
+        self.assertEqual(NewTextTemplate, plugin.template_class)
+        tmpl = plugin.load_template(PACKAGE + '.templates.new_syntax')
+        output = plugin.render({'foo': True}, template=tmpl)
+        self.assertEqual('bar', output)
 
     def test_load_template_from_file(self):
         plugin = TextTemplateEnginePlugin()

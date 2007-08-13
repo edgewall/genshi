@@ -222,6 +222,14 @@ The maximum number of templates that the template loader will cache in memory.
 The default value is **25**. You may want to choose a higher value if your web
 site uses a larger number of templates, and you have enough memory to spare.
 
+``genshi.new_text_syntax``
+--------------------------
+Whether the new syntax for text templates should be used. Specify "yes" to
+enable the new syntax, or "no" to use the old syntax.
+
+In the version of Genshi, the default is to use the old syntax for
+backwards-compatibility, but that will change in a future release.
+
 ``genshi.search_path``
 ----------------------
 A colon-separated list of file-system path names that the template loader should

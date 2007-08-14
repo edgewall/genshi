@@ -26,7 +26,7 @@ http://svn.edgewall.org/repos/genshi/tags/0.5.0/
 
 Version 0.4.4
 http://svn.edgewall.org/repos/genshi/tags/0.4.4/
-(?, from branches/stable/0.4.x)
+(Aug 14, 2007, from branches/stable/0.4.x)
 
  * Fixed augmented assignment to local variables in Python code blocks.
  * Fixed handling of nested function and class definitions in Python code
@@ -37,7 +37,8 @@ http://svn.edgewall.org/repos/genshi/tags/0.4.4/
    cached template is removed or renamed, where it previously was passing up
    an `OSError`.
  * The Genshi I18n filter can be configured to only extract messages found in
-   `gettext` function calls, ignoring any text nodes and attribute values.
+   `gettext` function calls, ignoring any text nodes and attribute values
+   (ticket #138).
 
 
 Version 0.4.3

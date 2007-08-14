@@ -463,7 +463,6 @@ def parse_msg(string, regex=re.compile(r'(?:\[(\d+)\:)|\]')):
 
     return parts
 
-
 def extract(fileobj, keywords, comment_tags, options):
     """Babel extraction method for Genshi templates.
     
@@ -482,10 +481,15 @@ def extract(fileobj, keywords, comment_tags, options):
         template_class = getattr(__import__(module, {}, {}, [clsname]), clsname)
     encoding = options.get('encoding', None)
 
+    extract_text = options.get('extract_text', True)
+    if isinstance(extract_text, basestring):
+        extract_text = extract_text.lower() in ('1', 'on', 'yes', 'true')
+
     ignore_tags = options.get('ignore_tags', Translator.IGNORE_TAGS)
     if isinstance(ignore_tags, basestring):
         ignore_tags = ignore_tags.split()
     ignore_tags = [QName(tag) for tag in ignore_tags]
+
     include_attrs = options.get('include_attrs', Translator.INCLUDE_ATTRS)
     if isinstance(include_attrs, basestring):
         include_attrs = include_attrs.split()
@@ -493,7 +497,7 @@ def extract(fileobj, keywords, comment_tags, options):
 
     tmpl = template_class(fileobj, filename=getattr(fileobj, 'name', None),
                           encoding=encoding)
-    translator = Translator(None, ignore_tags, include_attrs)
+    translator = Translator(None, ignore_tags, include_attrs, extract_text)
     for lineno, func, message in translator.extract(tmpl.stream,
                                                     gettext_functions=keywords):
         yield lineno, func, message, []

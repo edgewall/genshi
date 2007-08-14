@@ -279,6 +279,18 @@ class ExtractTestCase(unittest.TestCase):
                              []),
         ], results)
 
+    def test_extraction_without_text(self):
+        buf = StringIO("""<html xmlns:py="http://genshi.edgewall.org/">
+          <p title="Bar">Foo</p>
+          ${ngettext("Singular", "Plural", num)}
+        </html>""")
+        results = list(extract(buf, ['_', 'ngettext'], [], {
+            'extract_text': 'no'
+        }))
+        self.assertEqual([
+            (3, 'ngettext', (u'Singular', u'Plural', None), []),
+        ], results)
+
     def test_text_template_extraction(self):
         buf = StringIO("""${_("Dear %(name)s") % {'name': name}},
         

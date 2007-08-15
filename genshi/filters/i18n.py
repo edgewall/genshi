@@ -405,12 +405,15 @@ def extract_from_code(code, gettext_functions):
         if isinstance(node, ast.CallFunc) and isinstance(node.node, ast.Name) \
                 and node.node.name in gettext_functions:
             strings = []
-            for arg in node.args:
+            def _add(arg):
                 if isinstance(arg, ast.Const) \
                         and isinstance(arg.value, basestring):
-                    strings.append(unicode(arg.value))
-                elif not isinstance(arg, ast.Keyword):
+                    strings.append(unicode(arg.value, 'utf-8'))
+                elif arg and not isinstance(arg, ast.Keyword):
                     strings.append(None)
+            [_add(arg) for arg in node.args]
+            _add(node.star_args)
+            _add(node.dstar_args)
             if len(strings) == 1:
                 strings = strings[0]
             else:

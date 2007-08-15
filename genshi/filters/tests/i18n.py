@@ -42,6 +42,24 @@ class TranslatorTestCase(unittest.TestCase):
         self.assertEqual((2, 'ngettext', (u'Singular', u'Plural', None)),
                          messages[0])
 
+    def test_extract_funky_plural_form(self):
+        tmpl = MarkupTemplate("""<html xmlns:py="http://genshi.edgewall.org/">
+          ${ngettext(len(items), *widget.display_names)}
+        </html>""")
+        translator = Translator()
+        messages = list(translator.extract(tmpl.stream))
+        self.assertEqual(1, len(messages))
+        self.assertEqual((2, 'ngettext', (None, None)), messages[0])
+
+    def test_extract_gettext_with_unicode_string(self):
+        tmpl = MarkupTemplate("""<html xmlns:py="http://genshi.edgewall.org/">
+          ${gettext("Grüße")}
+        </html>""")
+        translator = Translator()
+        messages = list(translator.extract(tmpl.stream))
+        self.assertEqual(1, len(messages))
+        self.assertEqual((2, 'gettext', u'Gr\xfc\xdfe'), messages[0])
+
     def test_extract_included_attribute_text(self):
         tmpl = MarkupTemplate("""<html xmlns:py="http://genshi.edgewall.org/">
           <span title="Foo"></span>

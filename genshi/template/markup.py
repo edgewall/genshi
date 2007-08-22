@@ -15,7 +15,6 @@
 
 from itertools import chain
 import sys
-from textwrap import dedent
 
 from genshi.core import Attrs, Namespace, Stream, StreamEventKind
 from genshi.core import START, END, START_NS, END_NS, TEXT, PI, COMMENT
@@ -197,19 +196,7 @@ class MarkupTemplate(Template):
                     raise TemplateSyntaxError('Python code blocks not allowed',
                                               self.filepath, *pos[1:])
                 try:
-                    # As Expat doesn't report whitespace between the PI target
-                    # and the data, we have to jump through some hoops here to
-                    # get correctly indented Python code
-                    # Unfortunately, we'll still probably not get the line
-                    # number quite right
-                    lines = [line.expandtabs() for line in data[1].splitlines()]
-                    first = lines[0]
-                    rest = dedent('\n'.join(lines[1:])).rstrip()
-                    if first.rstrip().endswith(':') and not rest[0].isspace():
-                        rest = '\n'.join(['    ' + line for line
-                                          in rest.splitlines()])
-                    source = '\n'.join([first, rest])
-                    suite = Suite(source, self.filepath, pos[1],
+                    suite = Suite(data[1], self.filepath, pos[1],
                                   lookup=self.lookup)
                 except SyntaxError, err:
                     raise TemplateSyntaxError(err, self.filepath,

@@ -73,7 +73,7 @@ def interpolate(text, basedir=None, filename=None, lineno=-1, offset=0,
             if chunk:
                 try:
                     expr = Expression(chunk.strip(), pos[0], pos[1],
-                                     lookup=lookup)
+                                      lookup=lookup)
                     yield EXPR, expr, tuple(pos)
                 except SyntaxError, err:
                     raise TemplateSyntaxError(err, filepath, pos[1],

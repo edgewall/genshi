@@ -23,6 +23,7 @@ except NameError:
     from sets import ImmutableSet as frozenset
     from sets import Set as set
 import sys
+from textwrap import dedent
 
 from genshi.core import Markup
 from genshi.template.base import TemplateRuntimeError
@@ -53,7 +54,8 @@ class Code(object):
             self.source = source
             node = _parse(source, mode=self.mode)
         else:
-            assert isinstance(source, ast.Node)
+            assert isinstance(source, ast.Node), \
+                'Expected string or AST node, but got %r' % source
             self.source = '?'
             if self.mode == 'eval':
                 node = ast.Expression(source)
@@ -360,6 +362,14 @@ class StrictLookup(LookupBase):
 
 
 def _parse(source, mode='eval'):
+    source = source.strip()
+    if mode == 'exec':
+        lines = [line.expandtabs() for line in source.splitlines()]
+        first = lines[0]
+        rest = dedent('\n'.join(lines[1:])).rstrip()
+        if first.rstrip().endswith(':') and not rest[0].isspace():
+            rest = '\n'.join(['    %s' % line for line in rest.splitlines()])
+        source = '\n'.join([first, rest])
     if isinstance(source, unicode):
         source = '\xef\xbb\xbf' + source.encode('utf-8')
     return parse(source, mode)
@@ -378,10 +388,14 @@ def _compile(node, source=None, mode='eval', filename=None, lineno=-1):
 
     if mode == 'eval':
         gen = ExpressionCodeGenerator(tree)
-        name = '<Expression %s>' % (repr(source or '?'))
+        name = '<Expression %r>' % (source or '?')
     else:
         gen = ModuleCodeGenerator(tree)
-        name = '<Suite>'
+        lines = source.splitlines()
+        extract = lines[0]
+        if len(lines) > 1:
+            extract += ' ...'
+        name = '<Suite %r>' % (extract)
     gen.optimized = True
     code = gen.getCode()
 

@@ -23,7 +23,8 @@ from genshi.core import QName, Stream
 from genshi.path import Path
 from genshi.template.base import TemplateRuntimeError, TemplateSyntaxError, \
                                  EXPR, _apply_directives
-from genshi.template.eval import Expression, Suite, _parse
+from genshi.template.eval import Expression, Suite, ExpressionASTTransformer, \
+                                 _parse
 
 __all__ = ['AttrsDirective', 'ChooseDirective', 'ContentDirective',
            'DefDirective', 'ForDirective', 'IfDirective', 'MatchDirective',
@@ -697,7 +698,8 @@ class WithDirective(Directive):
         Directive.__init__(self, None, template, namespaces, lineno, offset)
         try:
             self.suite = Suite(value, template.filepath, lineno,
-                               lookup=template.lookup)
+                               lookup=template.lookup,
+                               xform=ExpressionASTTransformer)
         except SyntaxError, err:
             err.msg += ' in expression "%s" of "%s" directive' % (value,
                                                                   self.tagname)

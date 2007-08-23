@@ -1016,6 +1016,22 @@ class WithDirectiveTestCase(unittest.TestCase):
             here are two semicolons: ;;
         </div>""", str(tmpl.generate()))
 
+    def test_ast_transformation(self):
+        """
+        Verify that the usual template expression AST transformations are
+        applied despite the code being compiled to a `Suite` object.
+        """
+        tmpl = MarkupTemplate("""<div xmlns:py="http://genshi.edgewall.org/">
+          <span py:with="bar=foo.bar">
+            $bar
+          </span>
+        </div>""")
+        self.assertEqual("""<div>
+          <span>
+            42
+          </span>
+        </div>""", str(tmpl.generate(foo={'bar': 42})))
+
     def test_unicode_expr(self):
         tmpl = MarkupTemplate("""<div xmlns:py="http://genshi.edgewall.org/">
           <span py:with="weeks=(u'一', u'二', u'三', u'四', u'五', u'六', u'日')">

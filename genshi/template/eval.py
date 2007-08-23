@@ -38,7 +38,8 @@ class Code(object):
     """Abstract base class for the `Expression` and `Suite` classes."""
     __slots__ = ['source', 'code', 'ast', '_globals']
 
-    def __init__(self, source, filename=None, lineno=-1, lookup='lenient'):
+    def __init__(self, source, filename=None, lineno=-1, lookup='lenient',
+                 xform=None):
         """Create the code object, either from a string, or from an AST node.
         
         :param source: either a string containing the source code, or an AST
@@ -49,6 +50,9 @@ class Code(object):
         :param lookup: the lookup class that defines how variables are looked
                        up in the context. Can be either `LenientLookup` (the
                        default), `StrictLookup`, or a custom lookup class
+        :param xform: the AST transformer that should be applied to the code;
+                      if `None`, the appropriate transformation is chosen
+                      depending on the mode
         """
         if isinstance(source, basestring):
             self.source = source
@@ -64,7 +68,7 @@ class Code(object):
 
         self.ast = node
         self.code = _compile(node, self.source, mode=self.mode,
-                             filename=filename, lineno=lineno)
+                             filename=filename, lineno=lineno, xform=xform)
         if lookup is None:
             lookup = LenientLookup
         elif isinstance(lookup, basestring):
@@ -374,8 +378,11 @@ def _parse(source, mode='eval'):
         source = '\xef\xbb\xbf' + source.encode('utf-8')
     return parse(source, mode)
 
-def _compile(node, source=None, mode='eval', filename=None, lineno=-1):
-    xform = {'eval': ExpressionASTTransformer}.get(mode, TemplateASTTransformer)
+def _compile(node, source=None, mode='eval', filename=None, lineno=-1,
+             xform=None):
+    if xform is None:
+        xform = {'eval': ExpressionASTTransformer}.get(mode,
+                                                       TemplateASTTransformer)
     tree = xform().visit(node)
     if isinstance(filename, unicode):
         # unicode file names not allowed for code objects

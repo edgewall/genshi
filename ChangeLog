@@ -22,6 +22,10 @@ http://svn.edgewall.org/repos/genshi/tags/0.5.0/
    available and the default for now, but in a future release the new syntax
    will become the default, and some time affter that the old syntax will be
    removed.
+ * Added support for passing optimization hints to `<py:match>` directives,
+   which can speed up match templates in many cases, for example when a match
+   template should only be applied once to a stream, or when it should not be
+   applied recursively.
 
 
 Version 0.4.4

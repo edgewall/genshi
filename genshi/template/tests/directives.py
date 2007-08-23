@@ -842,6 +842,54 @@ class MatchDirectiveTestCase(unittest.TestCase):
           </body>
         </html>""", str(tmpl.generate()))
 
+    def test_match_with_once_attribute(self):
+        tmpl = MarkupTemplate("""<html xmlns:py="http://genshi.edgewall.org/">
+          <py:match path="body" once="true"><body>
+            <div id="wrap">
+              ${select("*")}
+            </div>
+          </body></py:match>
+          <body>
+            <p>Foo</p>
+          </body>
+          <body>
+            <p>Bar</p>
+          </body>
+        </html>""")
+        self.assertEqual("""<html>
+          <body>
+            <div id="wrap">
+              <p>Foo</p>
+            </div>
+          </body>
+          <body>
+            <p>Bar</p>
+          </body>
+        </html>""", str(tmpl.generate()))
+
+    def test_match_with_recursive_attribute(self):
+        tmpl = MarkupTemplate("""<doc xmlns:py="http://genshi.edgewall.org/">
+          <py:match path="elem" recursive="false"><elem>
+            <div class="elem">
+              ${select('*')}
+            </div>
+          </elem></py:match>
+          <elem>
+            <subelem>
+              <elem/>
+            </subelem>
+          </elem>
+        </doc>""")
+        self.assertEqual("""<doc>
+          <elem>
+            <div class="elem">
+              <subelem>
+              <elem/>
+            </subelem>
+            </div>
+          </elem>
+        </doc>""", str(tmpl.generate()))
+
     # FIXME
     #def test_match_after_step(self):
     #    tmpl = MarkupTemplate("""<div xmlns:py="http://genshi.edgewall.org/">

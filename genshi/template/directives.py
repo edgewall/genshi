@@ -14,6 +14,10 @@
 """Implementation of the various template directives."""
 
 import compiler
+try:
+    frozenset
+except NameError:
+    from sets import ImmutableSet as frozenset
 
 from genshi.core import QName, Stream
 from genshi.path import Path
@@ -423,24 +427,31 @@ class MatchDirective(Directive):
       </span>
     </div>
     """
-    __slots__ = ['path', 'namespaces']
+    __slots__ = ['path', 'namespaces', 'hints']
 
-    def __init__(self, value, template, namespaces=None, lineno=-1, offset=-1):
+    def __init__(self, value, template, hints=None, namespaces=None,
+                 lineno=-1, offset=-1):
         Directive.__init__(self, None, template, namespaces, lineno, offset)
         self.path = Path(value, template.filepath, lineno)
         self.namespaces = namespaces or {}
+        self.hints = hints or ()
 
     def attach(cls, template, stream, value, namespaces, pos):
+        hints = []
         if type(value) is dict:
+            if value.get('once', '').lower() == 'true':
+                hints.append('match_once')
+            if value.get('recursive', '').lower() == 'false':
+                hints.append('not_recursive')
             value = value.get('path')
-        return super(MatchDirective, cls).attach(template, stream, value,
-                                                 namespaces, pos)
+        return cls(value, template, frozenset(hints), namespaces, *pos[1:]), \
+               stream
     attach = classmethod(attach)
 
     def __call__(self, stream, ctxt, directives):
         ctxt._match_templates.append((self.path.test(ignore_context=True),
-                                      self.path, list(stream), self.namespaces,
-                                      directives))
+                                      self.path, list(stream), self.hints,
+                                      self.namespaces, directives))
         return []
 
     def __repr__(self):

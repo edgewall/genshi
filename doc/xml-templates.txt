@@ -333,6 +333,43 @@ This directive can also be used as an element:
     <greeting name="Dude" />
   </div>
 
+When used this way, the ``py:match`` directive can also be annotated with a
+couple of optimization hints. For example, the following informs the matching
+engine that the match should only be applied once:
+
+.. code-block:: genshi
+
+  <py:match path="body" once="true">
+    <body py:attrs="select('@*')">
+      <div id="header">...</div>
+      ${select("*|text()")}
+      <div id="footer">...</div>
+    </body>
+  </py:match>
+
+The following optimization hints are recognized:
+
++---------------+-----------+-----------------------------------------------+
+| Attribute     | Default   | Description                                   |
++===============+===========+===============================================+
+| ``once``      | ``false`` | Whether the engine should stop looking for    |
+|               |           | more matching elements after the first match. |
+|               |           | Use this on match templates that match        |
+|               |           | elements that can only occur once in the      |
+|               |           | stream, such as the ``<head>`` or ``<body>``  |
+|               |           | elements in an HTML template, or elements     |
+|               |           | with a specific ID.                           |
++---------------+-----------+-----------------------------------------------+
+| ``recursive`` | ``true``  | Whether the match template should be applied  |
+|               |           | to its own output. Note that ``once`` implies |
+|               |           | non-recursive behavior, so this attribute     |
+|               |           | only needs to be set for match templates that |
+|               |           | don't also have ``once`` set.                 |
++---------------+-----------+-----------------------------------------------+
+
+.. note:: The ``py:match`` optimization hints were added in the 0.5 release. In
+          earlier versions, the attributes have no effect.
+
 
 Variable Binding
 ================

@@ -261,10 +261,13 @@ class MarkupTemplate(Template):
                 yield event
                 continue
 
-            for idx, (test, path, template, namespaces, directives) in \
-                    enumerate(match_templates):
+            for idx, (test, path, template, hints, namespaces, directives) \
+                    in enumerate(match_templates):
 
                 if test(event, namespaces, ctxt) is True:
+                    if 'match_once' in hints:
+                        del match_templates[idx]
+                        idx -= 1
 
                     # Let the remaining match templates know about the event so
                     # they get a chance to update their internal state
@@ -273,11 +276,12 @@ class MarkupTemplate(Template):
 
                     # Consume and store all events until an end event
                     # corresponding to this start event is encountered
-                    content = chain([event],
-                                    self._match(_strip(stream), ctxt,
-                                                [match_templates[idx]]),
-                                    tail)
-                    content = list(self._include(content, ctxt))
+                    inner = _strip(stream)
+                    if 'match_once' not in hints \
+                            and 'not_recursive' not in hints:
+                        inner = self._match(inner, ctxt, [match_templates[idx]])
+                    content = list(self._include(chain([event], inner, tail),
+                                                 ctxt))
 
                     for test in [mt[0] for mt in match_templates]:
                         test(tail[0], namespaces, ctxt, updateonly=True)
@@ -290,11 +294,12 @@ class MarkupTemplate(Template):
 
                     # Recursively process the output
                     template = _apply_directives(template, ctxt, directives)
+                    remaining = match_templates
+                    if 'match_once' not in hints:
+                        remaining = remaining[:idx] + remaining[idx + 1:]
                     for event in self._match(self._eval(self._flatten(template,
                                                                       ctxt),
-                                                        ctxt), ctxt,
-                                             match_templates[:idx] +
-                                             match_templates[idx + 1:]):
+                                                        ctxt), ctxt, remaining):
                         yield event
 
                     ctxt.pop()

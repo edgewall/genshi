@@ -24,6 +24,7 @@ from genshi.template.base import BadDirectiveError, Template, \
 from genshi.template.eval import Suite
 from genshi.template.interpolation import interpolate
 from genshi.template.directives import *
+from genshi.template.text import NewTextTemplate
 
 __all__ = ['MarkupTemplate']
 __docformat__ = 'restructuredtext en'
@@ -141,13 +142,17 @@ class MarkupTemplate(Template):
                     dirmap[(depth, tag)] = (directives, len(stream), strip)
 
                 if tag in self.XINCLUDE_NAMESPACE:
+                    if self._include not in self.filters:
+                        raise TemplateSyntaxError('Include found but no '
+                                                  'template loader specified',
+                                                  self.filepath, *pos[1:])
                     if tag.localname == 'include':
                         include_href = new_attrs.get('href')
                         if not include_href:
                             raise TemplateSyntaxError('Include misses required '
                                                       'attribute "href"',
                                                       self.filepath, *pos[1:])
-                        includes.append(include_href)
+                        includes.append((include_href, new_attrs.get('parse')))
                         streams.append([])
                     elif tag.localname == 'fallback':
                         streams.append([])
@@ -170,7 +175,17 @@ class MarkupTemplate(Template):
                     streams.pop() # discard anything between the include tags
                                   # and the fallback element
                     stream = streams[-1]
-                    stream.append((INCLUDE, (includes.pop(), fallback), pos))
+                    href, parse = includes.pop()
+                    try:
+                        cls = {
+                            'xml': MarkupTemplate,
+                            'text': NewTextTemplate
+                        }[parse or 'xml']
+                    except KeyError:
+                        raise TemplateSyntaxError('Invalid value for "parse" '
+                                                  'attribute of include',
+                                                  self.filepath, *pos[1:])
+                    stream.append((INCLUDE, (href, cls, fallback), pos))
                 else:
                     stream.append((kind, data, pos))
 

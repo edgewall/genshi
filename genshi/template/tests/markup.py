@@ -244,6 +244,12 @@ class MarkupTemplateTestCase(unittest.TestCase):
           <Item/>
         </Test>""", str(tmpl.generate()))
 
+    def test_include_without_loader(self):
+        xml = """<html xmlns:xi="http://www.w3.org/2001/XInclude">
+          <xi:include href="oops.html" />
+        </html>"""
+        self.assertRaises(TemplateSyntaxError, MarkupTemplate, xml)
+
     def test_include_in_loop(self):
         dirname = tempfile.mkdtemp(suffix='genshi_test')
         try:

@@ -17,6 +17,7 @@ import shutil
 import tempfile
 import unittest
 
+from genshi.template.base import TemplateSyntaxError
 from genshi.template.loader import TemplateLoader
 from genshi.template.text import OldTextTemplate, NewTextTemplate
 
@@ -110,6 +111,10 @@ class OldTextTemplateTestCase(unittest.TestCase):
 Included
             ----- Included data above this line -----""",
                          tmpl.generate().render())
+
+    def test_include_without_loader(self):
+        text = '#include "oops.html"'
+        self.assertRaises(TemplateSyntaxError, OldTextTemplate, text)
 
 
 class NewTextTemplateTestCase(unittest.TestCase):
@@ -230,6 +235,10 @@ class NewTextTemplateTestCase(unittest.TestCase):
         self.assertEqual("""----- Included data below this line -----
 Included
 ----- Included data above this line -----""", tmpl.generate().render())
+
+    def test_include_without_loader(self):
+        text = '{% include "oops.html" %}'
+        self.assertRaises(TemplateSyntaxError, NewTextTemplate, text)
 
 
 def suite():

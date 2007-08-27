@@ -601,6 +601,10 @@ that Genshi currently only supports a small subset of XInclude.
 
 .. _`xinclude specification`: http://www.w3.org/TR/xinclude/
 
+
+Dynamic Includes
+================
+
 Incudes in Genshi are fully dynamic: Just like normal attributes, the `href`
 attribute accepts expressions, and directives_ can be used on the
 ``<xi:include />`` element just as on any other element, meaning you can do
@@ -610,6 +614,23 @@ things like conditional includes:
 
   <xi:include href="${name}.html" py:if="not in_popup"
               py:for="name in ('foo', 'bar', 'baz')" />
+
+
+Including Text Templates
+========================
+
+The ``parse`` attribute of the ``<xi:include>`` element can be used to specify
+whether the included template is an XML template or a text template (using the
+new syntax added in Genshi 0.5):
+
+.. code-block:: genshi
+
+  <xi:include href="myscript.js" parse="text" />
+
+This example would load the ``myscript.js`` file as a ``NewTextTemplate``. See
+`text templates`_ for details on the syntax of text templates.
+
+.. _`text templates`: text-templates.html
 
 
 .. _comments:

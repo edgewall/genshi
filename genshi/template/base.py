@@ -39,7 +39,7 @@ else:
 class TemplateError(Exception):
     """Base exception class for errors related to template processing."""
 
-    def __init__(self, message, filename='<string>', lineno=-1, offset=-1):
+    def __init__(self, message, filename=None, lineno=-1, offset=-1):
         """Create the exception.
         
         :param message: the error message
@@ -48,6 +48,8 @@ class TemplateError(Exception):
                        occurred
         :param offset: the column number at which the error occurred
         """
+        if filename is None:
+            filename = '<string>'
         self.msg = message #: the error message string
         if filename != '<string>' or lineno >= 0:
             message = '%s (%s, line %d)' % (self.msg, filename, lineno)
@@ -62,7 +64,7 @@ class TemplateSyntaxError(TemplateError):
     error, or the template is not well-formed.
     """
 
-    def __init__(self, message, filename='<string>', lineno=-1, offset=-1):
+    def __init__(self, message, filename=None, lineno=-1, offset=-1):
         """Create the exception
         
         :param message: the error message
@@ -84,7 +86,7 @@ class BadDirectiveError(TemplateSyntaxError):
     with a local name that doesn't match any registered directive.
     """
 
-    def __init__(self, name, filename='<string>', lineno=-1):
+    def __init__(self, name, filename=None, lineno=-1):
         """Create the exception
         
         :param name: the name of the directive
@@ -333,6 +335,10 @@ class Template(object):
         self.lookup = lookup
         self.allow_exec = allow_exec
 
+        self.filters = [self._flatten, self._eval, self._exec]
+        if loader:
+            self.filters.append(self._include)
+
         if isinstance(source, basestring):
             source = StringIO(source)
         else:
@@ -341,9 +347,6 @@ class Template(object):
             self.stream = list(self._prepare(self._parse(source, encoding)))
         except ParseError, e:
             raise TemplateSyntaxError(e.msg, self.filepath, e.lineno, e.offset)
-        self.filters = [self._flatten, self._eval, self._exec]
-        if loader:
-            self.filters.append(self._include)
 
     def __repr__(self):
         return '<%s "%s">' % (self.__class__.__name__, self.filename)
@@ -386,7 +389,7 @@ class Template(object):
                         yield event
             else:
                 if kind is INCLUDE:
-                    href, fallback = data
+                    href, cls, fallback = data
                     if isinstance(href, basestring) and \
                             not getattr(self.loader, 'auto_reload', True):
                         # If the path to the included template is static, and
@@ -394,7 +397,7 @@ class Template(object):
                         # the template is inlined into the stream
                         try:
                             tmpl = self.loader.load(href, relative_to=pos[0],
-                                                    cls=self.__class__)
+                                                    cls=cls or self.__class__)
                             for event in tmpl.stream:
                                 yield event
                         except TemplateNotFound:
@@ -513,7 +516,7 @@ class Template(object):
 
         for event in stream:
             if event[0] is INCLUDE:
-                href, fallback = event[1]
+                href, cls, fallback = event[1]
                 if not isinstance(href, basestring):
                     parts = []
                     for subkind, subdata, subpos in self._eval(href, ctxt):
@@ -522,7 +525,7 @@ class Template(object):
                     href = u''.join([x for x in parts if x is not None])
                 try:
                     tmpl = self.loader.load(href, relative_to=event[2][0],
-                                            cls=self.__class__)
+                                            cls=cls or self.__class__)
                     for event in tmpl.generate(ctxt):
                         yield event
                 except TemplateNotFound:

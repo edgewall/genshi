@@ -28,7 +28,8 @@ new syntax to remain compatible with future Genshi releases.
 
 import re
 
-from genshi.template.base import BadDirectiveError, Template, EXEC, INCLUDE, SUB
+from genshi.template.base import BadDirectiveError, Template, \
+                                 TemplateSyntaxError, EXEC, INCLUDE, SUB
 from genshi.template.eval import Suite
 from genshi.template.directives import *
 from genshi.template.directives import Directive, _apply_directives
@@ -186,8 +187,12 @@ class NewTextTemplate(Template):
             command, value = mo.group(2, 3)
 
             if command == 'include':
+                if self._include not in self.filters:
+                    raise TemplateSyntaxError('Include found but no template '
+                                              'loader specified', self.filepath,
+                                              lineno)
                 pos = (self.filename, lineno, 0)
-                stream.append((INCLUDE, (value.strip(), []), pos))
+                stream.append((INCLUDE, (value.strip(), None, []), pos))
 
             elif command == 'python':
                 if not self.allow_exec:
@@ -306,8 +311,12 @@ class OldTextTemplate(Template):
                     stream[start_offset:] = [(SUB, ([directive], substream),
                                               (self.filepath, lineno, 0))]
             elif command == 'include':
+                if self._include not in self.filters:
+                    raise TemplateSyntaxError('Include found but no template '
+                                              'loader specified', self.filepath,
+                                              lineno)
                 pos = (self.filename, lineno, 0)
-                stream.append((INCLUDE, (value.strip(), []), pos))
+                stream.append((INCLUDE, (value.strip(), None, []), pos))
             elif command != '#':
                 cls = self._dir_by_name.get(command)
                 if cls is None:

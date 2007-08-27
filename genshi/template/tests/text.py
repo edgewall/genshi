@@ -180,6 +180,36 @@ class NewTextTemplateTestCase(unittest.TestCase):
 
 """, tmpl.generate(items=range(3)).render())
 
+    def test_exec_with_trailing_space(self):
+        """
+        Verify that a code block with trailing space does not cause a syntax
+        error (see ticket #127).
+        """
+        NewTextTemplate(u"""
+          {% python
+            bar = 42
+          $}
+        """)
+
+    def test_exec_import(self):
+        tmpl = NewTextTemplate(u"""{% python from datetime import timedelta %}
+        ${timedelta(days=2)}
+        """)
+        self.assertEqual("""
+        2 days, 0:00:00
+        """, str(tmpl.generate()))
+
+    def test_exec_def(self):
+        tmpl = NewTextTemplate(u"""{% python
+        def foo():
+            return 42
+        %}
+        ${foo()}
+        """)
+        self.assertEqual(u"""
+        42
+        """, str(tmpl.generate()))
+
     def test_include(self):
         file1 = open(os.path.join(self.dirname, 'tmpl1.txt'), 'w')
         try:

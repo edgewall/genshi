@@ -18,10 +18,10 @@ http://svn.edgewall.org/repos/genshi/tags/0.5.0/
    templates are basically inlined into the including template, which can
    speed up rendering of that template a bit.
  * Added new syntax for text templates, which is more powerful and flexible
-   with respect to white-space and line breaks. The old syntax is still
-   available and the default for now, but in a future release the new syntax
-   will become the default, and some time affter that the old syntax will be
-   removed.
+   with respect to white-space and line breaks. It also supports Python code
+   blocks. The old syntax is still available and the default for now, but in a
+   future release the new syntax will become the default, and some time after
+   that the old syntax will be removed.
  * Added support for passing optimization hints to `<py:match>` directives,
    which can speed up match templates in many cases, for example when a match
    template should only be applied once to a stream, or when it should not be

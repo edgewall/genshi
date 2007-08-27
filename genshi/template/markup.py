@@ -14,22 +14,16 @@
 """Markup templating engine."""
 
 from itertools import chain
-import sys
 
 from genshi.core import Attrs, Namespace, Stream, StreamEventKind
 from genshi.core import START, END, START_NS, END_NS, TEXT, PI, COMMENT
 from genshi.input import XMLParser
 from genshi.template.base import BadDirectiveError, Template, \
                                  TemplateSyntaxError, _apply_directives, \
-                                 INCLUDE, SUB
+                                 EXEC, INCLUDE, SUB
 from genshi.template.eval import Suite
 from genshi.template.interpolation import interpolate
 from genshi.template.directives import *
-
-if sys.version_info < (2, 4):
-    _ctxt2dict = lambda ctxt: ctxt.frames[0]
-else:
-    _ctxt2dict = lambda ctxt: ctxt
 
 __all__ = ['MarkupTemplate']
 __docformat__ = 'restructuredtext en'
@@ -46,8 +40,6 @@ class MarkupTemplate(Template):
       <li>1</li><li>2</li><li>3</li>
     </ul>
     """
-    EXEC = StreamEventKind('EXEC')
-    """Stream event kind representing a Python code suite to execute."""
 
     DIRECTIVE_NAMESPACE = Namespace('http://genshi.edgewall.org/')
     XINCLUDE_NAMESPACE = Namespace('http://www.w3.org/2001/XInclude')
@@ -74,7 +66,7 @@ class MarkupTemplate(Template):
         # Make sure the include filter comes after the match filter
         if loader:
             self.filters.remove(self._include)
-        self.filters += [self._exec, self._match]
+        self.filters += [self._match]
         if loader:
             self.filters.append(self._include)
 
@@ -221,16 +213,6 @@ class MarkupTemplate(Template):
         assert len(streams) == 1
         return streams[0]
 
-    def _exec(self, stream, ctxt):
-        """Internal stream filter that executes code in ``<?python ?>``
-        processing instructions.
-        """
-        for event in stream:
-            if event[0] is EXEC:
-                event[1].execute(_ctxt2dict(ctxt))
-            else:
-                yield event
-
     def _match(self, stream, ctxt, match_templates=None):
         """Internal stream filter that applies any defined match templates
         to the stream.
@@ -308,6 +290,3 @@ class MarkupTemplate(Template):
 
             else: # no matches
                 yield event
-
-
-EXEC = MarkupTemplate.EXEC

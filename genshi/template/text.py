@@ -28,7 +28,8 @@ new syntax to remain compatible with future Genshi releases.
 
 import re
 
-from genshi.template.base import BadDirectiveError, Template, INCLUDE, SUB
+from genshi.template.base import BadDirectiveError, Template, EXEC, INCLUDE, SUB
+from genshi.template.eval import Suite
 from genshi.template.directives import *
 from genshi.template.directives import Directive, _apply_directives
 from genshi.template.interpolation import interpolate
@@ -142,7 +143,7 @@ class NewTextTemplate(Template):
         self._delims = delims
         self._directive_re = re.compile(self._DIRECTIVE_RE % tuple(
             map(re.escape, delims)
-        ))
+        ), re.DOTALL)
         self._escape_re = re.compile(self._ESCAPE_RE % tuple(
             map(re.escape, delims[::2])
         ))
@@ -183,24 +184,39 @@ class NewTextTemplate(Template):
 
             lineno += len(source[start:end].splitlines())
             command, value = mo.group(2, 3)
-            if command:
-                if command == 'include':
-                    pos = (self.filename, lineno, 0)
-                    stream.append((INCLUDE, (value.strip(), []), pos))
-                elif command == 'end':
-                    depth -= 1
-                    if depth in dirmap:
-                        directive, start_offset = dirmap.pop(depth)
-                        substream = stream[start_offset:]
-                        stream[start_offset:] = [(SUB, ([directive], substream),
-                                                  (self.filepath, lineno, 0))]
-                else:
-                    cls = self._dir_by_name.get(command)
-                    if cls is None:
-                        raise BadDirectiveError(command)
-                    directive = cls, value, None, (self.filepath, lineno, 0)
-                    dirmap[depth] = (directive, len(stream))
-                    depth += 1
+
+            if command == 'include':
+                pos = (self.filename, lineno, 0)
+                stream.append((INCLUDE, (value.strip(), []), pos))
+
+            elif command == 'python':
+                if not self.allow_exec:
+                    raise TemplateSyntaxError('Python code blocks not allowed',
+                                              self.filepath, lineno)
+                try:
+                    suite = Suite(value, self.filepath, lineno,
+                                  lookup=self.lookup)
+                except SyntaxError, err:
+                    raise TemplateSyntaxError(err, self.filepath,
+                                              lineno + (err.lineno or 1) - 1)
+                pos = (self.filename, lineno, 0)
+                stream.append((EXEC, suite, pos))
+
+            elif command == 'end':
+                depth -= 1
+                if depth in dirmap:
+                    directive, start_offset = dirmap.pop(depth)
+                    substream = stream[start_offset:]
+                    stream[start_offset:] = [(SUB, ([directive], substream),
+                                              (self.filepath, lineno, 0))]
+
+            elif command:
+                cls = self._dir_by_name.get(command)
+                if cls is None:
+                    raise BadDirectiveError(command)
+                directive = cls, value, None, (self.filepath, lineno, 0)
+                dirmap[depth] = (directive, len(stream))
+                depth += 1
 
             offset = end
 

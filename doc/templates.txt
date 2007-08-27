@@ -208,8 +208,8 @@ See `Error Handling`_ below for details on how such errors are handled.
 Code Blocks
 ===========
 
-XML templates also support full Python code blocks using the ``<?python ?>``
-processing instruction:
+Templates also support full Python code blocks, using the ``<?python ?>``
+processing instruction in XML templates:
 
 .. code-block:: genshi
 
@@ -223,11 +223,28 @@ processing instruction:
 
 This will produce the following output:
 
-.. code-block:: genshi
+.. code-block:: xml
 
   <div>
     <b>Hello, world!</b>
   </div>
+
+In text templates (although only those using the new syntax introduced in
+Genshi 0.5), code blocks use the special ``{% python %}`` directive:
+
+.. code-block:: genshitext
+
+  {% python
+      from genshi.builder import tag
+      def greeting(name):
+          return tag.b('Hello, %s!' % name')
+  %}
+  ${greeting('world')}
+
+This will produce the following output::
+
+  Hello, world!
+
 
 Code blocks can import modules, define classes and functions, and basically do
 anything you can do in normal Python code. What code blocks can *not* do is to
@@ -252,8 +269,6 @@ a syntax error when a ``<?python ?>`` processing instruction is encountered.
 But please note that disallowing code blocks in templates does not turn Genshi
 into a sandboxable template engine; there are sufficient ways to do harm even
 using plain expressions.
-
-.. note:: Code blocks are not currently supported in text templates.
 
 
 .. _`error handling`:

@@ -21,6 +21,7 @@ except ImportError:
         def popleft(self): return self.pop(0)
 import os
 from StringIO import StringIO
+import sys
 
 from genshi.core import Attrs, Stream, StreamEventKind, START, TEXT, _ensure
 from genshi.input import ParseError
@@ -28,6 +29,11 @@ from genshi.input import ParseError
 __all__ = ['Context', 'Template', 'TemplateError', 'TemplateRuntimeError',
            'TemplateSyntaxError', 'BadDirectiveError']
 __docformat__ = 'restructuredtext en'
+
+if sys.version_info < (2, 4):
+    _ctxt2dict = lambda ctxt: ctxt.frames[0]
+else:
+    _ctxt2dict = lambda ctxt: ctxt
 
 
 class TemplateError(Exception):
@@ -278,6 +284,9 @@ class Template(object):
     """
     __metaclass__ = TemplateMeta
 
+    EXEC = StreamEventKind('EXEC')
+    """Stream event kind representing a Python code suite to execute."""
+
     EXPR = StreamEventKind('EXPR')
     """Stream event kind representing a Python expression."""
 
@@ -332,7 +341,7 @@ class Template(object):
             self.stream = list(self._prepare(self._parse(source, encoding)))
         except ParseError, e:
             raise TemplateSyntaxError(e.msg, self.filepath, e.lineno, e.offset)
-        self.filters = [self._flatten, self._eval]
+        self.filters = [self._flatten, self._eval, self._exec]
         if loader:
             self.filters.append(self._include)
 
@@ -475,6 +484,14 @@ class Template(object):
             else:
                 yield kind, data, pos
 
+    def _exec(self, stream, ctxt):
+        """Internal stream filter that executes Python code blocks."""
+        for event in stream:
+            if event[0] is EXEC:
+                event[1].execute(_ctxt2dict(ctxt))
+            else:
+                yield event
+
     def _flatten(self, stream, ctxt):
         """Internal stream filter that expands `SUB` events in the stream."""
         for event in stream:
@@ -519,6 +536,7 @@ class Template(object):
                 yield event
 
 
+EXEC = Template.EXEC
 EXPR = Template.EXPR
 INCLUDE = Template.INCLUDE
 SUB = Template.SUB

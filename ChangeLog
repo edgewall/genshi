@@ -26,6 +26,9 @@ http://svn.edgewall.org/repos/genshi/tags/0.5.0/
    which can speed up match templates in many cases, for example when a match
    template should only be applied once to a stream, or when it should not be
    applied recursively.
+ * Text templates now default to rendering as plain text; it is no longer
+   necessary to explicitly specify the "text" method to the `render()` or
+   `serialize()` method of the generated markup stream.
 
 
 Version 0.4.4

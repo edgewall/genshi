@@ -58,7 +58,7 @@ class NewTextTemplate(Template):
     ...  * ${'Item %d' % item}
     ... {% end %}
     ... ''')
-    >>> print tmpl.generate(name='Joe', items=[1, 2, 3]).render('text')
+    >>> print tmpl.generate(name='Joe', items=[1, 2, 3]).render()
     Dear Joe,
     <BLANKLINE>
     <BLANKLINE>
@@ -83,7 +83,7 @@ class NewTextTemplate(Template):
     ...  * $item
     ... {% end %}\
     ... ''')
-    >>> print tmpl.generate(name='Joe', items=[1, 2, 3]).render('text')
+    >>> print tmpl.generate(name='Joe', items=[1, 2, 3]).render()
     Dear Joe,
     <BLANKLINE>
     We have the following items for you:
@@ -103,7 +103,7 @@ class NewTextTemplate(Template):
     ...  * $item
     ... {% end %}\
     ... ''')
-    >>> print tmpl.generate(name='Joe', items=[1, 2, 3]).render('text')
+    >>> print tmpl.generate(name='Joe', items=[1, 2, 3]).render()
     Dear Joe,
     <BLANKLINE>
     {# This is a comment #}
@@ -122,6 +122,7 @@ class NewTextTemplate(Template):
                   ('if', IfDirective),
                   ('choose', ChooseDirective),
                   ('with', WithDirective)]
+    serializer = 'text'
 
     _DIRECTIVE_RE = r'((?<!\\)%s\s*(\w+)\s*(.*?)\s*%s|(?<!\\)%s.*?%s)'
     _ESCAPE_RE = r'\\\n|\\(\\)|\\(%s)|\\(%s)'
@@ -227,7 +228,7 @@ class OldTextTemplate(Template):
     ... 
     ... All the best,
     ... Foobar''')
-    >>> print tmpl.generate(name='Joe', items=[1, 2, 3]).render('text')
+    >>> print tmpl.generate(name='Joe', items=[1, 2, 3]).render()
     Dear Joe,
     <BLANKLINE>
     We have the following items for you:
@@ -245,6 +246,7 @@ class OldTextTemplate(Template):
                   ('if', IfDirective),
                   ('choose', ChooseDirective),
                   ('with', WithDirective)]
+    serializer = 'text'
 
     _DIRECTIVE_RE = re.compile(r'(?:^[ \t]*(?<!\\)#(end).*\n?)|'
                                r'(?:^[ \t]*(?<!\\)#((?:\w+|#).*)\n?)',

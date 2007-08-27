@@ -129,7 +129,7 @@ Using a text template is similar:
   >>> from genshi.template import TextTemplate
   >>> tmpl = TextTemplate('Hello, $name!')
   >>> stream = tmpl.generate(name='world')
-  >>> print stream.render('text')
+  >>> print stream
   Hello, world!
 
 .. note:: If you want to use text templates, you should consider using the

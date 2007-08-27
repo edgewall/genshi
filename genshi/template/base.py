@@ -289,6 +289,8 @@ class Template(object):
     directives should be applied.
     """
 
+    serializer = None
+
     def __init__(self, source, basedir=None, filename=None, loader=None,
                  encoding=None, lookup='lenient', allow_exec=True):
         """Initialize a template from either a string, a file-like object, or
@@ -423,7 +425,7 @@ class Template(object):
         stream = self.stream
         for filter_ in self.filters:
             stream = filter_(iter(stream), ctxt)
-        return Stream(stream)
+        return Stream(stream, self.serializer)
 
     def _eval(self, stream, ctxt):
         """Internal stream filter that evaluates any expressions in `START` and

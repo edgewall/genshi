@@ -382,6 +382,7 @@ class DefDirectiveTestCase(unittest.TestCase):
         """)
         self.assertEqual("""
                       Hi, you!
+
         """, str(tmpl.generate()))
 
     def test_function_with_star_args(self):

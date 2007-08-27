@@ -147,7 +147,8 @@ class Path(object):
                                  updateonly=True)
                 elif result:
                     yield result
-        return Stream(_generate())
+        return Stream(_generate(),
+                      serializer=getattr(stream, 'serializer', None))
 
     def test(self, ignore_context=False):
         """Returns a function that can be used to track whether the path matches

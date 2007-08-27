@@ -51,7 +51,7 @@ class Stream(object):
     returns the complete generated text at once. Both accept various parameters
     that impact the way the stream is serialized.
     """
-    __slots__ = ['events']
+    __slots__ = ['events', 'serializer']
 
     START = StreamEventKind('START') #: a start tag
     END = StreamEventKind('END') #: an end tag
@@ -65,12 +65,17 @@ class Stream(object):
     PI = StreamEventKind('PI') #: processing instruction
     COMMENT = StreamEventKind('COMMENT') #: comment
 
-    def __init__(self, events):
+    def __init__(self, events, serializer=None):
         """Initialize the stream with a sequence of markup events.
         
         :param events: a sequence or iterable providing the events
+        :param serializer: the default serialization method to use for this
+                           stream
+
+        :note: Changed in 0.5: added the `serializer` argument
         """
         self.events = events #: The underlying iterable producing the events
+        self.serializer = serializer #: The default serializion method
 
     def __iter__(self):
         return iter(self.events)
@@ -119,7 +124,7 @@ class Stream(object):
         :return: the filtered stream
         :rtype: `Stream`
         """
-        return Stream(_ensure(function(self)))
+        return Stream(_ensure(function(self)), serializer=self.serializer)
 
     def filter(self, *filters):
         """Apply filters to the stream.
@@ -143,7 +148,7 @@ class Stream(object):
         """
         return reduce(operator.or_, (self,) + filters)
 
-    def render(self, method='xml', encoding='utf-8', **kwargs):
+    def render(self, method=None, encoding='utf-8', **kwargs):
         """Return a string representation of the stream.
         
         Any additional keyword arguments are passed to the serializer, and thus
@@ -151,7 +156,8 @@ class Stream(object):
         
         :param method: determines how the stream is serialized; can be either
                        "xml", "xhtml", "html", "text", or a custom serializer
-                       class
+                       class; if `None`, the default serialization method of
+                       the stream is used
         :param encoding: how the output string should be encoded; if set to
                          `None`, this method returns a `unicode` object
         :return: a `str` or `unicode` object
@@ -159,6 +165,8 @@ class Stream(object):
         :see: XMLSerializer, XHTMLSerializer, HTMLSerializer, TextSerializer
         """
         from genshi.output import encode
+        if method is None:
+            method = self.serializer or 'xml'
         generator = self.serialize(method=method, **kwargs)
         return encode(generator, method=method, encoding=encoding)
 
@@ -211,13 +219,16 @@ class Stream(object):
         
         :param method: determines how the stream is serialized; can be either
                        "xml", "xhtml", "html", "text", or a custom serializer
-                       class
+                       class; if `None`, the default serialization method of
+                       the stream is used
         :return: an iterator over the serialization results (`Markup` or
                  `unicode` objects, depending on the serialization method)
         :rtype: ``iterator``
         :see: XMLSerializer, XHTMLSerializer, HTMLSerializer, TextSerializer
         """
         from genshi.output import get_serializer
+        if method is None:
+            method = self.serializer or 'xml'
         return get_serializer(method, **kwargs)(_ensure(self))
 
     def __str__(self):

@@ -160,7 +160,8 @@ class Transformer(object):
         transforms = self._mark(stream)
         for link in self.transforms:
             transforms = link(transforms)
-        return Stream(self._unmark(transforms))
+        return Stream(self._unmark(transforms),
+                      serializer=getattr(stream, 'serializer', None))
 
     def apply(self, function):
         """Apply a transformation to the stream.

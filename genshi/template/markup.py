@@ -64,6 +64,7 @@ class MarkupTemplate(Template):
                   ('content', ContentDirective),
                   ('attrs', AttrsDirective),
                   ('strip', StripDirective)]
+    serializer = 'xml'
 
     def __init__(self, source, basedir=None, filename=None, loader=None,
                  encoding=None, lookup='lenient', allow_exec=True):

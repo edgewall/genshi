@@ -70,7 +70,7 @@ class OldTextTemplateTestCase(unittest.TestCase):
           * 0
           * 1
           * 2
-""", tmpl.generate(items=range(3)).render('text'))
+""", tmpl.generate(items=range(3)).render())
 
     def test_empty_lines2(self):
         tmpl = OldTextTemplate("""Your items:
@@ -87,7 +87,7 @@ class OldTextTemplateTestCase(unittest.TestCase):
 
           * 2
 
-""", tmpl.generate(items=range(3)).render('text'))
+""", tmpl.generate(items=range(3)).render())
 
     def test_include(self):
         file1 = open(os.path.join(self.dirname, 'tmpl1.txt'), 'w')
@@ -161,7 +161,7 @@ class NewTextTemplateTestCase(unittest.TestCase):
   * 0
   * 1
   * 2
-""", tmpl.generate(items=range(3)).render('text'))
+""", tmpl.generate(items=range(3)).render())
 
     def test_empty_lines2(self):
         tmpl = NewTextTemplate("""Your items:
@@ -178,12 +178,12 @@ class NewTextTemplateTestCase(unittest.TestCase):
 
   * 2
 
-""", tmpl.generate(items=range(3)).render('text'))
+""", tmpl.generate(items=range(3)).render())
 
     def test_include(self):
         file1 = open(os.path.join(self.dirname, 'tmpl1.txt'), 'w')
         try:
-            file1.write("Included\n")
+            file1.write("Included")
         finally:
             file1.close()
 

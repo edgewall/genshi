@@ -321,7 +321,8 @@ class ExpressionTestCase(unittest.TestCase):
         self.assertEqual([0, 1, 2, 3], expr.evaluate({'numbers': range(5)}))
 
     def test_access_undefined(self):
-        expr = Expression("nothing", filename='index.html', lineno=50)
+        expr = Expression("nothing", filename='index.html', lineno=50,
+                          lookup='lenient')
         retval = expr.evaluate({})
         assert isinstance(retval, Undefined)
         self.assertEqual('nothing', retval._name)
@@ -332,7 +333,8 @@ class ExpressionTestCase(unittest.TestCase):
             def __repr__(self):
                 return '<Something>'
         something = Something()
-        expr = Expression('something.nil', filename='index.html', lineno=50)
+        expr = Expression('something.nil', filename='index.html', lineno=50,
+                          lookup='lenient')
         retval = expr.evaluate({'something': something})
         assert isinstance(retval, Undefined)
         self.assertEqual('nil', retval._name)
@@ -351,7 +353,8 @@ class ExpressionTestCase(unittest.TestCase):
             def __repr__(self):
                 return '<Something>'
         something = Something()
-        expr = Expression('something["nil"]', filename='index.html', lineno=50)
+        expr = Expression('something["nil"]', filename='index.html', lineno=50,
+                          lookup='lenient')
         retval = expr.evaluate({'something': something})
         assert isinstance(retval, Undefined)
         self.assertEqual('nil', retval._name)

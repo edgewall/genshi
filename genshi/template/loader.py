@@ -77,7 +77,7 @@ class TemplateLoader(object):
     """
     def __init__(self, search_path=None, auto_reload=False,
                  default_encoding=None, max_cache_size=25, default_class=None,
-                 variable_lookup='lenient', allow_exec=True, callback=None):
+                 variable_lookup='strict', allow_exec=True, callback=None):
         """Create the template laoder.
         
         :param search_path: a list of absolute path names that should be
@@ -91,8 +91,8 @@ class TemplateLoader(object):
                                cache
         :param default_class: the default `Template` subclass to use when
                               instantiating templates
-        :param variable_lookup: the variable lookup mechanism; either "lenient"
-                                (the default), "strict", or a custom lookup
+        :param variable_lookup: the variable lookup mechanism; either "strict"
+                                (the default), "lenient", or a custom lookup
                                 class
         :param allow_exec: whether to allow Python code blocks in templates
         :param callback: (optional) a callback function that is invoked after a

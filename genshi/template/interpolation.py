@@ -31,7 +31,7 @@ NAMECHARS = NAMESTART + '.0123456789'
 PREFIX = '$'
 
 def interpolate(text, basedir=None, filename=None, lineno=-1, offset=0,
-                lookup='lenient'):
+                lookup='strict'):
     """Parse the given string and extract expressions.
     
     This function is a generator that yields `TEXT` events for literal strings,

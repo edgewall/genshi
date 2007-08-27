@@ -231,7 +231,7 @@ This will produce the following output:
 
 Code blocks can import modules, define classes and functions, and basically do
 anything you can do in normal Python code. What code blocks can *not* do is to
-produce content that is included directly in the generated page.
+produce content that is emitted directly tp the generated output.
 
 .. note:: Using the ``print`` statement will print to the standard output
           stream, just as it does for other Python code in your application.
@@ -261,13 +261,56 @@ using plain expressions.
 Error Handling
 ==============
 
-By default, Genshi allows you to access variables that are not defined, without
-raising a ``NameError`` exception as regular Python code would:
+By default, Genshi raises an ``UndefinedError`` if a template expression
+attempts to access a variable that is not defined:
 
 .. code-block:: pycon
 
   >>> from genshi.template import MarkupTemplate
   >>> tmpl = MarkupTemplate('<p>${doh}</p>')
+  >>> tmpl.generate().render('xhtml')
+  Traceback (most recent call last):
+    ...
+  UndefinedError: "doh" not defined
+
+You can change this behavior by setting the variable lookup mode to "lenient".
+In that case, accessing undefined variables returns an `Undefined` object,
+meaning that the expression does not fail immediately. See below for details.
+
+If you need to check whether a variable exists in the template context, use the
+defined_ or the value_of_ function described below. To check for existence of
+attributes on an object, or keys in a dictionary, use the ``hasattr()``,
+``getattr()`` or ``get()`` functions, or the ``in`` operator, just as you would
+in regular Python code:
+
+  >>> from genshi.template import MarkupTemplate
+  >>> tmpl = MarkupTemplate('<p>${defined("doh")}</p>')
+  >>> print tmpl.generate().render('xhtml')
+  <p>False</p>
+
+.. note:: Lenient error handling was the default in Genshi prior to version 0.5.
+          Strict mode was introduced in version 0.4, and became the default in
+          0.5. The reason for this change was that the lenient error handling
+          was masking actual errors in templates, thereby also making it harder
+          to debug some problems.
+
+
+.. _`lenient`:
+
+Lenient Mode
+------------
+
+If you instruct Genshi to use the lenient variable lookup mode, it allows you
+to access variables that are not defined, without raising an ``UndefinedError``.
+
+This mode can be chosen by passing the ``lookup='lenient'`` keyword argument to
+the template initializer, or by passing the ``variable_lookup='lenient'``
+keyword argument to the ``TemplateLoader`` initializer:
+
+.. code-block:: pycon
+
+  >>> from genshi.template import MarkupTemplate
+  >>> tmpl = MarkupTemplate('<p>${doh}</p>', lookup='lenient')
   >>> print tmpl.generate().render('xhtml')
   <p></p>
 
@@ -277,7 +320,7 @@ do anything else with it, such as accessing its attributes:
 .. code-block:: pycon
 
   >>> from genshi.template import MarkupTemplate
-  >>> tmpl = MarkupTemplate('<p>${doh.oops}</p>')
+  >>> tmpl = MarkupTemplate('<p>${doh.oops}</p>', lookup='lenient')
   >>> print tmpl.generate().render('xhtml')
   Traceback (most recent call last):
     ...
@@ -289,41 +332,13 @@ against the ``Undefined`` class, for example in a conditional directive:
 .. code-block:: pycon
 
   >>> from genshi.template import MarkupTemplate
-  >>> tmpl = MarkupTemplate('<p>${type(doh) is not Undefined}</p>')
+  >>> tmpl = MarkupTemplate('<p>${type(doh) is not Undefined}</p>',
+  ...                       lookup='lenient')
   >>> print tmpl.generate().render('xhtml')
   <p>False</p>
 
 Alternatively, the built-in functions defined_ or value_of_ can be used in this
 case.
-
-Strict Mode
------------
-
-In addition to the default "lenient" error handling, Genshi lets you use a less
-forgiving mode if you prefer errors blowing up loudly instead of being ignored
-silently.
-
-This mode can be chosen by passing the ``lookup='strict'`` keyword argument to
-the template initializer, or by passing the ``variable_lookup='strict'`` keyword
-argument to the ``TemplateLoader`` initializer:
-
-.. code-block:: pycon
-
-  >>> from genshi.template import MarkupTemplate
-  >>> tmpl = MarkupTemplate('<p>${doh}</p>', lookup='strict')
-  >>> print tmpl.generate().render('xhtml')
-  Traceback (most recent call last):
-    ...
-  UndefinedError: "doh" not defined
-
-When using strict mode, any reference to an undefined variable, as well as
-trying to access an non-existing item or attribute of an object, will cause an
-``UndefinedError`` to be raised immediately.
-
-.. note:: While this mode is currently not the default, it may be promoted to
-          the default in future versions of Genshi. In general, the default
-          lenient error handling mode can be considered dangerous as it silently
-          ignores typos.
 
 Custom Modes
 ------------

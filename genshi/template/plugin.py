@@ -62,7 +62,7 @@ class AbstractTemplateEnginePlugin(object):
         if loader_callback and not callable(loader_callback):
             raise ConfigurationError('loader callback must be a function')
 
-        lookup_errors = options.get('genshi.lookup_errors', 'lenient')
+        lookup_errors = options.get('genshi.lookup_errors', 'strict')
         if lookup_errors not in ('lenient', 'strict'):
             raise ConfigurationError('Unknown lookup errors mode "%s"' %
                                      lookup_errors)

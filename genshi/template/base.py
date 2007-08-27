@@ -292,7 +292,7 @@ class Template(object):
     serializer = None
 
     def __init__(self, source, basedir=None, filename=None, loader=None,
-                 encoding=None, lookup='lenient', allow_exec=True):
+                 encoding=None, lookup='strict', allow_exec=True):
         """Initialize a template from either a string, a file-like object, or
         an already parsed markup stream.
         
@@ -307,8 +307,8 @@ class Template(object):
         :param loader: the `TemplateLoader` to use for loading included
                        templates
         :param encoding: the encoding of the `source`
-        :param lookup: the variable lookup mechanism; either "lenient" (the
-                       default), "strict", or a custom lookup class
+        :param lookup: the variable lookup mechanism; either "strict" (the
+                       default), "lenient", or a custom lookup class
         :param allow_exec: whether Python code blocks in templates should be
                            allowed
         

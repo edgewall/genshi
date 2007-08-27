@@ -67,7 +67,7 @@ class MarkupTemplate(Template):
     serializer = 'xml'
 
     def __init__(self, source, basedir=None, filename=None, loader=None,
-                 encoding=None, lookup='lenient', allow_exec=True):
+                 encoding=None, lookup='strict', allow_exec=True):
         Template.__init__(self, source, basedir=basedir, filename=filename,
                           loader=loader, encoding=encoding, lookup=lookup,
                           allow_exec=allow_exec)

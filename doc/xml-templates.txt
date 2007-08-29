@@ -112,7 +112,7 @@ The element is only rendered if the expression evaluates to a truth value:
 Given the data ``foo=True`` and ``bar='Hello'`` in the template context, this
 would produce:
 
-.. code-block:: html
+.. code-block:: xml
 
   <div>
     <b>Hello</b>
@@ -153,7 +153,7 @@ be tested for truth:
 
 This would produce the following output:
 
-.. code-block:: html
+.. code-block:: xml
 
   <div>
     <span>1</span>
@@ -172,7 +172,7 @@ directives will be tested for equality to the parent ``py:choose`` value:
 
 This would produce the following output:
 
-.. code-block:: html
+.. code-block:: xml
 
   <div>
     <span>1</span>
@@ -197,7 +197,7 @@ The element is repeated for every item in an iterable:
 
 Given ``items=[1, 2, 3]`` in the context data, this would produce:
 
-.. code-block:: html
+.. code-block:: xml
 
   <ul>
     <li>1</li><li>2</li><li>3</li>
@@ -239,7 +239,7 @@ inserted in other places:
 
 The above would be rendered to:
 
-.. code-block:: html
+.. code-block:: xml
 
   <div>
     <p class="greeting">
@@ -264,7 +264,7 @@ parenthesis. For example:
 
 The above would be rendered to:
 
-.. code-block:: html
+.. code-block:: xml
 
   <div>
     <p class="greeting">
@@ -307,7 +307,7 @@ element with the tag name “greeting”:
 
 This would result in the following output:
 
-.. code-block:: html
+.. code-block:: xml
 
   <div>
     <span>
@@ -395,7 +395,7 @@ For example:
 
 Given ``x=42`` in the context data, this would produce:
 
-.. code-block:: html
+.. code-block:: xml
 
   <div>
     <span>42 7 52</span>
@@ -434,7 +434,7 @@ This directive adds, modifies or removes attributes from the element:
 Given ``foo={'class': 'collapse'}`` in the template context, this would
 produce:
 
-.. code-block:: html
+.. code-block:: xml
 
   <ul>
     <li class="collapse">Bar</li>
@@ -443,7 +443,7 @@ produce:
 Attributes with the value ``None`` are omitted, so given ``foo={'class': None}``
 in the context for the same template this would produce:
 
-.. code-block:: html
+.. code-block:: xml
 
   <ul>
     <li>Bar</li>
@@ -468,7 +468,7 @@ expression:
 
 Given ``bar='Bye'`` in the context data, this would produce:
 
-.. code-block:: html
+.. code-block:: xml
 
   <ul>
     <li>Bye</li>
@@ -493,7 +493,7 @@ expression:
 
 Given ``bar='Bye'`` in the context data, this would produce:
 
-.. code-block:: html
+.. code-block:: xml
 
   <div>
     Bye
@@ -519,7 +519,7 @@ stripped from the output:
 
 This would be rendered as:
 
-.. code-block:: html
+.. code-block:: xml
 
   <div>
     <b>foo</b>

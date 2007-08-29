@@ -7,7 +7,7 @@ h1 { color: #666;
 }
 blockquote { font-style: italic; }
 
-#wrap { background: #fff; width: 800px; margin: 30px auto; }
+#wrap { background: #fff; width: 600px; margin: 30px auto; }
 #content { border-left: 10px solid #b00; min-height: 240px; padding: 10px; }
 #header img { float: right; margin-top: -20px; margin-right: -37px; }
 

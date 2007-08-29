@@ -83,7 +83,7 @@ class Root(object):
             errors = {}
 
         return template.render(submission=submission, comment=None,
-                               errors=errors)
+                               errors=errors) | HTMLFormFiller(data=data)
 
     @cherrypy.expose
     @template.output('comment.html')
@@ -107,7 +107,7 @@ class Root(object):
             errors = {}
 
         return template.render(submission=submission, comment=comment,
-                               errors=errors)
+                               errors=errors) | HTMLFormFiller(data=data)
 
 
 def main(filename):

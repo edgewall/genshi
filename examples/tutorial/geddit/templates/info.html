@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml"
+      xmlns:xi="http://www.w3.org/2001/XInclude"
+      xmlns:py="http://genshi.edgewall.org/">
+  <xi:include href="layout.html" />
+  <head>
+    <title>${submission.title}</title>
+  </head>
+  <body>
+    <h1>${submission.title}</h1>
+    <a href="${submission.url}">${submission.url}</a><br />
+    posted by ${submission.username}
+    at ${submission.time.strftime('%M/%d/%Y %H:%m')}<br />
+    <a href="/comment/${submission.code}/">comment</a>
+    <xi:include href="comments.html" py:with="comments=submission.comments" />
+  </body>
+</html>

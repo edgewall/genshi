@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml"
+      xmlns:xi="http://www.w3.org/2001/XInclude"
+      xmlns:py="http://genshi.edgewall.org/">
+  <xi:include href="layout.html" />
+  <head>
+    <title>Comment on “${submission.title}”</title>
+  </head>
+  <body>
+    <h1>Comment on “${submission.title}”</h1>
+    <p py:if="comment">
+      In reply to <strong>${comment.username}</strong>
+      at ${comment.time.strftime('%M/%d/%Y %H:%m')}:
+      <blockquote>${comment.content}</blockquote>
+    </p>
+    <form action="" method="post">
+      <table summary=""><tbody><tr>
+        <th><label for="username">Your name:</label></th>
+        <td>
+          <input type="text" id="username" name="username" />
+          <span py:if="'username' in errors" class="error">${errors.username}</span>
+        </td>
+      </tr><tr>
+        <th><label for="comment">Comment:</label></th>
+        <td>
+          <textarea id="comment" name="content" rows="6" cols="70"></textarea>
+          <span py:if="'content' in errors" class="error"><br />${errors.content}</span>
+        </td>
+      </tr></tbody></table>
+      <div>
+        <input type="submit" value="Submit" />
+        <input type="submit" name="cancel" value="Cancel" />
+      </div>
+    </form>
+  </body>
+</html>

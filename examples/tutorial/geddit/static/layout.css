@@ -1,0 +1,31 @@
+html, body { margin: 0; padding: 0; }
+body { background: #ddd; color: #333; font: normal 90%/1.3 Arial,Helvetica,sans-serif; }
+:link, :visited { color: #c10000; text-decoration: none; }
+:link:hover, :visited:hover { text-decoration: underline; }
+h1 { color: #666;
+  font: normal xx-large/1.5 Georgia,serif; margin: 0 0 .5em;
+}
+blockquote { font-style: italic; }
+
+#wrap { background: #fff; width: 800px; margin: 30px auto; }
+#content { border-left: 10px solid #b00; min-height: 240px; padding: 10px; }
+#header img { float: right; margin-top: -20px; margin-right: -37px; }
+
+#footer { background: #4A4D4D; border-top: 2px solid #333; font-size: x-small;
+  padding: 3px; text-align: center;
+}
+#footer hr { display: none; }
+.legalese { color: #999; margin: 0; }
+
+ol.submissions li .info { font-size: 85%; }
+ol.submissions li .info :link, ol.submissions li .info :visited { color: #666; }
+
+form table { margin-bottom: 1em; }
+form table tbody th { font-weight: normal; padding-top: .3em; text-align: right;
+  vertical-align: top;
+}
+
+ul.comments { list-style: none; margin: 1em 0; padding: 0; }
+ul.comments li { color: #999; }
+ul.comments ul { padding: 0 0 0 2em; }
+ul.comments blockquote { color: #333; font-style: normal; margin: 0; padding: 0; }

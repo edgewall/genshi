@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml"
+      xmlns:xi="http://www.w3.org/2001/XInclude"
+      xmlns:py="http://genshi.edgewall.org/">
+  <xi:include href="layout.html" />
+  <head>
+    <title>News</title>
+  </head>
+  <body>
+    <h1>News</h1>
+    <p><a href="/submit/">Submit new link</a></p>
+
+    <ol py:if="submissions" class="submissions">
+      <li py:for="submission in submissions">
+        <a href="${submission.url}">${submission.title}</a>
+        posted by ${submission.username}
+        at ${submission.time.strftime('%M/%d/%Y %H:%m')}<br />
+        <div class="info">
+          <a href="/info/${submission.code}/">${len(submission.total_comments)} comments</a>
+        </div>
+      </li>
+    </ol>
+  </body>
+</html>

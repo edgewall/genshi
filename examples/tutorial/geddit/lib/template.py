@@ -3,14 +3,14 @@ import os
 import cherrypy
 from genshi.core import Stream
 from genshi.output import encode, get_serializer
-from genshi.template import TemplateLoader
+from genshi.template import Context, TemplateLoader
 
 loader = TemplateLoader(
     os.path.join(os.path.dirname(__file__), '..', 'templates'),
     auto_reload=True
 )
 
-def output(filename, method=None, encoding='utf-8', **options):
+def output(filename, method='html', encoding='utf-8', **options):
     """Decorator for exposed methods to specify what template the should use
     for rendering, and which serialization method and options should be
     applied.
@@ -18,6 +18,8 @@ def output(filename, method=None, encoding='utf-8', **options):
     def decorate(func):
         def wrapper(*args, **kwargs):
             cherrypy.thread_data.template = loader.load(filename)
+            if method == 'html':
+                options.setdefault('doctype', 'html')
             serializer = get_serializer(method, **options)
             stream = func(*args, **kwargs)
             if not isinstance(stream, Stream):
@@ -37,4 +39,6 @@ def render(*args, **kwargs):
         template = loader.load(args[0])
     else:
         template = cherrypy.thread_data.template
-    return template.generate(**kwargs)
+    ctxt = Context(url=cherrypy.url)
+    ctxt.push(kwargs)
+    return template.generate(ctxt)

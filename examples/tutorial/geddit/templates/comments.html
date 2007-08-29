@@ -7,7 +7,7 @@
     <strong>${comment.username}</strong>
     at ${comment.time.strftime('%M/%d/%Y %H:%m')}
     <blockquote>${comment.content}</blockquote>
-    <a href="/reply/${comment.code}/">reply</a>
+    <a href="${url('/reply/%s/' % comment.code)}">reply</a>
     <xi:include href="comments.html" py:with="comments=comment.replies" />
   </li>
 </ul>

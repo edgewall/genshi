@@ -8,7 +8,7 @@
   </head>
   <body>
     <h1>News</h1>
-    <p><a href="/submit/">Submit new link</a></p>
+    <p><a href="${url('/submit/')}">Submit new link</a></p>
 
     <ol py:if="submissions" class="submissions">
       <li py:for="submission in submissions">
@@ -16,7 +16,9 @@
         posted by ${submission.username}
         at ${submission.time.strftime('%M/%d/%Y %H:%m')}<br />
         <div class="info">
-          <a href="/info/${submission.code}/">${len(submission.total_comments)} comments</a>
+          <a href="${url('/info/%s/' % submission.code)}">
+            ${len(submission.total_comments)} comments
+          </a>
         </div>
       </li>
     </ol>

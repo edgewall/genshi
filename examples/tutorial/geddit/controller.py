@@ -30,12 +30,12 @@ class Root(object):
                 _add_replies(comment)
 
     @cherrypy.expose
-    @template.output('index.html', method='html', doctype='html')
+    @template.output('index.html')
     def index(self):
         return template.render(submissions=self.data)
 
     @cherrypy.expose
-    @template.output('info.html', method='html', doctype='html')
+    @template.output('info.html')
     def info(self, code):
         submission = self._submission_lookup.get(code)
         if not submission:
@@ -43,7 +43,7 @@ class Root(object):
         return template.render(submission=submission)
 
     @cherrypy.expose
-    @template.output('submit.html', method='html', doctype='html')
+    @template.output('submit.html')
     def submit(self, cancel=False, **data):
         if cherrypy.request.method == 'POST':
             if cancel:
@@ -63,7 +63,7 @@ class Root(object):
         return template.render(errors=errors) | HTMLFormFiller(data=data)
 
     @cherrypy.expose
-    @template.output('comment.html', method='html', doctype='html')
+    @template.output('comment.html')
     def comment(self, code, cancel=False, **data):
         submission = self._submission_lookup.get(code)
         if not submission:
@@ -76,7 +76,7 @@ class Root(object):
                 data = form.to_python(data)
                 comment = submission.add_comment(**data)
                 self._comment_lookup[comment.code] = comment
-                raise cherrypy.HTTPRedirect('/')
+                raise cherrypy.HTTPRedirect('/info/%s' % submission.code)
             except Invalid, e:
                 errors = e.unpack_errors()
         else:
@@ -86,7 +86,7 @@ class Root(object):
                                errors=errors)
 
     @cherrypy.expose
-    @template.output('comment.html', method='html', doctype='html')
+    @template.output('comment.html')
     def reply(self, code, cancel=False, **data):
         comment = self._comment_lookup.get(code)
         submission = comment.submission
@@ -100,7 +100,7 @@ class Root(object):
                 data = form.to_python(data)
                 comment = comment.add_reply(**data)
                 self._comment_lookup[comment.code] = comment
-                raise cherrypy.HTTPRedirect('/')
+                raise cherrypy.HTTPRedirect('/info/%s' % submission.code)
             except Invalid, e:
                 errors = e.unpack_errors()
         else:

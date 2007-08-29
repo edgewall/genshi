@@ -11,7 +11,7 @@
     <a href="${submission.url}">${submission.url}</a><br />
     posted by ${submission.username}
     at ${submission.time.strftime('%M/%d/%Y %H:%m')}<br />
-    <a href="/comment/${submission.code}/">comment</a>
+    <a href="${url('/comment/%s/' % submission.code)}">comment</a>
     <xi:include href="comments.html" py:with="comments=submission.comments" />
   </body>
 </html>

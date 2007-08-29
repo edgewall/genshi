@@ -18,15 +18,15 @@ class Root(object):
 
     def __init__(self, data):
         self.data = data
-        self.submission_lookup = {}
-        self.comment_lookup = {}
+        self._submission_lookup = {}
+        self._comment_lookup = {}
         for submission in self.data:
-            self.submission_lookup[submission.code] = submission
+            self._submission_lookup[submission.code] = submission
             for comment in submission.comments:
-                self.comment_lookup[comment.code] = comment
+                self._comment_lookup[comment.code] = comment
                 def _add_replies(comment):
                     for reply in comment.replies:
-                        self.comment_lookup[reply.code] = reply
+                        self._comment_lookup[reply.code] = reply
                 _add_replies(comment)
 
     @cherrypy.expose
@@ -37,7 +37,7 @@ class Root(object):
     @cherrypy.expose
     @template.output('info.html', method='html', doctype='html')
     def info(self, code):
-        submission = self.submission_lookup.get(code)
+        submission = self._submission_lookup.get(code)
         if not submission:
             raise cherrypy.NotFound()
         return template.render(submission=submission)
@@ -53,6 +53,7 @@ class Root(object):
                 data = form.to_python(data)
                 submission = Submission(**data)
                 self.data.append(submission)
+                self._comment_lookup[comment.code] = comment
                 raise cherrypy.HTTPRedirect('/')
             except Invalid, e:
                 errors = e.unpack_errors()
@@ -64,7 +65,7 @@ class Root(object):
     @cherrypy.expose
     @template.output('comment.html', method='html', doctype='html')
     def comment(self, code, cancel=False, **data):
-        submission = self.submission_lookup.get(code)
+        submission = self._submission_lookup.get(code)
         if not submission:
             raise cherrypy.NotFound()
         if cherrypy.request.method == 'POST':
@@ -74,7 +75,7 @@ class Root(object):
             try:
                 data = form.to_python(data)
                 comment = submission.add_comment(**data)
-                self.comment_lookup[comment.code] = comment
+                self._comment_lookup[comment.code] = comment
                 raise cherrypy.HTTPRedirect('/')
             except Invalid, e:
                 errors = e.unpack_errors()
@@ -87,7 +88,7 @@ class Root(object):
     @cherrypy.expose
     @template.output('comment.html', method='html', doctype='html')
     def reply(self, code, cancel=False, **data):
-        comment = self.comment_lookup.get(code)
+        comment = self._comment_lookup.get(code)
         submission = comment.submission
         if not comment:
             raise cherrypy.NotFound()
@@ -98,7 +99,7 @@ class Root(object):
             try:
                 data = form.to_python(data)
                 comment = comment.add_reply(**data)
-                self.comment_lookup[comment.code] = comment
+                self._comment_lookup[comment.code] = comment
                 raise cherrypy.HTTPRedirect('/')
             except Invalid, e:
                 errors = e.unpack_errors()

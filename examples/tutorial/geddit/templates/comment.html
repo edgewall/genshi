@@ -4,10 +4,10 @@
       xmlns:py="http://genshi.edgewall.org/">
   <xi:include href="layout.html" />
   <head>
-    <title>Comment on “${submission.title}”</title>
+    <title>Comment on “${link.title}”</title>
   </head>
   <body>
-    <h1>Comment on “${submission.title}”</h1>
+    <h1>Comment on “${link.title}”</h1>
     <p py:if="comment">
       In reply to <strong>${comment.username}</strong>
       at ${comment.time.strftime('%M/%d/%Y %H:%m')}:

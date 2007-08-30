@@ -1,14 +1,14 @@
 from datetime import datetime
 
 
-class Submission(object):
+class Link(object):
 
     def __init__(self, username, url, title):
         self.username = username
         self.url = url
         self.title = title
         self.time = datetime.utcnow()
-        self.code = hex(hash(tuple([username, url, title, self.time])))[2:]
+        self.id = hex(hash(tuple([username, url, title, self.time])))[2:]
         self.comments = []
 
     def __repr__(self):

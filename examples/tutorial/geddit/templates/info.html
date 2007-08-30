@@ -4,16 +4,15 @@
       xmlns:py="http://genshi.edgewall.org/">
   <xi:include href="layout.html" />
   <head>
-    <title>${submission.title}</title>
+    <title>${link.title}</title>
   </head>
   <body>
-    <h1>${submission.title}</h1>
-    <a href="${submission.url}">${submission.url}</a><br />
-    posted by ${submission.username}
-    at ${submission.time.strftime('%m/%d/%Y %H:%M')}<br />
-    <a href="${url('/comment/%s/' % submission.code)}">comment</a>
-    <ul py:if="submission.comments" class="comments">
-      <li py:for="comment in submission.comments">
+    <h1>${link.title}</h1>
+    <a href="${link.url}">${link.url}</a><br />
+    posted by ${link.username} at ${link.time.strftime('%m/%d/%Y %H:%M')}<br />
+    <a href="${url('/comment/%s/' % link.id)}">comment</a>
+    <ul py:if="link.comments" class="comments">
+      <li py:for="comment in link.comments">
         <strong>${comment.username}</strong>
         at ${comment.time.strftime('%m/%d/%Y %H:%M')}
         <blockquote>${comment.content}</blockquote>

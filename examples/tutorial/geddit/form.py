@@ -1,7 +1,7 @@
 from formencode import Schema, validators
 
 
-class SubmissionForm(Schema):
+class LinkForm(Schema):
     username = validators.UnicodeString(not_empty=True)
     url = validators.URL(not_empty=True, add_http=True, check_exists=False)
     title = validators.UnicodeString(not_empty=True)

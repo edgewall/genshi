@@ -10,14 +10,13 @@
     <h1>News</h1>
     <p><a href="${url('/submit/')}">Submit new link</a></p>
 
-    <ol py:if="submissions" class="submissions">
-      <li py:for="submission in submissions">
-        <a href="${submission.url}">${submission.title}</a>
-        posted by ${submission.username}
-        at ${submission.time.strftime('%m/%d/%Y %H:%M')}<br />
+    <ol py:if="links" class="links">
+      <li py:for="link in links">
+        <a href="${link.url}">${link.title}</a>
+        posted by ${link.username} at ${link.time.strftime('%m/%d/%Y %H:%M')}
         <div class="info">
-          <a href="${url('/info/%s/' % submission.code)}">
-            ${len(submission.comments)} comments
+          <a href="${url('/info/%s/' % link.id)}">
+            ${len(link.comments)} comments
           </a>
         </div>
       </li>

@@ -8,11 +8,10 @@ import sys
 import cherrypy
 from formencode import Invalid
 from genshi.filters import HTMLFormFiller
-from paste.evalexception.middleware import EvalException
 
-from geddit.form import SubmissionForm, CommentForm
+from geddit.form import LinkForm, CommentForm
 from geddit.lib import template
-from geddit.model import Submission, Comment
+from geddit.model import Link, Comment
 
 
 class Root(object):
@@ -23,19 +22,16 @@ class Root(object):
     @cherrypy.expose
     @template.output('index.html')
     def index(self):
-        return template.render(
-            submissions=sorted(self.data.values(),
-                               key=operator.attrgetter('time'),
-                               reverse=True)
-        )
+        links = sorted(self.data.values(), key=operator.attrgetter('time'))
+        return template.render(links=links)
 
     @cherrypy.expose
     @template.output('info.html')
     def info(self, code):
-        submission = self.data.get(code)
-        if not submission:
+        link = self.data.get(code)
+        if not link:
             raise cherrypy.NotFound()
-        return template.render(submission=submission)
+        return template.render(link=link)
 
     @cherrypy.expose
     @template.output('submit.html')
@@ -43,11 +39,11 @@ class Root(object):
         if cherrypy.request.method == 'POST':
             if cancel:
                 raise cherrypy.HTTPRedirect('/')
-            form = SubmissionForm()
+            form = LinkForm()
             try:
                 data = form.to_python(data)
-                submission = Submission(**data)
-                self.data[submission.code] = submission
+                link = Link(**data)
+                self.data[link.id] = link
                 raise cherrypy.HTTPRedirect('/')
             except Invalid, e:
                 errors = e.unpack_errors()
@@ -59,23 +55,23 @@ class Root(object):
     @cherrypy.expose
     @template.output('comment.html')
     def comment(self, code, cancel=False, **data):
-        submission = self.data.get(code)
-        if not submission:
+        link = self.data.get(code)
+        if not link:
             raise cherrypy.NotFound()
         if cherrypy.request.method == 'POST':
             if cancel:
-                raise cherrypy.HTTPRedirect('/info/%s' % submission.code)
+                raise cherrypy.HTTPRedirect('/info/%s' % link.id)
             form = CommentForm()
             try:
                 data = form.to_python(data)
-                comment = submission.add_comment(**data)
-                raise cherrypy.HTTPRedirect('/info/%s' % submission.code)
+                comment = link.add_comment(**data)
+                raise cherrypy.HTTPRedirect('/info/%s' % link.id)
             except Invalid, e:
                 errors = e.unpack_errors()
         else:
             errors = {}
 
-        return template.render(submission=submission, comment=None,
+        return template.render(link=link, comment=None,
                                errors=errors) | HTMLFormFiller(data=data)
 
 
@@ -99,7 +95,8 @@ def main(filename):
             fileobj.close()
     cherrypy.engine.on_stop_engine_list.append(_save_data)
 
-    # Some global configuration; note that this could be moved into a configuration file
+    # Some global configuration; note that this could be moved into a 
+    # configuration file
     cherrypy.config.update({
         'request.throw_errors': True,
         'tools.encode.on': True, 'tools.encode.encoding': 'utf-8',
@@ -108,10 +105,7 @@ def main(filename):
         'tools.staticdir.root': os.path.abspath(os.path.dirname(__file__)),
     })
 
-    # Initialize the application, and add EvalException for more helpful error messages
-    app = cherrypy.Application(Root(data))
-    app.wsgiapp.pipeline.append(('paste_exc', EvalException))
-    cherrypy.quickstart(app, '/', {
+    cherrypy.quickstart(Root(data), '/', {
         '/media': {
             'tools.staticdir.on': True,
             'tools.staticdir.dir': 'static'

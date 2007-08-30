@@ -13,7 +13,7 @@
     <ol py:if="links" class="links">
       <li py:for="link in links">
         <a href="${link.url}">${link.title}</a>
-        posted by ${link.username} at ${link.time.strftime('%m/%d/%Y %H:%M')}
+        posted by ${link.username} at ${link.time.strftime('%x %X')}
         <div class="info">
           <a href="${url('/info/%s/' % link.id)}">
             ${len(link.comments)} comments

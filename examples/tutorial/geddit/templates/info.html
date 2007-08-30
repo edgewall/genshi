@@ -9,12 +9,12 @@
   <body>
     <h1>${link.title}</h1>
     <a href="${link.url}">${link.url}</a><br />
-    posted by ${link.username} at ${link.time.strftime('%m/%d/%Y %H:%M')}<br />
+    posted by ${link.username} at ${link.time.strftime('%x %X')}<br />
     <a href="${url('/comment/%s/' % link.id)}">comment</a>
     <ul py:if="link.comments" class="comments">
       <li py:for="comment in link.comments">
         <strong>${comment.username}</strong>
-        at ${comment.time.strftime('%m/%d/%Y %H:%M')}
+        at ${comment.time.strftime('%x %X')}
         <blockquote>${comment.content}</blockquote>
       </li>
     </ul>

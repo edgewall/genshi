@@ -20,6 +20,18 @@ class Root(object):
         self.data = data
 
     @cherrypy.expose
+    @template.output('index.xml', method='xml')
+    def feed(self, id=None):
+        if id:
+            link = self.data.get(id)
+            if not link:
+                raise cherrypy.NotFound()
+            return template.render('info.xml', link=link)
+        else:
+            links = sorted(self.data.values(), key=operator.attrgetter('time'))
+            return template.render(links=links)
+
+    @cherrypy.expose
     @template.output('index.html')
     def index(self):
         links = sorted(self.data.values(), key=operator.attrgetter('time'))
@@ -27,8 +39,8 @@ class Root(object):
 
     @cherrypy.expose
     @template.output('info.html')
-    def info(self, code):
-        link = self.data.get(code)
+    def info(self, id):
+        link = self.data.get(id)
         if not link:
             raise cherrypy.NotFound()
         return template.render(link=link)
@@ -54,8 +66,8 @@ class Root(object):
 
     @cherrypy.expose
     @template.output('comment.html')
-    def comment(self, code, cancel=False, **data):
-        link = self.data.get(code)
+    def comment(self, id, cancel=False, **data):
+        link = self.data.get(id)
         if not link:
             raise cherrypy.NotFound()
         if cherrypy.request.method == 'POST':

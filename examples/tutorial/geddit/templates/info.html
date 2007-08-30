@@ -5,14 +5,18 @@
   <xi:include href="layout.html" />
   <head>
     <title>${link.title}</title>
+    <link rel="alternate" type="application/atom+xml" title="Geddit: ${link.title}"
+          href="${url('/feed/%s/' % link.id)}" />
   </head>
   <body>
     <h1>${link.title}</h1>
     <a href="${link.url}">${link.url}</a><br />
     posted by ${link.username} at ${link.time.strftime('%x %X')}<br />
-    <a href="${url('/comment/%s/' % link.id)}">comment</a>
+
+    <p><a class="action" href="${url('/comment/%s/' % link.id)}">comment</a></p>
+
     <ul py:if="link.comments" class="comments">
-      <li py:for="comment in link.comments">
+      <li py:for="idx, comment in enumerate(link.comments)" id="comment$idx">
         <strong>${comment.username}</strong>
         at ${comment.time.strftime('%x %X')}
         <blockquote>${comment.content}</blockquote>

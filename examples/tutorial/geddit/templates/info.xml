@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom"
+      xmlns:py="http://genshi.edgewall.org/">
+
+  <title>Geddit: ${link.title}</title>
+  <id href="${url('/info/%s/' % link.id)}"/>
+  <link rel="alternate" href="${url('/info/%s/' % link.id)}" type="text/html"/>
+  <link rel="self" href="${url('/feed/%s/' % link.id)}" type="application/atom+xml"/>
+  <updated py:with="time=link.comments and link.comments)[-1].time or link.time">
+    ${time.isoformat()}
+  </updated>
+
+  <entry py:for="idx, comment in enumerate(reversed(link.comments))">
+    <title>Comment ${len(link.comments) - idx} on “${link.title}”</title>
+    <link rel="alternate" href="${url('/info/%s/' % link.id)}#comment${idx}"
+          type="text/html"/>
+    <id>${url('/info/%s/' % link.id)}#comment${idx}</id>
+    <author>
+      <name>${comment.username}</name>
+    </author>
+    <updated>${comment.time.isoformat()}</updated>
+    <summary>${comment.content}</summary>
+  </entry>
+
+</feed>

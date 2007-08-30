@@ -5,10 +5,12 @@
   <xi:include href="layout.html" />
   <head>
     <title>News</title>
+    <link rel="alternate" type="application/atom+xml" title="Geddit News"
+          href="${url('/feed/')}" />
   </head>
   <body>
     <h1>News</h1>
-    <p><a href="${url('/submit/')}">Submit new link</a></p>
+    <p><a class="action" href="${url('/submit/')}">Submit new link</a></p>
 
     <ol py:if="links" class="links">
       <li py:for="link in links">

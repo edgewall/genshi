@@ -30,3 +30,11 @@ ul.comments li { color: #999; margin: 0 0 1em; }
 ul.comments blockquote { color: #333; font-style: normal; margin: 0;
   padding: 0;
 }
+.action:link, .action:visited { background: #f3f3f3; border: 1px outset #ddd;
+  color: #666; font-size: 90%; padding: 0 .3em;
+}
+.action:link:hover, .action:visited:hover { background: #e8e8e8;
+  border-color: #aaa; color: #000; text-decoration: none;
+}
+
+form .error { color: #b00; }

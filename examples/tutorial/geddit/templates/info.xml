@@ -19,7 +19,7 @@
       <name>${comment.username}</name>
     </author>
     <updated>${comment.time.isoformat()}</updated>
-    <summary>${comment.content}</summary>
+    <content>${comment.content}</content>
   </entry>
 
 </feed>

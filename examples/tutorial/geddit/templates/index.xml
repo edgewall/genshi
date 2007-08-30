@@ -11,6 +11,7 @@
   <entry py:for="link in reversed(links)">
     <title>${link.url}</title>
     <link rel="alternate" href="${link.url}" type="text/html"/>
+    <link rel="via" href="${url('/info/%s/' % link.id)}" type="text/html"/>
     <id>${url('/info/%s/' % link.id)}</id>
     <author>
       <name>${link.username}</name>

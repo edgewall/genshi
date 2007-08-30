@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+import operator
 import os
 import pickle
 import sys
@@ -18,26 +19,20 @@ class Root(object):
 
     def __init__(self, data):
         self.data = data
-        self._submission_lookup = {}
-        self._comment_lookup = {}
-        for submission in self.data:
-            self._submission_lookup[submission.code] = submission
-            for comment in submission.comments:
-                self._comment_lookup[comment.code] = comment
-                def _add_replies(comment):
-                    for reply in comment.replies:
-                        self._comment_lookup[reply.code] = reply
-                _add_replies(comment)
 
     @cherrypy.expose
     @template.output('index.html')
     def index(self):
-        return template.render(submissions=self.data)
+        return template.render(
+            submissions=sorted(self.data.values(),
+                               key=operator.attrgetter('time'),
+                               reverse=True)
+        )
 
     @cherrypy.expose
     @template.output('info.html')
     def info(self, code):
-        submission = self._submission_lookup.get(code)
+        submission = self.data.get(code)
         if not submission:
             raise cherrypy.NotFound()
         return template.render(submission=submission)
@@ -52,8 +47,7 @@ class Root(object):
             try:
                 data = form.to_python(data)
                 submission = Submission(**data)
-                self.data.append(submission)
-                self._comment_lookup[comment.code] = comment
+                self.data[submission.code] = submission
                 raise cherrypy.HTTPRedirect('/')
             except Invalid, e:
                 errors = e.unpack_errors()
@@ -65,7 +59,7 @@ class Root(object):
     @cherrypy.expose
     @template.output('comment.html')
     def comment(self, code, cancel=False, **data):
-        submission = self._submission_lookup.get(code)
+        submission = self.data.get(code)
         if not submission:
             raise cherrypy.NotFound()
         if cherrypy.request.method == 'POST':
@@ -75,7 +69,6 @@ class Root(object):
             try:
                 data = form.to_python(data)
                 comment = submission.add_comment(**data)
-                self._comment_lookup[comment.code] = comment
                 raise cherrypy.HTTPRedirect('/info/%s' % submission.code)
             except Invalid, e:
                 errors = e.unpack_errors()
@@ -83,30 +76,6 @@ class Root(object):
             errors = {}
 
         return template.render(submission=submission, comment=None,
-                               errors=errors) | HTMLFormFiller(data=data)
-
-    @cherrypy.expose
-    @template.output('comment.html')
-    def reply(self, code, cancel=False, **data):
-        comment = self._comment_lookup.get(code)
-        submission = comment.submission
-        if not comment:
-            raise cherrypy.NotFound()
-        if cherrypy.request.method == 'POST':
-            if cancel:
-                raise cherrypy.HTTPRedirect('/info/%s' % submission.code)
-            form = CommentForm()
-            try:
-                data = form.to_python(data)
-                comment = comment.add_reply(**data)
-                self._comment_lookup[comment.code] = comment
-                raise cherrypy.HTTPRedirect('/info/%s' % submission.code)
-            except Invalid, e:
-                errors = e.unpack_errors()
-        else:
-            errors = {}
-
-        return template.render(submission=submission, comment=comment,
                                errors=errors) | HTMLFormFiller(data=data)
 
 
@@ -119,7 +88,7 @@ def main(filename):
         finally:
             fileobj.close()
     else:
-        data = []
+        data = {}
 
     def _save_data():
         # save data back to the pickle file

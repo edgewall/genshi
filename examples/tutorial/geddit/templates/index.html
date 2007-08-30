@@ -14,10 +14,10 @@
       <li py:for="submission in submissions">
         <a href="${submission.url}">${submission.title}</a>
         posted by ${submission.username}
-        at ${submission.time.strftime('%M/%d/%Y %H:%m')}<br />
+        at ${submission.time.strftime('%m/%d/%Y %H:%M')}<br />
         <div class="info">
           <a href="${url('/info/%s/' % submission.code)}">
-            ${len(submission.total_comments)} comments
+            ${len(submission.comments)} comments
           </a>
         </div>
       </li>

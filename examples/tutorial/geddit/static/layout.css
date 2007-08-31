@@ -11,6 +11,7 @@ form table { margin-bottom: 1em; }
 form table tbody th { font-weight: normal; padding-top: .3em; text-align: right;
   vertical-align: top;
 }
+form label { color: #666; font-size: 90%; }
 
 #wrap { background: #fff; width: 600px; margin: 30px auto; }
 #content { border-left: 10px solid #b00; min-height: 240px; padding: 10px; }

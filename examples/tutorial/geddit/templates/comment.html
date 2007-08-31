@@ -13,24 +13,6 @@
       at ${comment.time.strftime('%x %X')}:
       <blockquote>${comment.content}</blockquote>
     </p>
-    <form action="" method="post">
-      <table summary=""><tbody><tr>
-        <th><label for="username">Your name:</label></th>
-        <td>
-          <input type="text" id="username" name="username" />
-          <span py:if="'username' in errors" class="error">${errors.username}</span>
-        </td>
-      </tr><tr>
-        <th><label for="comment">Comment:</label></th>
-        <td>
-          <textarea id="comment" name="content" rows="6" cols="50"></textarea>
-          <span py:if="'content' in errors" class="error"><br />${errors.content}</span>
-        </td>
-      </tr></tbody></table>
-      <div>
-        <input type="submit" value="Submit" />
-        <input type="submit" name="cancel" value="Cancel" />
-      </div>
-    </form>
+    <xi:include href="_form.html" />
   </body>
 </html>

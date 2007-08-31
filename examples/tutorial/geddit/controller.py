@@ -10,7 +10,7 @@ from formencode import Invalid
 from genshi.filters import HTMLFormFiller
 
 from geddit.form import LinkForm, CommentForm
-from geddit.lib import template
+from geddit.lib import ajax, template
 from geddit.model import Link, Comment
 
 
@@ -77,14 +77,20 @@ class Root(object):
             try:
                 data = form.to_python(data)
                 comment = link.add_comment(**data)
-                raise cherrypy.HTTPRedirect('/info/%s' % link.id)
+                if not ajax.is_xhr():
+                    raise cherrypy.HTTPRedirect('/info/%s' % link.id)
+                return template.render('_comment.html', comment=comment,
+                                       num=len(link.comments))
             except Invalid, e:
                 errors = e.unpack_errors()
         else:
             errors = {}
 
-        return template.render(link=link, comment=None,
-                               errors=errors) | HTMLFormFiller(data=data)
+        if ajax.is_xhr():
+            stream = template.render('_form.html', link=link, errors=errors)
+        else:
+            stream = template.render(link=link, comment=None, errors=errors)
+        return stream | HTMLFormFiller(data=data)
 
 
 def main(filename):

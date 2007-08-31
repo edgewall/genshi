@@ -15,7 +15,9 @@ class Link(object):
         return '<%s %r>' % (type(self).__name__, self.title)
 
     def add_comment(self, username, content):
-        self.comments.append(Comment(username, content))
+        comment = Comment(username, content)
+        self.comments.append(comment)
+        return comment
 
 
 class Comment(object):
@@ -26,4 +28,4 @@ class Comment(object):
         self.time = datetime.utcnow()
 
     def __repr__(self):
-        return '<%s>' % (type(self).__name__)
+        return '<%s by %r>' % (type(self).__name__, self.username)

@@ -21,18 +21,19 @@
           <input type="text" id="url" name="url" />
           <span py:if="'url' in errors" class="error">${errors.url}</span>
         </td>
-      </tr>
-      <tr>
+      </tr><tr>
         <th><label for="title">Title:</label></th>
         <td>
           <input type="text" name="title" />
           <span py:if="'title' in errors" class="error">${errors.title}</span>
         </td>
+      </tr><tr>
+        <td></td>
+        <td>
+          <input type="submit" value="Submit" />
+          <input type="submit" name="cancel" value="Cancel" />
+        </td>
       </tr></tbody></table>
-      <div>
-        <input type="submit" value="Submit" />
-        <input type="submit" name="cancel" value="Cancel" />
-      </div>
     </form>
   </body>
 </html>

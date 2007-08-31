@@ -10,7 +10,6 @@
   </head>
   <body>
     <h1>News</h1>
-    <p><a class="action" href="${url('/submit/')}">Submit new link</a></p>
 
     <ol py:if="links" class="links">
       <li py:for="link in links">
@@ -23,5 +22,7 @@
         </div>
       </li>
     </ol>
+
+    <p><a class="action" href="${url('/submit/')}">Submit new link</a></p>
   </body>
 </html>

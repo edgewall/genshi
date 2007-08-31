@@ -5,6 +5,8 @@ from genshi.core import Stream
 from genshi.output import encode, get_serializer
 from genshi.template import Context, TemplateLoader
 
+from geddit.lib import ajax
+
 loader = TemplateLoader(
     os.path.join(os.path.dirname(__file__), '..', 'templates'),
     auto_reload=True
@@ -18,9 +20,10 @@ def output(filename, method='html', encoding='utf-8', **options):
     def decorate(func):
         def wrapper(*args, **kwargs):
             cherrypy.thread_data.template = loader.load(filename)
-            if method == 'html':
-                options.setdefault('doctype', 'html')
-            serializer = get_serializer(method, **options)
+            opt = options.copy()
+            if not ajax.is_xhr() and method == 'html':
+                opt.setdefault('doctype', 'html')
+            serializer = get_serializer(method, **opt)
             stream = func(*args, **kwargs)
             if not isinstance(stream, Stream):
                 return stream

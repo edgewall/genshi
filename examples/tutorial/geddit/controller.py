@@ -38,14 +38,6 @@ class Root(object):
         return template.render(links=links)
 
     @cherrypy.expose
-    @template.output('info.html')
-    def info(self, id):
-        link = self.data.get(id)
-        if not link:
-            raise cherrypy.NotFound()
-        return template.render(link=link)
-
-    @cherrypy.expose
     @template.output('submit.html')
     def submit(self, cancel=False, **data):
         if cherrypy.request.method == 'POST':
@@ -63,6 +55,14 @@ class Root(object):
             errors = {}
 
         return template.render(errors=errors) | HTMLFormFiller(data=data)
+
+    @cherrypy.expose
+    @template.output('info.html')
+    def info(self, id):
+        link = self.data.get(id)
+        if not link:
+            raise cherrypy.NotFound()
+        return template.render(link=link)
 
     @cherrypy.expose
     @template.output('comment.html')

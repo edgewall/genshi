@@ -5,7 +5,7 @@
   <py:match path="head" once="true">
     <head py:attrs="select('@*')">
       <title py:with="title = list(select('title/text()'))">
-        geddit<py:if test="title">: ${title}</py:if>
+        Geddit<py:if test="title">: ${title}</py:if>
       </title>
       <link rel="stylesheet" href="${url('/media/layout.css')}" type="text/css" />
       <script type="text/javascript" src="${url('/media/jquery.js')}"></script>

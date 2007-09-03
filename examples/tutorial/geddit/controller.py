@@ -1,9 +1,6 @@
 #!/usr/bin/env python
 
-import operator
-import os
-import pickle
-import sys
+import operator, os, pickle, sys
 
 import cherrypy
 from formencode import Invalid
@@ -18,18 +15,6 @@ class Root(object):
 
     def __init__(self, data):
         self.data = data
-
-    @cherrypy.expose
-    @template.output('index.xml', method='xml')
-    def feed(self, id=None):
-        if id:
-            link = self.data.get(id)
-            if not link:
-                raise cherrypy.NotFound()
-            return template.render('info.xml', link=link)
-        else:
-            links = sorted(self.data.values(), key=operator.attrgetter('time'))
-            return template.render(links=links)
 
     @cherrypy.expose
     @template.output('index.html')
@@ -92,6 +77,18 @@ class Root(object):
             stream = template.render(link=link, comment=None, errors=errors)
         return stream | HTMLFormFiller(data=data)
 
+    @cherrypy.expose
+    @template.output('index.xml', method='xml')
+    def feed(self, id=None):
+        if id:
+            link = self.data.get(id)
+            if not link:
+                raise cherrypy.NotFound()
+            return template.render('info.xml', link=link)
+        else:
+            links = sorted(self.data.values(), key=operator.attrgetter('time'))
+            return template.render(links=links)
+
 
 def main(filename):
     # load data from the pickle file, or initialize it to an empty list
@@ -113,7 +110,7 @@ def main(filename):
             fileobj.close()
     cherrypy.engine.on_stop_engine_list.append(_save_data)
 
-    # Some global configuration; note that this could be moved into a 
+    # Some global configuration; note that this could be moved into a
     # configuration file
     cherrypy.config.update({
         'request.throw_errors': True,

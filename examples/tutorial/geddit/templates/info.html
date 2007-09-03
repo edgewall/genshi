@@ -5,8 +5,8 @@
   <xi:include href="layout.html" />
   <head>
     <title>${link.title}</title>
-    <link rel="alternate" title="Geddit: ${link.title}"
-          type="application/atom+xml" href="${url('/feed/%s/' % link.id)}" />
+    <link rel="alternate" type="application/atom+xml" title="Geddit: ${link.title}"
+          href="${url('/feed/%s/' % link.id)}" />
     <script type="text/javascript">
       function loadCommentForm(a) {
         $.get("${url('/comment/%s/' % link.id)}", {}, function(html) {
@@ -29,9 +29,7 @@
                   if ($("ul.comments").length == 0) {
                     a.parent().before('<ul class="comments"></ul>');
                   }
-                  $("ul.comments")
-                    .find("li.hilite").removeClass("hilite").end()
-                    .append($(elem).addClass("hilite")).slideDown();
+                  $("ul.comments").append($(elem));
                   closeForm();
                 }
               });
@@ -59,6 +57,6 @@
           py:for="num, comment in enumerate(link.comments)" />
     </ul>
 
-    <p><a class="action" href="${url('/comment/%s/' % link.id)}">comment</a></p>
+    <p><a class="action" href="${url('/comment/%s/' % link.id)}">Add comment</a></p>
   </body>
 </html>

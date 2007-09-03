@@ -2,7 +2,7 @@
 <feed xmlns="http://www.w3.org/2005/Atom"
       xmlns:py="http://genshi.edgewall.org/">
 
-  <title>Geddit</title>
+  <title>Geddit News</title>
   <id href="${url('/')}"/>
   <link rel="alternate" href="${url('/')}" type="text/html"/>
   <link rel="self" href="${url('/feed/')}" type="application/atom+xml"/>

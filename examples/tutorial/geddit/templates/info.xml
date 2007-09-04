@@ -6,10 +6,11 @@
   <id href="${url('/info/%s/' % link.id)}"/>
   <link rel="alternate" href="${url('/info/%s/' % link.id)}" type="text/html"/>
   <link rel="self" href="${url('/feed/%s/' % link.id)}" type="application/atom+xml"/>
-  <updated py:with="time=link.comments and link.comments)[-1].time or link.time">
+  <updated py:with="time=link.comments and link.comments[-1].time or link.time">
     ${time.isoformat()}
   </updated>
 
+  <?python from genshi import HTML ?>
   <entry py:for="idx, comment in enumerate(reversed(link.comments))">
     <title>Comment ${len(link.comments) - idx} on “${link.title}”</title>
     <link rel="alternate" href="${url('/info/%s/' % link.id)}#comment${idx}"
@@ -19,7 +20,9 @@
       <name>${comment.username}</name>
     </author>
     <updated>${comment.time.isoformat()}</updated>
-    <content>${comment.content}</content>
+    <content type="xhtml"><div xmlns="http://www.w3.org/1999/xhtml">
+      ${HTML(comment.content)}
+    </div></content>
   </entry>
 
 </feed>

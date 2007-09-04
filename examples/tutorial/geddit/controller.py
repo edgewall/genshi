@@ -4,7 +4,8 @@ import operator, os, pickle, sys
 
 import cherrypy
 from formencode import Invalid
-from genshi.filters import HTMLFormFiller
+from genshi.input import HTML
+from genshi.filters import HTMLFormFiller, HTMLSanitizer
 
 from geddit.form import LinkForm, CommentForm
 from geddit.lib import ajax, template
@@ -61,6 +62,8 @@ class Root(object):
             form = CommentForm()
             try:
                 data = form.to_python(data)
+                markup = HTML(data['content']) | HTMLSanitizer()
+                data['content'] = markup.render('xhtml')
                 comment = link.add_comment(**data)
                 if not ajax.is_xhr():
                     raise cherrypy.HTTPRedirect('/info/%s' % link.id)

@@ -38,4 +38,5 @@ ul.comments blockquote { color: #333; font-style: normal; margin: 0;
   border-color: #aaa; color: #000; text-decoration: none;
 }
 
+form p.hint { color: #666; font-size: 90%; font-style: italic; margin: 0; }
 form .error { color: #b00; }

@@ -112,10 +112,6 @@ Included
             ----- Included data above this line -----""",
                          tmpl.generate().render())
 
-    def test_include_without_loader(self):
-        text = '#include "oops.html"'
-        self.assertRaises(TemplateSyntaxError, OldTextTemplate, text)
-
 
 class NewTextTemplateTestCase(unittest.TestCase):
     """Tests for text template processing."""
@@ -235,10 +231,6 @@ class NewTextTemplateTestCase(unittest.TestCase):
         self.assertEqual("""----- Included data below this line -----
 Included
 ----- Included data above this line -----""", tmpl.generate().render())
-
-    def test_include_without_loader(self):
-        text = '{% include "oops.html" %}'
-        self.assertRaises(TemplateSyntaxError, NewTextTemplate, text)
 
 
 def suite():

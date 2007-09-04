@@ -33,8 +33,6 @@ http://svn.edgewall.org/repos/genshi/tags/0.5.0/
    set to "xml" (the default), the include is processed as before, but when set
    to "text", the included template is parsed as a text template using the new
    syntax (ticket #101).
- * If an include is found when parsing a template, but no template loader has
-   been specified, a `TemplateSyntaxError` is raised.
 
 
 Version 0.4.4

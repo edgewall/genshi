@@ -142,10 +142,6 @@ class MarkupTemplate(Template):
                     dirmap[(depth, tag)] = (directives, len(stream), strip)
 
                 if tag in self.XINCLUDE_NAMESPACE:
-                    if self._include not in self.filters:
-                        raise TemplateSyntaxError('Include found but no '
-                                                  'template loader specified',
-                                                  self.filepath, *pos[1:])
                     if tag.localname == 'include':
                         include_href = new_attrs.get('href')
                         if not include_href:

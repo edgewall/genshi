@@ -116,7 +116,6 @@ def main(filename):
     # Some global configuration; note that this could be moved into a
     # configuration file
     cherrypy.config.update({
-        'request.throw_errors': True,
         'tools.encode.on': True, 'tools.encode.encoding': 'utf-8',
         'tools.decode.on': True,
         'tools.trailing_slash.on': True,

@@ -13,6 +13,7 @@
 
 """Core classes for markup processing."""
 
+from itertools import chain
 import operator
 
 from genshi.util import plaintext, stripentities, striptags
@@ -252,12 +253,24 @@ COMMENT = Stream.COMMENT
 
 def _ensure(stream):
     """Ensure that every item on the stream is actually a markup event."""
-    for event in stream:
-        if type(event) is not tuple:
+    stream = iter(stream)
+    event = stream.next()
+
+    # Check whether the iterable is a real markup event stream by examining the
+    # first item it yields; if it's not we'll need to do some conversion
+    if type(event) is not tuple or len(event) != 3:
+        for event in chain([event], stream):
             if hasattr(event, 'totuple'):
                 event = event.totuple()
             else:
                 event = TEXT, unicode(event), (None, -1, -1)
+            yield event
+        return
+
+    # This looks like a markup event stream, so we'll just pass it through
+    # unchanged
+    yield event
+    for event in stream:
         yield event
 
 

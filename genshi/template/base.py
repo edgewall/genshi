@@ -23,8 +23,7 @@ import os
 from StringIO import StringIO
 import sys
 
-from genshi.core import Attrs, Markup, Stream, StreamEventKind, START, TEXT, \
-                        _ensure
+from genshi.core import Attrs, Stream, StreamEventKind, START, TEXT, _ensure
 from genshi.input import ParseError
 
 __all__ = ['Context', 'Template', 'TemplateError', 'TemplateRuntimeError',
@@ -302,6 +301,7 @@ class Template(object):
     """
 
     serializer = None
+    _number_conv = unicode # function used to convert numbers to event data
 
     def __init__(self, source, basedir=None, filename=None, loader=None,
                  encoding=None, lookup='strict', allow_exec=True):
@@ -445,6 +445,7 @@ class Template(object):
         `TEXT` events.
         """
         filters = (self._flatten, self._eval)
+        number_conv = self._number_conv
 
         for kind, data, pos in stream:
 
@@ -477,7 +478,7 @@ class Template(object):
                     if isinstance(result, basestring):
                         yield TEXT, result, pos
                     elif isinstance(result, (int, float, long)):
-                        yield TEXT, Markup(result), pos
+                        yield TEXT, number_conv(result), pos
                     elif hasattr(result, '__iter__'):
                         substream = _ensure(result)
                         for filter_ in filters:

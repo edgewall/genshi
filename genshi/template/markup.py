@@ -15,7 +15,7 @@
 
 from itertools import chain
 
-from genshi.core import Attrs, Namespace, Stream, StreamEventKind
+from genshi.core import Attrs, Markup, Namespace, Stream, StreamEventKind
 from genshi.core import START, END, START_NS, END_NS, TEXT, PI, COMMENT
 from genshi.input import XMLParser
 from genshi.template.base import BadDirectiveError, Template, \
@@ -58,6 +58,7 @@ class MarkupTemplate(Template):
                   ('attrs', AttrsDirective),
                   ('strip', StripDirective)]
     serializer = 'xml'
+    _number_conv = Markup
 
     def __init__(self, source, basedir=None, filename=None, loader=None,
                  encoding=None, lookup='strict', allow_exec=True):

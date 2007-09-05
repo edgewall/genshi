@@ -23,7 +23,8 @@ import os
 from StringIO import StringIO
 import sys
 
-from genshi.core import Attrs, Stream, StreamEventKind, START, TEXT, _ensure
+from genshi.core import Attrs, Markup, Stream, StreamEventKind, START, TEXT, \
+                        _ensure
 from genshi.input import ParseError
 
 __all__ = ['Context', 'Template', 'TemplateError', 'TemplateRuntimeError',
@@ -470,11 +471,13 @@ class Template(object):
             elif kind is EXPR:
                 result = data.evaluate(ctxt)
                 if result is not None:
-                    # First check for a string, otherwise the iterable test below
-                    # succeeds, and the string will be chopped up into individual
-                    # characters
+                    # First check for a string, otherwise the iterable test
+                    # below succeeds, and the string will be chopped up into
+                    # individual characters
                     if isinstance(result, basestring):
                         yield TEXT, result, pos
+                    elif isinstance(result, (int, float, long)):
+                        yield TEXT, Markup(result), pos
                     elif hasattr(result, '__iter__'):
                         substream = _ensure(result)
                         for filter_ in filters:

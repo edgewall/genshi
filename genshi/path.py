@@ -43,7 +43,8 @@ import operator
 import re
 
 from genshi.core import Stream, Attrs, Namespace, QName
-from genshi.core import START, END, TEXT, COMMENT, PI
+from genshi.core import START, END, TEXT, START_NS, END_NS, COMMENT, PI, \
+                        START_CDATA, END_CDATA
 
 __all__ = ['Path', 'PathSyntaxError']
 __docformat__ = 'restructuredtext en'
@@ -195,6 +196,9 @@ class Path(object):
                     continue
                 elif kind is START:
                     cursors.append(cursors and cursors[-1] or 0)
+                elif kind is START_NS or kind is END_NS \
+                        or kind is START_CDATA or kind is END_CDATA:
+                    continue
 
                 if updateonly or retval or not cursors:
                     continue
@@ -272,6 +276,8 @@ class Path(object):
                     if not matched or last_step or not (
                             axis is SELF or axis is DESCENDANT_OR_SELF):
                         break
+                    if ctxtnode and axis is DESCENDANT_OR_SELF:
+                        ctxtnode = False
 
                 if (retval or not matched) and kind is START and \
                         not (axis is DESCENDANT or axis is DESCENDANT_OR_SELF):

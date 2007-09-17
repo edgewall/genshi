@@ -76,7 +76,7 @@ class PathTestCase(unittest.TestCase):
         path = Path('//*')
         self.assertEqual('<Path "descendant-or-self::node()/child::*">',
                          repr(path))
-        self.assertEqual('<elem/>', path.select(xml).render())
+        self.assertEqual('<root><elem/></root>', path.select(xml).render())
 
     def test_1step_attribute(self):
         path = Path('@foo')

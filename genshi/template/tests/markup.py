@@ -388,6 +388,26 @@ class MarkupTemplateTestCase(unittest.TestCase):
         finally:
             shutil.rmtree(dirname)
 
+    def test_fallback_when_auto_reload_true(self):
+        dirname = tempfile.mkdtemp(suffix='genshi_test')
+        try:
+            file2 = open(os.path.join(dirname, 'tmpl2.html'), 'w')
+            try:
+                file2.write("""<html xmlns:xi="http://www.w3.org/2001/XInclude">
+                  <xi:include href="tmpl1.html"><xi:fallback>
+                    Missing</xi:fallback></xi:include>
+                </html>""")
+            finally:
+                file2.close()
+
+            loader = TemplateLoader([dirname], auto_reload=True)
+            tmpl = loader.load('tmpl2.html')
+            self.assertEqual("""<html>
+                    Missing
+                </html>""", tmpl.generate().render())
+        finally:
+            shutil.rmtree(dirname)
+
     def test_include_in_fallback(self):
         dirname = tempfile.mkdtemp(suffix='genshi_test')
         try:

@@ -409,7 +409,7 @@ class Template(object):
                         continue
                     elif fallback:
                         # Otherwise the include is performed at run time
-                        data = href, list(self._prepare(fallback))
+                        data = href, cls, list(self._prepare(fallback))
 
                 yield kind, data, pos
 

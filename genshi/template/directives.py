@@ -348,10 +348,10 @@ class ForDirective(Directive):
                                       template.filepath, lineno, offset)
         assign, value = value.split(' in ', 1)
         ast = _parse(assign, 'exec')
+        value = 'iter(%s)' % value.strip()
         self.assign = _assignment(ast.node.nodes[0].expr)
         self.filename = template.filepath
-        Directive.__init__(self, value.strip(), template, namespaces, lineno,
-                           offset)
+        Directive.__init__(self, value, template, namespaces, lineno, offset)
 
     def attach(cls, template, stream, value, namespaces, pos):
         if type(value) is dict:
@@ -368,16 +368,12 @@ class ForDirective(Directive):
         assign = self.assign
         scope = {}
         stream = list(stream)
-        try:
-            iterator = iter(iterable)
-            for item in iterator:
-                assign(scope, item)
-                ctxt.push(scope)
-                for event in _apply_directives(stream, ctxt, directives):
-                    yield event
-                ctxt.pop()
-        except TypeError, e:
-            raise TemplateRuntimeError(str(e), self.filename, *stream[0][2][1:])
+        for item in iterable:
+            assign(scope, item)
+            ctxt.push(scope)
+            for event in _apply_directives(stream, ctxt, directives):
+                yield event
+            ctxt.pop()
 
     def __repr__(self):
         return '<%s>' % self.__class__.__name__

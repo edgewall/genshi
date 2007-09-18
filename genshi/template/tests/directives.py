@@ -483,10 +483,19 @@ class ForDirectiveTestCase(unittest.TestCase):
         try:
             list(tmpl.generate(foo=12))
             self.fail('Expected TemplateRuntimeError')
-        except TemplateRuntimeError, e:
-            self.assertEqual('test.html', e.filename)
-            if sys.version_info[:2] >= (2, 4):
-                self.assertEqual(2, e.lineno)
+        except TypeError, e:
+            self.assertEqual('iteration over non-sequence', str(e))
+            exc_type, exc_value, exc_traceback = sys.exc_info()
+            frame = exc_traceback.tb_next
+            frames = []
+            while frame.tb_next:
+                frame = frame.tb_next
+                frames.append(frame)
+            self.assertEqual("<Expression u'iter(foo)'>",
+                             frames[-1].tb_frame.f_code.co_name)
+            self.assertEqual('test.html',
+                             frames[-1].tb_frame.f_code.co_filename)
+            self.assertEqual(2, frames[-1].tb_lineno)
 
 
 class IfDirectiveTestCase(unittest.TestCase):

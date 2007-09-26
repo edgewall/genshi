@@ -489,7 +489,7 @@ BUILTINS.update({'Markup': Markup, 'Undefined': Undefined})
 # underscores are valid we have to add __import__ here.
 UNSAFE_NAMES = ['file', 'open', 'eval', 'locals', 'globals', 'vars',
                 'help', 'quit', 'exit', 'input', 'raw_input', 'setattr',
-                'delattr', 'reload', 'compile', 'type']
+                'getattr', 'delattr', 'reload', 'compile', 'type']
 
 # XXX: provide a secure range function
 SECURE_BUILTINS = BUILTINS.copy()

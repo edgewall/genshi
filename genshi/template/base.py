@@ -304,7 +304,8 @@ class Template(object):
     _number_conv = unicode # function used to convert numbers to event data
 
     def __init__(self, source, basedir=None, filename=None, loader=None,
-                 encoding=None, lookup='strict', allow_exec=True):
+                 encoding=None, lookup='strict', allow_exec=True,
+                 secure=False):
         """Initialize a template from either a string, a file-like object, or
         an already parsed markup stream.
         
@@ -323,6 +324,10 @@ class Template(object):
                        default), "lenient", or a custom lookup class
         :param allow_exec: whether Python code blocks in templates should be
                            allowed
+        :param secure: whether genshi should evaluate the template in safe
+                       mode. See the documentation on the sandbox features
+                       for more details. In secure mode allow_exec is
+                       automatically disabled.
         
         :note: Changed in 0.5: Added the `allow_exec` argument
         """
@@ -334,7 +339,8 @@ class Template(object):
             self.filepath = filename
         self.loader = loader
         self.lookup = lookup
-        self.allow_exec = allow_exec
+        self.allow_exec = not secure and allow_exec
+        self.secure = secure
 
         self.filters = [self._flatten, self._eval, self._exec]
         if loader:

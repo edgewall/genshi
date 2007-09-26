@@ -131,10 +131,11 @@ class NewTextTemplate(Template):
 
     def __init__(self, source, basedir=None, filename=None, loader=None,
                  encoding=None, lookup='strict', allow_exec=False,
-                 delims=('{%', '%}', '{#', '#}')):
+                 secure=False, delims=('{%', '%}', '{#', '#}')):
         self.delimiters = delims
         Template.__init__(self, source, basedir=basedir, filename=filename,
-                          loader=loader, encoding=encoding, lookup=lookup)
+                          loader=loader, encoding=encoding, lookup=lookup,
+                          secure=secure)
 
     def _get_delims(self):
         return self._delims

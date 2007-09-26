@@ -24,6 +24,7 @@ except NameError:
     from sets import Set as set
 import sys
 from textwrap import dedent
+from types import FunctionType, MethodType
 
 from genshi.core import Markup
 from genshi.template.base import TemplateRuntimeError
@@ -36,10 +37,10 @@ __docformat__ = 'restructuredtext en'
 
 class Code(object):
     """Abstract base class for the `Expression` and `Suite` classes."""
-    __slots__ = ['source', 'code', 'ast', '_globals']
+    __slots__ = ['source', 'code', 'ast', 'secure', '_globals']
 
     def __init__(self, source, filename=None, lineno=-1, lookup='strict',
-                 xform=None):
+                 xform=None, secure=False):
         """Create the code object, either from a string, or from an AST node.
         
         :param source: either a string containing the source code, or an AST
@@ -53,6 +54,7 @@ class Code(object):
         :param xform: the AST transformer that should be applied to the code;
                       if `None`, the appropriate transformation is chosen
                       depending on the mode
+        :param secure: If security features should be enabled.
         """
         if isinstance(source, basestring):
             self.source = source
@@ -68,11 +70,18 @@ class Code(object):
 
         self.ast = node
         self.code = _compile(node, self.source, mode=self.mode,
-                             filename=filename, lineno=lineno, xform=xform)
+                             filename=filename, lineno=lineno, xform=xform,
+                             secure=secure)
         if lookup is None:
             lookup = LenientLookup
         elif isinstance(lookup, basestring):
-            lookup = {'lenient': LenientLookup, 'strict': StrictLookup}[lookup]
+            lookup = {
+                'lenient':  LenientLookup,
+                'strict':   StrictLookup
+            }[lookup]
+            if secure:
+                lookup = SecurityLookupWrapper(lookup)
+        self.secure = secure
         self._globals = lookup.globals()
 
     def __eq__(self, other):
@@ -365,6 +374,66 @@ class StrictLookup(LookupBase):
     undefined = classmethod(undefined)
 
 
+class SecurityLookupWrapper(object):
+    """
+    Special class that wraps a lookup so that insecure accesses result
+    in undefined.  Additionally the globals are secured.
+    """
+
+    def __init__(self, lookup):
+        self._lookup = lookup
+
+    def __getattr__(self, name):
+        return getattr(self._lookup, name)
+
+    def globals(self):
+        namespace = self._lookup.globals()
+        namespace.update(
+            _lookup_name=self.lookup_name,
+            _lookup_attr=self.lookup_attr,
+            _lookup_item=self.lookup_item
+        )
+        return namespace
+
+    def lookup_name(self, data, name):
+        __traceback_hide__ = True
+        if name.startswith('_'):
+            val = self._lookup.undefined(name)
+        else:
+            val = data.get(name, UNDEFINED)
+            if val is UNDEFINED:
+                val = SECURE_BUILTINS.get(name, val)
+                if val is UNDEFINED:
+                    val = self._lookup.undefined(name)
+        return val
+
+    def lookup_attr(self, data, obj, key):
+        __traceback_hide__ = True
+        # XXX: if we weaken this, don't forget to create an
+        # _unsafe_test for sys._active_frames / sys._getframe
+        if key.startswith('_') or self._unsafe_test(obj, key):
+            return self._lookup.undefined(key)
+        return self._lookup.lookup_attr(data, obj, key)
+
+    def lookup_item(cls, data, obj, key):
+        __traceback_hide__ = True
+        if key.startswith('_') or self._unsafe_test(obj, key):
+            return self._lookup.undefined(key)
+        return self._lookup.lookup_item(data, obj, key)
+
+    def _unsafe_test(self, obj, key):
+        if isinstance(obj, MethodType):
+            if key in ('im_class', 'im_func', 'im_self'):
+                return True
+            obj = obj.im_func
+        if isinstance(obj, FunctionType):
+            return key in ('func_closure', 'func_code', 'func_defaults',
+                           'func_dict', 'func_doc', 'func_globals',
+                           'func_name')
+        known_unsafe = getattr(obj, '__genshi_unsafe__', ())
+        return key in known_unsafe
+
+
 def _parse(source, mode='eval'):
     source = source.strip()
     if mode == 'exec':
@@ -379,11 +448,11 @@ def _parse(source, mode='eval'):
     return parse(source, mode)
 
 def _compile(node, source=None, mode='eval', filename=None, lineno=-1,
-             xform=None):
+             xform=None, secure=False):
     if xform is None:
         xform = {'eval': ExpressionASTTransformer}.get(mode,
                                                        TemplateASTTransformer)
-    tree = xform().visit(node)
+    tree = xform(secure).visit(node)
     if isinstance(filename, unicode):
         # unicode file names not allowed for code objects
         filename = filename.encode('utf-8', 'replace')
@@ -415,6 +484,19 @@ def _compile(node, source=None, mode='eval', filename=None, lineno=-1,
 
 BUILTINS = __builtin__.__dict__.copy()
 BUILTINS.update({'Markup': Markup, 'Undefined': Undefined})
+
+# XXX: if we weaken the rule for global name resultion so that leading
+# underscores are valid we have to add __import__ here.
+UNSAFE_NAMES = ['file', 'open', 'eval', 'locals', 'globals', 'vars',
+                'help', 'quit', 'exit', 'input', 'raw_input', 'setattr',
+                'delattr', 'reload', 'compile', 'range', 'type']
+
+# XXX: provide a secure range function
+SECURE_BUILTINS = BUILTINS.copy()
+for _unsafe_name in UNSAFE_NAMES:
+    del SECURE_BUILTINS[_unsafe_name]
+del _unsafe_name
+
 CONSTANTS = frozenset(['False', 'True', 'None', 'NotImplemented', 'Ellipsis'])
 
 
@@ -424,6 +506,9 @@ class ASTTransformer(object):
     Every visitor method can be overridden to return an AST node that has been
     altered or replaced in some way.
     """
+
+    def __init__(self, secure):
+        self.secure = secure
 
     def visit(self, node):
         if node is None:
@@ -658,7 +743,8 @@ class TemplateASTTransformer(ASTTransformer):
     for code embedded in templates.
     """
 
-    def __init__(self):
+    def __init__(self, secure):
+        ASTTransformer.__init__(self, secure)
         self.locals = [CONSTANTS]
 
     def visitConst(self, node):
@@ -744,6 +830,22 @@ class TemplateASTTransformer(ASTTransformer):
             func_args = [ast.Name('data'), ast.Const(node.name)]
             node = ast.CallFunc(ast.Name('_lookup_name'), func_args)
         return node
+
+    def visitGetattr(self, node):
+        if self.secure:
+            return ast.CallFunc(ast.Name('_lookup_attr'), [
+                ast.Name('data'), self.visit(node.expr),
+                ast.Const(node.attrname)
+            ])
+        return ASTTransformer.visitGetattr(self, node)
+
+    def visitSubscript(self, node):
+        if self.secure:
+            return ast.CallFunc(ast.Name('_lookup_item'), [
+                ast.Name('data'), self.visit(node.expr),
+                ast.Tuple([self.visit(sub) for sub in node.subs])
+            ])
+        return ASTTransformer.visitSubscript(self, node)
 
 
 class ExpressionASTTransformer(TemplateASTTransformer):

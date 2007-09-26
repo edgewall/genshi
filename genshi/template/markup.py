@@ -61,10 +61,11 @@ class MarkupTemplate(Template):
     _number_conv = Markup
 
     def __init__(self, source, basedir=None, filename=None, loader=None,
-                 encoding=None, lookup='strict', allow_exec=True):
+                 encoding=None, lookup='strict', allow_exec=True,
+                 secure=False):
         Template.__init__(self, source, basedir=basedir, filename=filename,
                           loader=loader, encoding=encoding, lookup=lookup,
-                          allow_exec=allow_exec)
+                          allow_exec=allow_exec, secure=secure)
         # Make sure the include filter comes after the match filter
         if loader:
             self.filters.remove(self._include)

@@ -37,10 +37,10 @@ __docformat__ = 'restructuredtext en'
 
 class Code(object):
     """Abstract base class for the `Expression` and `Suite` classes."""
-    __slots__ = ['source', 'code', 'ast', 'secure', '_globals']
+    __slots__ = ['source', 'code', 'ast', 'restricted', '_globals']
 
     def __init__(self, source, filename=None, lineno=-1, lookup='strict',
-                 xform=None, secure=False):
+                 xform=None, restricted=False):
         """Create the code object, either from a string, or from an AST node.
         
         :param source: either a string containing the source code, or an AST
@@ -54,7 +54,7 @@ class Code(object):
         :param xform: the AST transformer that should be applied to the code;
                       if `None`, the appropriate transformation is chosen
                       depending on the mode
-        :param secure: If security features should be enabled.
+        :param restricted: If security features should be enabled.
         """
         if isinstance(source, basestring):
             self.source = source
@@ -71,7 +71,7 @@ class Code(object):
         self.ast = node
         self.code = _compile(node, self.source, mode=self.mode,
                              filename=filename, lineno=lineno, xform=xform,
-                             secure=secure)
+                             restricted=restricted)
         if lookup is None:
             lookup = LenientLookup
         elif isinstance(lookup, basestring):
@@ -79,9 +79,9 @@ class Code(object):
                 'lenient':  LenientLookup,
                 'strict':   StrictLookup
             }[lookup]
-            if secure:
-                lookup = SecurityLookupWrapper(lookup)
-        self.secure = secure
+            if restricted:
+                lookup = RestrictedLookupWrapper(lookup)
+        self.restricted = restricted
         self._globals = lookup.globals()
 
     def __eq__(self, other):
@@ -374,7 +374,7 @@ class StrictLookup(LookupBase):
     undefined = classmethod(undefined)
 
 
-class SecurityLookupWrapper(object):
+class RestrictedLookupWrapper(object):
     """
     Special class that wraps a lookup so that insecure accesses result
     in undefined.  Additionally the globals are secured.
@@ -448,11 +448,11 @@ def _parse(source, mode='eval'):
     return parse(source, mode)
 
 def _compile(node, source=None, mode='eval', filename=None, lineno=-1,
-             xform=None, secure=False):
+             xform=None, restricted=False):
     if xform is None:
         xform = {'eval': ExpressionASTTransformer}.get(mode,
                                                        TemplateASTTransformer)
-    tree = xform(secure).visit(node)
+    tree = xform(restricted).visit(node)
     if isinstance(filename, unicode):
         # unicode file names not allowed for code objects
         filename = filename.encode('utf-8', 'replace')
@@ -487,14 +487,13 @@ BUILTINS.update({'Markup': Markup, 'Undefined': Undefined})
 
 # XXX: if we weaken the rule for global name resultion so that leading
 # underscores are valid we have to add __import__ here.
-UNSAFE_NAMES = ['file', 'open', 'eval', 'locals', 'globals', 'vars',
+UNSAFE_NAMES = ['file', 'open', 'eval', 'locals', 'globals', 'vars', 'buffer',
                 'help', 'quit', 'exit', 'input', 'raw_input', 'setattr',
-                'getattr', 'delattr', 'reload', 'compile', 'type']
+                'getattr', 'delattr', 'reload', 'compile', 'type', 'intern']
 
-# XXX: provide a secure range function
 SECURE_BUILTINS = BUILTINS.copy()
 for _unsafe_name in UNSAFE_NAMES:
-    del SECURE_BUILTINS[_unsafe_name]
+    SECURE_BUILTINS.pop(_unsafe_name, None)
 del _unsafe_name
 SECURE_BUILTINS['range'] = safe_range
 
@@ -508,8 +507,8 @@ class ASTTransformer(object):
     altered or replaced in some way.
     """
 
-    def __init__(self, secure):
-        self.secure = secure
+    def __init__(self, restricted):
+        self.restricted = restricted
 
     def visit(self, node):
         if node is None:
@@ -744,8 +743,8 @@ class TemplateASTTransformer(ASTTransformer):
     for code embedded in templates.
     """
 
-    def __init__(self, secure):
-        ASTTransformer.__init__(self, secure)
+    def __init__(self, restricted):
+        ASTTransformer.__init__(self, restricted)
         self.locals = [CONSTANTS]
 
     def visitConst(self, node):

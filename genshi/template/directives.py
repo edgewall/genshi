@@ -111,7 +111,7 @@ class Directive(object):
         try:
             return expr and Expression(expr, template.filepath, lineno,
                                        lookup=template.lookup,
-                                       secure=template.secure) or None
+                                       restricted=template.restricted) or None
         except SyntaxError, err:
             err.msg += ' in expression "%s" of "%s" directive' % (expr,
                                                                   cls.tagname)

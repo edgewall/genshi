@@ -62,10 +62,10 @@ class MarkupTemplate(Template):
 
     def __init__(self, source, basedir=None, filename=None, loader=None,
                  encoding=None, lookup='strict', allow_exec=True,
-                 secure=False):
+                 restricted=False):
         Template.__init__(self, source, basedir=basedir, filename=filename,
                           loader=loader, encoding=encoding, lookup=lookup,
-                          allow_exec=allow_exec, secure=secure)
+                          allow_exec=allow_exec, restricted=restricted)
         # Make sure the include filter comes after the match filter
         if loader:
             self.filters.remove(self._include)
@@ -130,7 +130,8 @@ class MarkupTemplate(Template):
                         if value:
                             value = list(interpolate(value, self.basedir,
                                                      pos[0], pos[1], pos[2],
-                                                     lookup=self.lookup))
+                                                     lookup=self.lookup,
+                                                     restricted=self.restricted))
                             if len(value) == 1 and value[0][0] is TEXT:
                                 value = value[0][1]
                         else:
@@ -213,7 +214,8 @@ class MarkupTemplate(Template):
             elif kind is TEXT:
                 for kind, data, pos in interpolate(data, self.basedir, pos[0],
                                                    pos[1], pos[2],
-                                                   lookup=self.lookup):
+                                                   lookup=self.lookup,
+                                                   restricted=self.restricted):
                     stream.append((kind, data, pos))
 
             elif kind is COMMENT:

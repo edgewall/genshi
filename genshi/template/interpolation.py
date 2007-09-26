@@ -31,7 +31,7 @@ NAMECHARS = NAMESTART + '.0123456789'
 PREFIX = '$'
 
 def interpolate(text, basedir=None, filename=None, lineno=-1, offset=0,
-                lookup='strict'):
+                lookup='strict', restricted=False):
     """Parse the given string and extract expressions.
     
     This function is a generator that yields `TEXT` events for literal strings,
@@ -73,7 +73,7 @@ def interpolate(text, basedir=None, filename=None, lineno=-1, offset=0,
             if chunk:
                 try:
                     expr = Expression(chunk.strip(), pos[0], pos[1],
-                                      lookup=lookup)
+                                      lookup=lookup, restricted=restricted)
                     yield EXPR, expr, tuple(pos)
                 except SyntaxError, err:
                     raise TemplateSyntaxError(err, filepath, pos[1],

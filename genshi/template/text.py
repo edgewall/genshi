@@ -131,11 +131,11 @@ class NewTextTemplate(Template):
 
     def __init__(self, source, basedir=None, filename=None, loader=None,
                  encoding=None, lookup='strict', allow_exec=False,
-                 secure=False, delims=('{%', '%}', '{#', '#}')):
+                 restricted=False, delims=('{%', '%}', '{#', '#}')):
         self.delimiters = delims
         Template.__init__(self, source, basedir=basedir, filename=filename,
                           loader=loader, encoding=encoding, lookup=lookup,
-                          secure=secure)
+                          restricted=restricted)
 
     def _get_delims(self):
         return self._delims
@@ -180,7 +180,8 @@ class NewTextTemplate(Template):
                 text = _escape_sub(_escape_repl, source[offset:start])
                 for kind, data, pos in interpolate(text, self.basedir,
                                                    self.filename, lineno,
-                                                   lookup=self.lookup):
+                                                   lookup=self.lookup,
+                                                   restricted=self.restricted):
                     stream.append((kind, data, pos))
                 lineno += len(text.splitlines())
 
@@ -226,7 +227,8 @@ class NewTextTemplate(Template):
             text = _escape_sub(_escape_repl, source[offset:])
             for kind, data, pos in interpolate(text, self.basedir,
                                                self.filename, lineno,
-                                               lookup=self.lookup):
+                                               lookup=self.lookup,
+                                               restricted=self.restricted):
                 stream.append((kind, data, pos))
 
         return stream
@@ -288,7 +290,8 @@ class OldTextTemplate(Template):
                 text = source[offset:start]
                 for kind, data, pos in interpolate(text, self.basedir,
                                                    self.filename, lineno,
-                                                   lookup=self.lookup):
+                                                   lookup=self.lookup,
+                                                   restricted=self.restricted):
                     stream.append((kind, data, pos))
                 lineno += len(text.splitlines())
 
@@ -324,7 +327,8 @@ class OldTextTemplate(Template):
             text = source[offset:].replace('\\#', '#')
             for kind, data, pos in interpolate(text, self.basedir,
                                                self.filename, lineno,
-                                               lookup=self.lookup):
+                                               lookup=self.lookup,
+                                               restricted=self.restricted):
                 stream.append((kind, data, pos))
 
         return stream

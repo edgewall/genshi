@@ -572,8 +572,6 @@ class ASTTransformer(object):
         return self._clone(node, self.visit(node.expr), node.attrname)
 
     def visitLambda(self, node):
-        if self.secure:
-            raise SyntaxError('lambda not allowed in secure evaluation mode.')
         node = self._clone(node, node.argnames,
             [self.visit(x) for x in node.defaults], node.flags,
             self.visit(node.code)

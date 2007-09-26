@@ -243,3 +243,12 @@ def striptags(text):
     :return: the text with tags removed
     """
     return _STRIPTAGS_RE.sub('', text)
+
+SAFE_RANGE_MAX = 10000
+def safe_range(*args):
+    """Save version of a normal range."""
+    rng = xrange(*args)
+    if len(rng) > SAFE_RANGE_MAX:
+        raise ValueError('cannot generate ranges with more than %d items.' %
+                         SAFE_RANGE_MAX)
+    return list(rng)

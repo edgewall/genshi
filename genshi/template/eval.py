@@ -28,7 +28,7 @@ from types import FunctionType, MethodType
 
 from genshi.core import Markup
 from genshi.template.base import TemplateRuntimeError
-from genshi.util import flatten
+from genshi.util import flatten, safe_range
 
 __all__ = ['Code', 'Expression', 'Suite', 'LenientLookup', 'StrictLookup',
            'Undefined', 'UndefinedError']
@@ -489,13 +489,14 @@ BUILTINS.update({'Markup': Markup, 'Undefined': Undefined})
 # underscores are valid we have to add __import__ here.
 UNSAFE_NAMES = ['file', 'open', 'eval', 'locals', 'globals', 'vars',
                 'help', 'quit', 'exit', 'input', 'raw_input', 'setattr',
-                'delattr', 'reload', 'compile', 'range', 'type']
+                'delattr', 'reload', 'compile', 'type']
 
 # XXX: provide a secure range function
 SECURE_BUILTINS = BUILTINS.copy()
 for _unsafe_name in UNSAFE_NAMES:
     del SECURE_BUILTINS[_unsafe_name]
 del _unsafe_name
+SECURE_BUILTINS['range'] = safe_range
 
 CONSTANTS = frozenset(['False', 'True', 'None', 'NotImplemented', 'Ellipsis'])
 
@@ -830,22 +831,6 @@ class TemplateASTTransformer(ASTTransformer):
             func_args = [ast.Name('data'), ast.Const(node.name)]
             node = ast.CallFunc(ast.Name('_lookup_name'), func_args)
         return node
-
-    def visitGetattr(self, node):
-        if self.secure:
-            return ast.CallFunc(ast.Name('_lookup_attr'), [
-                ast.Name('data'), self.visit(node.expr),
-                ast.Const(node.attrname)
-            ])
-        return ASTTransformer.visitGetattr(self, node)
-
-    def visitSubscript(self, node):
-        if self.secure:
-            return ast.CallFunc(ast.Name('_lookup_item'), [
-                ast.Name('data'), self.visit(node.expr),
-                ast.Tuple([self.visit(sub) for sub in node.subs])
-            ])
-        return ASTTransformer.visitSubscript(self, node)
 
 
 class ExpressionASTTransformer(TemplateASTTransformer):

@@ -28,7 +28,7 @@ from types import FunctionType, MethodType
 
 from genshi.core import Markup
 from genshi.template.base import TemplateRuntimeError
-from genshi.util import flatten, safe_range
+from genshi.util import flatten, safe_range, safe_xrange
 
 __all__ = ['Code', 'Expression', 'Suite', 'LenientLookup', 'StrictLookup',
            'Undefined', 'UndefinedError']
@@ -377,7 +377,14 @@ class StrictLookup(LookupBase):
 class RestrictedLookupWrapper(object):
     """
     Special class that wraps a lookup so that insecure accesses result
-    in undefined.  Additionally the globals are secured.
+    in undefined.  Considered insecure are names or attributes starting
+    with underscores, default function or method attributes, or any
+    attribute that is listed in the `__genshi_unsafe__` member of the
+    owning class.
+
+    The attribute and item lookup mechanisms of the wrapped lookup is
+    used if the attribute is considered safe, names however are always
+    resolved in the class itself.
     """
 
     def __init__(self, lookup):
@@ -485,17 +492,19 @@ def _compile(node, source=None, mode='eval', filename=None, lineno=-1,
 BUILTINS = __builtin__.__dict__.copy()
 BUILTINS.update({'Markup': Markup, 'Undefined': Undefined})
 
-# XXX: if we weaken the rule for global name resultion so that leading
-# underscores are valid we have to add __import__ here.
 UNSAFE_NAMES = ['file', 'open', 'eval', 'locals', 'globals', 'vars', 'buffer',
                 'help', 'quit', 'exit', 'input', 'raw_input', 'setattr',
-                'getattr', 'delattr', 'reload', 'compile', 'type', 'intern']
+                'getattr', 'delattr', 'reload', 'compile', 'type', 'intern',
+                '__import__', '']
 
 SECURE_BUILTINS = BUILTINS.copy()
 for _unsafe_name in UNSAFE_NAMES:
     SECURE_BUILTINS.pop(_unsafe_name, None)
 del _unsafe_name
-SECURE_BUILTINS['range'] = safe_range
+SECURE_BUILTINS.update(
+    range=safe_range,
+    xrange=safe_xrange
+)
 
 CONSTANTS = frozenset(['False', 'True', 'None', 'NotImplemented', 'Ellipsis'])
 

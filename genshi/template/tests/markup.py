@@ -596,6 +596,21 @@ class MarkupTemplateTestCase(unittest.TestCase):
         </html>""")
         tmpl = MarkupTemplate(xml, filename='test.html', allow_exec=True)
 
+    def test_exec_in_match(self): 
+        xml = ("""<html xmlns:py="http://genshi.edgewall.org/">
+          <py:match path="body/p">
+            <?python title="wakka wakka wakka" ?>
+            ${title}
+          </py:match>
+          <body><p>moot text</p></body>
+        </html>""")
+        tmpl = MarkupTemplate(xml, filename='test.html', allow_exec=True)
+        self.assertEqual("""<html>
+          <body>
+            wakka wakka wakka
+          </body>
+        </html>""", tmpl.generate().render())
+
 
 def suite():
     suite = unittest.TestSuite()

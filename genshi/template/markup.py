@@ -292,9 +292,9 @@ class MarkupTemplate(Template):
                     remaining = match_templates
                     if 'match_once' not in hints:
                         remaining = remaining[:idx] + remaining[idx + 1:]
-                    for event in self._match(self._eval(self._flatten(template,
-                                                                      ctxt),
-                                                        ctxt), ctxt, remaining):
+                    for event in self._match(self._exec(
+                                    self._eval(self._flatten(template, ctxt),
+                                    ctxt), ctxt), ctxt, remaining):
                         yield event
 
                     ctxt.pop()

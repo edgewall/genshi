@@ -97,7 +97,7 @@ class AbstractTemplateEnginePlugin(object):
 
         return self.loader.load(templatename)
 
-    def _get_render_options(self, format=None):
+    def _get_render_options(self, format=None, fragment=False):
         if format is None:
             format = self.default_format
         kwargs = {'method': format}
@@ -107,7 +107,7 @@ class AbstractTemplateEnginePlugin(object):
 
     def render(self, info, format=None, fragment=False, template=None):
         """Render the template to a string using the provided info."""
-        kwargs = self._get_render_options(format=format)
+        kwargs = self._get_render_options(format=format, fragment=fragment)
         return self.transform(info, template).render(**kwargs)
 
     def transform(self, info, template):
@@ -140,10 +140,10 @@ class MarkupTemplateEnginePlugin(AbstractTemplateEnginePlugin):
             raise ConfigurationError('Unknown output format %r' % format)
         self.default_format = format
 
-    def _get_render_options(self, format=None):
+    def _get_render_options(self, format=None, fragment=False):
         kwargs = super(MarkupTemplateEnginePlugin,
-                       self)._get_render_options(format)
-        if self.default_doctype:
+                       self)._get_render_options(format, fragment)
+        if self.default_doctype and not fragment:
             kwargs['doctype'] = self.default_doctype
         return kwargs
 

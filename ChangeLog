@@ -34,6 +34,8 @@ http://svn.edgewall.org/repos/genshi/tags/0.5.0/
    to "text", the included template is parsed as a text template using the new
    syntax (ticket #101).
  * Python code blocks inside match templates are now executed (ticket #155).
+ * The template engine plugin no longer adds the `default_doctype` when the
+   `fragment` parameter is `True`.
 
 
 Version 0.4.4

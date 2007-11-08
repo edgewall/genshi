@@ -145,6 +145,23 @@ class MarkupTemplateEnginePluginTestCase(unittest.TestCase):
   </body>
 </html>""", output)
 
+    def test_render_fragment_with_doctype(self):
+        plugin = MarkupTemplateEnginePlugin(options={
+            'genshi.default_doctype': 'html-strict',
+        })
+        tmpl = plugin.load_template(PACKAGE + '.templates.test_no_doctype')
+        output = plugin.render({'message': 'Hello'}, template=tmpl,
+                               fragment=True)
+        self.assertEqual("""<html lang="en">
+  <head>
+    <title>Test</title>
+  </head>
+  <body>
+    <h1>Test</h1>
+    <p>Hello</p>
+  </body>
+</html>""", output)
+
     def test_helper_functions(self):
         plugin = MarkupTemplateEnginePlugin()
         tmpl = plugin.load_template(PACKAGE + '.templates.functions')

@@ -73,7 +73,7 @@ class Code(object):
             lookup = LenientLookup
         elif isinstance(lookup, basestring):
             lookup = {'lenient': LenientLookup, 'strict': StrictLookup}[lookup]
-        self._globals = lookup.globals()
+        self._globals = lookup.globals
 
     def __eq__(self, other):
         return (type(other) == type(self)) and (self.code == other.code)
@@ -139,7 +139,7 @@ class Expression(Code):
         :return: the result of the evaluation
         """
         __traceback_hide__ = 'before_and_this'
-        _globals = self._globals
+        _globals = self._globals()
         _globals['data'] = data
         return eval(self.code, _globals, {'data': data})
 
@@ -161,7 +161,7 @@ class Suite(Code):
         :param data: a mapping containing the data to execute in
         """
         __traceback_hide__ = 'before_and_this'
-        _globals = self._globals
+        _globals = self._globals()
         _globals['data'] = data
         exec self.code in _globals, data
 

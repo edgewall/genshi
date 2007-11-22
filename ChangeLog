@@ -38,6 +38,8 @@ http://svn.edgewall.org/repos/genshi/tags/0.5.0/
    `fragment` parameter is `True`.
  * The `striptags` function now also removes HTML/XML-style comments (ticket
    #150).
+ * The `py:replace` directive can now also be used as an element, with an
+   attribute named `value` (ticket #144).
 
 
 Version 0.4.4

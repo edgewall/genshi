@@ -207,6 +207,10 @@ class ContentDirective(Directive):
     __slots__ = []
 
     def attach(cls, template, stream, value, namespaces, pos):
+        if type(value) is dict:
+            raise TemplateSyntaxError('The content directive can not be used '
+                                      'as an element', template.filepath,
+                                      *pos[1:])
         expr = cls._parse_expr(value, template, *pos[1:])
         return None, [stream[0], (EXPR, expr, pos),  stream[-1]]
     attach = classmethod(attach)
@@ -484,6 +488,8 @@ class ReplaceDirective(Directive):
     __slots__ = []
 
     def attach(cls, template, stream, value, namespaces, pos):
+        if type(value) is dict:
+            value = value.get('value')
         if not value:
             raise TemplateSyntaxError('missing value for "replace" directive',
                                       template.filepath, *pos[1:])

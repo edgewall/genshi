@@ -484,7 +484,8 @@ class ForDirectiveTestCase(unittest.TestCase):
             list(tmpl.generate(foo=12))
             self.fail('Expected TemplateRuntimeError')
         except TypeError, e:
-            self.assertEqual('iteration over non-sequence', str(e))
+            assert (str(e) == "iteration over non-sequence" or
+                    str(e) == "'int' object is not iterable")
             exc_type, exc_value, exc_traceback = sys.exc_info()
             frame = exc_traceback.tb_next
             frames = []

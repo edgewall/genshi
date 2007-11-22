@@ -29,10 +29,10 @@ http://svn.edgewall.org/repos/genshi/tags/0.5.0/
  * Text templates now default to rendering as plain text; it is no longer
    necessary to explicitly specify the "text" method to the `render()` or
    `serialize()` method of the generated markup stream.
- * XInclude elements in markup templates now support the `parse` attribute; when
-   set to "xml" (the default), the include is processed as before, but when set
-   to "text", the included template is parsed as a text template using the new
-   syntax (ticket #101).
+ * XInclude elements in markup templates now support the `parse` attribute;
+   when set to "xml" (the default), the include is processed as before, but
+   when set to "text", the included template is parsed as a text template using
+   the new syntax (ticket #101).
  * Python code blocks inside match templates are now executed (ticket #155).
  * The template engine plugin no longer adds the `default_doctype` when the
    `fragment` parameter is `True`.
@@ -40,6 +40,10 @@ http://svn.edgewall.org/repos/genshi/tags/0.5.0/
    #150).
  * The `py:replace` directive can now also be used as an element, with an
    attribute named `value` (ticket #144).
+ * The `TextSerializer` class no longer strips all markup in text by default,
+   so that it is still possible to use the Genshi `escape` function even with
+   text templates. The old behavior is available via the `strip_markup` option
+   of the serializer (ticket #146).
 
 
 Version 0.4.4

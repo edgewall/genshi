@@ -36,6 +36,8 @@ http://svn.edgewall.org/repos/genshi/tags/0.5.0/
  * Python code blocks inside match templates are now executed (ticket #155).
  * The template engine plugin no longer adds the `default_doctype` when the
    `fragment` parameter is `True`.
+ * The `striptags` function now also removes HTML/XML-style comments (ticket
+   #150).
 
 
 Version 0.4.4

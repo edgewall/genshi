@@ -19,7 +19,7 @@ try:
 except ImportError:
     import dummy_threading as threading
 
-from genshi.template.base import TemplateError
+from genshi.template.base import TemplateError, SecurityError
 from genshi.util import LRUCache
 
 __all__ = ['TemplateLoader', 'TemplateNotFound']
@@ -185,6 +185,9 @@ class TemplateLoader(object):
 
             if os.path.isabs(filename):
                 # Bypass the search path if the requested filename is absolute
+                # but raise an exception if we are in restricted mode.
+                if self.restricted:
+                    raise SecurityError()
                 search_path = [os.path.dirname(filename)]
                 isabs = True
 

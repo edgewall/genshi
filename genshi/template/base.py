@@ -104,6 +104,11 @@ class TemplateRuntimeError(TemplateError):
     """
 
 
+class SecurityError(TemplateError):
+    """Exception raised in restricted mode if a template tried to exploit a
+    trap."""
+
+
 class Context(object):
     """Container for template input data.
     

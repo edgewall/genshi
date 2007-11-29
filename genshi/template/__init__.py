@@ -15,7 +15,7 @@
 
 from genshi.template.base import Context, Template, TemplateError, \
                                  TemplateRuntimeError, TemplateSyntaxError, \
-                                 BadDirectiveError
+                                 BadDirectiveError, SecurityError
 from genshi.template.loader import TemplateLoader, TemplateNotFound
 from genshi.template.markup import MarkupTemplate
 from genshi.template.text import TextTemplate, OldTextTemplate, NewTextTemplate

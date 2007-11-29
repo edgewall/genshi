@@ -185,9 +185,11 @@ class TemplateLoader(object):
 
             if os.path.isabs(filename):
                 # Bypass the search path if the requested filename is absolute
-                # but raise an exception if we are in restricted mode.
+                # and we are not in restricted mode.  otherwise raise exception.
                 if self.restricted:
-                    raise SecurityError()
+                    raise SecurityError('Loading of templates by an absolute '
+                                        'path name is not allowed in '
+                                        'restricted template execution.')
                 search_path = [os.path.dirname(filename)]
                 isabs = True
 
@@ -203,10 +205,30 @@ class TemplateLoader(object):
                 # Uh oh, don't know where to look for the template
                 raise TemplateError('Search path for templates not configured')
 
+            # if we are in restricted mode make sure that all the paths
+            # are expanded to their real path for the security tests.
+            if self.restricted:
+                raise_security_exception = False
+                search_path = [os.path.realpath(x) for x in search_path]
+
             for dirname in search_path:
                 filepath = os.path.join(dirname, filename)
+
                 try:
                     fileobj = open(filepath, 'U')
+
+                    # apparently the loading worked.  If the template is in
+                    # restricted mode make sure that loading this template is
+                    # a safe operation
+                    if self.restricted:
+                        real_filepath = os.path.realpath(filepath)
+                        for allowed_path in search_path:
+                            if real_filepath.startswith(allowed_path):
+                                break
+                        else:
+                            raise_security_exception = True
+                            continue
+
                     try:
                         if isabs:
                             # If the filename of either the included or the 
@@ -231,6 +253,13 @@ class TemplateLoader(object):
                 except IOError:
                     continue
 
+            # if the template is in restricted mode, it still hasn't
+            # found a template and `raise_security_exception` is set to
+            # `True` one lookup succeeded but pointed to an unsafe location.
+            # in that case it emits a SecurityError
+            if self.restricted and raise_security_exception:
+                raise SecurityError('Tried to load template from unsafe '
+                                    'location')
             raise TemplateNotFound(filename, search_path)
 
         finally:

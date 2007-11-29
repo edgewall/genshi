@@ -270,7 +270,7 @@ class MarkupTemplateTestCase(unittest.TestCase):
         finally:
             shutil.rmtree(dirname)
 
-    def test_dynamic_inlude_href(self):
+    def test_dynamic_include_href(self):
         dirname = tempfile.mkdtemp(suffix='genshi_test')
         try:
             file1 = open(os.path.join(dirname, 'tmpl1.html'), 'w')
@@ -296,7 +296,7 @@ class MarkupTemplateTestCase(unittest.TestCase):
         finally:
             shutil.rmtree(dirname)
 
-    def test_select_inluded_elements(self):
+    def test_select_included_elements(self):
         dirname = tempfile.mkdtemp(suffix='genshi_test')
         try:
             file1 = open(os.path.join(dirname, 'tmpl1.html'), 'w')
@@ -595,6 +595,75 @@ class MarkupTemplateTestCase(unittest.TestCase):
             </head>
         </html>""")
         tmpl = MarkupTemplate(xml, filename='test.html', allow_exec=True)
+
+    def test_exec_in_match(self): 
+        xml = ("""<html xmlns:py="http://genshi.edgewall.org/">
+          <py:match path="body/p">
+            <?python title="wakka wakka wakka" ?>
+            ${title}
+          </py:match>
+          <body><p>moot text</p></body>
+        </html>""")
+        tmpl = MarkupTemplate(xml, filename='test.html', allow_exec=True)
+        self.assertEqual("""<html>
+          <body>
+            wakka wakka wakka
+          </body>
+        </html>""", tmpl.generate().render())
+
+    def test_nested_include_matches(self):
+        # See ticket #157
+        dirname = tempfile.mkdtemp(suffix='genshi_test')
+        try:
+            file1 = open(os.path.join(dirname, 'tmpl1.html'), 'w')
+            try:
+                file1.write("""<html xmlns:py="http://genshi.edgewall.org/" py:strip="">
+   <div class="target">Some content.</div>
+</html>""")
+            finally:
+                file1.close()
+
+            file2 = open(os.path.join(dirname, 'tmpl2.html'), 'w')
+            try:
+                file2.write("""<html xmlns:py="http://genshi.edgewall.org/"
+    xmlns:xi="http://www.w3.org/2001/XInclude">
+  <body>
+    <h1>Some full html document that includes file1.html</h1>
+    <xi:include href="tmpl1.html" />
+  </body>
+</html>""")
+            finally:
+                file2.close()
+
+            file3 = open(os.path.join(dirname, 'tmpl3.html'), 'w')
+            try:
+                file3.write("""<html xmlns:py="http://genshi.edgewall.org/"
+    xmlns:xi="http://www.w3.org/2001/XInclude" py:strip="">
+  <div py:match="div[@class='target']" py:attrs="select('@*')">
+    Some added stuff.
+    ${select('*|text()')}
+  </div>
+  <xi:include href="tmpl2.html" />
+</html>
+""")
+            finally:
+                file3.close()
+
+            loader = TemplateLoader([dirname])
+            tmpl = loader.load('tmpl3.html')
+            self.assertEqual("""
+  <html>
+  <body>
+    <h1>Some full html document that includes file1.html</h1>
+   <div class="target">
+    Some added stuff.
+    Some content.
+  </div>
+  </body>
+</html>
+""", tmpl.generate().render())
+        finally:
+            shutil.rmtree(dirname)
 
 
 def suite():

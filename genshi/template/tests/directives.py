@@ -484,7 +484,8 @@ class ForDirectiveTestCase(unittest.TestCase):
             list(tmpl.generate(foo=12))
             self.fail('Expected TemplateRuntimeError')
         except TypeError, e:
-            self.assertEqual('iteration over non-sequence', str(e))
+            assert (str(e) == "iteration over non-sequence" or
+                    str(e) == "'int' object is not iterable")
             exc_type, exc_value, exc_traceback = sys.exc_info()
             frame = exc_traceback.tb_next
             frames = []
@@ -915,6 +916,21 @@ class MatchDirectiveTestCase(unittest.TestCase):
     #    </div>""", str(tmpl.generate()))
 
 
+class ContentDirectiveTestCase(unittest.TestCase):
+    """Tests for the `py:content` template directive."""
+
+    def test_as_element(self):
+        try:
+            tmpl = MarkupTemplate("""<doc xmlns:py="http://genshi.edgewall.org/">
+              <py:content foo="">Foo</py:content>
+            </doc>""", filename='test.html')
+            self.fail('Expected TemplateSyntaxError')
+        except TemplateSyntaxError, e:
+            self.assertEqual('test.html', e.filename)
+            if sys.version_info[:2] >= (2, 4):
+                self.assertEqual(2, e.lineno)
+
+
 class ReplaceDirectiveTestCase(unittest.TestCase):
     """Tests for the `py:replace` template directive."""
 
@@ -932,6 +948,14 @@ class ReplaceDirectiveTestCase(unittest.TestCase):
             self.assertEqual('test.html', e.filename)
             if sys.version_info[:2] >= (2, 4):
                 self.assertEqual(2, e.lineno)
+
+    def test_as_element(self):
+        tmpl = MarkupTemplate("""<div xmlns:py="http://genshi.edgewall.org/">
+          <py:replace value="title" />
+        </div>""", filename='test.html')
+        self.assertEqual("""<div>
+          Test
+        </div>""", str(tmpl.generate(title='Test')))
 
 
 class StripDirectiveTestCase(unittest.TestCase):
@@ -1064,6 +1088,7 @@ def suite():
     suite.addTest(unittest.makeSuite(ForDirectiveTestCase, 'test'))
     suite.addTest(unittest.makeSuite(IfDirectiveTestCase, 'test'))
     suite.addTest(unittest.makeSuite(MatchDirectiveTestCase, 'test'))
+    suite.addTest(unittest.makeSuite(ContentDirectiveTestCase, 'test'))
     suite.addTest(unittest.makeSuite(ReplaceDirectiveTestCase, 'test'))
     suite.addTest(unittest.makeSuite(StripDirectiveTestCase, 'test'))
     suite.addTest(unittest.makeSuite(WithDirectiveTestCase, 'test'))

@@ -499,7 +499,14 @@ Given ``bar='Bye'`` in the context data, this would produce:
     Bye
   </div>
 
-This directive can only be used as an attribute.
+This directive can also be used as an element (since version 0.5):
+
+.. code-block:: genshi
+
+  <div>
+    <py:replace value="title">Placeholder</py:replace>
+  </div>
+
 
 
 .. _`py:strip`:

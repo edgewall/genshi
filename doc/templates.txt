@@ -217,7 +217,7 @@ processing instruction in XML templates:
     <?python
         from genshi.builder import tag
         def greeting(name):
-            return tag.b('Hello, %s!' % name') ?>
+            return tag.b('Hello, %s!' % name) ?>
     ${greeting('world')}
   </div>
 
@@ -237,7 +237,7 @@ Genshi 0.5), code blocks use the special ``{% python %}`` directive:
   {% python
       from genshi.builder import tag
       def greeting(name):
-          return tag.b('Hello, %s!' % name')
+          return 'Hello, %s!' % name
   %}
   ${greeting('world')}
 

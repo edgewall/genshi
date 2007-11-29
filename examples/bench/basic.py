@@ -122,7 +122,7 @@ def kid(dirname, verbose=False):
     try:
         import kid
     except ImportError:
-        print>>sys.stderr, "SimpleTAL not installed, skipping"
+        print>>sys.stderr, "Kid not installed, skipping"
         return lambda: None
     kid.path = kid.TemplatePath([dirname])
     template = kid.load_template('template.kid').Template

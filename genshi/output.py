@@ -436,20 +436,29 @@ class TextSerializer(object):
     <Hello!>
 
     If text events contain literal markup (instances of the `Markup` class),
-    tags or entities are stripped from the output:
+    that markup is by default passed through unchanged:
     
-    >>> elem = tag.div(Markup('<a href="foo">Hello!</a><br/>'))
-    >>> print elem
-    <div><a href="foo">Hello!</a><br/></div>
-    >>> print ''.join(TextSerializer()(elem.generate()))
-    Hello!
+    >>> elem = tag.div(Markup('<a href="foo">Hello &amp; Bye!</a><br/>'))
+    >>> print elem.generate().render(TextSerializer)
+    <a href="foo">Hello &amp; Bye!</a><br/>
+    
+    You can use the `strip_markup` to change this behavior, so that tags and
+    entities are stripped from the output (or in the case of entities,
+    replaced with the equivalent character):
+
+    >>> print elem.generate().render(TextSerializer, strip_markup=True)
+    Hello & Bye!
     """
 
+    def __init__(self, strip_markup=False):
+        self.strip_markup = strip_markup
+
     def __call__(self, stream):
+        strip_markup = self.strip_markup
         for event in stream:
             if event[0] is TEXT:
                 data = event[1]
-                if type(data) is Markup:
+                if strip_markup and type(data) is Markup:
                     data = data.striptags().stripentities()
                 yield unicode(data)
 

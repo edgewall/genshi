@@ -111,7 +111,10 @@ def main(filename):
             pickle.dump(data, fileobj)
         finally:
             fileobj.close()
-    cherrypy.engine.on_stop_engine_list.append(_save_data)
+    if hasattr(cherrypy.engine, 'subscribe'): # CherryPy >= 3.1
+        cherrypy.engine.subscribe('stop', _save_data)
+    else:
+        cherrypy.engine.on_stop_engine_list.append(_save_data)
 
     # Some global configuration; note that this could be moved into a
     # configuration file

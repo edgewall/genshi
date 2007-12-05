@@ -103,6 +103,20 @@ class DocType(object):
     )
     XHTML = XHTML_STRICT
 
+    SVG_FULL = (
+        'svg', '-//W3C//DTD SVG 1.1//EN',
+        'http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd'
+    )
+    SVG_BASIC = (
+        'svg', '-//W3C//DTD SVG Basic 1.1//EN',
+        'http://www.w3.org/Graphics/SVG/1.1/DTD/svg11-basic.dtd'
+    )
+    SVG_TINY = (
+        'svg', '-//W3C//DTD SVG Tiny 1.1//EN',
+        'http://www.w3.org/Graphics/SVG/1.1/DTD/svg11-tiny.dtd'
+    )
+    SVG = SVG_FULL
+
     def get(cls, name):
         """Return the ``(name, pubid, sysid)`` tuple of the ``DOCTYPE``
         declaration for the specified name.
@@ -115,6 +129,9 @@ class DocType(object):
          * "xhtml" or "xhtml-strict" for the XHTML 1.0 strict DTD
          * "xhtml-transitional" for the XHTML 1.0 transitional DTD
          * "xhtml-frameset" for the XHTML 1.0 frameset DTD
+         * "svg" or "svg-full" for the SVG 1.1 DTD
+         * "svg-basic" for the SVG Basic 1.1 DTD
+         * "svg-tiny" for the SVG Tiny 1.1 DTD
         
         :param name: the name of the ``DOCTYPE``
         :return: the ``(name, pubid, sysid)`` tuple for the requested
@@ -129,6 +146,9 @@ class DocType(object):
             'xhtml': cls.XHTML, 'xhtml-strict': cls.XHTML_STRICT,
             'xhtml-transitional': cls.XHTML_TRANSITIONAL,
             'xhtml-frameset': cls.XHTML_FRAMESET,
+            'svg': cls.SVG, 'svg-full': cls.SVG_FULL,
+            'svg-basic': cls.SVG_BASIC,
+            'svg-tiny': cls.SVG_TINY
         }.get(name.lower())
     get = classmethod(get)
 

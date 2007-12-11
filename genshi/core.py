@@ -646,9 +646,9 @@ class QName(unicode):
     """A qualified element or attribute name.
     
     The unicode value of instances of this class contains the qualified name of
-    the element or attribute, in the form ``{namespace}localname``. The namespace
-    URI can be obtained through the additional `namespace` attribute, while the
-    local name can be accessed through the `localname` attribute.
+    the element or attribute, in the form ``{namespace-uri}local-name``. The
+    namespace URI can be obtained through the additional `namespace` attribute,
+    while the local name can be accessed through the `localname` attribute.
     
     >>> qname = QName('foo')
     >>> qname
@@ -668,10 +668,16 @@ class QName(unicode):
     __slots__ = ['namespace', 'localname']
 
     def __new__(cls, qname):
+        """Create the `QName` instance.
+        
+        :param qname: the qualified name as a string of the form
+                      ``{namespace-uri}local-name``, where the leading curly
+                      brace is optional
+        """
         if type(qname) is cls:
             return qname
 
-        parts = qname.split(u'}', 1)
+        parts = qname.lstrip(u'{').split(u'}', 1)
         if len(parts) > 1:
             self = unicode.__new__(cls, u'{%s' % qname)
             self.namespace, self.localname = map(unicode, parts)

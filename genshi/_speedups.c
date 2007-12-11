@@ -87,6 +87,7 @@ escape(PyObject *text, int quotes)
 
     out = (PyUnicodeObject*) PyUnicode_FromUnicode(NULL, len);
     if (out == NULL) {
+        Py_DECREF((PyObject *) in);
         return NULL;
     }
 
@@ -129,6 +130,8 @@ escape(PyObject *text, int quotes)
         }
         inp++;
     }
+
+    Py_DECREF((PyObject *) in);
 
     args = PyTuple_New(1);
     if (args == NULL) {
@@ -242,7 +245,7 @@ static PyObject *
 Markup_join(PyObject *self, PyObject *args, PyObject *kwds)
 {
     static char *kwlist[] = {"seq", "escape_quotes", 0};
-    PyObject *seq = NULL, *seq2, *tmp;
+    PyObject *seq = NULL, *seq2, *tmp, *tmp2;
     char quotes = 1;
     int n, i;
 
@@ -266,12 +269,13 @@ Markup_join(PyObject *self, PyObject *args, PyObject *kwds)
             Py_DECREF(seq2);
             return NULL;
         }
-        tmp = escape(tmp, quotes);
-        if (tmp == NULL) {
+        tmp2 = escape(tmp, quotes);
+        if (tmp2 == NULL) {
             Py_DECREF(seq2);
             return NULL;
         }
-        PyTuple_SET_ITEM(seq2, i, tmp);
+        PyTuple_SET_ITEM(seq2, i, tmp2);
+        Py_DECREF(tmp);
     }
     tmp = PyUnicode_Join(self, seq2);
     Py_DECREF(seq2);
@@ -303,11 +307,9 @@ Markup_add(PyObject *self, PyObject *other)
             return NULL;
         tmp2 = PyUnicode_Concat(tmp, other);
     }
-    if (tmp2 == NULL) {
-        Py_DECREF(tmp);
-        return NULL;
-    }
     Py_DECREF(tmp);
+    if (tmp2 == NULL)
+        return NULL;
     args = PyTuple_New(1);
     if (args == NULL) {
         Py_DECREF(tmp2);
@@ -380,6 +382,7 @@ Markup_mul(PyObject *self, PyObject *num)
         if (unicode == NULL) return NULL;
         result = PyNumber_Multiply(unicode, self);
     }
+    Py_DECREF(unicode);
 
     if (result == NULL) return NULL;
     args = PyTuple_New(1);
@@ -402,9 +405,13 @@ Markup_repr(PyObject *self)
     format = PyString_FromString("<Markup %r>");
     if (format == NULL) return NULL;
     result = PyObject_Unicode(self);
-    if (result == NULL) return NULL;
+    if (result == NULL) {
+        Py_DECREF(format);
+        return NULL;
+    }
     args = PyTuple_New(1);
     if (args == NULL) {
+        Py_DECREF(format);
         Py_DECREF(result);
         return NULL;
     }

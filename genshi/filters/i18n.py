@@ -174,7 +174,7 @@ class Translator(object):
                         changed = True
                     new_attrs.append((name, value))
                 if changed:
-                    attrs = new_attrs
+                    attrs = Attrs(new_attrs)
 
                 if msgbuf:
                     msgbuf.append(kind, data, pos)

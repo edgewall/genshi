@@ -15,11 +15,25 @@ import doctest
 from StringIO import StringIO
 import unittest
 
+from genshi.core import Attrs
 from genshi.template import MarkupTemplate
 from genshi.filters.i18n import Translator, extract
+from genshi.input import HTML
 
 
 class TranslatorTestCase(unittest.TestCase):
+
+    def test_translate_included_attribute_text(self):
+        """
+        Verify that translated attributes end up in a proper `Attrs` instance.
+        """
+        html = HTML("""<html>
+          <span title="Foo"></span>
+        </html>""")
+        translator = Translator(lambda s: u"Voh")
+        stream = list(html.filter(translator))
+        kind, data, pos = stream[2]
+        assert isinstance(data[1], Attrs)
 
     def test_extract_without_text(self):
         tmpl = MarkupTemplate("""<html xmlns:py="http://genshi.edgewall.org/">

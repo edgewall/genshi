@@ -51,7 +51,7 @@ import re
 import sys
 
 from genshi.builder import Element
-from genshi.core import Stream, Attrs, QName, TEXT, START, END, _ensure
+from genshi.core import Stream, Attrs, QName, TEXT, START, END, _ensure, Markup
 from genshi.path import Path
 
 __all__ = ['Transformer', 'StreamBuffer', 'InjectorTransformation', 'ENTER',
@@ -143,12 +143,15 @@ class Transformer(object):
 
     __slots__ = ['transforms']
 
-    def __init__(self, path='.'):
+    def __init__(self, path=None):
         """Construct a new transformation filter.
 
         :param path: an XPath expression (as string) or a `Path` instance
         """
-        self.transforms = [SelectTransformation(path)]
+        if path is not None:
+            self.transforms = [SelectTransformation(path)]
+        else:
+            self.transforms = []
 
     def __call__(self, stream):
         """Apply the transform filter to the marked stream.
@@ -549,6 +552,10 @@ class Transformer(object):
         ...             '<b>some bold text</b></body></html>')
         >>> print html | Transformer('body').substitute('(?i)some', 'SOME')
         <html><body>SOME text, some more text and <b>SOME bold text</b></body></html>
+        >>> tags = tag.html(tag.body('Some text, some more text and ',
+        ...      Markup('<b>some bold text</b>')))
+        >>> print tags.generate() | Transformer('body').substitute('(?i)some', 'SOME')
+        <html><body>SOME text, some more text and <b>SOME bold text</b></body></html>
 
         :param pattern: A regular expression object or string.
         :param replace: Replacement pattern.
@@ -650,6 +657,9 @@ class SelectTransformation(object):
                 # indicate they are not really part of the stream.
                 yield ATTR, (None, (QName(event[1][0] + '@*'), result), event[2])
                 yield None, event
+            elif isinstance(result, tuple):
+                print result
+                yield None, result
             elif result:
                 yield None, (TEXT, unicode(result), (None, -1, -1))
             else:
@@ -865,7 +875,11 @@ class SubstituteTransformation(object):
         """
         for mark, (kind, data, pos) in stream:
             if kind is TEXT:
-                data = self.pattern.sub(self.replace, data, self.count)
+                new_data = self.pattern.sub(self.replace, data, self.count)
+                if isinstance(data, Markup):
+                    data = Markup(new_data)
+                else:
+                    data = new_data
             yield mark, (kind, data, pos)
 
 

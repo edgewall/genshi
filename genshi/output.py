@@ -176,21 +176,17 @@ class XMLSerializer(object):
                                  stripped from the output
         :note: Changed in 0.4.2: The  `doctype` parameter can now be a string.
         """
-        self.preamble = []
-        if doctype:
-            if isinstance(doctype, basestring):
-                doctype = DocType.get(doctype)
-            self.preamble.append((DOCTYPE, doctype, (None, -1, -1)))
         self.filters = [EmptyTagFilter()]
         if strip_whitespace:
             self.filters.append(WhitespaceFilter(self._PRESERVE_SPACE))
         self.filters.append(NamespaceFlattener(prefixes=namespace_prefixes))
+        if doctype:
+            self.filters.append(DocTypeInserter(doctype))
 
     def __call__(self, stream):
         have_decl = have_doctype = False
         in_cdata = False
 
-        stream = chain(self.preamble, stream)
         for filter_ in self.filters:
             stream = filter_(stream)
         for kind, data, pos in stream:
@@ -696,3 +692,36 @@ class WhitespaceFilter(object):
 
                 if kind:
                     yield kind, data, pos
+
+
+class DocTypeInserter(object):
+    """A filter that inserts the DOCTYPE declaration in the correct location,
+    after the XML declaration.
+    """
+    def __init__(self, doctype):
+        """Initialize the filter.
+
+        :param doctype: DOCTYPE as a string or DocType object.
+        """
+        if isinstance(doctype, basestring):
+            doctype = DocType.get(doctype)
+        self.doctype_event = (DOCTYPE, doctype, (None, -1, -1))
+
+    def __call__(self, stream):
+        buffer = []
+        doctype_inserted = False
+        for kind, data, pos in stream:
+            # Buffer whitespace TEXT and XML_DECL
+            if not doctype_inserted:
+                if kind is XML_DECL or (kind is TEXT and not data.strip()):
+                    buffer.append((kind, data, pos))
+                    continue
+
+                for event in buffer:
+                    yield event
+
+                yield self.doctype_event
+
+                doctype_inserted = True
+
+            yield (kind, data, pos)

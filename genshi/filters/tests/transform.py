@@ -19,9 +19,12 @@ import genshi.filters.transform
 
 def suite():
     from genshi.input import HTML
+    from genshi.core import Markup
+    from genshi.builder import tag
     suite = doctest.DocTestSuite(genshi.filters.transform,
                                  optionflags=doctest.NORMALIZE_WHITESPACE,
-                                 extraglobs={'HTML': HTML})
+                                 extraglobs={'HTML': HTML, 'tag': tag,
+                                     'Markup': Markup})
     return suite
 
 if __name__ == '__main__':

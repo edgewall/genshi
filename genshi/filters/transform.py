@@ -143,15 +143,12 @@ class Transformer(object):
 
     __slots__ = ['transforms']
 
-    def __init__(self, path=None):
+    def __init__(self, path='.'):
         """Construct a new transformation filter.
 
         :param path: an XPath expression (as string) or a `Path` instance
         """
-        if path is not None:
-            self.transforms = [SelectTransformation(path)]
-        else:
-            self.transforms = []
+        self.transforms = [SelectTransformation(path)]
 
     def __call__(self, stream):
         """Apply the transform filter to the marked stream.
@@ -657,9 +654,6 @@ class SelectTransformation(object):
                 # indicate they are not really part of the stream.
                 yield ATTR, (None, (QName(event[1][0] + '@*'), result), event[2])
                 yield None, event
-            elif isinstance(result, tuple):
-                print result
-                yield None, result
             elif result:
                 yield None, (TEXT, unicode(result), (None, -1, -1))
             else:

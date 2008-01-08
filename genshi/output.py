@@ -710,25 +710,17 @@ class DocTypeInserter(object):
         self.doctype_event = (DOCTYPE, doctype, (None, -1, -1))
 
     def __call__(self, stream):
-        buffer = []
         doctype_inserted = False
         for kind, data, pos in stream:
-            # Buffer whitespace TEXT and XML_DECL
             if not doctype_inserted:
-                if kind is XML_DECL or (kind is TEXT and not data.strip()):
-                    buffer.append((kind, data, pos))
-                    continue
-
-                for event in buffer:
-                    yield event
-
-                yield self.doctype_event
-
                 doctype_inserted = True
+                if kind is XML_DECL:
+                    yield (kind, data, pos)
+                    yield self.doctype_event
+                    continue
+                yield self.doctype_event
 
             yield (kind, data, pos)
 
         if not doctype_inserted:
-            for event in buffer:
-                yield event
             yield self.doctype_event

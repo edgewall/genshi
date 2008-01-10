@@ -14,7 +14,7 @@
 
 from distutils.cmd import Command
 from distutils.command.build_ext import build_ext
-from distutils.errors import CCompilerError
+from distutils.errors import CCompilerError, DistutilsPlatformError
 import doctest
 from glob import glob
 import os
@@ -34,15 +34,24 @@ except ImportError:
 
 class optional_build_ext(build_ext):
     # This class allows C extension building to fail.
+    def run(self):
+        try:
+            build_ext.run(self)
+        except DistutilsPlatformError:
+            self._unavailable()
+
     def build_extension(self, ext):
         try:
             build_ext.build_extension(self, ext)
         except CCompilerError, x:
-            print '*' * 70
-            print """WARNING:
+            self._unavailable()
+
+    def _unavailable(self):
+        print '*' * 70
+        print """WARNING:
 An optional C extension could not be compiled, speedups will not be
 available."""
-            print '*' * 70
+        print '*' * 70
 
 
 if Feature:

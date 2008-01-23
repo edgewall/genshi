@@ -25,7 +25,7 @@ except NameError:
     from sets import ImmutableSet as frozenset
 
 
-__all__ = ['Optimizer', 'StaticStrategy', 'InvariantStrategy']
+__all__ = ['Optimizer', 'StaticStrategy']
 
 
 """

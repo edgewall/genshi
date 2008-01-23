@@ -24,7 +24,8 @@ import re
 
 from genshi.core import escape, Attrs, Markup, Namespace, QName, StreamEventKind
 from genshi.core import START, END, TEXT, XML_DECL, DOCTYPE, START_NS, END_NS, \
-                        START_CDATA, END_CDATA, PI, COMMENT, XML_NAMESPACE
+                        START_CDATA, END_CDATA, PI, COMMENT, XML_NAMESPACE, \
+                        OPTIMIZER
 
 __all__ = ['encode', 'get_serializer', 'DocType', 'XMLSerializer',
            'XHTMLSerializer', 'HTMLSerializer', 'TextSerializer']
@@ -247,6 +248,9 @@ class XMLSerializer(object):
             elif kind is PI:
                 yield Markup('<?%s %s?>' % data)
 
+            elif kind is OPTIMIZER:
+                yield kind, data, pos
+
 
 class XHTMLSerializer(XMLSerializer):
     """Produces XHTML text from an event stream.
@@ -344,6 +348,9 @@ class XHTMLSerializer(XMLSerializer):
             elif kind is PI:
                 yield Markup('<?%s %s?>' % data)
 
+            elif kind is OPTIMIZER:
+                yield (kind, data, pos)
+
 
 class HTMLSerializer(XHTMLSerializer):
     """Produces HTML text from an event stream.
@@ -439,6 +446,9 @@ class HTMLSerializer(XHTMLSerializer):
             elif kind is PI:
                 yield Markup('<?%s %s?>' % data)
 
+            elif kind is OPTIMIZER:
+                yield (kind, data, pos)
+
 
 class TextSerializer(object):
     """Produces plain text from an event stream.
@@ -479,6 +489,9 @@ class TextSerializer(object):
                 if strip_markup and type(data) is Markup:
                     data = data.striptags().stripentities()
                 yield unicode(data)
+
+            elif kind is OPTIMIZER:
+                yield event
 
 
 class EmptyTagFilter(object):

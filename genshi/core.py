@@ -251,6 +251,8 @@ END_CDATA = Stream.END_CDATA
 PI = Stream.PI
 COMMENT = Stream.COMMENT
 
+OPTIMIZER = StreamEventKind('OPTIMIZER')
+
 def _ensure(stream):
     """Ensure that every item on the stream is actually a markup event."""
     stream = iter(stream)

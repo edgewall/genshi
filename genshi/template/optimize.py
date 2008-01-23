@@ -45,6 +45,11 @@ and would normally be sent to output, but the Optimizer intercepts the stream
 and passes it to the Strategies for further analysis, before finally sending it
 to the output destination.
 
+Optimisation
+------------
+The final stage is actually optimising the Template stream in place, usually by
+replacing existing events with OPTIMIZER events.
+
 Details
 -------
 
@@ -54,9 +59,7 @@ that require processing at all.
 
 An example of both is implemented by the StaticStrategy. This strategy operates
 by analysing the template render in the first pass, then modifying the template
-stream in-place.
-
-The optimisation occurs in these steps:
+stream in-place:
 
   - Analysis starts by inserting STATIC_START and STATIC_END events around
     sequences of normal events that are not dynamic in any way.
@@ -115,7 +118,11 @@ because the latter undergoes a fair amount of processing on every traversal,
 steps that are unnecessary for an already rendered fragment.
 """
 
+
 class OptimizingStream(Stream):
+    """A wrapper around the normal Stream object for applying optimisations
+    after normal rendering has occurred.
+    """
     def __init__(self, optimizer, ctxt, *args, **kwargs):
         super(OptimizingStream, self).__init__(*args, **kwargs)
         self.optimizer = optimizer
@@ -123,6 +130,9 @@ class OptimizingStream(Stream):
         self.apply = True
 
     def serialize(self, method='xml', *args, **kwargs):
+        """Apply Strategy serialisation prior to normal serialisation, then
+        apply Strategy optimisations.
+        """
         if method is None:
             method = self.serializer or 'xml'
         stream = list(get_serializer(*args, **kwargs)(_ensure(self)))

@@ -9,13 +9,27 @@ from StringIO import StringIO
 import sys
 import timeit
 
-__all__ = ['clearsilver', 'mako', 'django', 'kid', 'genshi', 'genshi_text',
-           'simpletal']
+__all__ = ['clearsilver', 'mako', 'django', 'kid', 'genshi', 'genshi_opt',
+           'genshi_text', 'simpletal']
 
 def genshi(dirname, verbose=False):
     from genshi.template import TemplateLoader
     loader = TemplateLoader([dirname], auto_reload=False)
     template = loader.load('template.html')
+    def render():
+        data = dict(title='Just a test', user='joe',
+                    items=['Number %d' % num for num in range(1, 15)])
+        return template.generate(**data).render('xhtml')
+
+    if verbose:
+        print render()
+    return render
+
+def genshi_opt(dirname, verbose=False):
+    from genshi.template import TemplateLoader
+    from genshi.template.optimize import Optimizer, StaticStrategy
+    loader = TemplateLoader(['genshi'], auto_reload=False)
+    template = Optimizer(loader.load('template.html'), [StaticStrategy()])
     def render():
         data = dict(title='Just a test', user='joe',
                     items=['Number %d' % num for num in range(1, 15)])

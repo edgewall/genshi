@@ -490,7 +490,7 @@ class TextSerializer(object):
                     data = data.striptags().stripentities()
                 yield unicode(data)
 
-            elif kind is OPTIMIZER:
+            elif event[0] is OPTIMIZER:
                 yield event
 
 

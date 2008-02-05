@@ -417,6 +417,7 @@ Markup_repr(PyObject *self)
     }
     PyTuple_SET_ITEM(args, 0, result);
     result = PyString_Format(format, args);
+    Py_DECREF(format);
     Py_DECREF(args);
     return result;
 }

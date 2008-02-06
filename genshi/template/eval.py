@@ -140,8 +140,8 @@ class Expression(Code):
         """
         __traceback_hide__ = 'before_and_this'
         _globals = self._globals()
-        _globals['data'] = data
-        return eval(self.code, _globals, {'data': data})
+        _globals['__data__'] = data
+        return eval(self.code, _globals, {'__data__': data})
 
 
 class Suite(Code):
@@ -162,7 +162,7 @@ class Suite(Code):
         """
         __traceback_hide__ = 'before_and_this'
         _globals = self._globals()
-        _globals['data'] = data
+        _globals['__data__'] = data
         exec self.code in _globals, data
 
 
@@ -678,11 +678,11 @@ class TemplateASTTransformer(ASTTransformer):
         if isinstance(node.node, ast.Name) \
                 and node.node.name not in flatten(self.locals):
             name = node.node.name
-            node.node = ast.Subscript(ast.Name('data'), 'OP_APPLY',
+            node.node = ast.Subscript(ast.Name('__data__'), 'OP_APPLY',
                                       [ast.Const(name)])
             node.expr = self.visit(node.expr)
             return ast.If([
-                (ast.Compare(ast.Const(name), [('in', ast.Name('data'))]),
+                (ast.Compare(ast.Const(name), [('in', ast.Name('__data__'))]),
                  ast.Stmt([node]))],
                 ast.Stmt([ast.Raise(ast.CallFunc(ast.Name('UndefinedError'),
                                                  [ast.Const(name)]),
@@ -741,7 +741,7 @@ class TemplateASTTransformer(ASTTransformer):
         # generator expression, leave it alone
         if node.name not in flatten(self.locals):
             # Otherwise, translate the name ref into a context lookup
-            func_args = [ast.Name('data'), ast.Const(node.name)]
+            func_args = [ast.Name('__data__'), ast.Const(node.name)]
             node = ast.CallFunc(ast.Name('_lookup_name'), func_args)
         return node
 
@@ -753,12 +753,12 @@ class ExpressionASTTransformer(TemplateASTTransformer):
 
     def visitGetattr(self, node):
         return ast.CallFunc(ast.Name('_lookup_attr'), [
-            ast.Name('data'), self.visit(node.expr),
+            ast.Name('__data__'), self.visit(node.expr),
             ast.Const(node.attrname)
         ])
 
     def visitSubscript(self, node):
         return ast.CallFunc(ast.Name('_lookup_item'), [
-            ast.Name('data'), self.visit(node.expr),
+            ast.Name('__data__'), self.visit(node.expr),
             ast.Tuple([self.visit(sub) for sub in node.subs])
         ])

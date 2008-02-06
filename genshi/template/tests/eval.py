@@ -438,6 +438,19 @@ class ExpressionTestCase(unittest.TestCase):
 
 class SuiteTestCase(unittest.TestCase):
 
+    def test_internal_shadowing(self):
+        # The context itself is stored in the global execution scope of a suite
+        # It used to get stored under the name 'data', which meant the
+        # following test would fail, as the user defined 'data' variable
+        # shadowed the Genshi one. We now use the name '__data__' to avoid
+        # conflicts
+        suite = Suite("""data = []
+bar = foo
+""")
+        data = {'foo': 42}
+        suite.execute(data)
+        self.assertEqual(42, data['bar'])
+
     def test_assign(self):
         suite = Suite("foo = 42")
         data = {}

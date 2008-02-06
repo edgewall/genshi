@@ -44,6 +44,8 @@ http://svn.edgewall.org/repos/genshi/tags/0.5.0/
    so that it is still possible to use the Genshi `escape` function even with
    text templates. The old behavior is available via the `strip_markup` option
    of the serializer (ticket #146).
+ * Assigning to a variable named `data` in a Python code block no longer
+   breaks context lookup.
 
 
 Version 0.4.4

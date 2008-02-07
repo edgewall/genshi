@@ -19,7 +19,7 @@ HTML Form Filler
 ================
 
 The filter ``genshi.filters.html.HTMLFormFiller`` can automatically populate an
-HTML form from values provided as a simple dictionary. When using thi filter,
+HTML form from values provided as a simple dictionary. When using this filter,
 you can basically omit any ``value``, ``selected``, or ``checked`` attributes
 from form controls in your templates, and let the filter do all that work for
 you.

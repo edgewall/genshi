@@ -22,7 +22,7 @@ except NameError:
 from genshi.core import QName, Stream
 from genshi.path import Path
 from genshi.template.base import TemplateRuntimeError, TemplateSyntaxError, \
-                                 EXPR, _apply_directives
+                                 EXPR, _apply_directives, _ctxt2dict
 from genshi.template.eval import Expression, Suite, ExpressionASTTransformer, \
                                  _parse
 
@@ -725,7 +725,7 @@ class WithDirective(Directive):
     def __call__(self, stream, ctxt, directives):
         frame = {}
         ctxt.push(frame)
-        self.suite.execute(ctxt)
+        self.suite.execute(_ctxt2dict(ctxt))
         for event in _apply_directives(stream, ctxt, directives):
             yield event
         ctxt.pop()

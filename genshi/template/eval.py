@@ -439,7 +439,8 @@ class ASTTransformer(object):
         node = node.__class__(*args)
         if lineno is not None:
             node.lineno = lineno
-        if isinstance(node, (ast.Class, ast.Function, ast.GenExpr, ast.Lambda)):
+        if isinstance(node, (ast.Class, ast.Function, ast.Lambda)) or \
+                sys.version_info > (2, 4) and isinstance(node, ast.GenExpr):
             node.filename = '<string>' # workaround for bug in pycodegen
         return node
 

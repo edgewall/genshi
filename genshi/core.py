@@ -599,7 +599,7 @@ class Namespace(object):
     def __new__(cls, uri):
         if type(uri) is cls:
             return uri
-        return object.__new__(cls, uri)
+        return object.__new__(cls)
 
     def __getnewargs__(self):
         return (self.uri,)

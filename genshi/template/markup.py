@@ -25,6 +25,7 @@ from genshi.template.eval import Suite
 from genshi.template.interpolation import interpolate
 from genshi.template.directives import *
 from genshi.template.text import NewTextTemplate
+from genshi.template.match import MatchSet
 
 __all__ = ['MarkupTemplate']
 __docformat__ = 'restructuredtext en'
@@ -225,12 +226,12 @@ class MarkupTemplate(Template):
         assert len(streams) == 1
         return streams[0]
 
-    def _match(self, stream, ctxt, match_templates=None):
+    def _match(self, stream, ctxt, match_set=None):
         """Internal stream filter that applies any defined match templates
         to the stream.
         """
-        if match_templates is None:
-            match_templates = ctxt._match_templates
+        if match_set is None:
+            match_set = ctxt._match_set
 
         tail = []
         def _strip(stream):
@@ -251,22 +252,25 @@ class MarkupTemplate(Template):
 
             # We (currently) only care about start and end events for matching
             # We might care about namespace events in the future, though
-            if not match_templates or (event[0] is not START and
-                                       event[0] is not END):
+            if not match_set or (event[0] is not START and
+                                 event[0] is not END):
                 yield event
                 continue
 
-            for idx, (test, path, template, hints, namespaces, directives) \
-                    in enumerate(match_templates):
-
+            match_candidates = list(match_set.find_matches(event))
+            for idx, match_template in enumerate(match_candidates):
+                
+                (test, path, template, hints, namespaces, directives) = \
+                    match_template
                 if test(event, namespaces, ctxt) is True:
                     if 'match_once' in hints:
-                        del match_templates[idx]
+                        match_set.remove(match_template)
+                        del match_candidates[idx]
                         idx -= 1
 
                     # Let the remaining match templates know about the event so
                     # they get a chance to update their internal state
-                    for test in [mt[0] for mt in match_templates[idx + 1:]]:
+                    for test in [mt[0] for mt in match_candidates[idx + 1:]]:
                         test(event, namespaces, ctxt, updateonly=True)
 
                     # Consume and store all events until an end event
@@ -274,11 +278,14 @@ class MarkupTemplate(Template):
                     inner = _strip(stream)
                     if 'match_once' not in hints \
                             and 'not_recursive' not in hints:
-                        inner = self._match(inner, ctxt, [match_templates[idx]])
+                        inner = self._match(inner, ctxt,
+                                            MatchSet.single_match(match_template))
                     content = list(self._include(chain([event], inner, tail),
                                                  ctxt))
 
-                    for test in [mt[0] for mt in match_templates]:
+                    # Now tell all the match templates about the
+                    # END event (tail[0])
+                    for test in [mt[0] for mt in match_candidates]:
                         test(tail[0], namespaces, ctxt, updateonly=True)
 
                     # Make the select() function available in the body of the
@@ -289,12 +296,14 @@ class MarkupTemplate(Template):
 
                     # Recursively process the output
                     template = _apply_directives(template, ctxt, directives)
-                    remaining = match_templates
+                    remaining = match_set
                     if 'match_once' not in hints:
-                        remaining = remaining[:idx] + remaining[idx + 1:]
-                    for event in self._match(self._exec(
-                                    self._eval(self._flatten(template, ctxt),
-                                    ctxt), ctxt), ctxt, remaining):
+                        # match has not been removed, so we need an exclusion matchset
+                        remaining = match_set.with_exclusion(match_template)
+                        
+                    body = self._exec(self._eval(self._flatten(template, ctxt),
+                                                 ctxt), ctxt)
+                    for event in self._match(body, ctxt, remaining):
                         yield event
 
                     ctxt.pop()

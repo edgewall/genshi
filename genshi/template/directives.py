@@ -450,9 +450,9 @@ class MatchDirective(Directive):
     attach = classmethod(attach)
 
     def __call__(self, stream, ctxt, directives):
-        ctxt._match_templates.append((self.path.test(ignore_context=True),
-                                      self.path, list(stream), self.hints,
-                                      self.namespaces, directives))
+        ctxt._match_set.add((self.path.test(ignore_context=True),
+                             self.path, list(stream), self.hints,
+                             self.namespaces, directives))
         return []
 
     def __repr__(self):

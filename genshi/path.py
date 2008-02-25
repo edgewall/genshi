@@ -181,9 +181,15 @@ class Path(object):
                  stream against the path
         :rtype: ``function``
         """
-        paths = [(p, len(p), [0], [], [0] * len(p)) for p in [
-            (ignore_context and [_DOTSLASHSLASH] or []) + p for p in self.paths
-        ]]
+
+        # paths is path state that is maintained across calls to _test()
+        # paths is a list of tuples, one for each segment in the path
+        paths = []
+        for p in self.paths:
+            if ignore_context:
+                p = [_DOTSLASHSLASH] + p
+            path = (p, len(p), [0], [], [0] * len(p))
+            paths.append(path)
 
         def _test(event, namespaces, variables, updateonly=False):
             kind, data, pos = event[:3]
@@ -279,7 +285,8 @@ class Path(object):
                     if ctxtnode and axis is DESCENDANT_OR_SELF:
                         ctxtnode = False
 
-                if (retval or not matched) and kind is START and \
+                if (retval or not matched) and \
+                        kind is START and \
                         not (axis is DESCENDANT or axis is DESCENDANT_OR_SELF):
                     # If this step is not a closure, it cannot be matched until
                     # the current element is closed... so we need to move the

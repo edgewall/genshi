@@ -30,7 +30,7 @@ __all__ = ['encode', 'get_serializer', 'DocType', 'XMLSerializer',
            'XHTMLSerializer', 'HTMLSerializer', 'TextSerializer']
 __docformat__ = 'restructuredtext en'
 
-def encode(iterator, method='xml', encoding='utf-8'):
+def encode(iterator, method='xml', encoding='utf-8', out=None):
     """Encode serializer output into a string.
     
     :param iterator: the iterator returned from serializing a stream (basically
@@ -39,16 +39,27 @@ def encode(iterator, method='xml', encoding='utf-8'):
                    representable in the specified encoding are treated
     :param encoding: how the output string should be encoded; if set to `None`,
                      this method returns a `unicode` object
-    :return: a string or unicode object (depending on the `encoding` parameter)
+    :param out: a file-like object that the output should be written to
+                instead of being returned as one big string; note that if
+                this is a file or socket (or similar), the `encoding` must
+                not be `None` (that is, the output must be encoded)
+    :return: a `str` or `unicode` object (depending on the `encoding`
+             parameter), or `None` if the `out` parameter is provided
+    
     :since: version 0.4.1
+    :note: Changed in 0.5: added the `out` parameter
     """
-    output = u''.join(list(iterator))
     if encoding is not None:
         errors = 'replace'
         if method != 'text' and not isinstance(method, TextSerializer):
             errors = 'xmlcharrefreplace'
-        return output.encode(encoding, errors)
-    return output
+        _encode = lambda string: string.encode(encoding, errors)
+    else:
+        _encode = lambda string: string
+    if out is None:
+        return _encode(u''.join(list(iterator)))
+    for chunk in iterator:
+        out.write(_encode(chunk))
 
 def get_serializer(method='xml', **kwargs):
     """Return a serializer object for the given method.

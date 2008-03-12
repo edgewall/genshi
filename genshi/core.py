@@ -149,7 +149,7 @@ class Stream(object):
         """
         return reduce(operator.or_, (self,) + filters)
 
-    def render(self, method=None, encoding='utf-8', **kwargs):
+    def render(self, method=None, encoding='utf-8', out=None, **kwargs):
         """Return a string representation of the stream.
         
         Any additional keyword arguments are passed to the serializer, and thus
@@ -161,15 +161,22 @@ class Stream(object):
                        the stream is used
         :param encoding: how the output string should be encoded; if set to
                          `None`, this method returns a `unicode` object
-        :return: a `str` or `unicode` object
+        :param out: a file-like object that the output should be written to
+                    instead of being returned as one big string; note that if
+                    this is a file or socket (or similar), the `encoding` must
+                    not be `None` (that is, the output must be encoded)
+        :return: a `str` or `unicode` object (depending on the `encoding`
+                 parameter), or `None` if the `out` parameter is provided
         :rtype: `basestring`
+        
         :see: XMLSerializer, XHTMLSerializer, HTMLSerializer, TextSerializer
+        :note: Changed in 0.5: added the `out` parameter
         """
         from genshi.output import encode
         if method is None:
             method = self.serializer or 'xml'
         generator = self.serialize(method=method, **kwargs)
-        return encode(generator, method=method, encoding=encoding)
+        return encode(generator, method=method, encoding=encoding, out=out)
 
     def select(self, path, namespaces=None, variables=None):
         """Return a new stream that contains the events matching the given

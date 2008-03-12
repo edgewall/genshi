@@ -309,6 +309,8 @@ class XHTMLSerializer(XMLSerializer):
                         value = attr
                     elif attr == u'xml:lang' and u'lang' not in attrib:
                         buf += [' lang="', escape(value), '"']
+                    elif attr == u'xml:space':
+                        continue
                     buf += [' ', attr, '="', escape(value), '"']
                 if kind is EMPTY:
                     if tag in empty_elems:

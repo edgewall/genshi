@@ -228,7 +228,7 @@ class XHTMLSerializerTestCase(unittest.TestCase):
     def test_xml_space(self):
         text = '<foo xml:space="preserve"> Do not mess  \n\n with me </foo>'
         output = XML(text).render(XHTMLSerializer)
-        self.assertEqual(text, output)
+        self.assertEqual('<foo> Do not mess  \n\n with me </foo>', output)
 
     def test_empty_script(self):
         text = """<html xmlns="http://www.w3.org/1999/xhtml">

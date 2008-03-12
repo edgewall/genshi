@@ -49,6 +49,8 @@ http://svn.edgewall.org/repos/genshi/tags/0.5.0/
  * The `Stream.render` now accepts an optional `out` parameter that can be
    used to pass in a writable file-like object to use for assembling the
    output, instead of building a big string and returning it.
+ * The XHTML serializer now strips `xml:space` attributes as they are only
+   allowed on very few tags.
 
 
 Version 0.4.4

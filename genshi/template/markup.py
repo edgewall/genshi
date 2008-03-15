@@ -298,7 +298,8 @@ class MarkupTemplate(Template):
                     template = _apply_directives(template, ctxt, directives)
                     remaining = match_set
                     if 'match_once' not in hints:
-                        # match has not been removed, so we need an exclusion matchset
+                        # match has not been removed, so we need an
+                        # exclusion matchset
                         remaining = match_set.with_exclusion(match_template)
                         
                     body = self._exec(self._eval(self._flatten(template, ctxt),

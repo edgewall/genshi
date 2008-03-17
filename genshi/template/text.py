@@ -28,6 +28,7 @@ new syntax to remain compatible with future Genshi releases.
 
 import re
 
+from genshi.core import TEXT
 from genshi.template.base import BadDirectiveError, Template, \
                                  TemplateSyntaxError, EXEC, INCLUDE, SUB
 from genshi.template.eval import Suite
@@ -188,7 +189,11 @@ class NewTextTemplate(Template):
 
             if command == 'include':
                 pos = (self.filename, lineno, 0)
-                stream.append((INCLUDE, (value.strip(), None, []), pos))
+                value = list(interpolate(value, self.basedir, self.filename,
+                                         lineno, 0, lookup=self.lookup))
+                if len(value) == 1 and value[0][0] is TEXT:
+                    value = value[0][1]
+                stream.append((INCLUDE, (value, None, []), pos))
 
             elif command == 'python':
                 if not self.allow_exec:

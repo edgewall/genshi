@@ -215,7 +215,7 @@ dynamically:
 
 .. code-block:: genshitext
 
-  {% include '%s.txt' % filename %}
+  {% include ${'%s.txt' % filename} %}
 
 Note that a ``TemplateNotFound`` exception is raised if an included file can't
 be found.
@@ -349,10 +349,12 @@ dollar signs, the language itself is very similar to the new one. Except that
 comments are lines that start with two ``#`` characters, and a line-break at the
 end of a directive is removed automatically.
 
-.. note:: If you're using this old syntax, it is strongly recommended to migrate
-          to the new syntax. Simply replace any references to ``TextTemplate``
-          by ``NewTextTemplate``. On the other hand, if you want to stick with
-          the old syntax for a while longer, replace references to
+.. note:: If you're using this old syntax, it is strongly recommended to
+          migrate to the new syntax. Simply replace any references to
+          ``TextTemplate`` by ``NewTextTemplate`` (and also change the
+          text templates, of course). On the other hand, if you want to stick
+          with the old syntax for a while longer, replace references to
           ``TextTemplate`` by ``OldTextTemplate``; while ``TextTemplate`` is
           still an alias for the old language at this point, that will change
-          in a future release.
+          in a future release. But also note that the old syntax may be
+          dropped entirely in a future release.

@@ -139,8 +139,7 @@ class Expression(Code):
         :return: the result of the evaluation
         """
         __traceback_hide__ = 'before_and_this'
-        _globals = self._globals()
-        _globals['__data__'] = data
+        _globals = self._globals(data)
         return eval(self.code, _globals, {'__data__': data})
 
 
@@ -161,8 +160,7 @@ class Suite(Code):
         :param data: a mapping containing the data to execute in
         """
         __traceback_hide__ = 'before_and_this'
-        _globals = self._globals()
-        _globals['__data__'] = data
+        _globals = self._globals(data)
         exec self.code in _globals, data
 
 
@@ -248,15 +246,16 @@ class Undefined(object):
 class LookupBase(object):
     """Abstract base class for variable lookup implementations."""
 
-    def globals(cls):
+    def globals(cls, data):
         """Construct the globals dictionary to use as the execution context for
         the expression or suite.
         """
         return {
+            '__data__': data,
             '_lookup_name': cls.lookup_name,
             '_lookup_attr': cls.lookup_attr,
             '_lookup_item': cls.lookup_item,
-            'UndefinedError': UndefinedError
+            'UndefinedError': UndefinedError,
         }
     globals = classmethod(globals)
 
@@ -270,7 +269,7 @@ class LookupBase(object):
         return val
     lookup_name = classmethod(lookup_name)
 
-    def lookup_attr(cls, data, obj, key):
+    def lookup_attr(cls, obj, key):
         __traceback_hide__ = True
         val = getattr(obj, key, UNDEFINED)
         if val is UNDEFINED:
@@ -281,7 +280,7 @@ class LookupBase(object):
         return val
     lookup_attr = classmethod(lookup_attr)
 
-    def lookup_item(cls, data, obj, key):
+    def lookup_item(cls, obj, key):
         __traceback_hide__ = True
         if len(key) == 1:
             key = key[0]
@@ -754,12 +753,12 @@ class ExpressionASTTransformer(TemplateASTTransformer):
 
     def visitGetattr(self, node):
         return ast.CallFunc(ast.Name('_lookup_attr'), [
-            ast.Name('__data__'), self.visit(node.expr),
+            self.visit(node.expr),
             ast.Const(node.attrname)
         ])
 
     def visitSubscript(self, node):
         return ast.CallFunc(ast.Name('_lookup_item'), [
-            ast.Name('__data__'), self.visit(node.expr),
+            self.visit(node.expr),
             ast.Tuple([self.visit(sub) for sub in node.subs])
         ])

@@ -59,6 +59,12 @@ http://svn.edgewall.org/repos/genshi/tags/0.5.0/
  * The `TemplateLoader` class now provides an `instantiate()` method that can
    be overridden by subclasses to implement advanced template instantiation
    logic (ticket #204).
+ * The search path of the `TemplateLoader` class can now contain ''load
+   functions'' in addition to path strings. A load function is passed the
+   name of the requested template file, and should return a file-like object
+   and some metadata. New load functions are supplied for loading from egg
+   package data, and loading from different loaders depending on the path
+   prefix of the requested filename (ticket #182).
 
 
 Version 0.4.4

@@ -82,7 +82,10 @@ class TemplateLoader(object):
         
         :param search_path: a list of absolute path names that should be
                             searched for template files, or a string containing
-                            a single absolute path
+                            a single absolute path; alternatively, any item on
+                            the list may be a ''load function'' that is passed
+                            a filename and returns a file-like object and some
+                            metadata
         :param auto_reload: whether to check the last modification time of
                             template files, and reload them if they have changed
         :param default_encoding: the default encoding to assume when loading
@@ -109,7 +112,7 @@ class TemplateLoader(object):
         self.search_path = search_path
         if self.search_path is None:
             self.search_path = []
-        elif isinstance(self.search_path, basestring):
+        elif not isinstance(self.search_path, (list, tuple)):
             self.search_path = [self.search_path]
 
         self.auto_reload = auto_reload
@@ -130,9 +133,9 @@ class TemplateLoader(object):
     def load(self, filename, relative_to=None, cls=None, encoding=None):
         """Load the template with the given name.
         
-        If the `filename` parameter is relative, this method searches the search
-        path trying to locate a template matching the given name. If the file
-        name is an absolute path, the search path is ignored.
+        If the `filename` parameter is relative, this method searches the
+        search path trying to locate a template matching the given name. If the
+        file name is an absolute path, the search path is ignored.
         
         If the requested template is not found, a `TemplateNotFound` exception
         is raised. Otherwise, a `Template` object is returned that represents
@@ -169,8 +172,10 @@ class TemplateLoader(object):
             # First check the cache to avoid reparsing the same file
             try:
                 tmpl = self._cache[filename]
-                if not self.auto_reload or \
-                        os.path.getmtime(tmpl.filepath) == self._mtime[filename]:
+                if not self.auto_reload:
+                    return tmpl
+                mtime = self._mtime[filename]
+                if mtime and mtime == os.path.getmtime(tmpl.filepath):
                     return tmpl
             except KeyError, OSError:
                 pass
@@ -195,16 +200,20 @@ class TemplateLoader(object):
                 # Uh oh, don't know where to look for the template
                 raise TemplateError('Search path for templates not configured')
 
-            for dirname in search_path:
-                filepath = os.path.join(dirname, filename)
+            for loadfunc in search_path:
+                if isinstance(loadfunc, basestring):
+                    loadfunc = TemplateLoader.directory(loadfunc)
                 try:
-                    fileobj = open(filepath, 'U')
+                    dirname, filename, fileobj, mtime = loadfunc(filename)
+                except IOError:
+                    continue
+                else:
                     try:
                         if isabs:
                             # If the filename of either the included or the 
                             # including template is absolute, make sure the
                             # included template gets an absolute path, too,
-                            # so that nested include work properly without a
+                            # so that nested includes work properly without a
                             # search path
                             filename = os.path.join(dirname, filename)
                             dirname = ''
@@ -213,12 +222,11 @@ class TemplateLoader(object):
                         if self.callback:
                             self.callback(tmpl)
                         self._cache[filename] = tmpl
-                        self._mtime[filename] = os.path.getmtime(filepath)
+                        self._mtime[filename] = mtime
                     finally:
-                        fileobj.close()
+                        if hasattr(fileobj, 'close'):
+                            fileobj.close()
                     return tmpl
-                except IOError:
-                    continue
 
             raise TemplateNotFound(filename, search_path)
 
@@ -250,3 +258,66 @@ class TemplateLoader(object):
         return cls(fileobj, basedir=dirname, filename=filename, loader=self,
                    encoding=encoding, lookup=self.variable_lookup,
                    allow_exec=self.allow_exec)
+
+    def directory(path):
+        """Loader factory for loading templates from a local directory.
+        
+        :param path: the path to the local directory containing the templates
+        :return: the loader function to load templates from the given directory
+        :rtype: ``function``
+        """
+        def _load_from_directory(filename):
+            filepath = os.path.join(path, filename)
+            fileobj = open(filepath, 'U')
+            return path, filename, fileobj, os.path.getmtime(filepath)
+        return _load_from_directory
+    directory = staticmethod(directory)
+
+    def package(name, path):
+        """Loader factory for loading templates from egg package data.
+        
+        :param name: the name of the package containing the resources
+        :param path: the path inside the package data
+        :return: the loader function to load templates from the given package
+        :rtype: ``function``
+        """
+        from pkg_resources import resource_stream
+        def _load_from_package(filename):
+            filepath = os.path.join(path, filename)
+            return path, filename, resource_stream(name, filepath), None
+        return _load_from_package
+    package = staticmethod(package)
+
+    def prefixed(**delegates):
+        """Factory for a load function that delegates to other loaders
+        depending on the prefix of the requested template path.
+        
+        The prefix is stripped from the filename when passing on the load
+        request to the delegate.
+        
+        >>> load = prefixed(
+        ...     app1 = lambda filename: ('app1', filename),
+        ...     app2 = lambda filename: ('app2', filename)
+        ... )
+        >>> print load('app1/foo.html')
+        ('app1', 'foo.html')
+        >>> print load('app2/bar.html')
+        ('app2', 'bar.html')
+
+        :param delegates: mapping of path prefixes to loader functions
+        :return: the loader function
+        :rtype: ``function``
+        """
+        def _dispatch_by_prefix(filename):
+            for prefix, delegate in delegates.items():
+                if filename.startswith(prefix):
+                    if isinstance(delegate, basestring):
+                        delegate = TemplateLoader.directory(delegate)
+                    return delegate(filename[len(prefix):].lstrip('/\\'))
+            raise TemplateNotFound(filename, delegates.keys())
+        return _dispatch_by_prefix
+    prefixed = staticmethod(prefixed)
+
+directory = TemplateLoader.directory
+package = TemplateLoader.package
+prefixed = TemplateLoader.prefixed

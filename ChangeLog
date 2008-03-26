@@ -56,6 +56,9 @@ http://svn.edgewall.org/repos/genshi/tags/0.5.0/
    including) the matching template itself are applied to the matched content,
    whereas the match templates declared after the matching template are only
    applied to the generated content (ticket #186).
+ * The `TemplateLoader` class now provides an `instantiate()` method that can
+   be overridden by subclasses to implement advanced template instantiation
+   logic (ticket #204).
 
 
 Version 0.4.4

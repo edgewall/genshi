@@ -155,13 +155,11 @@ class TemplateLoader(object):
         :param encoding: the encoding of the template to load; defaults to the
                          ``default_encoding`` of the loader instance
         :return: the loaded `Template` instance
-        :raises TemplateNotFound: if a template with the given name could not be
-                                  found
+        :raises TemplateNotFound: if a template with the given name could not
+                                  be found
         """
         if cls is None:
             cls = self.default_class
-        if encoding is None:
-            encoding = self.default_encoding
         if relative_to and not os.path.isabs(relative_to):
             filename = os.path.join(os.path.dirname(relative_to), filename)
         filename = os.path.normpath(filename)
@@ -210,10 +208,8 @@ class TemplateLoader(object):
                             # search path
                             filename = os.path.join(dirname, filename)
                             dirname = ''
-                        tmpl = cls(fileobj, basedir=dirname, filename=filename,
-                                   loader=self, encoding=encoding,
-                                   lookup=self.variable_lookup,
-                                   allow_exec=self.allow_exec)
+                        tmpl = self.instantiate(cls, fileobj, dirname,
+                                                filename, encoding=encoding)
                         if self.callback:
                             self.callback(tmpl)
                         self._cache[filename] = tmpl
@@ -228,3 +224,29 @@ class TemplateLoader(object):
 
         finally:
             self._lock.release()
+
+    def instantiate(self, cls, fileobj, dirname, filename, encoding=None):
+        """Instantiate and return the `Template` object based on the given
+        class and parameters.
+        
+        This function is intended for subclasses to override if they need to
+        implement special template instantiation logic. Code that just uses
+        the `TemplateLoader` should use the `load` method instead.
+        
+        :param cls: the class of the template object to instantiate
+        :param fileobj: a readable file-like object containing the template
+                        source
+        :param dirname: the name of the base directory containing the template
+                        file
+        :param filename: the name of the template file, relative to the given
+                         base directory
+        :param encoding: the encoding of the template to load; defaults to the
+                         ``default_encoding`` of the loader instance
+        :return: the loaded `Template` instance
+        :rtype: `Template`
+        """
+        if encoding is None:
+            encoding = self.default_encoding
+        return cls(fileobj, basedir=dirname, filename=filename, loader=self,
+                   encoding=encoding, lookup=self.variable_lookup,
+                   allow_exec=self.allow_exec)

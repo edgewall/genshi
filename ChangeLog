@@ -51,6 +51,11 @@ http://svn.edgewall.org/repos/genshi/tags/0.5.0/
    output, instead of building a big string and returning it.
  * The XHTML serializer now strips `xml:space` attributes as they are only
    allowed on very few tags.
+ * Match templates are now applied in a more controlled fashion: in the order
+   they are declared in the template source, all match templates up to (and
+   including) the matching template itself are applied to the matched content,
+   whereas the match templates declared after the matching template are only
+   applied to the generated content (ticket #186).
 
 
 Version 0.4.4

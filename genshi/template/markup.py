@@ -272,9 +272,10 @@ class MarkupTemplate(Template):
                     # Consume and store all events until an end event
                     # corresponding to this start event is encountered
                     inner = _strip(stream)
-                    if 'match_once' not in hints \
-                            and 'not_recursive' not in hints:
-                        inner = self._match(inner, ctxt, [match_templates[idx]])
+                    pre_match_templates = match_templates[:idx + 1]
+                    if 'match_once' not in hints and 'not_recursive' in hints:
+                        pre_match_templates.pop()
+                    inner = self._match(inner, ctxt, pre_match_templates)
                     content = list(self._include(chain([event], inner, tail),
                                                  ctxt))
 
@@ -290,11 +291,9 @@ class MarkupTemplate(Template):
                     # Recursively process the output
                     template = _apply_directives(template, ctxt, directives)
                     remaining = match_templates
-                    if 'match_once' not in hints:
-                        remaining = remaining[:idx] + remaining[idx + 1:]
                     for event in self._match(self._exec(
                                     self._eval(self._flatten(template, ctxt),
-                                    ctxt), ctxt), ctxt, remaining):
+                                    ctxt), ctxt), ctxt, match_templates[idx + 1:]):
                         yield event
 
                     ctxt.pop()

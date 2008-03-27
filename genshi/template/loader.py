@@ -166,15 +166,16 @@ class TemplateLoader(object):
         if relative_to and not os.path.isabs(relative_to):
             filename = os.path.join(os.path.dirname(relative_to), filename)
         filename = os.path.normpath(filename)
+        cachekey = filename
 
         self._lock.acquire()
         try:
             # First check the cache to avoid reparsing the same file
             try:
-                tmpl = self._cache[filename]
+                tmpl = self._cache[cachekey]
                 if not self.auto_reload:
                     return tmpl
-                mtime = self._mtime[filename]
+                mtime = self._mtime[cachekey]
                 if mtime and mtime == os.path.getmtime(tmpl.filepath):
                     return tmpl
             except KeyError, OSError:
@@ -221,8 +222,8 @@ class TemplateLoader(object):
                                                 filename, encoding=encoding)
                         if self.callback:
                             self.callback(tmpl)
-                        self._cache[filename] = tmpl
-                        self._mtime[filename] = mtime
+                        self._cache[cachekey] = tmpl
+                        self._mtime[cachekey] = mtime
                     finally:
                         if hasattr(fileobj, 'close'):
                             fileobj.close()

@@ -193,7 +193,7 @@ class TemplateLoader(object):
                 # template is on the search path
                 dirname = os.path.dirname(relative_to)
                 if dirname not in search_path:
-                    search_path = search_path + [dirname]
+                    search_path = list(search_path) + [dirname]
                 isabs = True
 
             elif not search_path:

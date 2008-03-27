@@ -202,7 +202,7 @@ class TemplateLoader(object):
 
             for loadfunc in search_path:
                 if isinstance(loadfunc, basestring):
-                    loadfunc = TemplateLoader.directory(loadfunc)
+                    loadfunc = directory(loadfunc)
                 try:
                     dirname, filename, fileobj, mtime = loadfunc(filename)
                 except IOError:
@@ -296,13 +296,13 @@ class TemplateLoader(object):
         request to the delegate.
         
         >>> load = prefixed(
-        ...     app1 = lambda filename: ('app1', filename),
-        ...     app2 = lambda filename: ('app2', filename)
+        ...     app1 = lambda filename: ('app1', filename, None, None),
+        ...     app2 = lambda filename: ('app2', filename, None, None)
         ... )
         >>> print load('app1/foo.html')
-        ('app1', 'foo.html')
+        ('', 'app1/foo.html', None, None)
         >>> print load('app2/bar.html')
-        ('app2', 'bar.html')
+        ('', 'app2/bar.html', None, None)
 
         :param delegates: mapping of path prefixes to loader functions
         :return: the loader function
@@ -312,8 +312,12 @@ class TemplateLoader(object):
             for prefix, delegate in delegates.items():
                 if filename.startswith(prefix):
                     if isinstance(delegate, basestring):
-                        delegate = TemplateLoader.directory(delegate)
-                    return delegate(filename[len(prefix):].lstrip('/\\'))
+                        delegate = directory(delegate)
+                    path, _, fileobj, mtime = delegate(
+                        filename[len(prefix):].lstrip('/\\')
+                    )
+                    dirname = path[len(prefix):].rstrip('/\\')
+                    return dirname, filename, fileobj, mtime
             raise TemplateNotFound(filename, delegates.keys())
         return _dispatch_by_prefix
     prefixed = staticmethod(prefixed)

@@ -225,7 +225,7 @@ class MarkupTemplate(Template):
         assert len(streams) == 1
         return streams[0]
 
-    def _match(self, stream, ctxt, match_templates=None):
+    def _match(self, stream, ctxt, match_templates=None, **vars):
         """Internal stream filter that applies any defined match templates
         to the stream.
         """
@@ -271,32 +271,38 @@ class MarkupTemplate(Template):
 
                     # Consume and store all events until an end event
                     # corresponding to this start event is encountered
-                    inner = _strip(stream)
                     pre_match_templates = match_templates[:idx + 1]
                     if 'match_once' not in hints and 'not_recursive' in hints:
                         pre_match_templates.pop()
-                    inner = self._match(inner, ctxt, pre_match_templates)
-                    content = list(self._include(chain([event], inner, tail),
-                                                 ctxt))
+                    inner = _strip(stream)
+                    if pre_match_templates:
+                        inner = self._match(inner, ctxt, pre_match_templates)
+                    content = self._include(chain([event], inner, tail), ctxt)
+                    if 'not_buffered' not in hints:
+                        content = list(content)
 
-                    for test in [mt[0] for mt in match_templates]:
-                        test(tail[0], namespaces, ctxt, updateonly=True)
+                    if tail:
+                        for test in [mt[0] for mt in match_templates]:
+                            test(tail[0], namespaces, ctxt, updateonly=True)
 
                     # Make the select() function available in the body of the
                     # match template
                     def select(path):
                         return Stream(content).select(path, namespaces, ctxt)
-                    ctxt.push(dict(select=select))
+                    vars = dict(select=select)
 
                     # Recursively process the output
-                    template = _apply_directives(template, ctxt, directives)
-                    remaining = match_templates
-                    for event in self._match(self._exec(
-                                    self._eval(self._flatten(template, ctxt),
-                                    ctxt), ctxt), ctxt, match_templates[idx + 1:]):
+                    template = _apply_directives(template, directives, ctxt,
+                                                 **vars)
+                    for event in self._match(
+                            self._exec(
+                                self._eval(
+                                    self._flatten(template, ctxt, **vars),
+                                    ctxt, **vars),
+                                ctxt, **vars),
+                            ctxt, match_templates[idx + 1:], **vars):
                         yield event
 
-                    ctxt.pop()
                     break
 
             else: # no matches

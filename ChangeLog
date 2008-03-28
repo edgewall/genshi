@@ -65,6 +65,10 @@ http://svn.edgewall.org/repos/genshi/tags/0.5.0/
    and some metadata. New load functions are supplied for loading from egg
    package data, and loading from different loaders depending on the path
    prefix of the requested filename (ticket #182).
+ * Match templates can now be processed without keeping the complete matched
+   content in memory, which could cause excessive memory use on long pages.
+   The buffering can be disabled using the new `buffer` optimization hint on
+   the `<py:match>` directive.
 
 
 Version 0.4.4

@@ -254,17 +254,52 @@ class Context(object):
         """Pop the top-most scope from the stack."""
 
 
-def _apply_directives(stream, ctxt, directives):
+def _apply_directives(stream, directives, ctxt, **vars):
     """Apply the given directives to the stream.
     
     :param stream: the stream the directives should be applied to
-    :param ctxt: the `Context`
     :param directives: the list of directives to apply
+    :param ctxt: the `Context`
+    :param vars: additional variables that should be available when Python
+                 code is executed
     :return: the stream with the given directives applied
     """
     if directives:
-        stream = directives[0](iter(stream), ctxt, directives[1:])
+        stream = directives[0](iter(stream), directives[1:], ctxt, **vars)
     return stream
+
+def _eval_expr(expr, ctxt, **vars):
+    """Evaluate the given `Expression` object.
+    
+    :param expr: the expression to evaluate
+    :param ctxt: the `Context`
+    :param vars: additional variables that should be available to the
+                 expression
+    :return: the result of the evaluation
+    """
+    if vars:
+        ctxt.push(vars)
+    retval = expr.evaluate(ctxt)
+    if vars:
+        ctxt.pop()
+    return retval
+
+def _exec_suite(suite, ctxt, **vars):
+    """Execute the given `Suite` object.
+    
+    :param suite: the code suite to execute
+    :param ctxt: the `Context`
+    :param vars: additional variables that should be available to the
+                 code
+    """
+    if vars:
+        ctxt.push(vars)
+        ctxt.push({})
+    suite.execute(_ctxt2dict(ctxt))
+    if vars:
+        top = ctxt.pop()
+        ctxt.pop()
+        ctxt.frames[0].update(top)
 
 
 class TemplateMeta(type):
@@ -426,21 +461,24 @@ class Template(object):
         :return: a markup event stream representing the result of applying
                  the template to the context data.
         """
+        vars = {}
         if args:
             assert len(args) == 1
             ctxt = args[0]
             if ctxt is None:
                 ctxt = Context(**kwargs)
+            else:
+                vars = kwargs
             assert isinstance(ctxt, Context)
         else:
             ctxt = Context(**kwargs)
 
         stream = self.stream
         for filter_ in self.filters:
-            stream = filter_(iter(stream), ctxt)
+            stream = filter_(iter(stream), ctxt, **vars)
         return Stream(stream, self.serializer)
 
-    def _eval(self, stream, ctxt):
+    def _eval(self, stream, ctxt, **vars):
         """Internal stream filter that evaluates any expressions in `START` and
         `TEXT` events.
         """
@@ -460,7 +498,8 @@ class Template(object):
                     else:
                         values = []
                         for subkind, subdata, subpos in self._eval(substream,
-                                                                   ctxt):
+                                                                   ctxt,
+                                                                   **vars):
                             if subkind is TEXT:
                                 values.append(subdata)
                         value = [x for x in values if x is not None]
@@ -470,7 +509,7 @@ class Template(object):
                 yield kind, (tag, Attrs(new_attrs)), pos
 
             elif kind is EXPR:
-                result = data.evaluate(ctxt)
+                result = _eval_expr(data, ctxt, **vars)
                 if result is not None:
                     # First check for a string, otherwise the iterable test
                     # below succeeds, and the string will be chopped up into
@@ -482,7 +521,7 @@ class Template(object):
                     elif hasattr(result, '__iter__'):
                         substream = _ensure(result)
                         for filter_ in filters:
-                            substream = filter_(substream, ctxt)
+                            substream = filter_(substream, ctxt, **vars)
                         for event in substream:
                             yield event
                     else:
@@ -491,28 +530,29 @@ class Template(object):
             else:
                 yield kind, data, pos
 
-    def _exec(self, stream, ctxt):
+    def _exec(self, stream, ctxt, **vars):
         """Internal stream filter that executes Python code blocks."""
         for event in stream:
             if event[0] is EXEC:
-                event[1].execute(_ctxt2dict(ctxt))
+                _exec_suite(event[1], ctxt, **vars)
             else:
                 yield event
 
-    def _flatten(self, stream, ctxt):
+    def _flatten(self, stream, ctxt, **vars):
         """Internal stream filter that expands `SUB` events in the stream."""
         for event in stream:
             if event[0] is SUB:
                 # This event is a list of directives and a list of nested
                 # events to which those directives should be applied
                 directives, substream = event[1]
-                substream = _apply_directives(substream, ctxt, directives)
-                for event in self._flatten(substream, ctxt):
+                substream = _apply_directives(substream, directives, ctxt,
+                                              **vars)
+                for event in self._flatten(substream, ctxt, **vars):
                     yield event
             else:
                 yield event
 
-    def _include(self, stream, ctxt):
+    def _include(self, stream, ctxt, **vars):
         """Internal stream filter that performs inclusion of external
         template files.
         """
@@ -523,20 +563,21 @@ class Template(object):
                 href, cls, fallback = event[1]
                 if not isinstance(href, basestring):
                     parts = []
-                    for subkind, subdata, subpos in self._eval(href, ctxt):
+                    for subkind, subdata, subpos in self._eval(href, ctxt,
+                                                               **vars):
                         if subkind is TEXT:
                             parts.append(subdata)
                     href = u''.join([x for x in parts if x is not None])
                 try:
                     tmpl = self.loader.load(href, relative_to=event[2][0],
                                             cls=cls or self.__class__)
-                    for event in tmpl.generate(ctxt):
+                    for event in tmpl.generate(ctxt, **vars):
                         yield event
                 except TemplateNotFound:
                     if fallback is None:
                         raise
                     for filter_ in self.filters:
-                        fallback = filter_(iter(fallback), ctxt)
+                        fallback = filter_(iter(fallback), ctxt, **vars)
                     for event in fallback:
                         yield event
             else:

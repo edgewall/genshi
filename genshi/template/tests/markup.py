@@ -611,6 +611,22 @@ class MarkupTemplateTestCase(unittest.TestCase):
           </body>
         </html>""", tmpl.generate().render())
 
+    def test_with_in_match(self): 
+        xml = ("""<html xmlns:py="http://genshi.edgewall.org/">
+          <py:match path="body/p">
+            <h1>${select('text()')}</h1>
+            ${select('.')}
+          </py:match>
+          <body><p py:with="foo='bar'">${foo}</p></body>
+        </html>""")
+        tmpl = MarkupTemplate(xml, filename='test.html')
+        self.assertEqual("""<html>
+          <body>
+            <h1>bar</h1>
+            <p>bar</p>
+          </body>
+        </html>""", tmpl.generate().render())
+
     def test_nested_include_matches(self):
         # See ticket #157
         dirname = tempfile.mkdtemp(suffix='genshi_test')

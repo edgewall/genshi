@@ -358,6 +358,17 @@ The following optimization hints are recognized:
 +---------------+-----------+-----------------------------------------------+
 | Attribute     | Default   | Description                                   |
 +===============+===========+===============================================+
+| ``buffer``    | ``true``  | Whether the matched content should be         |
+|               |           | buffered in memory. Buffering can improve     |
+|               |           | performance a bit at the cost of needing more |
+|               |           | memory during rendering. Buffering is         |
+|               |           | ''required'' for match templates that contain |
+|               |           | more than one invocation of the ``select()``  |
+|               |           | function. If there is only one call, and the  |
+|               |           | matched content can potentially be very long, |
+|               |           | consider disabling buffering to avoid         |
+|               |           | excessive memory use.                         |
++---------------+-----------+-----------------------------------------------+
 | ``once``      | ``false`` | Whether the engine should stop looking for    |
 |               |           | more matching elements after the first match. |
 |               |           | Use this on match templates that match        |

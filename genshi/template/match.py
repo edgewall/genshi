@@ -49,8 +49,9 @@ class MatchSet(object):
 
         if parent is None:
             # merely for indexing. Note that this is shared between
-            # all MatchSets that share the same root parent. We don't have to worry about exclusions here
-            self.match_order = []
+            # all MatchSets that share the same root parent. We don't
+            # have to worry about exclusions here
+            self.match_order = {}
             
             # tag_templates are match templates whose path are simply
             # a tag, like "body" or "img"
@@ -84,7 +85,9 @@ class MatchSet(object):
         test, path, template, hints, namespace, directives
         """
 
-        self.match_order.append(match_template)
+        # match_templates are currently tuples that contain unhashable
+        # objects. So we'll use id() for now. 
+        self.match_order[id(match_template)] = len(self.match_order)
         
         path = match_template[1]
 
@@ -117,6 +120,9 @@ class MatchSet(object):
 
         else:
             self.other_templates.remove(match_template)
+
+        # clean up match_order
+        del self.match_order[id(match_template)]
 
     def single_match(cls, match_template):
         """
@@ -165,7 +171,7 @@ class MatchSet(object):
                          self.find_raw_matches(event))
 
         # sort the results according to the order they were added
-        return sorted(matches, key=self.match_order.index)
+        return sorted(matches, key=lambda v: self.match_order[id(v)])
 
     def __nonzero__(self):
         """

@@ -69,6 +69,8 @@ http://svn.edgewall.org/repos/genshi/tags/0.5.0/
    content in memory, which could cause excessive memory use on long pages.
    The buffering can be disabled using the new `buffer` optimization hint on
    the `<py:match>` directive.
+ * Improve error reporting when accessing an attribute in a Python expression
+   raises an `AttributeError` (ticket #191).
 
 
 Version 0.4.4

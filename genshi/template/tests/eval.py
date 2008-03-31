@@ -342,11 +342,16 @@ class ExpressionTestCase(unittest.TestCase):
 
     def test_getattr_exception(self):
         class Something(object):
-            def prop(self):
+            def prop_a(self):
                 raise NotImplementedError
-            prop = property(prop)
+            prop_a = property(prop_a)
+            def prop_b(self):
+                raise AttributeError
+            prop_b = property(prop_b)
         self.assertRaises(NotImplementedError,
-                          Expression('s.prop').evaluate, {'s': Something()})
+                          Expression('s.prop_a').evaluate, {'s': Something()})
+        self.assertRaises(AttributeError,
+                          Expression('s.prop_b').evaluate, {'s': Something()})
 
     def test_getitem_undefined_string(self):
         class Something(object):

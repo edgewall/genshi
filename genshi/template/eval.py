@@ -271,12 +271,16 @@ class LookupBase(object):
 
     def lookup_attr(cls, obj, key):
         __traceback_hide__ = True
-        val = getattr(obj, key, UNDEFINED)
-        if val is UNDEFINED:
-            try:
-                val = obj[key]
-            except (KeyError, TypeError):
-                val = cls.undefined(key, owner=obj)
+        try:
+            val = getattr(obj, key)
+        except AttributeError:
+            if hasattr(obj.__class__, key):
+                raise
+            else:
+                try:
+                    val = obj[key]
+                except (KeyError, TypeError):
+                    val = cls.undefined(key, owner=obj)
         return val
     lookup_attr = classmethod(lookup_attr)
 

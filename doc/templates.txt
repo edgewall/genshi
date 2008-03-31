@@ -270,6 +270,12 @@ But please note that disallowing code blocks in templates does not turn Genshi
 into a sandboxable template engine; there are sufficient ways to do harm even
 using plain expressions.
 
+.. warning:: Unfortunately, code blocks are severely limited when running
+             under Python 2.3: For example, it is not possible to access
+             variables defined in outer scopes. If you plan to use code blocks
+             extensively, it is strongly recommended that you run Python 2.4
+             or later.
+
 
 .. _`error handling`:
 

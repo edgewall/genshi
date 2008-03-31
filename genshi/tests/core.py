@@ -14,6 +14,10 @@
 import doctest
 import pickle
 from StringIO import StringIO
+try:
+    from cStringIO import StringIO as cStringIO
+except ImportError:
+    cStringIO = StringIO
 import unittest
 
 from genshi import core
@@ -34,6 +38,18 @@ class StreamTestCase(unittest.TestCase):
     def test_render_ascii(self):
         xml = XML('<li>Über uns</li>')
         self.assertEqual('<li>&#220;ber uns</li>', xml.render(encoding='ascii'))
+
+    def test_render_output_stream_utf8(self):
+        xml = XML('<li>Über uns</li>')
+        strio = cStringIO()
+        self.assertEqual(None, xml.render(out=strio))
+        self.assertEqual('<li>Über uns</li>', strio.getvalue())
+
+    def test_render_output_stream_unicode(self):
+        xml = XML('<li>Über uns</li>')
+        strio = StringIO()
+        self.assertEqual(None, xml.render(encoding=None, out=strio))
+        self.assertEqual(u'<li>Über uns</li>', strio.getvalue())
 
     def test_pickle(self):
         xml = XML('<li>Foo</li>')

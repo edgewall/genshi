@@ -631,6 +631,32 @@ class MatchDirectiveTestCase(unittest.TestCase):
           </body>
         </html>""", str(tmpl.generate()))
 
+    def test_recursive_match_3(self):
+        tmpl = MarkupTemplate("""<test xmlns:py="http://genshi.edgewall.org/">
+          <py:match path="b[@type='bullet']">
+            <bullet>${select('*|text()')}</bullet>
+          </py:match>
+          <py:match path="group[@type='bullet']">
+            <ul>${select('*')}</ul>
+          </py:match>
+          <py:match path="b">
+            <generic>${select('*|text()')}</generic>
+          </py:match>
+
+          <b>
+            <group type="bullet">
+              <b type="bullet">1</b>
+              <b type="bullet">2</b>
+            </group>
+          </b>
+        </test>
+        """)
+        self.assertEqual("""<test>
+            <generic>
+            <ul><bullet>1</bullet><bullet>2</bullet></ul>
+          </generic>
+        </test>""", str(tmpl.generate()))
+
     def test_not_match_self(self):
         """
         See http://genshi.edgewall.org/ticket/77

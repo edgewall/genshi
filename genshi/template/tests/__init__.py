@@ -16,7 +16,7 @@ import unittest
 
 def suite():
     from genshi.template.tests import base, directives, eval, interpolation, \
-                                      loader, markup, plugin, text
+                                      loader, markup, plugin, text, match
     suite = unittest.TestSuite()
     suite.addTest(base.suite())
     suite.addTest(directives.suite())
@@ -26,6 +26,7 @@ def suite():
     suite.addTest(markup.suite())
     suite.addTest(plugin.suite())
     suite.addTest(text.suite())
+    suite.addTest(match.suite())
     return suite
 
 if __name__ == '__main__':

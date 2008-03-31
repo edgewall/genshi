@@ -2,6 +2,7 @@ from genshi.core import START
 from genshi.path import CHILD, LocalNameTest
 
 from copy import copy
+from itertools import ifilter
 
 def is_simple_path(path):
     """
@@ -35,17 +36,15 @@ class MatchSet(object):
 
     If the path is more complex like "xyz[k=z]" then then that match
     will always be returned by ``find_matches``.  """
-    def __init__(self, parent=None, exclude=None):
+    def __init__(self, parent=None,
+                 min_index=None,
+                 max_index=None):
         """
         If a parent is given, it means this is a wrapper around another
         set.
         
-        If exclude is given, it means include everything in the
-        parent, but exclude a specific match template.
         """
         self.parent = parent
-
-        self.current_index = 0
 
         if parent is None:
             # merely for indexing. Note that this is shared between
@@ -53,6 +52,9 @@ class MatchSet(object):
             # have to worry about exclusions here
             self.match_order = {}
             
+            self.min_index = None
+            self.max_index = None
+
             # tag_templates are match templates whose path are simply
             # a tag, like "body" or "img"
             self.tag_templates = {}
@@ -61,23 +63,23 @@ class MatchSet(object):
             # as ones with complex paths like "[class=container]"
             self.other_templates = []
 
-            # exclude is a list of templates to ignore when iterating
-            # through templates
-            self.exclude = []
-            if exclude is not None:
-                self.exclude.append(exclude)
         else:
             # We have a parent: Just copy references to member
-            # variables in parent so that there's no performance loss,
-            # but make our own exclusion set, so we don't have to
-            # chain exclusions across a chain of MatchSets
+            # variables in parent so that there's no performance loss
+            self.max_index = parent.max_index
+            self.min_index = parent.min_index
             self.match_order = parent.match_order
             self.tag_templates = parent.tag_templates
             self.other_templates = parent.other_templates
+
+        if max_index is not None:
+            assert self.max_index is None or max_index <= self.max_index
+            self.max_index = max_index
+
+        if min_index is not None:
+            assert self.min_index is None or min_index > self.min_index
+            self.min_index = min_index
         
-            self.exclude = copy(parent.exclude)
-            if exclude is not None:
-                self.exclude.append(exclude)
     
     def add(self, match_template):
         """
@@ -91,7 +93,6 @@ class MatchSet(object):
         
         path = match_template[1]
 
-        self.current_index += 1
         if is_simple_path(path):
             # special cache of tag
             tag_name = path.paths[0][0][1].name
@@ -133,15 +134,22 @@ class MatchSet(object):
         return match_set
     single_match = classmethod(single_match)
 
-    def with_exclusion(self, exclude):
+    def before_template(self, match_template, inclusive):
+        cls = type(self)
+        max_index = self.match_order[id(match_template)]
+        if not inclusive:
+            max_index -= 1
+        return cls(parent=self, max_index=max_index)
+    
+    def after_template(self, match_template):
         """
-        Factory for creating a MatchSet based on another MatchSet, but
-        with certain templates excluded
+        Factory for creating a MatchSet that only matches templates after
+        the given match
         """
-        cls = self.__class__
-        new_match_set = cls(parent=self, exclude=exclude)
-        return new_match_set
-            
+        cls = type(self)
+        min_index = self.match_order[id(match_template)] + 1
+        return cls(parent=self, min_index=min_index)
+    
     def find_raw_matches(self, event):
         """ Return a list of all valid templates that can be used for the
         given event. Ordering is funky because we first check
@@ -167,8 +175,20 @@ class MatchSet(object):
         """
 
         # remove exclusions
-        matches = filter(lambda template: template not in self.exclude,
-                         self.find_raw_matches(event))
+        def can_match(template):
+            # make sure that 
+            if (self.min_index is not None and
+                self.match_order[id(template)] < self.min_index):
+                return False
+
+            if (self.max_index is not None and 
+                self.match_order[id(template)] > self.max_index):
+                return False
+
+            return True
+        
+        matches = ifilter(can_match,
+                          self.find_raw_matches(event))
 
         # sort the results according to the order they were added
         return sorted(matches, key=lambda v: self.match_order[id(v)])
@@ -177,6 +197,21 @@ class MatchSet(object):
         """
         allow this to behave as a list
         """
+
+        # this is easy - before the first element there is nothing
+        if self.max_index == -1:
+            return False
+
+        # this isn't always right because match_order may shrink, but
+        # you'll never get a false-negative
+        if self.min_index == len(self.match_order):
+            return False
+
+        # check for a range that is completely constrained
+        if self.min_index is not None and self.max_index is not None:
+            if self.min_index >= self.max_index:
+                return False
+            
         return bool(self.tag_templates or self.other_templates)
 
     def __str__(self):
@@ -184,8 +219,7 @@ class MatchSet(object):
         if self.parent:
             parent = ": child of 0x%x" % id(self.parent)
 
-        exclude = ""
-        if self.exclude:
-            exclude = " / excluding %d items" % len(self.exclude)
-            
-        return "<MatchSet 0x%x %d tag templates, %d other templates%s%s>" % (id(self), len(self.tag_templates), len(self.other_templates), parent, exclude)
+        return "<MatchSet 0x%x %d tag templates, %d other templates, range=[%s:%s]%s>" % (
+            id(self), len(self.tag_templates), len(self.other_templates),
+            self.min_index, self.max_index,
+            parent)

@@ -232,6 +232,27 @@ class NewTextTemplateTestCase(unittest.TestCase):
 Included
 ----- Included data above this line -----""", tmpl.generate().render())
 
+    def test_include_expr(self):
+         file1 = open(os.path.join(self.dirname, 'tmpl1.txt'), 'w')
+         try:
+             file1.write("Included")
+         finally:
+             file1.close()
+ 
+         file2 = open(os.path.join(self.dirname, 'tmpl2.txt'), 'w')
+         try:
+             file2.write("""----- Included data below this line -----
+    {% include ${'%s.txt' % ('tmpl1',)} %}
+    ----- Included data above this line -----""")
+         finally:
+             file2.close()
+
+         loader = TemplateLoader([self.dirname])
+         tmpl = loader.load('tmpl2.txt', cls=NewTextTemplate)
+         self.assertEqual("""----- Included data below this line -----
+    Included
+    ----- Included data above this line -----""", tmpl.generate().render())
+
 
 def suite():
     suite = unittest.TestSuite()

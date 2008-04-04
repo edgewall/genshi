@@ -25,7 +25,6 @@ from genshi.template.eval import Suite
 from genshi.template.interpolation import interpolate
 from genshi.template.directives import *
 from genshi.template.text import NewTextTemplate
-from genshi.template.match import MatchSet
 
 __all__ = ['MarkupTemplate']
 __docformat__ = 'restructuredtext en'

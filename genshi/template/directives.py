@@ -457,10 +457,10 @@ class MatchDirective(Directive):
     attach = classmethod(attach)
 
     def __call__(self, stream, directives, ctxt, **vars):
-        if ctx._match_set is None:
+        if ctxt._match_set is None:
             # lazily create MatchSet so that it doesn't burden the
             # _match filter when there are no py:matches defined.
-            ctx._match_set = MatchSet()
+            ctxt._match_set = MatchSet()
         ctxt._match_set.add((self.path.test(ignore_context=True),
                              self.path, list(stream), self.hints,
                              self.namespaces, directives))

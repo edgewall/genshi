@@ -14,9 +14,10 @@
 """Implementation of a number of stream filters."""
 
 try:
-    frozenset
+    set
 except NameError:
     from sets import ImmutableSet as frozenset
+    from sets import Set as set
 import re
 
 from genshi.core import Attrs, QName, stripentities

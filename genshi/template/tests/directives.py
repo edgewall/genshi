@@ -496,7 +496,8 @@ class ForDirectiveTestCase(unittest.TestCase):
                              frames[-1].tb_frame.f_code.co_name)
             self.assertEqual('test.html',
                              frames[-1].tb_frame.f_code.co_filename)
-            self.assertEqual(2, frames[-1].tb_lineno)
+            if sys.version_info[:2] >= (2, 4):
+                self.assertEqual(2, frames[-1].tb_lineno)
 
 
 class IfDirectiveTestCase(unittest.TestCase):

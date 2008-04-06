@@ -24,8 +24,7 @@ from genshi.path import Path
 from genshi.template.base import TemplateRuntimeError, TemplateSyntaxError, \
                                  EXPR, _apply_directives, _eval_expr, \
                                  _exec_suite
-from genshi.template.eval import Expression, Suite, ExpressionASTTransformer, \
-                                 _parse
+from genshi.template.eval import Expression, ExpressionASTTransformer, _parse
 
 __all__ = ['AttrsDirective', 'ChooseDirective', 'ContentDirective',
            'DefDirective', 'ForDirective', 'IfDirective', 'MatchDirective',
@@ -700,26 +699,29 @@ class WithDirective(Directive):
       <span>42 7 52</span>
     </div>
     """
-    __slots__ = ['suite']
+    __slots__ = ['vars']
 
     def __init__(self, value, template, namespaces=None, lineno=-1, offset=-1):
         Directive.__init__(self, None, template, namespaces, lineno, offset)
+        self.vars = [] 
+        value = value.strip() 
         try:
-            self.suite = Suite(value, template.filepath, lineno,
-                               lookup=template.lookup,
-                               xform=ExpressionASTTransformer)
+            ast = _parse(value, 'exec').node 
+            for node in ast.nodes: 
+                if isinstance(node, compiler.ast.Discard): 
+                    continue 
+                elif not isinstance(node, compiler.ast.Assign): 
+                    raise TemplateSyntaxError('only assignment allowed in ' 
+                                              'value of the "with" directive', 
+                                              template.filepath, lineno, offset) 
+                self.vars.append(([_assignment(n) for n in node.nodes], 
+                                  Expression(node.expr, template.filepath, 
+                                             lineno, lookup=template.lookup))) 
         except SyntaxError, err:
             err.msg += ' in expression "%s" of "%s" directive' % (value,
                                                                   self.tagname)
             raise TemplateSyntaxError(err, template.filepath, lineno,
                                       offset + (err.offset or 0))
-
-        for node in self.suite.ast.node.nodes:
-            if not isinstance(node, (compiler.ast.Discard,
-                                     compiler.ast.Assign)):
-                raise TemplateSyntaxError('only assignment allowed in value of '
-                                          'the "with" directive',
-                                          template.filepath, lineno, offset)
 
     def attach(cls, template, stream, value, namespaces, pos):
         if type(value) is dict:
@@ -729,8 +731,12 @@ class WithDirective(Directive):
     attach = classmethod(attach)
 
     def __call__(self, stream, directives, ctxt, **vars):
-        ctxt.push({})
-        _exec_suite(self.suite, ctxt, **vars)
+        frame = {}
+        ctxt.push(frame)
+        for targets, expr in self.vars: 
+            value = _eval_expr(expr, ctxt, **vars)
+            for assign in targets:
+                assign(frame, value)
         for event in _apply_directives(stream, directives, ctxt, **vars):
             yield event
         ctxt.pop()

@@ -121,26 +121,24 @@ class MatchSet(object):
     dictionary that maps tag names to matches.
 
     If the path is more complex like "xyz[k=z]" then then that match
-    will always be returned by ``find_matches``.  """
+    will always be returned by ``find_matches``.
+
+    """
     def __init__(self, parent=None,
                  min_index=None,
                  max_index=None):
-        """
-        If a parent is given, it means this is a wrapper around another
-        set.
+        """ If a parent is given, it means this is likely a MatchSet
+        constrained by min_index or max_index.
         
         """
         if parent is None:
             self.state = MatchState()
-        else:
-            self.state = parent.state
-
-        if parent is None:
             self.min_index = None
             self.max_index = None
         else:
             # We have a parent: Just copy references to member
             # variables in parent so that there's no performance loss
+            self.state = parent.state
             self.max_index = parent.max_index
             self.min_index = parent.min_index
             
@@ -152,6 +150,9 @@ class MatchSet(object):
         if min_index is not None:
             assert self.min_index is None or min_index > self.min_index
             self.min_index = min_index
+
+        # initialize empty state
+        self.not_empty = self.have_matches()
         
     def add(self, match_template):
         """
@@ -159,13 +160,18 @@ class MatchSet(object):
         test, path, template, hints, namespace, directives
         """
         self.state.add(match_template)
+        self.not_empty = self.have_matches()
 
+        # we should never add a new py:match to a constrained
+        # MatchSet, therefore the set should never be empty here
+        assert self.not_empty
 
     def remove(self, match_template):
         """
         Permanently remove a match_template - mainly for match_once
-       """
+        """
         self.state.remove(match_template)
+        self.not_empty = self.have_matches()
 
     def before_template(self, match_template, inclusive):
         """ Return a new MatchSet where only the templates that were declared
@@ -193,7 +199,8 @@ class MatchSet(object):
         """ Return a list of all valid templates that can be used for the
         given event.
 
-        The basic work here is sorting the result of find_raw_matches
+        The basic work here is sorting the result of find_raw_matches.
+        
         """
         # remove exclusions
         def can_match(template):
@@ -215,20 +222,37 @@ class MatchSet(object):
         return sorted(matches, key=lambda v: self.state.match_order[id(v)])
 
     def __nonzero__(self):
+        """ allow this to behave as a list - and at least try to act empty if
+        the list is likely to be empty.
+        
         """
-        allow this to behave as a list - and at least try to act empty if
-        the list is likely to be empty
+        return self.not_empty
+
+    def have_matches(self):
+        """ This function does some O(1) checks for states when this MatchSet
+        absolutely must be empty - such as when there are no py:match
+        templates, or when the max/min index would prohibit any
+        possible match.
+
+        This function should be called whenever the match state is
+        updated (i.e. any time we add/remove a new py:match, create a
+        new MatchSet, etc.)  The expectation is that these
+        less-frequent checks are, amortized over a template, are
+        cheaper than calls to find_matches() for any arbitrary path.
+        
         """
         # dirt-simple case: no py:match templates at all
         if not (self.state.tag_templates or self.state.other_templates):
             return False
+        
         # this is easy - before the first element there is nothing
-        if self.max_index == -1:
+        if (self.max_index is not None and
+            self.max_index < 0):
             return False
 
-        # this isn't always right because match_order may shrink, but
-        # you'll never get a false-negative
-        if self.min_index == self.state.current_index:
+        # we're constrained, but we've removed any templates after min_index
+        if (self.min_index is not None and
+            self.min_index > self.state.current_index):
             return False
 
         # check for a range that is completely constrained
@@ -236,6 +260,8 @@ class MatchSet(object):
             if self.min_index >= self.max_index:
                 return False
 
+        # there might be other cases here, but it's safer to just
+        # return True if we can't guess any better
         return True
 
     def __str__(self):
@@ -243,7 +269,8 @@ class MatchSet(object):
         if self.parent:
             parent = ": child of 0x%x" % id(self.parent)
 
-        return "<MatchSet 0x%x %d tag templates, %d other templates, range=[%s:%s]%s>" % (
-            id(self), len(self.state.tag_templates), len(self.other_templates),
+        return "<MatchSet 0x%x %s%d tag templates, %d other templates, range=[%s:%s]%s>" % (
+            id(self), self.not_empty and "" or "[empty] ",
+            len(self.state.tag_templates), len(self.other_templates),
             self.min_index, self.max_index,
             parent)

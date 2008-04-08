@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2006 Edgewall Software
+# Copyright (C) 2006-2008 Edgewall Software
 # All rights reserved.
 #
 # This software is licensed as described in the file COPYING, which
@@ -346,8 +346,8 @@ class TemplateLoaderTestCase(unittest.TestCase):
             file3.close()
 
         loader = TemplateLoader([dir1, TemplateLoader.prefixed(
-            sub1 = os.path.join(dir2),
-            sub2 = os.path.join(dir3)
+            sub1 = dir2,
+            sub2 = dir3
         )])
         tmpl = loader.load('sub1/tmpl1.html')
         self.assertEqual("""<html>

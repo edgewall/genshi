@@ -70,6 +70,15 @@ You can simply replace it by the more explicit:
 
   Markup('<b>%s</b>') % name
 
+``Template`` Constructor
+------------------------
+
+The constructor of the ``Template`` class and its subclasses has changed
+slightly: instead of the optional ``basedir`` parameter, it now expects
+an (also optional) ``filepath`` parameter, which specifies the absolute
+path to the template. You probably aren't using those constructors
+directly, anyway, but using the ``TemplateLoader`` API instead.
+
 
 ------------------------------------
 Upgrading from Genshi 0.3.x to 0.4.x

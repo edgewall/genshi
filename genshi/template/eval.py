@@ -387,11 +387,12 @@ def _parse(source, mode='eval'):
     source = source.strip()
     if mode == 'exec':
         lines = [line.expandtabs() for line in source.splitlines()]
-        first = lines[0]
-        rest = dedent('\n'.join(lines[1:])).rstrip()
-        if first.rstrip().endswith(':') and not rest[0].isspace():
-            rest = '\n'.join(['    %s' % line for line in rest.splitlines()])
-        source = '\n'.join([first, rest])
+        if lines:
+            first = lines[0]
+            rest = dedent('\n'.join(lines[1:])).rstrip()
+            if first.rstrip().endswith(':') and not rest[0].isspace():
+                rest = '\n'.join(['    %s' % line for line in rest.splitlines()])
+            source = '\n'.join([first, rest])
     if isinstance(source, unicode):
         source = '\xef\xbb\xbf' + source.encode('utf-8')
     return parse(source, mode)
@@ -417,7 +418,10 @@ def _compile(node, source=None, mode='eval', filename=None, lineno=-1,
     else:
         gen = ModuleCodeGenerator(tree)
         lines = source.splitlines()
-        extract = lines[0]
+        if not lines:
+            extract = ''
+        else:
+            extract = lines[0]
         if len(lines) > 1:
             extract += ' ...'
         name = '<Suite %r>' % (extract)

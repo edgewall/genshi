@@ -496,7 +496,24 @@ class ForDirectiveTestCase(unittest.TestCase):
                              frames[-1].tb_frame.f_code.co_name)
             self.assertEqual('test.html',
                              frames[-1].tb_frame.f_code.co_filename)
-            self.assertEqual(2, frames[-1].tb_lineno)
+            if sys.version_info[:2] >= (2, 4):
+                self.assertEqual(2, frames[-1].tb_lineno)
+
+    def test_for_with_empty_value(self):
+        """
+        Verify an empty 'for' value is an error
+        """
+        try:
+            MarkupTemplate("""<doc xmlns:py="http://genshi.edgewall.org/">
+          <py:for each="">
+            empty
+          </py:for>
+        </doc>""", filename='test.html')
+            self.fail('ExpectedTemplateSyntaxError')
+        except TemplateSyntaxError, e:
+            self.assertEqual('test.html', e.filename)
+            if sys.version_info[:2] > (2,4):
+                self.assertEqual(2, e.lineno)
 
 
 class IfDirectiveTestCase(unittest.TestCase):
@@ -1103,6 +1120,16 @@ class WithDirectiveTestCase(unittest.TestCase):
             一二三四五六日
           </span>
         </div>""", str(tmpl.generate()))
+        
+    def test_with_empty_value(self):
+        """
+        Verify that an empty py:with works (useless, but legal)
+        """
+        tmpl = MarkupTemplate("""<div xmlns:py="http://genshi.edgewall.org/">
+          <span py:with="">Text</span></div>""")
+
+        self.assertEqual("""<div>
+          <span>Text</span></div>""", str(tmpl.generate()))
 
 
 def suite():

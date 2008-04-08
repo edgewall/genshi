@@ -130,11 +130,11 @@ class NewTextTemplate(Template):
     _DIRECTIVE_RE = r'((?<!\\)%s\s*(\w+)\s*(.*?)\s*%s|(?<!\\)%s.*?%s)'
     _ESCAPE_RE = r'\\\n|\\(\\)|\\(%s)|\\(%s)'
 
-    def __init__(self, source, basedir=None, filename=None, loader=None,
+    def __init__(self, source, filepath=None, filename=None, loader=None,
                  encoding=None, lookup='strict', allow_exec=False,
                  delims=('{%', '%}', '{#', '#}')):
         self.delimiters = delims
-        Template.__init__(self, source, basedir=basedir, filename=filename,
+        Template.__init__(self, source, filepath=filepath, filename=filename,
                           loader=loader, encoding=encoding, lookup=lookup)
 
     def _get_delims(self):
@@ -178,8 +178,7 @@ class NewTextTemplate(Template):
             start, end = mo.span(1)
             if start > offset:
                 text = _escape_sub(_escape_repl, source[offset:start])
-                for kind, data, pos in interpolate(text, self.basedir,
-                                                   self.filename, lineno,
+                for kind, data, pos in interpolate(text, self.filepath, lineno,
                                                    lookup=self.lookup):
                     stream.append((kind, data, pos))
                 lineno += len(text.splitlines())
@@ -189,8 +188,8 @@ class NewTextTemplate(Template):
 
             if command == 'include':
                 pos = (self.filename, lineno, 0)
-                value = list(interpolate(value, self.basedir, self.filename,
-                                         lineno, 0, lookup=self.lookup))
+                value = list(interpolate(value, self.filepath, lineno, 0,
+                                         lookup=self.lookup))
                 if len(value) == 1 and value[0][0] is TEXT:
                     value = value[0][1]
                 stream.append((INCLUDE, (value, None, []), pos))
@@ -228,8 +227,7 @@ class NewTextTemplate(Template):
 
         if offset < len(source):
             text = _escape_sub(_escape_repl, source[offset:])
-            for kind, data, pos in interpolate(text, self.basedir,
-                                               self.filename, lineno,
+            for kind, data, pos in interpolate(text, self.filepath, lineno,
                                                lookup=self.lookup):
                 stream.append((kind, data, pos))
 
@@ -290,8 +288,7 @@ class OldTextTemplate(Template):
             start, end = mo.span()
             if start > offset:
                 text = source[offset:start]
-                for kind, data, pos in interpolate(text, self.basedir,
-                                                   self.filename, lineno,
+                for kind, data, pos in interpolate(text, self.filepath, lineno,
                                                    lookup=self.lookup):
                     stream.append((kind, data, pos))
                 lineno += len(text.splitlines())
@@ -326,8 +323,7 @@ class OldTextTemplate(Template):
 
         if offset < len(source):
             text = source[offset:].replace('\\#', '#')
-            for kind, data, pos in interpolate(text, self.basedir,
-                                               self.filename, lineno,
+            for kind, data, pos in interpolate(text, self.filepath, lineno,
                                                lookup=self.lookup):
                 stream.append((kind, data, pos))
 

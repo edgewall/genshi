@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2006-2007 Edgewall Software
+# Copyright (C) 2006-2008 Edgewall Software
 # All rights reserved.
 #
 # This software is licensed as described in the file COPYING, which
@@ -338,19 +338,16 @@ class Template(object):
     serializer = None
     _number_conv = unicode # function used to convert numbers to event data
 
-    def __init__(self, source, basedir=None, filename=None, loader=None,
+    def __init__(self, source, filepath=None, filename=None, loader=None,
                  encoding=None, lookup='strict', allow_exec=True):
         """Initialize a template from either a string, a file-like object, or
         an already parsed markup stream.
         
         :param source: a string, file-like object, or markup stream to read the
                        template from
-        :param basedir: the base directory containing the template file; when
-                        loaded from a `TemplateLoader`, this will be the
-                        directory on the template search path in which the
-                        template was found
-        :param filename: the name of the template file, relative to the given
-                         base directory
+        :param filepath: the absolute path to the template file
+        :param filename: the path to the template file relative to the search
+                         path
         :param loader: the `TemplateLoader` to use for loading included
                        templates
         :param encoding: the encoding of the `source`
@@ -361,19 +358,12 @@ class Template(object):
         
         :note: Changed in 0.5: Added the `allow_exec` argument
         """
-        self.basedir = basedir
+        self.filepath = filepath or filename
         self.filename = filename
-        if basedir and filename:
-            self.filepath = os.path.join(basedir, filename)
-        else:
-            self.filepath = filename
         self.loader = loader
         self.lookup = lookup
         self.allow_exec = allow_exec
-
-        self.filters = [self._flatten, self._eval, self._exec]
-        if loader:
-            self.filters.append(self._include)
+        self._init_filters()
 
         if isinstance(source, basestring):
             source = StringIO(source)
@@ -384,8 +374,22 @@ class Template(object):
         except ParseError, e:
             raise TemplateSyntaxError(e.msg, self.filepath, e.lineno, e.offset)
 
+    def __getstate__(self):
+        state = self.__dict__.copy()
+        state['filters'] = []
+        return state
+
+    def __setstate__(self, state):
+        self.__dict__ = state
+        self._init_filters()
+
     def __repr__(self):
         return '<%s "%s">' % (self.__class__.__name__, self.filename)
+
+    def _init_filters(self):
+        self.filters = [self._flatten, self._eval, self._exec]
+        if self.loader:
+            self.filters.append(self._include)
 
     def _parse(self, source, encoding):
         """Parse the template.

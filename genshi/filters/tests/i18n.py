@@ -387,7 +387,7 @@ class ExtractTestCase(unittest.TestCase):
 
 def suite():
     suite = unittest.TestSuite()
-    suite.addTests(doctest.DocTestSuite(Translator.__module__))
+    suite.addTest(doctest.DocTestSuite(Translator.__module__))
     suite.addTest(unittest.makeSuite(TranslatorTestCase, 'test'))
     suite.addTest(unittest.makeSuite(ExtractTestCase, 'test'))
     return suite

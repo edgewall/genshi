@@ -60,16 +60,13 @@ class MarkupTemplate(Template):
     serializer = 'xml'
     _number_conv = Markup
 
-    def __init__(self, source, basedir=None, filename=None, loader=None,
-                 encoding=None, lookup='strict', allow_exec=True):
-        Template.__init__(self, source, basedir=basedir, filename=filename,
-                          loader=loader, encoding=encoding, lookup=lookup,
-                          allow_exec=allow_exec)
+    def _init_filters(self):
+        Template._init_filters(self)
         # Make sure the include filter comes after the match filter
-        if loader:
+        if self.loader:
             self.filters.remove(self._include)
         self.filters += [self._match]
-        if loader:
+        if self.loader:
             self.filters.append(self._include)
 
     def _parse(self, source, encoding):
@@ -127,8 +124,8 @@ class MarkupTemplate(Template):
                         directives.append((cls, value, ns_prefix.copy(), pos))
                     else:
                         if value:
-                            value = list(interpolate(value, self.basedir,
-                                                     pos[0], pos[1], pos[2],
+                            value = list(interpolate(value, self.filepath,
+                                                     pos[1], pos[2],
                                                      lookup=self.lookup))
                             if len(value) == 1 and value[0][0] is TEXT:
                                 value = value[0][1]
@@ -210,9 +207,8 @@ class MarkupTemplate(Template):
                 stream.append((EXEC, suite, pos))
 
             elif kind is TEXT:
-                for kind, data, pos in interpolate(data, self.basedir, pos[0],
-                                                   pos[1], pos[2],
-                                                   lookup=self.lookup):
+                for kind, data, pos in interpolate(data, self.filepath, pos[1],
+                                                   pos[2], lookup=self.lookup):
                     stream.append((kind, data, pos))
 
             elif kind is COMMENT:

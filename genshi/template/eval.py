@@ -75,6 +75,21 @@ class Code(object):
             lookup = {'lenient': LenientLookup, 'strict': StrictLookup}[lookup]
         self._globals = lookup.globals
 
+    def __getstate__(self):
+        state = {'source': self.source, 'ast': self.ast,
+                 'lookup': self._globals.im_self}
+        c = self.code
+        state['code'] = (c.co_nlocals, c.co_stacksize, c.co_flags, c.co_code,
+                         c.co_consts, c.co_names, c.co_varnames, c.co_filename,
+                         c.co_name, c.co_firstlineno, c.co_lnotab, (), ())
+        return state
+
+    def __setstate__(self, state):
+        self.source = state['source']
+        self.ast = state['ast']
+        self.code = new.code(0, *state['code'])
+        self._globals = state['lookup'].globals
+
     def __eq__(self, other):
         return (type(other) == type(self)) and (self.code == other.code)
 
@@ -372,11 +387,12 @@ def _parse(source, mode='eval'):
     source = source.strip()
     if mode == 'exec':
         lines = [line.expandtabs() for line in source.splitlines()]
-        first = lines[0]
-        rest = dedent('\n'.join(lines[1:])).rstrip()
-        if first.rstrip().endswith(':') and not rest[0].isspace():
-            rest = '\n'.join(['    %s' % line for line in rest.splitlines()])
-        source = '\n'.join([first, rest])
+        if lines:
+            first = lines[0]
+            rest = dedent('\n'.join(lines[1:])).rstrip()
+            if first.rstrip().endswith(':') and not rest[0].isspace():
+                rest = '\n'.join(['    %s' % line for line in rest.splitlines()])
+            source = '\n'.join([first, rest])
     if isinstance(source, unicode):
         source = '\xef\xbb\xbf' + source.encode('utf-8')
     return parse(source, mode)
@@ -402,7 +418,10 @@ def _compile(node, source=None, mode='eval', filename=None, lineno=-1,
     else:
         gen = ModuleCodeGenerator(tree)
         lines = source.splitlines()
-        extract = lines[0]
+        if not lines:
+            extract = ''
+        else:
+            extract = lines[0]
         if len(lines) > 1:
             extract += ' ...'
         name = '<Suite %r>' % (extract)

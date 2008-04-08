@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2006-2007 Edgewall Software
+# Copyright (C) 2006-2008 Edgewall Software
 # All rights reserved.
 #
 # This software is licensed as described in the file COPYING, which
@@ -13,6 +13,7 @@
 
 import doctest
 import os
+import pickle
 import shutil
 from StringIO import StringIO
 import sys
@@ -38,6 +39,15 @@ class MarkupTemplateTestCase(unittest.TestCase):
         stream = XML('<root> ${var} $var</root>')
         tmpl = MarkupTemplate(stream)
         self.assertEqual('<root> 42 42</root>', str(tmpl.generate(var=42)))
+
+    def test_pickle(self):
+        stream = XML('<root>$var</root>')
+        tmpl = MarkupTemplate(stream)
+        buf = StringIO()
+        pickle.dump(tmpl, buf, 2)
+        buf.seek(0)
+        unpickled = pickle.load(buf)
+        self.assertEqual('<root>42</root>', str(unpickled.generate(var=42)))
 
     def test_interpolate_mixed3(self):
         tmpl = MarkupTemplate('<root> ${var} $var</root>')

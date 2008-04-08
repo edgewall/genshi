@@ -127,7 +127,7 @@ class TemplateLoader(object):
             raise TypeError('The "callback" parameter needs to be callable')
         self.callback = callback
         self._cache = LRUCache(max_cache_size)
-        self._mtime = {}
+        self._uptodate = {}
         self._lock = threading.RLock()
 
     def load(self, filename, relative_to=None, cls=None, encoding=None):
@@ -175,8 +175,8 @@ class TemplateLoader(object):
                 tmpl = self._cache[cachekey]
                 if not self.auto_reload:
                     return tmpl
-                mtime = self._mtime[cachekey]
-                if mtime and mtime == os.path.getmtime(tmpl.filepath):
+                uptodate = self._uptodate[cachekey]
+                if uptodate is not None and uptodate():
                     return tmpl
             except KeyError, OSError:
                 pass
@@ -205,7 +205,7 @@ class TemplateLoader(object):
                 if isinstance(loadfunc, basestring):
                     loadfunc = directory(loadfunc)
                 try:
-                    dirname, filename, fileobj, mtime = loadfunc(filename)
+                    filepath, filename, fileobj, uptodate = loadfunc(filename)
                 except IOError:
                     continue
                 else:
@@ -216,14 +216,13 @@ class TemplateLoader(object):
                             # included template gets an absolute path, too,
                             # so that nested includes work properly without a
                             # search path
-                            filename = os.path.join(dirname, filename)
-                            dirname = ''
-                        tmpl = self.instantiate(cls, fileobj, dirname,
-                                                filename, encoding=encoding)
+                            filename = filepath
+                        tmpl = self._instantiate(cls, fileobj, filepath,
+                                                 filename, encoding=encoding)
                         if self.callback:
                             self.callback(tmpl)
                         self._cache[cachekey] = tmpl
-                        self._mtime[cachekey] = mtime
+                        self._uptodate[cachekey] = uptodate
                     finally:
                         if hasattr(fileobj, 'close'):
                             fileobj.close()
@@ -234,7 +233,7 @@ class TemplateLoader(object):
         finally:
             self._lock.release()
 
-    def instantiate(self, cls, fileobj, dirname, filename, encoding=None):
+    def _instantiate(self, cls, fileobj, filepath, filename, encoding=None):
         """Instantiate and return the `Template` object based on the given
         class and parameters.
         
@@ -245,10 +244,9 @@ class TemplateLoader(object):
         :param cls: the class of the template object to instantiate
         :param fileobj: a readable file-like object containing the template
                         source
-        :param dirname: the name of the base directory containing the template
-                        file
-        :param filename: the name of the template file, relative to the given
-                         base directory
+        :param filepath: the absolute path to the template file
+        :param filename: the path to the template file relative to the search
+                         path
         :param encoding: the encoding of the template to load; defaults to the
                          ``default_encoding`` of the loader instance
         :return: the loaded `Template` instance
@@ -256,7 +254,7 @@ class TemplateLoader(object):
         """
         if encoding is None:
             encoding = self.default_encoding
-        return cls(fileobj, basedir=dirname, filename=filename, loader=self,
+        return cls(fileobj, filepath=filepath, filename=filename, loader=self,
                    encoding=encoding, lookup=self.variable_lookup,
                    allow_exec=self.allow_exec)
 
@@ -270,7 +268,10 @@ class TemplateLoader(object):
         def _load_from_directory(filename):
             filepath = os.path.join(path, filename)
             fileobj = open(filepath, 'U')
-            return path, filename, fileobj, os.path.getmtime(filepath)
+            mtime = os.path.getmtime(filepath)
+            def _uptodate():
+                return mtime == os.path.getmtime(filepath)
+            return filepath, filename, fileobj, _uptodate
         return _load_from_directory
     directory = staticmethod(directory)
 
@@ -285,7 +286,7 @@ class TemplateLoader(object):
         from pkg_resources import resource_stream
         def _load_from_package(filename):
             filepath = os.path.join(path, filename)
-            return path, filename, resource_stream(name, filepath), None
+            return filepath, filename, resource_stream(name, filepath), None
         return _load_from_package
     package = staticmethod(package)
 
@@ -301,10 +302,10 @@ class TemplateLoader(object):
         ...     app2 = lambda filename: ('app2', filename, None, None)
         ... )
         >>> print load('app1/foo.html')
-        ('', 'app1/foo.html', None, None)
+        ('app1', 'app1/foo.html', None, None)
         >>> print load('app2/bar.html')
-        ('', 'app2/bar.html', None, None)
-
+        ('app2', 'app2/bar.html', None, None)
+        
         :param delegates: mapping of path prefixes to loader functions
         :return: the loader function
         :rtype: ``function``
@@ -314,11 +315,10 @@ class TemplateLoader(object):
                 if filename.startswith(prefix):
                     if isinstance(delegate, basestring):
                         delegate = directory(delegate)
-                    path, _, fileobj, mtime = delegate(
+                    filepath, _, fileobj, uptodate = delegate(
                         filename[len(prefix):].lstrip('/\\')
                     )
-                    dirname = path[len(prefix):].rstrip('/\\')
-                    return dirname, filename, fileobj, mtime
+                    return filepath, filename, fileobj, uptodate
             raise TemplateNotFound(filename, delegates.keys())
         return _dispatch_by_prefix
     prefixed = staticmethod(prefixed)

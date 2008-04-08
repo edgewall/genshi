@@ -11,6 +11,7 @@
 # individuals. For the exact contribution history, see the revision
 # history and logs, available at http://genshi.edgewall.org/log/.
 
+import doctest
 import unittest
 
 def suite():
@@ -18,7 +19,8 @@ def suite():
     suite = unittest.TestSuite()
     suite.addTest(html.suite())
     suite.addTest(i18n.suite())
-    suite.addTest(transform.suite())
+    if hasattr(doctest, 'NORMALIZE_WHITESPACE'):
+        suite.addTest(transform.suite())
     return suite
 
 if __name__ == '__main__':

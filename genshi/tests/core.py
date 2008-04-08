@@ -21,7 +21,7 @@ except ImportError:
 import unittest
 
 from genshi import core
-from genshi.core import Markup, Namespace, QName, escape, unescape
+from genshi.core import Markup, Attrs, Namespace, QName, escape, unescape
 from genshi.input import XML, ParseError
 
 
@@ -61,6 +61,10 @@ class StreamTestCase(unittest.TestCase):
 
 
 class MarkupTestCase(unittest.TestCase):
+
+    def test_new_with_encoding(self):
+        markup = Markup('Döner', encoding='utf-8')
+        self.assertEquals("<Markup u'D\\xf6ner'>", repr(markup))
 
     def test_repr(self):
         markup = Markup('foo')
@@ -107,6 +111,16 @@ class MarkupTestCase(unittest.TestCase):
         assert type(markup) is Markup
         self.assertEquals('<b>&amp;</b> boo', markup)
 
+    def test_mod_mapping(self):
+        markup = Markup('<b>%(foo)s</b>') % {'foo': '&'}
+        assert type(markup) is Markup
+        self.assertEquals('<b>&amp;</b>', markup)
+
+    def test_mod_noescape(self):
+        markup = Markup('<b>%(amp)s</b>') % {'amp': Markup('&amp;')}
+        assert type(markup) is Markup
+        self.assertEquals('<b>&amp;</b>', markup)
+
     def test_mul(self):
         markup = Markup('<b>foo</b>') * 2
         assert type(markup) is Markup
@@ -148,6 +162,18 @@ class MarkupTestCase(unittest.TestCase):
         pickle.dump(markup, buf, 2)
         buf.seek(0)
         self.assertEquals("<Markup u'foo'>", repr(pickle.load(buf)))
+
+
+class AttrsTestCase(unittest.TestCase):
+
+    def test_pickle(self):
+        attrs = Attrs([("attr1", "foo"), ("attr2", "bar")])
+        buf = StringIO()
+        pickle.dump(attrs, buf, 2)
+        buf.seek(0)
+        unpickled = pickle.load(buf)
+        self.assertEquals("Attrs([('attr1', 'foo'), ('attr2', 'bar')])",
+                          repr(unpickled))
 
 
 class NamespaceTestCase(unittest.TestCase):
@@ -192,6 +218,7 @@ def suite():
     suite.addTest(unittest.makeSuite(StreamTestCase, 'test'))
     suite.addTest(unittest.makeSuite(MarkupTestCase, 'test'))
     suite.addTest(unittest.makeSuite(NamespaceTestCase, 'test'))
+    suite.addTest(unittest.makeSuite(AttrsTestCase, 'test'))
     suite.addTest(unittest.makeSuite(QNameTestCase, 'test'))
     suite.addTest(doctest.DocTestSuite(core))
     return suite

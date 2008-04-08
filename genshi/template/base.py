@@ -25,7 +25,6 @@ import sys
 
 from genshi.core import Attrs, Stream, StreamEventKind, START, TEXT, _ensure
 from genshi.input import ParseError
-from genshi.template.match import MatchSet
 
 __all__ = ['Context', 'Template', 'TemplateError', 'TemplateRuntimeError',
            'TemplateSyntaxError', 'BadDirectiveError']
@@ -137,7 +136,7 @@ class Context(object):
         self.frames = deque([data])
         self.pop = self.frames.popleft
         self.push = self.frames.appendleft
-        self._match_set = MatchSet()
+        self._match_set = None
         self._choice_stack = []
 
         # Helper functions for use in expressions

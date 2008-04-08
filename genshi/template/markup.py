@@ -229,9 +229,6 @@ class MarkupTemplate(Template):
         """Internal stream filter that applies any defined match templates
         to the stream.
         """
-        if match_set is None:
-            match_set = ctxt._match_set
-
         tail = []
         def _strip(stream):
             depth = 1
@@ -248,6 +245,11 @@ class MarkupTemplate(Template):
                     break
 
         for event in stream:
+
+            # we may have discovered a py:match while processing the
+            # stream.. so keep checking for ctxt._match_set
+            if match_set is None:
+                match_set = ctxt._match_set
 
             # We (currently) only care about start and end events for matching
             # We might care about namespace events in the future, though

@@ -21,7 +21,7 @@ except ImportError:
 import unittest
 
 from genshi import core
-from genshi.core import Markup, Namespace, QName, escape, unescape
+from genshi.core import Markup, Attrs, Namespace, QName, escape, unescape
 from genshi.input import XML, ParseError
 
 
@@ -164,6 +164,18 @@ class MarkupTestCase(unittest.TestCase):
         self.assertEquals("<Markup u'foo'>", repr(pickle.load(buf)))
 
 
+class AttrsTestCase(unittest.TestCase):
+
+    def test_pickle(self):
+        attrs = Attrs([("attr1", "foo"), ("attr2", "bar")])
+        buf = StringIO()
+        pickle.dump(attrs, buf, 2)
+        buf.seek(0)
+        unpickled = pickle.load(buf)
+        self.assertEquals("Attrs([('attr1', 'foo'), ('attr2', 'bar')])",
+                          repr(unpickled))
+
+
 class NamespaceTestCase(unittest.TestCase):
 
     def test_pickle(self):
@@ -206,6 +218,7 @@ def suite():
     suite.addTest(unittest.makeSuite(StreamTestCase, 'test'))
     suite.addTest(unittest.makeSuite(MarkupTestCase, 'test'))
     suite.addTest(unittest.makeSuite(NamespaceTestCase, 'test'))
+    suite.addTest(unittest.makeSuite(AttrsTestCase, 'test'))
     suite.addTest(unittest.makeSuite(QNameTestCase, 'test'))
     suite.addTest(doctest.DocTestSuite(core))
     return suite

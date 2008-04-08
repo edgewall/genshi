@@ -60,16 +60,13 @@ class MarkupTemplate(Template):
     serializer = 'xml'
     _number_conv = Markup
 
-    def __init__(self, source, filepath=None, filename=None, loader=None,
-                 encoding=None, lookup='strict', allow_exec=True):
-        Template.__init__(self, source, filepath=filepath, filename=filename,
-                          loader=loader, encoding=encoding, lookup=lookup,
-                          allow_exec=allow_exec)
+    def _init_filters(self):
+        Template._init_filters(self)
         # Make sure the include filter comes after the match filter
-        if loader:
+        if self.loader:
             self.filters.remove(self._include)
         self.filters += [self._match]
-        if loader:
+        if self.loader:
             self.filters.append(self._include)
 
     def _parse(self, source, encoding):

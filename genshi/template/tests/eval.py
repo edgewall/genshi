@@ -12,6 +12,8 @@
 # history and logs, available at http://genshi.edgewall.org/log/.
 
 import doctest
+import pickle
+from StringIO import StringIO
 import sys
 import unittest
 
@@ -31,6 +33,14 @@ class ExpressionTestCase(unittest.TestCase):
         expr = Expression('x,y')
         self.assertEqual(hash(expr), hash(Expression('x,y')))
         self.assertNotEqual(hash(expr), hash(Expression('y, x')))
+
+    def test_pickle(self):
+        expr = Expression('1 < 2')
+        buf = StringIO()
+        pickle.dump(expr, buf, 2)
+        buf.seek(0)
+        unpickled = pickle.load(buf)
+        assert unpickled.evaluate({}) is True
 
     def test_name_lookup(self):
         self.assertEqual('bar', Expression('foo').evaluate({'foo': 'bar'}))
@@ -442,6 +452,16 @@ class ExpressionTestCase(unittest.TestCase):
 
 
 class SuiteTestCase(unittest.TestCase):
+
+    def test_pickle(self):
+        suite = Suite('foo = 42')
+        buf = StringIO()
+        pickle.dump(suite, buf, 2)
+        buf.seek(0)
+        unpickled = pickle.load(buf)
+        data = {}
+        unpickled.execute(data)
+        self.assertEqual(42, data['foo'])
 
     def test_internal_shadowing(self):
         # The context itself is stored in the global execution scope of a suite

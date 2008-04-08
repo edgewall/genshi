@@ -363,10 +363,7 @@ class Template(object):
         self.loader = loader
         self.lookup = lookup
         self.allow_exec = allow_exec
-
-        self.filters = [self._flatten, self._eval, self._exec]
-        if loader:
-            self.filters.append(self._include)
+        self._init_filters()
 
         if isinstance(source, basestring):
             source = StringIO(source)
@@ -377,8 +374,22 @@ class Template(object):
         except ParseError, e:
             raise TemplateSyntaxError(e.msg, self.filepath, e.lineno, e.offset)
 
+    def __getstate__(self):
+        state = self.__dict__.copy()
+        state['filters'] = []
+        return state
+
+    def __setstate__(self, state):
+        self.__dict__ = state
+        self._init_filters()
+
     def __repr__(self):
         return '<%s "%s">' % (self.__class__.__name__, self.filename)
+
+    def _init_filters(self):
+        self.filters = [self._flatten, self._eval, self._exec]
+        if self.loader:
+            self.filters.append(self._include)
 
     def _parse(self, source, encoding):
         """Parse the template.

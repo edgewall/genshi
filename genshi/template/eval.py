@@ -75,6 +75,21 @@ class Code(object):
             lookup = {'lenient': LenientLookup, 'strict': StrictLookup}[lookup]
         self._globals = lookup.globals
 
+    def __getstate__(self):
+        state = {'source': self.source, 'ast': self.ast,
+                 'lookup': self._globals.im_self}
+        c = self.code
+        state['code'] = (c.co_nlocals, c.co_stacksize, c.co_flags, c.co_code,
+                         c.co_consts, c.co_names, c.co_varnames, c.co_filename,
+                         c.co_name, c.co_firstlineno, c.co_lnotab, (), ())
+        return state
+
+    def __setstate__(self, state):
+        self.source = state['source']
+        self.ast = state['ast']
+        self.code = new.code(0, *state['code'])
+        self._globals = state['lookup'].globals
+
     def __eq__(self, other):
         return (type(other) == type(self)) and (self.code == other.code)
 

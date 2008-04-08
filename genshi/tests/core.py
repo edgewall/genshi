@@ -62,6 +62,10 @@ class StreamTestCase(unittest.TestCase):
 
 class MarkupTestCase(unittest.TestCase):
 
+    def test_new_with_encoding(self):
+        markup = Markup('Döner', encoding='utf-8')
+        self.assertEquals("<Markup u'D\\xf6ner'>", repr(markup))
+
     def test_repr(self):
         markup = Markup('foo')
         self.assertEquals("<Markup u'foo'>", repr(markup))
@@ -106,6 +110,16 @@ class MarkupTestCase(unittest.TestCase):
         markup = Markup('<b>%s</b> %s') % ('&', 'boo')
         assert type(markup) is Markup
         self.assertEquals('<b>&amp;</b> boo', markup)
+
+    def test_mod_mapping(self):
+        markup = Markup('<b>%(foo)s</b>') % {'foo': '&'}
+        assert type(markup) is Markup
+        self.assertEquals('<b>&amp;</b>', markup)
+
+    def test_mod_noescape(self):
+        markup = Markup('<b>%(amp)s</b>') % {'amp': Markup('&amp;')}
+        assert type(markup) is Markup
+        self.assertEquals('<b>&amp;</b>', markup)
 
     def test_mul(self):
         markup = Markup('<b>foo</b>') * 2

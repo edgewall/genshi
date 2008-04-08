@@ -144,46 +144,6 @@ escape(PyObject *text, int quotes)
     return ret;
 }
 
-static PyObject *
-Markup_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
-{
-    PyObject *self, *text, *tmp, *args2;
-    int nargs, i;
-
-    nargs = PyTuple_GET_SIZE(args);
-    if (nargs < 2) {
-        return PyUnicode_Type.tp_new(type, args, NULL);
-    }
-
-    text = PyTuple_GET_ITEM(args, 0);
-    args2 = PyTuple_New(nargs - 1);
-    if (args2 == NULL) {
-        return NULL;
-    }
-    for (i = 1; i < nargs; i++) {
-        tmp = escape(PyTuple_GET_ITEM(args, i), 1);
-        if (tmp == NULL) {
-            Py_DECREF(args2);
-            return NULL;
-        }
-        PyTuple_SET_ITEM(args2, i - 1, tmp);
-    }
-    tmp = PyUnicode_Format(text, args2);
-    Py_DECREF(args2);
-    if (tmp == NULL) {
-        return NULL;
-    }
-    args = PyTuple_New(1);
-    if (args == NULL) {
-        Py_DECREF(tmp);
-        return NULL;
-    }
-    PyTuple_SET_ITEM(args, 0, tmp);
-    self = PyUnicode_Type.tp_new(type, args, NULL);
-    Py_DECREF(args);
-    return self;
-}
-
 PyDoc_STRVAR(escape__doc__,
 "Create a Markup instance from a string and escape special characters\n\
 it may contain (<, >, & and \").\n\
@@ -325,9 +285,38 @@ static PyObject *
 Markup_mod(PyObject *self, PyObject *args)
 {
     PyObject *tmp, *tmp2, *ret, *args2;
-    int i, nargs;
+    int i, nargs = 0;
+    PyObject *kwds = NULL;
 
-    if (PyTuple_Check(args)) {
+    if (PyDict_Check(args)) {
+        kwds = args;
+    }
+    if (kwds && PyDict_Size(kwds)) {
+        PyObject *kwcopy, *key, *value;
+        Py_ssize_t pos = 0;
+
+        kwcopy = PyDict_Copy( kwds );
+        if (kwcopy == NULL) {
+            return NULL;
+        }
+        while (PyDict_Next(kwcopy, &pos, &key, &value)) {
+            tmp = escape(value, 1);
+            if (tmp == NULL) {
+                Py_DECREF(kwcopy);
+                return NULL;
+            }
+            if (PyDict_SetItem(kwcopy, key, tmp) < 0) {
+                Py_DECREF(tmp);
+                Py_DECREF(kwcopy);
+                return NULL;
+            }
+        }
+        tmp = PyUnicode_Format(self, kwcopy);
+        Py_DECREF(kwcopy);
+        if (tmp == NULL) {
+            return NULL;
+        }
+    } else if (PyTuple_Check(args)) {
         nargs = PyTuple_GET_SIZE(args);
         args2 = PyTuple_New(nargs);
         if (args2 == NULL) {
@@ -589,7 +578,7 @@ PyTypeObject MarkupType = {
     
     0,          /*tp_init*/
     0,          /*tp_alloc  will be set to PyType_GenericAlloc in module init*/
-    Markup_new, /*tp_new*/
+    0,          /*tp_new*/
     0,          /*tp_free  Low-level free-memory routine */
     0,          /*tp_is_gc For PyObject_IS_GC */
     0,          /*tp_bases*/

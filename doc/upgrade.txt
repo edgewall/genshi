@@ -1,3 +1,4 @@
+================
 Upgrading Genshi
 ================
 
@@ -7,19 +8,12 @@ Upgrading Genshi
 .. sectnum::
 
 
+------------------------------------
 Upgrading from Genshi 0.4.x to 0.5.x
 ------------------------------------
 
-Genshi 0.5 introduces a new, alternative syntax for text templates,
-which is more flexible and powerful compared to the old syntax. For
-backwards compatibility, this new syntax is not used by default,
-though it will be in a future version. It is recommended that you
-migrate to using this new syntax. To do so, simply rename any
-references in your code to ``TextTemplate`` to ``NewTextTemplate``. To
-explicitly use the old syntax, use ``OldTextTemplate`` instead, so
-that you can be sure you'll be using the same language when the
-default in Genshi is changed (at least until the old implementation is
-completely removed).
+Error Handling
+--------------
 
 The default error handling mode has been changed to "strict". This
 means that accessing variables not defined in the template data will
@@ -29,6 +23,9 @@ on the old lenient behavior, you can configure Genshi to use that
 instead. See the documentation for details on how to do that. But be
 warned that lenient error handling may be removed completely in a
 future release.
+
+Match Template Processing
+-------------------------
 
 There has also been a subtle change to how ``py:match`` templates are
 processed: in previous versions, all match templates would be applied
@@ -42,7 +39,39 @@ template are applied to the generated content. This change should not
 have any effect on most applications, but you may want to check your
 use of match templates to make sure.
 
+Text Templates
+--------------
 
+Genshi 0.5 introduces a new, alternative syntax for text templates,
+which is more flexible and powerful compared to the old syntax. For
+backwards compatibility, this new syntax is not used by default,
+though it will be in a future version. It is recommended that you
+migrate to using this new syntax. To do so, simply rename any
+references in your code to ``TextTemplate`` to ``NewTextTemplate``. To
+explicitly use the old syntax, use ``OldTextTemplate`` instead, so
+that you can be sure you'll be using the same language when the
+default in Genshi is changed (at least until the old implementation is
+completely removed).
+
+``Markup`` Constructor
+----------------------
+
+The ``Markup`` class now longer has a specialized constructor. The old
+(undocumented) constructor provided a shorthand for doing positional
+substitutions. If you have code like this:
+
+.. code-block:: python
+
+  Markup('<b>%s</b>', name)
+
+You can simply replace it by the more explicit:
+
+.. code-block:: python
+
+  Markup('<b>%s</b>') % name
+
+
+------------------------------------
 Upgrading from Genshi 0.3.x to 0.4.x
 ------------------------------------
 
@@ -66,6 +95,7 @@ themselves. See the documentation of the ``Attrs`` class for more
 information.
 
 
+---------------------
 Upgrading from Markup
 ---------------------
 

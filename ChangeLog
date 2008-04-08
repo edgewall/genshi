@@ -71,6 +71,12 @@ http://svn.edgewall.org/repos/genshi/tags/0.5.0/
    the `<py:match>` directive.
  * Improve error reporting when accessing an attribute in a Python expression
    raises an `AttributeError` (ticket #191).
+ * The `Markup` class now supports mappings for right hand of the `%` (modulo)
+   operator in the same way the Python string classes do, except that the
+   substituted values are escape. Also, the special constructor which took
+   positional arguments that would be substituted was removed. Thus the
+   `Markup` class now supports the same arguments as that of its `unicode`
+   base class (ticket #211).
 
 
 Version 0.4.4

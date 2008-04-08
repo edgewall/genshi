@@ -419,11 +419,6 @@ class Markup(unicode):
     """
     __slots__ = []
 
-    def __new__(cls, text='', *args):
-        if args:
-            text %= tuple(map(escape, args))
-        return unicode.__new__(cls, text)
-
     def __add__(self, other):
         return Markup(unicode(self) + unicode(escape(other)))
 
@@ -431,9 +426,13 @@ class Markup(unicode):
         return Markup(unicode(escape(other)) + unicode(self))
 
     def __mod__(self, args):
-        if not isinstance(args, (list, tuple)):
-            args = [args]
-        return Markup(unicode.__mod__(self, tuple(map(escape, args))))
+        if isinstance(args, dict):
+            args = dict(zip(args.keys(), map(escape, args.values())))
+        elif isinstance(args, (list, tuple)):
+            args = tuple(map(escape, args))
+        else:
+            args = escape(args)
+        return Markup(unicode.__mod__(self, args))
 
     def __mul__(self, num):
         return Markup(unicode(self) * num)

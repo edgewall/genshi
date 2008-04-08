@@ -244,7 +244,7 @@ class XMLSerializer(object):
                 if sysid:
                     buf.append(' "%s"')
                 buf.append('>\n')
-                yield Markup(u''.join(buf), *filter(None, data))
+                yield Markup(u''.join(buf)) % filter(None, data)
                 have_doctype = True
 
             elif kind is START_CDATA:
@@ -343,7 +343,7 @@ class XHTMLSerializer(XMLSerializer):
                 if sysid:
                     buf.append(' "%s"')
                 buf.append('>\n')
-                yield Markup(u''.join(buf), *filter(None, data))
+                yield Markup(u''.join(buf)) % filter(None, data)
                 have_doctype = True
 
             elif kind is START_CDATA:
@@ -446,7 +446,7 @@ class HTMLSerializer(XHTMLSerializer):
                 if sysid:
                     buf.append(' "%s"')
                 buf.append('>\n')
-                yield Markup(u''.join(buf), *filter(None, data))
+                yield Markup(u''.join(buf)) % filter(None, data)
                 have_doctype = True
 
             elif kind is PI:

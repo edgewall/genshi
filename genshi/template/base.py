@@ -143,6 +143,9 @@ class Context(object):
     def __repr__(self):
         return '<%s %r>' % (type(self).__name__, self.data)
 
+    def __setitem__(self, key, value):
+        self.data[key] = value
+
     def push(self, data):
         """Push a new scope on the stack.
         
@@ -164,13 +167,6 @@ class Context(object):
         for restore in self._restorers.pop():
             restore()
 
-    def replace(self, data):
-        """Replace the top-most scope with the given data.
-        
-        :param data: the data dictionary to replace the top-most frame with
-        """
-        self.pop()
-        self.push(data)
 
 def _apply_directives(stream, directives, ctxt, **vars):
     """Apply the given directives to the stream.

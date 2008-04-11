@@ -346,8 +346,7 @@ class DefDirective(Directive):
 
         # Store the function reference in the bottom context frame so that it
         # doesn't get popped off before processing the template has finished
-        # FIXME: this makes context data mutable as a side-effect
-        ctxt.data[self.name] = function
+        ctxt[self.name] = function
 
         return []
 
@@ -630,7 +629,7 @@ class ChooseDirective(Directive):
     def __call__(self, stream, directives, ctxt, **vars):
         info = [False, bool(self.expr), None]
         if self.expr:
-            info[2] = self.expr.evaluate(ctxt.data)
+            info[2] = self.expr.evaluate(ctxt)
         ctxt._choice_stack.append(info)
         for event in _apply_directives(stream, directives, ctxt, **vars):
             yield event
@@ -725,20 +724,20 @@ class WithDirective(Directive):
 
     def __init__(self, value, template, namespaces=None, lineno=-1, offset=-1):
         Directive.__init__(self, None, template, namespaces, lineno, offset)
-        self.vars = [] 
-        value = value.strip() 
+        self.vars = []
+        value = value.strip()
         try:
-            ast = _parse(value, 'exec').node 
-            for node in ast.nodes: 
-                if isinstance(node, compiler.ast.Discard): 
-                    continue 
-                elif not isinstance(node, compiler.ast.Assign): 
-                    raise TemplateSyntaxError('only assignment allowed in ' 
-                                              'value of the "with" directive', 
-                                              template.filepath, lineno, offset) 
-                self.vars.append(([_assignment(n) for n in node.nodes], 
-                                  Expression(node.expr, template.filepath, 
-                                             lineno, lookup=template.lookup))) 
+            ast = _parse(value, 'exec').node
+            for node in ast.nodes:
+                if isinstance(node, compiler.ast.Discard):
+                    continue
+                elif not isinstance(node, compiler.ast.Assign):
+                    raise TemplateSyntaxError('only assignment allowed in '
+                                              'value of the "with" directive',
+                                              template.filepath, lineno, offset)
+                self.vars.append(([_assignment(n) for n in node.nodes],
+                                  Expression(node.expr, template.filepath,
+                                             lineno, lookup=template.lookup)))
         except SyntaxError, err:
             err.msg += ' in expression "%s" of "%s" directive' % (value,
                                                                   self.tagname)

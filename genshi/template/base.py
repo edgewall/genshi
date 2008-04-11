@@ -93,7 +93,7 @@ class TemplateRuntimeError(TemplateError):
     """
 
 
-class Context(object):
+class Context(dict):
     """Container for template input data.
     
     A context provides a stack of scopes (represented by dictionaries).
@@ -121,7 +121,7 @@ class Context(object):
         """Initialize the template context with the given keyword arguments as
         data.
         """
-        self.data = data
+        self.update(data)
         self._restorers = [] # functions that reverse stack changes
         self._match_templates = [] # for match directives
         self._choice_stack = [] # for choose/when/otherwise
@@ -130,28 +130,23 @@ class Context(object):
         def defined(name):
             """Return whether a variable with the specified name exists in the
             expression scope."""
-            return name in self.data
+            return name in self
         def value_of(name, default=None):
             """If a variable of the specified name is defined, return its value.
             Otherwise, return the provided default value, or ``None``."""
             return self.get(name, default)
-        data.setdefault('defined', defined)
-        data.setdefault('value_of', value_of)
-
-        self.get = self.data.get
+        self.setdefault('defined', defined)
+        self.setdefault('value_of', value_of)
 
     def __repr__(self):
-        return '<%s %r>' % (type(self).__name__, self.data)
-
-    def __setitem__(self, key, value):
-        self.data[key] = value
+        return '<%s %r>' % (type(self).__name__, dict.__repr__(self))
 
     def push(self, data):
         """Push a new scope on the stack.
         
         :param data: the data dictionary to push on the context stack.
         """
-        def _restorer(key, d=self.data):
+        def _restorer(key, d=self):
             if key in d:
                 def f(d=d, val=d.get(key)):
                     d[key] = val
@@ -160,7 +155,7 @@ class Context(object):
                     if key in d: del d[key]
             return f
         self._restorers.append([_restorer(k) for k in data])
-        self.data.update(data)
+        self.update(data)
 
     def pop(self):
         """Pop the top-most scope from the stack."""
@@ -193,7 +188,7 @@ def _eval_expr(expr, ctxt, **vars):
     """
     if vars:
         ctxt.push(vars)
-    retval = expr.evaluate(ctxt.data)
+    retval = expr.evaluate(ctxt)
     if vars:
         ctxt.pop()
     return retval
@@ -210,11 +205,11 @@ def _exec_suite(suite, ctxt, **vars):
     if vars:
         ctxt.push(vars)
         ctxt.push(frame)
-    suite.execute(ctxt.data)
+    suite.execute(ctxt)
     if vars:
         ctxt.pop()
         ctxt.pop()
-        ctxt.data.update(frame)
+        ctxt.update(frame)
 
 
 class TemplateMeta(type):

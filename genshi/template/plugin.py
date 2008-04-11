@@ -23,7 +23,7 @@ from genshi.output import DocType
 from genshi.template.base import Template
 from genshi.template.loader import TemplateLoader
 from genshi.template.markup import MarkupTemplate
-from genshi.template.text import TextTemplate
+from genshi.template.text import TextTemplate, NewTextTemplate
 
 __all__ = ['ConfigurationError', 'AbstractTemplateEnginePlugin',
            'MarkupTemplateEnginePlugin', 'TextTemplateEnginePlugin']
@@ -62,7 +62,7 @@ class AbstractTemplateEnginePlugin(object):
         if loader_callback and not callable(loader_callback):
             raise ConfigurationError('loader callback must be a function')
 
-        lookup_errors = options.get('genshi.lookup_errors', 'lenient')
+        lookup_errors = options.get('genshi.lookup_errors', 'strict')
         if lookup_errors not in ('lenient', 'strict'):
             raise ConfigurationError('Unknown lookup errors mode "%s"' %
                                      lookup_errors)
@@ -97,7 +97,7 @@ class AbstractTemplateEnginePlugin(object):
 
         return self.loader.load(templatename)
 
-    def _get_render_options(self, format=None):
+    def _get_render_options(self, format=None, fragment=False):
         if format is None:
             format = self.default_format
         kwargs = {'method': format}
@@ -107,7 +107,7 @@ class AbstractTemplateEnginePlugin(object):
 
     def render(self, info, format=None, fragment=False, template=None):
         """Render the template to a string using the provided info."""
-        kwargs = self._get_render_options(format=format)
+        kwargs = self._get_render_options(format=format, fragment=fragment)
         return self.transform(info, template).render(**kwargs)
 
     def transform(self, info, template):
@@ -140,10 +140,10 @@ class MarkupTemplateEnginePlugin(AbstractTemplateEnginePlugin):
             raise ConfigurationError('Unknown output format %r' % format)
         self.default_format = format
 
-    def _get_render_options(self, format=None):
+    def _get_render_options(self, format=None, fragment=False):
         kwargs = super(MarkupTemplateEnginePlugin,
-                       self)._get_render_options(format)
-        if self.default_doctype:
+                       self)._get_render_options(format, fragment)
+        if self.default_doctype and not fragment:
             kwargs['doctype'] = self.default_doctype
         return kwargs
 
@@ -162,3 +162,15 @@ class TextTemplateEnginePlugin(AbstractTemplateEnginePlugin):
     template_class = TextTemplate
     extension = '.txt'
     default_format = 'text'
+
+    def __init__(self, extra_vars_func=None, options=None):
+        if options is None:
+            options = {}
+
+        new_syntax = options.get('genshi.new_text_syntax')
+        if isinstance(new_syntax, basestring):
+            new_syntax = new_syntax.lower() in ('1', 'on', 'yes', 'true')
+        if new_syntax:
+            self.template_class = NewTextTemplate
+
+        AbstractTemplateEnginePlugin.__init__(self, extra_vars_func, options)

@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2006-2007 Edgewall Software
+# Copyright (C) 2006-2008 Edgewall Software
 # All rights reserved.
 #
 # This software is licensed as described in the file COPYING, which
@@ -14,12 +14,17 @@
 """Implementation of the various template directives."""
 
 import compiler
+try:
+    frozenset
+except NameError:
+    from sets import ImmutableSet as frozenset
 
 from genshi.core import QName, Stream
 from genshi.path import Path
 from genshi.template.base import TemplateRuntimeError, TemplateSyntaxError, \
-                                 EXPR, _apply_directives
-from genshi.template.eval import Expression, _parse
+                                 EXPR, _apply_directives, _eval_expr, \
+                                 _exec_suite
+from genshi.template.eval import Expression, ExpressionASTTransformer, _parse
 
 __all__ = ['AttrsDirective', 'ChooseDirective', 'ContentDirective',
            'DefDirective', 'ForDirective', 'IfDirective', 'MatchDirective',
@@ -83,13 +88,15 @@ class Directive(object):
         return cls(value, template, namespaces, *pos[1:]), stream
     attach = classmethod(attach)
 
-    def __call__(self, stream, ctxt, directives):
+    def __call__(self, stream, directives, ctxt, **vars):
         """Apply the directive to the given stream.
         
         :param stream: the event stream
-        :param ctxt: the context data
         :param directives: a list of the remaining directives that should
                            process the stream
+        :param ctxt: the context data
+        :param vars: additional variables that should be made available when
+                     Python code is executed
         """
         raise NotImplementedError
 
@@ -162,10 +169,10 @@ class AttrsDirective(Directive):
     """
     __slots__ = []
 
-    def __call__(self, stream, ctxt, directives):
+    def __call__(self, stream, directives, ctxt, **vars):
         def _generate():
             kind, (tag, attrib), pos  = stream.next()
-            attrs = self.expr.evaluate(ctxt.data)
+            attrs = _eval_expr(self.expr, ctxt, **vars)
             if attrs:
                 if isinstance(attrs, Stream):
                     try:
@@ -181,7 +188,7 @@ class AttrsDirective(Directive):
             for event in stream:
                 yield event
 
-        return _apply_directives(_generate(), ctxt, directives)
+        return _apply_directives(_generate(), directives, ctxt, **vars)
 
 
 class ContentDirective(Directive):
@@ -202,6 +209,10 @@ class ContentDirective(Directive):
     __slots__ = []
 
     def attach(cls, template, stream, value, namespaces, pos):
+        if type(value) is dict:
+            raise TemplateSyntaxError('The content directive can not be used '
+                                      'as an element', template.filepath,
+                                      *pos[1:])
         expr = cls._parse_expr(value, template, *pos[1:])
         return None, [stream[0], (EXPR, expr, pos),  stream[-1]]
     attach = classmethod(attach)
@@ -282,7 +293,7 @@ class DefDirective(Directive):
                                                namespaces, pos)
     attach = classmethod(attach)
 
-    def __call__(self, stream, ctxt, directives):
+    def __call__(self, stream, directives, ctxt, **vars):
         stream = list(stream)
 
         def function(*args, **kwargs):
@@ -295,14 +306,14 @@ class DefDirective(Directive):
                     if name in kwargs:
                         val = kwargs.pop(name)
                     else:
-                        val = self.defaults.get(name).evaluate(ctxt.data)
+                        val = _eval_expr(self.defaults.get(name), ctxt, **vars)
                     scope[name] = val
             if not self.star_args is None:
                 scope[self.star_args] = args
             if not self.dstar_args is None:
                 scope[self.dstar_args] = kwargs
             ctxt.push(scope)
-            for event in _apply_directives(stream, ctxt, directives):
+            for event in _apply_directives(stream, directives, ctxt, **vars):
                 yield event
             ctxt.pop()
         try:
@@ -343,10 +354,10 @@ class ForDirective(Directive):
                                       template.filepath, lineno, offset)
         assign, value = value.split(' in ', 1)
         ast = _parse(assign, 'exec')
+        value = 'iter(%s)' % value.strip()
         self.assign = _assignment(ast.node.nodes[0].expr)
         self.filename = template.filepath
-        Directive.__init__(self, value.strip(), template, namespaces, lineno,
-                           offset)
+        Directive.__init__(self, value, template, namespaces, lineno, offset)
 
     def attach(cls, template, stream, value, namespaces, pos):
         if type(value) is dict:
@@ -355,24 +366,20 @@ class ForDirective(Directive):
                                                namespaces, pos)
     attach = classmethod(attach)
 
-    def __call__(self, stream, ctxt, directives):
-        iterable = self.expr.evaluate(ctxt.data)
+    def __call__(self, stream, directives, ctxt, **vars):
+        iterable = _eval_expr(self.expr, ctxt, **vars)
         if iterable is None:
             return
 
         assign = self.assign
         scope = {}
         stream = list(stream)
-        try:
-            iterator = iter(iterable)
-            for item in iterator:
-                assign(scope, item)
-                ctxt.push(scope)
-                for event in _apply_directives(stream, ctxt, directives):
-                    yield event
-                ctxt.pop()
-        except TypeError, e:
-            raise TemplateRuntimeError(str(e), self.filename, *stream[0][2][1:])
+        for item in iterable:
+            assign(scope, item)
+            ctxt.push(scope)
+            for event in _apply_directives(stream, directives, ctxt, **vars):
+                yield event
+            ctxt.pop()
 
     def __repr__(self):
         return '<%s>' % self.__class__.__name__
@@ -400,9 +407,10 @@ class IfDirective(Directive):
                                               namespaces, pos)
     attach = classmethod(attach)
 
-    def __call__(self, stream, ctxt, directives):
-        if self.expr.evaluate(ctxt.data):
-            return _apply_directives(stream, ctxt, directives)
+    def __call__(self, stream, directives, ctxt, **vars):
+        value = _eval_expr(self.expr, ctxt, **vars)
+        if value:
+            return _apply_directives(stream, directives, ctxt, **vars)
         return []
 
 
@@ -423,24 +431,33 @@ class MatchDirective(Directive):
       </span>
     </div>
     """
-    __slots__ = ['path', 'namespaces']
+    __slots__ = ['path', 'namespaces', 'hints']
 
-    def __init__(self, value, template, namespaces=None, lineno=-1, offset=-1):
+    def __init__(self, value, template, hints=None, namespaces=None,
+                 lineno=-1, offset=-1):
         Directive.__init__(self, None, template, namespaces, lineno, offset)
         self.path = Path(value, template.filepath, lineno)
         self.namespaces = namespaces or {}
+        self.hints = hints or ()
 
     def attach(cls, template, stream, value, namespaces, pos):
+        hints = []
         if type(value) is dict:
+            if value.get('buffer', '').lower() == 'false':
+                hints.append('not_buffered')
+            if value.get('once', '').lower() == 'true':
+                hints.append('match_once')
+            if value.get('recursive', '').lower() == 'false':
+                hints.append('not_recursive')
             value = value.get('path')
-        return super(MatchDirective, cls).attach(template, stream, value,
-                                                 namespaces, pos)
+        return cls(value, template, frozenset(hints), namespaces, *pos[1:]), \
+               stream
     attach = classmethod(attach)
 
-    def __call__(self, stream, ctxt, directives):
+    def __call__(self, stream, directives, ctxt, **vars):
         ctxt._match_templates.append((self.path.test(ignore_context=True),
-                                      self.path, list(stream), self.namespaces,
-                                      directives))
+                                      self.path, list(stream), self.hints,
+                                      self.namespaces, directives))
         return []
 
     def __repr__(self):
@@ -476,6 +493,8 @@ class ReplaceDirective(Directive):
     __slots__ = []
 
     def attach(cls, template, stream, value, namespaces, pos):
+        if type(value) is dict:
+            value = value.get('value')
         if not value:
             raise TemplateSyntaxError('missing value for "replace" directive',
                                       template.filepath, *pos[1:])
@@ -517,9 +536,9 @@ class StripDirective(Directive):
     """
     __slots__ = []
 
-    def __call__(self, stream, ctxt, directives):
+    def __call__(self, stream, directives, ctxt, **vars):
         def _generate():
-            if self.expr.evaluate(ctxt.data):
+            if _eval_expr(self.expr, ctxt, **vars):
                 stream.next() # skip start tag
                 previous = stream.next()
                 for event in stream:
@@ -528,7 +547,7 @@ class StripDirective(Directive):
             else:
                 for event in stream:
                     yield event
-        return _apply_directives(_generate(), ctxt, directives)
+        return _apply_directives(_generate(), directives, ctxt, **vars)
 
     def attach(cls, template, stream, value, namespaces, pos):
         if not value:
@@ -586,12 +605,12 @@ class ChooseDirective(Directive):
                                                   namespaces, pos)
     attach = classmethod(attach)
 
-    def __call__(self, stream, ctxt, directives):
+    def __call__(self, stream, directives, ctxt, **vars):
         info = [False, bool(self.expr), None]
         if self.expr:
             info[2] = self.expr.evaluate(ctxt.data)
         ctxt._choice_stack.append(info)
-        for event in _apply_directives(stream, ctxt, directives):
+        for event in _apply_directives(stream, directives, ctxt, **vars):
             yield event
         ctxt._choice_stack.pop()
 
@@ -615,7 +634,7 @@ class WhenDirective(Directive):
                                                 namespaces, pos)
     attach = classmethod(attach)
 
-    def __call__(self, stream, ctxt, directives):
+    def __call__(self, stream, directives, ctxt, **vars):
         info = ctxt._choice_stack and ctxt._choice_stack[-1]
         if not info:
             raise TemplateRuntimeError('"when" directives can only be used '
@@ -630,16 +649,16 @@ class WhenDirective(Directive):
         if info[1]:
             value = info[2]
             if self.expr:
-                matched = value == self.expr.evaluate(ctxt.data)
+                matched = value == _eval_expr(self.expr, ctxt, **vars)
             else:
                 matched = bool(value)
         else:
-            matched = bool(self.expr.evaluate(ctxt.data))
+            matched = bool(_eval_expr(self.expr, ctxt, **vars))
         info[0] = matched
         if not matched:
             return []
 
-        return _apply_directives(stream, ctxt, directives)
+        return _apply_directives(stream, directives, ctxt, **vars)
 
 
 class OtherwiseDirective(Directive):
@@ -654,7 +673,7 @@ class OtherwiseDirective(Directive):
         Directive.__init__(self, None, template, namespaces, lineno, offset)
         self.filename = template.filepath
 
-    def __call__(self, stream, ctxt, directives):
+    def __call__(self, stream, directives, ctxt, **vars):
         info = ctxt._choice_stack and ctxt._choice_stack[-1]
         if not info:
             raise TemplateRuntimeError('an "otherwise" directive can only be '
@@ -664,7 +683,7 @@ class OtherwiseDirective(Directive):
             return []
         info[0] = True
 
-        return _apply_directives(stream, ctxt, directives)
+        return _apply_directives(stream, directives, ctxt, **vars)
 
 
 class WithDirective(Directive):
@@ -684,20 +703,20 @@ class WithDirective(Directive):
 
     def __init__(self, value, template, namespaces=None, lineno=-1, offset=-1):
         Directive.__init__(self, None, template, namespaces, lineno, offset)
-        self.vars = []
-        value = value.strip()
+        self.vars = [] 
+        value = value.strip() 
         try:
-            ast = _parse(value, 'exec').node
-            for node in ast.nodes:
-                if isinstance(node, compiler.ast.Discard):
-                    continue
-                elif not isinstance(node, compiler.ast.Assign):
-                    raise TemplateSyntaxError('only assignment allowed in '
-                                              'value of the "with" directive',
-                                              template.filepath, lineno, offset)
-                self.vars.append(([_assignment(n) for n in node.nodes],
-                                  Expression(node.expr, template.filepath,
-                                             lineno, lookup=template.lookup)))
+            ast = _parse(value, 'exec').node 
+            for node in ast.nodes: 
+                if isinstance(node, compiler.ast.Discard): 
+                    continue 
+                elif not isinstance(node, compiler.ast.Assign): 
+                    raise TemplateSyntaxError('only assignment allowed in ' 
+                                              'value of the "with" directive', 
+                                              template.filepath, lineno, offset) 
+                self.vars.append(([_assignment(n) for n in node.nodes], 
+                                  Expression(node.expr, template.filepath, 
+                                             lineno, lookup=template.lookup))) 
         except SyntaxError, err:
             err.msg += ' in expression "%s" of "%s" directive' % (value,
                                                                   self.tagname)
@@ -711,15 +730,16 @@ class WithDirective(Directive):
                                                 namespaces, pos)
     attach = classmethod(attach)
 
-    def __call__(self, stream, ctxt, directives):
+    def __call__(self, stream, directives, ctxt, **vars):
         frame = {}
         ctxt.push(frame)
         for targets, expr in self.vars:
             value = expr.evaluate(ctxt.data)
             for assign in targets:
                 assign(frame, value)
-            ctxt.replace(frame)
-        for event in _apply_directives(stream, ctxt, directives):
+            ctxt.pop()
+            ctxt.push(frame)
+        for event in _apply_directives(stream, directives, ctxt, **vars):
             yield event
         ctxt.pop()
 

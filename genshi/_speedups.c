@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2006 Edgewall Software
+ * Copyright (C) 2006-2008 Edgewall Software
  * All rights reserved.
  *
  * This software is licensed as described in the file COPYING, which
@@ -87,6 +87,7 @@ escape(PyObject *text, int quotes)
 
     out = (PyUnicodeObject*) PyUnicode_FromUnicode(NULL, len);
     if (out == NULL) {
+        Py_DECREF((PyObject *) in);
         return NULL;
     }
 
@@ -130,6 +131,8 @@ escape(PyObject *text, int quotes)
         inp++;
     }
 
+    Py_DECREF((PyObject *) in);
+
     args = PyTuple_New(1);
     if (args == NULL) {
         Py_DECREF((PyObject *) out);
@@ -139,46 +142,6 @@ escape(PyObject *text, int quotes)
     ret = MarkupType.tp_new(&MarkupType, args, NULL);
     Py_DECREF(args);
     return ret;
-}
-
-static PyObject *
-Markup_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
-{
-    PyObject *self, *text, *tmp, *args2;
-    int nargs, i;
-
-    nargs = PyTuple_GET_SIZE(args);
-    if (nargs < 2) {
-        return PyUnicode_Type.tp_new(type, args, NULL);
-    }
-
-    text = PyTuple_GET_ITEM(args, 0);
-    args2 = PyTuple_New(nargs - 1);
-    if (args2 == NULL) {
-        return NULL;
-    }
-    for (i = 1; i < nargs; i++) {
-        tmp = escape(PyTuple_GET_ITEM(args, i), 1);
-        if (tmp == NULL) {
-            Py_DECREF(args2);
-            return NULL;
-        }
-        PyTuple_SET_ITEM(args2, i - 1, tmp);
-    }
-    tmp = PyUnicode_Format(text, args2);
-    Py_DECREF(args2);
-    if (tmp == NULL) {
-        return NULL;
-    }
-    args = PyTuple_New(1);
-    if (args == NULL) {
-        Py_DECREF(tmp);
-        return NULL;
-    }
-    PyTuple_SET_ITEM(args, 0, tmp);
-    self = PyUnicode_Type.tp_new(type, args, NULL);
-    Py_DECREF(args);
-    return self;
 }
 
 PyDoc_STRVAR(escape__doc__,
@@ -242,7 +205,7 @@ static PyObject *
 Markup_join(PyObject *self, PyObject *args, PyObject *kwds)
 {
     static char *kwlist[] = {"seq", "escape_quotes", 0};
-    PyObject *seq = NULL, *seq2, *tmp;
+    PyObject *seq = NULL, *seq2, *tmp, *tmp2;
     char quotes = 1;
     int n, i;
 
@@ -266,12 +229,13 @@ Markup_join(PyObject *self, PyObject *args, PyObject *kwds)
             Py_DECREF(seq2);
             return NULL;
         }
-        tmp = escape(tmp, quotes);
-        if (tmp == NULL) {
+        tmp2 = escape(tmp, quotes);
+        if (tmp2 == NULL) {
             Py_DECREF(seq2);
             return NULL;
         }
-        PyTuple_SET_ITEM(seq2, i, tmp);
+        PyTuple_SET_ITEM(seq2, i, tmp2);
+        Py_DECREF(tmp);
     }
     tmp = PyUnicode_Join(self, seq2);
     Py_DECREF(seq2);
@@ -303,11 +267,9 @@ Markup_add(PyObject *self, PyObject *other)
             return NULL;
         tmp2 = PyUnicode_Concat(tmp, other);
     }
-    if (tmp2 == NULL) {
-        Py_DECREF(tmp);
-        return NULL;
-    }
     Py_DECREF(tmp);
+    if (tmp2 == NULL)
+        return NULL;
     args = PyTuple_New(1);
     if (args == NULL) {
         Py_DECREF(tmp2);
@@ -323,9 +285,38 @@ static PyObject *
 Markup_mod(PyObject *self, PyObject *args)
 {
     PyObject *tmp, *tmp2, *ret, *args2;
-    int i, nargs;
+    int i, nargs = 0;
+    PyObject *kwds = NULL;
 
-    if (PyTuple_Check(args)) {
+    if (PyDict_Check(args)) {
+        kwds = args;
+    }
+    if (kwds && PyDict_Size(kwds)) {
+        PyObject *kwcopy, *key, *value;
+        Py_ssize_t pos = 0;
+
+        kwcopy = PyDict_Copy( kwds );
+        if (kwcopy == NULL) {
+            return NULL;
+        }
+        while (PyDict_Next(kwcopy, &pos, &key, &value)) {
+            tmp = escape(value, 1);
+            if (tmp == NULL) {
+                Py_DECREF(kwcopy);
+                return NULL;
+            }
+            if (PyDict_SetItem(kwcopy, key, tmp) < 0) {
+                Py_DECREF(tmp);
+                Py_DECREF(kwcopy);
+                return NULL;
+            }
+        }
+        tmp = PyUnicode_Format(self, kwcopy);
+        Py_DECREF(kwcopy);
+        if (tmp == NULL) {
+            return NULL;
+        }
+    } else if (PyTuple_Check(args)) {
         nargs = PyTuple_GET_SIZE(args);
         args2 = PyTuple_New(nargs);
         if (args2 == NULL) {
@@ -380,6 +371,7 @@ Markup_mul(PyObject *self, PyObject *num)
         if (unicode == NULL) return NULL;
         result = PyNumber_Multiply(unicode, self);
     }
+    Py_DECREF(unicode);
 
     if (result == NULL) return NULL;
     args = PyTuple_New(1);
@@ -402,14 +394,19 @@ Markup_repr(PyObject *self)
     format = PyString_FromString("<Markup %r>");
     if (format == NULL) return NULL;
     result = PyObject_Unicode(self);
-    if (result == NULL) return NULL;
+    if (result == NULL) {
+        Py_DECREF(format);
+        return NULL;
+    }
     args = PyTuple_New(1);
     if (args == NULL) {
+        Py_DECREF(format);
         Py_DECREF(result);
         return NULL;
     }
     PyTuple_SET_ITEM(args, 0, result);
     result = PyString_Format(format, args);
+    Py_DECREF(format);
     Py_DECREF(args);
     return result;
 }
@@ -581,7 +578,7 @@ PyTypeObject MarkupType = {
     
     0,          /*tp_init*/
     0,          /*tp_alloc  will be set to PyType_GenericAlloc in module init*/
-    Markup_new, /*tp_new*/
+    0,          /*tp_new*/
     0,          /*tp_free  Low-level free-memory routine */
     0,          /*tp_is_gc For PyObject_IS_GC */
     0,          /*tp_bases*/

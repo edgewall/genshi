@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2006-2007 Edgewall Software
+# Copyright (C) 2006-2008 Edgewall Software
 # All rights reserved.
 #
 # This software is licensed as described in the file COPYING, which
@@ -12,6 +12,8 @@
 # history and logs, available at http://genshi.edgewall.org/log/.
 
 import doctest
+import pickle
+from StringIO import StringIO
 import sys
 import unittest
 
@@ -31,6 +33,14 @@ class ExpressionTestCase(unittest.TestCase):
         expr = Expression('x,y')
         self.assertEqual(hash(expr), hash(Expression('x,y')))
         self.assertNotEqual(hash(expr), hash(Expression('y, x')))
+
+    def test_pickle(self):
+        expr = Expression('1 < 2')
+        buf = StringIO()
+        pickle.dump(expr, buf, 2)
+        buf.seek(0)
+        unpickled = pickle.load(buf)
+        assert unpickled.evaluate({}) is True
 
     def test_name_lookup(self):
         self.assertEqual('bar', Expression('foo').evaluate({'foo': 'bar'}))
@@ -321,7 +331,8 @@ class ExpressionTestCase(unittest.TestCase):
         self.assertEqual([0, 1, 2, 3], expr.evaluate({'numbers': range(5)}))
 
     def test_access_undefined(self):
-        expr = Expression("nothing", filename='index.html', lineno=50)
+        expr = Expression("nothing", filename='index.html', lineno=50,
+                          lookup='lenient')
         retval = expr.evaluate({})
         assert isinstance(retval, Undefined)
         self.assertEqual('nothing', retval._name)
@@ -332,22 +343,44 @@ class ExpressionTestCase(unittest.TestCase):
             def __repr__(self):
                 return '<Something>'
         something = Something()
-        expr = Expression('something.nil', filename='index.html', lineno=50)
+        expr = Expression('something.nil', filename='index.html', lineno=50,
+                          lookup='lenient')
         retval = expr.evaluate({'something': something})
         assert isinstance(retval, Undefined)
         self.assertEqual('nil', retval._name)
         assert retval._owner is something
+
+    def test_getattr_exception(self):
+        class Something(object):
+            def prop_a(self):
+                raise NotImplementedError
+            prop_a = property(prop_a)
+            def prop_b(self):
+                raise AttributeError
+            prop_b = property(prop_b)
+        self.assertRaises(NotImplementedError,
+                          Expression('s.prop_a').evaluate, {'s': Something()})
+        self.assertRaises(AttributeError,
+                          Expression('s.prop_b').evaluate, {'s': Something()})
 
     def test_getitem_undefined_string(self):
         class Something(object):
             def __repr__(self):
                 return '<Something>'
         something = Something()
-        expr = Expression('something["nil"]', filename='index.html', lineno=50)
+        expr = Expression('something["nil"]', filename='index.html', lineno=50,
+                          lookup='lenient')
         retval = expr.evaluate({'something': something})
         assert isinstance(retval, Undefined)
         self.assertEqual('nil', retval._name)
         assert retval._owner is something
+
+    def test_getitem_exception(self):
+        class Something(object):
+            def __getitem__(self, key):
+                raise NotImplementedError
+        self.assertRaises(NotImplementedError,
+                          Expression('s["foo"]').evaluate, {'s': Something()})
 
     def test_error_access_undefined(self):
         expr = Expression("nothing", filename='index.html', lineno=50,
@@ -420,6 +453,29 @@ class ExpressionTestCase(unittest.TestCase):
 
 class SuiteTestCase(unittest.TestCase):
 
+    def test_pickle(self):
+        suite = Suite('foo = 42')
+        buf = StringIO()
+        pickle.dump(suite, buf, 2)
+        buf.seek(0)
+        unpickled = pickle.load(buf)
+        data = {}
+        unpickled.execute(data)
+        self.assertEqual(42, data['foo'])
+
+    def test_internal_shadowing(self):
+        # The context itself is stored in the global execution scope of a suite
+        # It used to get stored under the name 'data', which meant the
+        # following test would fail, as the user defined 'data' variable
+        # shadowed the Genshi one. We now use the name '__data__' to avoid
+        # conflicts
+        suite = Suite("""data = []
+bar = foo
+""")
+        data = {'foo': 42}
+        suite.execute(data)
+        self.assertEqual(42, data['bar'])
+
     def test_assign(self):
         suite = Suite("foo = 42")
         data = {}
@@ -434,7 +490,8 @@ class SuiteTestCase(unittest.TestCase):
         self.assertEqual(None, data['donothing']())
 
     def test_def_with_multiple_statements(self):
-        suite = Suite("""def donothing():
+        suite = Suite("""
+def donothing():
     if True:
         return foo
 """)
@@ -442,6 +499,35 @@ class SuiteTestCase(unittest.TestCase):
         suite.execute(data)
         assert 'donothing' in data
         self.assertEqual('bar', data['donothing']())
+
+    def test_def_using_nonlocal(self):
+        suite = Suite("""
+values = []
+def add(value):
+    if value not in values:
+        values.append(value)
+add('foo')
+add('bar')
+""")
+        data = {}
+        suite.execute(data)
+        self.assertEqual(['foo', 'bar'], data['values'])
+
+    def test_def_nested(self):
+        suite = Suite("""
+def doit():
+    values = []
+    def add(value):
+        if value not in values:
+            values.append(value)
+    add('foo')
+    add('bar')
+    return values
+x = doit()
+""")
+        data = {}
+        suite.execute(data)
+        self.assertEqual(['foo', 'bar'], data['x'])
 
     def test_delete(self):
         suite = Suite("""foo = 42
@@ -453,6 +539,28 @@ del foo
 
     def test_class(self):
         suite = Suite("class plain(object): pass")
+        data = {}
+        suite.execute(data)
+        assert 'plain' in data
+
+    def test_class_in_def(self):
+        suite = Suite("""
+def create():
+    class Foobar(object):
+        def __str__(self):
+            return 'foobar'
+    return Foobar()
+x = create()
+""")
+        data = {}
+        suite.execute(data)
+        self.assertEqual('foobar', str(data['x']))
+
+    def test_class_with_methods(self):
+        suite = Suite("""class plain(object):
+    def donothing():
+        pass
+""")
         data = {}
         suite.execute(data)
         assert 'plain' in data
@@ -524,6 +632,25 @@ while x < 5:
 
     def test_local_augmented_assign(self):
         Suite("x = 1; x += 42; assert x == 43").execute({})
+
+    def test_augmented_assign_in_def(self):
+        d = {}
+        Suite("""def foo():
+    i = 1
+    i += 1
+    return i
+x = foo()""").execute(d)
+        self.assertEqual(2, d['x'])
+
+    def test_augmented_assign_in_loop_in_def(self):
+        d = {}
+        Suite("""def foo():
+    i = 0
+    for n in range(5):
+        i += n
+    return i
+x = foo()""").execute(d)
+        self.assertEqual(10, d['x'])
 
     def test_assign_in_list(self):
         suite = Suite("[d['k']] = 'foo',; assert d['k'] == 'foo'")

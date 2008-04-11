@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2006-2007 Edgewall Software
+# Copyright (C) 2006-2008 Edgewall Software
 # All rights reserved.
 #
 # This software is licensed as described in the file COPYING, which
@@ -23,6 +23,7 @@ except NameError:
     from sets import ImmutableSet as frozenset
     from sets import Set as set
 import sys
+from textwrap import dedent
 
 from genshi.core import Markup
 from genshi.template.base import TemplateRuntimeError
@@ -37,7 +38,8 @@ class Code(object):
     """Abstract base class for the `Expression` and `Suite` classes."""
     __slots__ = ['source', 'code', 'ast', '_globals']
 
-    def __init__(self, source, filename=None, lineno=-1, lookup='lenient'):
+    def __init__(self, source, filename=None, lineno=-1, lookup='strict',
+                 xform=None):
         """Create the code object, either from a string, or from an AST node.
         
         :param source: either a string containing the source code, or an AST
@@ -46,14 +48,18 @@ class Code(object):
                          the code
         :param lineno: the number of the line on which the code was found
         :param lookup: the lookup class that defines how variables are looked
-                       up in the context. Can be either `LenientLookup` (the
-                       default), `StrictLookup`, or a custom lookup class
+                       up in the context; can be either "strict" (the default),
+                       "lenient", or a custom lookup class
+        :param xform: the AST transformer that should be applied to the code;
+                      if `None`, the appropriate transformation is chosen
+                      depending on the mode
         """
         if isinstance(source, basestring):
             self.source = source
             node = _parse(source, mode=self.mode)
         else:
-            assert isinstance(source, ast.Node)
+            assert isinstance(source, ast.Node), \
+                'Expected string or AST node, but got %r' % source
             self.source = '?'
             if self.mode == 'eval':
                 node = ast.Expression(source)
@@ -62,12 +68,27 @@ class Code(object):
 
         self.ast = node
         self.code = _compile(node, self.source, mode=self.mode,
-                             filename=filename, lineno=lineno)
+                             filename=filename, lineno=lineno, xform=xform)
         if lookup is None:
             lookup = LenientLookup
         elif isinstance(lookup, basestring):
             lookup = {'lenient': LenientLookup, 'strict': StrictLookup}[lookup]
-        self._globals = lookup.globals()
+        self._globals = lookup.globals
+
+    def __getstate__(self):
+        state = {'source': self.source, 'ast': self.ast,
+                 'lookup': self._globals.im_self}
+        c = self.code
+        state['code'] = (c.co_nlocals, c.co_stacksize, c.co_flags, c.co_code,
+                         c.co_consts, c.co_names, c.co_varnames, c.co_filename,
+                         c.co_name, c.co_firstlineno, c.co_lnotab, (), ())
+        return state
+
+    def __setstate__(self, state):
+        self.source = state['source']
+        self.ast = state['ast']
+        self.code = new.code(0, *state['code'])
+        self._globals = state['lookup'].globals
 
     def __eq__(self, other):
         return (type(other) == type(self)) and (self.code == other.code)
@@ -133,8 +154,7 @@ class Expression(Code):
         :return: the result of the evaluation
         """
         __traceback_hide__ = 'before_and_this'
-        _globals = self._globals
-        _globals['data'] = data
+        _globals = self._globals(data)
         return eval(self.code, _globals, data)
 
 
@@ -155,8 +175,7 @@ class Suite(Code):
         :param data: a mapping containing the data to execute in
         """
         __traceback_hide__ = 'before_and_this'
-        _globals = self._globals
-        _globals['data'] = data
+        _globals = self._globals(data)
         exec self.code in _globals, data
 
 
@@ -242,14 +261,16 @@ class Undefined(object):
 class LookupBase(object):
     """Abstract base class for variable lookup implementations."""
 
-    def globals(cls):
+    def globals(cls, data):
         """Construct the globals dictionary to use as the execution context for
         the expression or suite.
         """
         return {
+            '__data__': data,
             '_lookup_name': cls.lookup_name,
             '_lookup_attr': cls.lookup_attr,
-            '_lookup_item': cls.lookup_item
+            '_lookup_item': cls.lookup_item,
+            'UndefinedError': UndefinedError,
         }
     globals = classmethod(globals)
 
@@ -259,18 +280,23 @@ class LookupBase(object):
         if val is UNDEFINED:
             val = BUILTINS.get(name, val)
             if val is UNDEFINED:
-                return cls.undefined(name)
+                val = cls.undefined(name)
         return val
     lookup_name = classmethod(lookup_name)
 
     def lookup_attr(cls, obj, key):
         __traceback_hide__ = True
-        if hasattr(obj, key):
-            return getattr(obj, key)
         try:
-            return obj[key]
-        except (KeyError, TypeError):
-            return cls.undefined(key, owner=obj)
+            val = getattr(obj, key)
+        except AttributeError:
+            if hasattr(obj.__class__, key):
+                raise
+            else:
+                try:
+                    val = obj[key]
+                except (KeyError, TypeError):
+                    val = cls.undefined(key, owner=obj)
+        return val
     lookup_attr = classmethod(lookup_attr)
 
     def lookup_item(cls, obj, key):
@@ -283,7 +309,7 @@ class LookupBase(object):
             if isinstance(key, basestring):
                 val = getattr(obj, key, UNDEFINED)
                 if val is UNDEFINED:
-                    return cls.undefined(key, owner=obj)
+                    val = cls.undefined(key, owner=obj)
                 return val
             raise
     lookup_item = classmethod(lookup_item)
@@ -358,12 +384,24 @@ class StrictLookup(LookupBase):
 
 
 def _parse(source, mode='eval'):
+    source = source.strip()
+    if mode == 'exec':
+        lines = [line.expandtabs() for line in source.splitlines()]
+        if lines:
+            first = lines[0]
+            rest = dedent('\n'.join(lines[1:])).rstrip()
+            if first.rstrip().endswith(':') and not rest[0].isspace():
+                rest = '\n'.join(['    %s' % line for line in rest.splitlines()])
+            source = '\n'.join([first, rest])
     if isinstance(source, unicode):
         source = '\xef\xbb\xbf' + source.encode('utf-8')
     return parse(source, mode)
 
-def _compile(node, source=None, mode='eval', filename=None, lineno=-1):
-    xform = {'eval': ExpressionASTTransformer}.get(mode, TemplateASTTransformer)
+def _compile(node, source=None, mode='eval', filename=None, lineno=-1,
+             xform=None):
+    if xform is None:
+        xform = {'eval': ExpressionASTTransformer}.get(mode,
+                                                       TemplateASTTransformer)
     tree = xform().visit(node)
     if isinstance(filename, unicode):
         # unicode file names not allowed for code objects
@@ -376,10 +414,17 @@ def _compile(node, source=None, mode='eval', filename=None, lineno=-1):
 
     if mode == 'eval':
         gen = ExpressionCodeGenerator(tree)
-        name = '<Expression %s>' % (repr(source or '?'))
+        name = '<Expression %r>' % (source or '?')
     else:
         gen = ModuleCodeGenerator(tree)
-        name = '<Suite>'
+        lines = source.splitlines()
+        if not lines:
+            extract = ''
+        else:
+            extract = lines[0]
+        if len(lines) > 1:
+            extract += ' ...'
+        name = '<Suite %r>' % (extract)
     gen.optimized = True
     code = gen.getCode()
 
@@ -416,7 +461,8 @@ class ASTTransformer(object):
         node = node.__class__(*args)
         if lineno is not None:
             node.lineno = lineno
-        if isinstance(node, (ast.Class, ast.Function, ast.GenExpr, ast.Lambda)):
+        if isinstance(node, (ast.Class, ast.Function, ast.Lambda)) or \
+                sys.version_info > (2, 4) and isinstance(node, ast.GenExpr):
             node.filename = '<string>' # workaround for bug in pycodegen
         return node
 
@@ -443,7 +489,7 @@ class ASTTransformer(object):
 
     def visitClass(self, node):
         return self._clone(node, node.name, [self.visit(x) for x in node.bases],
-            node.doc, node.code
+            node.doc, self.visit(node.code)
         )
 
     def visitFunction(self, node):
@@ -636,7 +682,7 @@ class TemplateASTTransformer(ASTTransformer):
     """
 
     def __init__(self):
-        self.locals = [CONSTANTS, set()]
+        self.locals = [CONSTANTS]
 
     def visitConst(self, node):
         if isinstance(node.value, str):
@@ -647,18 +693,19 @@ class TemplateASTTransformer(ASTTransformer):
         return node
 
     def visitAssName(self, node):
-        if self.locals:
+        if len(self.locals) > 1:
             self.locals[-1].add(node.name)
         return node
 
     def visitAugAssign(self, node):
-        if isinstance(node.node, ast.Name):
+        if isinstance(node.node, ast.Name) \
+                and node.node.name not in flatten(self.locals):
             name = node.node.name
-            node.node = ast.Subscript(ast.Name('data'), 'OP_APPLY',
+            node.node = ast.Subscript(ast.Name('__data__'), 'OP_APPLY',
                                       [ast.Const(name)])
             node.expr = self.visit(node.expr)
             return ast.If([
-                (ast.Compare(ast.Const(name), [('in', ast.Name('data'))]),
+                (ast.Compare(ast.Const(name), [('in', ast.Name('__data__'))]),
                  ast.Stmt([node]))],
                 ast.Stmt([ast.Raise(ast.CallFunc(ast.Name('UndefinedError'),
                                                  [ast.Const(name)]),
@@ -667,6 +714,8 @@ class TemplateASTTransformer(ASTTransformer):
             return ASTTransformer.visitAugAssign(self, node)
 
     def visitClass(self, node):
+        if len(self.locals) > 1:
+            self.locals[-1].add(node.name)
         self.locals.append(set())
         try:
             return ASTTransformer.visitClass(self, node)
@@ -681,6 +730,8 @@ class TemplateASTTransformer(ASTTransformer):
             self.locals.pop()
 
     def visitFunction(self, node):
+        if len(self.locals) > 1:
+            self.locals[-1].add(node.name)
         self.locals.append(set(node.argnames))
         try:
             return ASTTransformer.visitFunction(self, node)
@@ -711,12 +762,11 @@ class TemplateASTTransformer(ASTTransformer):
     def visitName(self, node):
         # If the name refers to a local inside a lambda, list comprehension, or
         # generator expression, leave it alone
-        for frame in self.locals:
-            if node.name in frame:
-                return node
-        # Otherwise, translate the name ref into a context lookup
-        func_args = [ast.Name('data'), ast.Const(node.name)]
-        return ast.CallFunc(ast.Name('_lookup_name'), func_args)
+        if node.name not in flatten(self.locals):
+            # Otherwise, translate the name ref into a context lookup
+            func_args = [ast.Name('__data__'), ast.Const(node.name)]
+            node = ast.CallFunc(ast.Name('_lookup_name'), func_args)
+        return node
 
 
 class ExpressionASTTransformer(TemplateASTTransformer):

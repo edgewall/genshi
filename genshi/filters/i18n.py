@@ -11,7 +11,10 @@
 # individuals. For the exact contribution history, see the revision
 # history and logs, available at http://genshi.edgewall.org/log/.
 
-"""Utilities for internationalization and localization of templates."""
+"""Utilities for internationalization and localization of templates.
+
+:since: version 0.4
+"""
 
 from compiler import ast
 try:
@@ -93,17 +96,21 @@ class Translator(object):
                                'summary', 'title'])
 
     def __init__(self, translate=gettext, ignore_tags=IGNORE_TAGS,
-                 include_attrs=INCLUDE_ATTRS):
+                 include_attrs=INCLUDE_ATTRS, extract_text=True):
         """Initialize the translator.
         
         :param translate: the translation function, for example ``gettext`` or
                           ``ugettext``.
         :param ignore_tags: a set of tag names that should not be localized
         :param include_attrs: a set of attribute names should be localized
+        :param extract_text: whether the content of text nodes should be
+                             extracted, or only text in explicit ``gettext``
+                             function calls
         """
         self.translate = translate
         self.ignore_tags = ignore_tags
         self.include_attrs = include_attrs
+        self.extract_text = extract_text
 
     def __call__(self, stream, ctxt=None, search_text=True, msgbuf=None):
         """Translate any localizable strings in the given stream.
@@ -124,6 +131,8 @@ class Translator(object):
         ignore_tags = self.ignore_tags
         include_attrs = self.include_attrs
         translate = self.translate
+        if not self.extract_text:
+            search_text = False
         skip = 0
         i18n_msg = I18N_NAMESPACE['msg']
         ns_prefixes = []
@@ -153,7 +162,7 @@ class Translator(object):
                 changed = False
                 for name, value in attrs:
                     newval = value
-                    if isinstance(value, basestring):
+                    if search_text and isinstance(value, basestring):
                         if name in include_attrs:
                             newval = self.translate(value)
                     else:
@@ -165,7 +174,7 @@ class Translator(object):
                         changed = True
                     new_attrs.append((name, value))
                 if changed:
-                    attrs = new_attrs
+                    attrs = Attrs(new_attrs)
 
                 if msgbuf:
                     msgbuf.append(kind, data, pos)
@@ -255,6 +264,8 @@ class Translator(object):
                (such as ``ngettext``), a single item with a tuple of strings is
                yielded, instead an item for each string argument.
         """
+        if not self.extract_text:
+            search_text = False
         skip = 0
         i18n_msg = I18N_NAMESPACE['msg']
         xml_lang = XML_NAMESPACE['lang']
@@ -276,7 +287,7 @@ class Translator(object):
                     continue
 
                 for name, value in attrs:
-                    if isinstance(value, basestring):
+                    if search_text and isinstance(value, basestring):
                         if name in self.include_attrs:
                             text = value.strip()
                             if text:
@@ -321,7 +332,10 @@ class Translator(object):
 
 
 class MessageBuffer(object):
-    """Helper class for managing localizable mixed content."""
+    """Helper class for managing localizable mixed content.
+    
+    :since: version 0.5
+    """
 
     def __init__(self, lineno=-1):
         self.lineno = lineno
@@ -385,17 +399,21 @@ def extract_from_code(code, gettext_functions):
     :param code: the `Code` object
     :type code: `genshi.template.eval.Code`
     :param gettext_functions: a sequence of function names
+    :since: version 0.5
     """
     def _walk(node):
         if isinstance(node, ast.CallFunc) and isinstance(node.node, ast.Name) \
                 and node.node.name in gettext_functions:
             strings = []
-            for arg in node.args:
+            def _add(arg):
                 if isinstance(arg, ast.Const) \
                         and isinstance(arg.value, basestring):
-                    strings.append(unicode(arg.value))
-                elif not isinstance(arg, ast.Keyword):
+                    strings.append(unicode(arg.value, 'utf-8'))
+                elif arg and not isinstance(arg, ast.Keyword):
                     strings.append(None)
+            [_add(arg) for arg in node.args]
+            _add(node.star_args)
+            _add(node.dstar_args)
             if len(strings) == 1:
                 strings = strings[0]
             else:
@@ -421,6 +439,8 @@ def parse_msg(string, regex=re.compile(r'(?:\[(\d+)\:)|\]')):
     
     >>> parse_msg("[1:] Bilder pro Seite anzeigen.")
     [(1, ''), (0, ' Bilder pro Seite anzeigen.')]
+    
+    :since: version 0.5
     """
     parts = []
     stack = [0]
@@ -464,10 +484,15 @@ def extract(fileobj, keywords, comment_tags, options):
         template_class = getattr(__import__(module, {}, {}, [clsname]), clsname)
     encoding = options.get('encoding', None)
 
+    extract_text = options.get('extract_text', True)
+    if isinstance(extract_text, basestring):
+        extract_text = extract_text.lower() in ('1', 'on', 'yes', 'true')
+
     ignore_tags = options.get('ignore_tags', Translator.IGNORE_TAGS)
     if isinstance(ignore_tags, basestring):
         ignore_tags = ignore_tags.split()
     ignore_tags = [QName(tag) for tag in ignore_tags]
+
     include_attrs = options.get('include_attrs', Translator.INCLUDE_ATTRS)
     if isinstance(include_attrs, basestring):
         include_attrs = include_attrs.split()
@@ -475,7 +500,7 @@ def extract(fileobj, keywords, comment_tags, options):
 
     tmpl = template_class(fileobj, filename=getattr(fileobj, 'name', None),
                           encoding=encoding)
-    translator = Translator(None, ignore_tags, include_attrs)
+    translator = Translator(None, ignore_tags, include_attrs, extract_text)
     for lineno, func, message in translator.extract(tmpl.stream,
                                                     gettext_functions=keywords):
         yield lineno, func, message, []

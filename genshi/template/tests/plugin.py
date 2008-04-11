@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2006 Edgewall Software
+# Copyright (C) 2006-2007 Edgewall Software
 # Copyright (C) 2006 Matthew Good
 # All rights reserved.
 #
@@ -18,7 +18,7 @@ import unittest
 
 from genshi.core import Stream
 from genshi.output import DocType
-from genshi.template import MarkupTemplate, TextTemplate
+from genshi.template import MarkupTemplate, TextTemplate, NewTextTemplate
 from genshi.template.plugin import ConfigurationError, \
                                    MarkupTemplateEnginePlugin, \
                                    TextTemplateEnginePlugin
@@ -145,6 +145,23 @@ class MarkupTemplateEnginePluginTestCase(unittest.TestCase):
   </body>
 </html>""", output)
 
+    def test_render_fragment_with_doctype(self):
+        plugin = MarkupTemplateEnginePlugin(options={
+            'genshi.default_doctype': 'html-strict',
+        })
+        tmpl = plugin.load_template(PACKAGE + '.templates.test_no_doctype')
+        output = plugin.render({'message': 'Hello'}, template=tmpl,
+                               fragment=True)
+        self.assertEqual("""<html lang="en">
+  <head>
+    <title>Test</title>
+  </head>
+  <body>
+    <h1>Test</h1>
+    <p>Hello</p>
+  </body>
+</html>""", output)
+
     def test_helper_functions(self):
         plugin = MarkupTemplateEnginePlugin()
         tmpl = plugin.load_template(PACKAGE + '.templates.functions')
@@ -184,6 +201,15 @@ class TextTemplateEnginePluginTestCase(unittest.TestCase):
             'genshi.default_encoding': 'iso-8859-15',
         })
         self.assertEqual('iso-8859-15', plugin.default_encoding)
+
+    def test_init_with_new_syntax(self):
+        plugin = TextTemplateEnginePlugin(options={
+            'genshi.new_text_syntax': 'yes',
+        })
+        self.assertEqual(NewTextTemplate, plugin.template_class)
+        tmpl = plugin.load_template(PACKAGE + '.templates.new_syntax')
+        output = plugin.render({'foo': True}, template=tmpl)
+        self.assertEqual('bar', output)
 
     def test_load_template_from_file(self):
         plugin = TextTemplateEnginePlugin()

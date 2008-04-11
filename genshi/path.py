@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2006 Edgewall Software
+# Copyright (C) 2006-2008 Edgewall Software
 # All rights reserved.
 #
 # This software is licensed as described in the file COPYING, which
@@ -39,10 +39,12 @@ structures), it only implements a subset of the full XPath 1.0 language.
 """
 
 from math import ceil, floor
+import operator
 import re
 
 from genshi.core import Stream, Attrs, Namespace, QName
-from genshi.core import START, END, TEXT, COMMENT, PI
+from genshi.core import START, END, TEXT, START_NS, END_NS, COMMENT, PI, \
+                        START_CDATA, END_CDATA
 
 __all__ = ['Path', 'PathSyntaxError']
 __docformat__ = 'restructuredtext en'
@@ -146,7 +148,8 @@ class Path(object):
                                  updateonly=True)
                 elif result:
                     yield result
-        return Stream(_generate())
+        return Stream(_generate(),
+                      serializer=getattr(stream, 'serializer', None))
 
     def test(self, ignore_context=False):
         """Returns a function that can be used to track whether the path matches
@@ -193,6 +196,9 @@ class Path(object):
                     continue
                 elif kind is START:
                     cursors.append(cursors and cursors[-1] or 0)
+                elif kind is START_NS or kind is END_NS \
+                        or kind is START_CDATA or kind is END_CDATA:
+                    continue
 
                 if updateonly or retval or not cursors:
                     continue
@@ -270,6 +276,8 @@ class Path(object):
                     if not matched or last_step or not (
                             axis is SELF or axis is DESCENDANT_OR_SELF):
                         break
+                    if ctxtnode and axis is DESCENDANT_OR_SELF:
+                        ctxtnode = False
 
                 if (retval or not matched) and kind is START and \
                         not (axis is DESCENDANT or axis is DESCENDANT_OR_SELF):
@@ -771,7 +779,7 @@ class MatchesFunction(Function):
         string2 = as_string(self.string2(kind, data, pos, namespaces, variables))
         return re.search(string2, string1, self.flags)
     def _map_flags(self, flags):
-        return reduce(lambda a, b: a | b,
+        return reduce(operator.or_,
                       [self.flag_map[flag] for flag in flags], re.U)
     def __repr__(self):
         return 'contains(%r, %r)' % (self.string1, self.string2)

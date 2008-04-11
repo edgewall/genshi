@@ -43,13 +43,15 @@ the ``<head>`` of the input document:
 
 The ``Transformer`` support a large number of useful transformations out of the
 box, but custom transformations can be added easily.
+
+:since: version 0.5
 """
 
 import re
 import sys
 
 from genshi.builder import Element
-from genshi.core import Stream, Attrs, QName, TEXT, START, END, _ensure
+from genshi.core import Stream, Attrs, QName, TEXT, START, END, _ensure, Markup
 from genshi.path import Path
 
 __all__ = ['Transformer', 'StreamBuffer', 'InjectorTransformation', 'ENTER',
@@ -141,14 +143,12 @@ class Transformer(object):
 
     __slots__ = ['transforms']
 
-    def __init__(self, path=None):
+    def __init__(self, path='.'):
         """Construct a new transformation filter.
 
         :param path: an XPath expression (as string) or a `Path` instance
         """
-        self.transforms = []
-        if path:
-            self.transforms.append(SelectTransformation(path))
+        self.transforms = [SelectTransformation(path)]
 
     def __call__(self, stream):
         """Apply the transform filter to the marked stream.
@@ -160,7 +160,8 @@ class Transformer(object):
         transforms = self._mark(stream)
         for link in self.transforms:
             transforms = link(transforms)
-        return Stream(self._unmark(transforms))
+        return Stream(self._unmark(transforms),
+                      serializer=getattr(stream, 'serializer', None))
 
     def apply(self, function):
         """Apply a transformation to the stream.
@@ -548,6 +549,10 @@ class Transformer(object):
         ...             '<b>some bold text</b></body></html>')
         >>> print html | Transformer('body').substitute('(?i)some', 'SOME')
         <html><body>SOME text, some more text and <b>SOME bold text</b></body></html>
+        >>> tags = tag.html(tag.body('Some text, some more text and ',
+        ...      Markup('<b>some bold text</b>')))
+        >>> print tags.generate() | Transformer('body').substitute('(?i)some', 'SOME')
+        <html><body>SOME text, some more text and <b>SOME bold text</b></body></html>
 
         :param pattern: A regular expression object or string.
         :param replace: Replacement pattern.
@@ -555,6 +560,16 @@ class Transformer(object):
         :rtype: `Transformer`
         """
         return self.apply(SubstituteTransformation(pattern, replace, count))
+
+    def rename(self, name):
+        """Rename matching elements.
+
+        >>> html = HTML('<html><body>Some text, some more text and '
+        ...             '<b>some bold text</b></body></html>')
+        >>> print html | Transformer('body/b').rename('strong')
+        <html><body>Some text, some more text and <strong>some bold text</strong></body></html>
+        """
+        return self.apply(RenameTransformation(name))
 
     def trace(self, prefix='', fileobj=None):
         """Print events as they pass through the transform.
@@ -732,7 +747,10 @@ class WrapTransformation(object):
                     yield None, prefix
                 yield mark, event
                 while True:
-                    mark, event = stream.next()
+                    try:
+                        mark, event = stream.next()
+                    except StopIteration:
+                        yield None, element[-1]
                     if not mark:
                         break
                     yield mark, event
@@ -791,8 +809,8 @@ class FilterTransformation(object):
             if mark:
                 queue.append(event)
             else:
-                for event in flush(queue):
-                    yield event
+                for queue_event in flush(queue):
+                    yield queue_event
                 yield None, event
         for event in flush(queue):
             yield event
@@ -851,7 +869,33 @@ class SubstituteTransformation(object):
         """
         for mark, (kind, data, pos) in stream:
             if kind is TEXT:
-                data = self.pattern.sub(self.replace, data, self.count)
+                new_data = self.pattern.sub(self.replace, data, self.count)
+                if isinstance(data, Markup):
+                    data = Markup(new_data)
+                else:
+                    data = new_data
+            yield mark, (kind, data, pos)
+
+
+class RenameTransformation(object):
+    """Rename matching elements."""
+    def __init__(self, name):
+        """Create the transform.
+
+        :param name: New element name.
+        """
+        self.name = QName(name)
+
+    def __call__(self, stream):
+        """Apply the transform filter to the marked stream.
+
+        :param stream: The marked event stream to filter
+        """
+        for mark, (kind, data, pos) in stream:
+            if mark is ENTER:
+                data = self.name, data[1]
+            elif mark is EXIT:
+                data = self.name
             yield mark, (kind, data, pos)
 
 
@@ -912,9 +956,15 @@ class BeforeTransformation(InjectorTransformation):
         :param stream: The marked event stream to filter
         """
         for mark, event in stream:
-            if mark in (ENTER, OUTSIDE):
+            if mark is not None:
                 for subevent in self._inject():
                     yield subevent
+                yield mark, event
+                while True:
+                    mark, event = stream.next()
+                    if not mark:
+                        break
+                    yield mark, event
             yield mark, event
 
 
@@ -930,7 +980,10 @@ class AfterTransformation(InjectorTransformation):
             yield mark, event
             if mark:
                 while True:
-                    mark, event = stream.next()
+                    try:
+                        mark, event = stream.next()
+                    except StopIteration:
+                        break
                     if not mark:
                         break
                     yield mark, event

@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2007 Edgewall Software
+# Copyright (C) 2007-2008 Edgewall Software
 # All rights reserved.
 #
 # This software is licensed as described in the file COPYING, which
@@ -15,11 +15,36 @@ import doctest
 from StringIO import StringIO
 import unittest
 
+from genshi.core import Attrs
 from genshi.template import MarkupTemplate
 from genshi.filters.i18n import Translator, extract
+from genshi.input import HTML
 
 
 class TranslatorTestCase(unittest.TestCase):
+
+    def test_translate_included_attribute_text(self):
+        """
+        Verify that translated attributes end up in a proper `Attrs` instance.
+        """
+        html = HTML("""<html>
+          <span title="Foo"></span>
+        </html>""")
+        translator = Translator(lambda s: u"Voh")
+        stream = list(html.filter(translator))
+        kind, data, pos = stream[2]
+        assert isinstance(data[1], Attrs)
+
+    def test_extract_without_text(self):
+        tmpl = MarkupTemplate("""<html xmlns:py="http://genshi.edgewall.org/">
+          <p title="Bar">Foo</p>
+          ${ngettext("Singular", "Plural", num)}
+        </html>""")
+        translator = Translator(extract_text=False)
+        messages = list(translator.extract(tmpl.stream))
+        self.assertEqual(1, len(messages))
+        self.assertEqual((3, 'ngettext', (u'Singular', u'Plural', None)),
+                         messages[0])
 
     def test_extract_plural_form(self):
         tmpl = MarkupTemplate("""<html xmlns:py="http://genshi.edgewall.org/">
@@ -30,6 +55,24 @@ class TranslatorTestCase(unittest.TestCase):
         self.assertEqual(1, len(messages))
         self.assertEqual((2, 'ngettext', (u'Singular', u'Plural', None)),
                          messages[0])
+
+    def test_extract_funky_plural_form(self):
+        tmpl = MarkupTemplate("""<html xmlns:py="http://genshi.edgewall.org/">
+          ${ngettext(len(items), *widget.display_names)}
+        </html>""")
+        translator = Translator()
+        messages = list(translator.extract(tmpl.stream))
+        self.assertEqual(1, len(messages))
+        self.assertEqual((2, 'ngettext', (None, None)), messages[0])
+
+    def test_extract_gettext_with_unicode_string(self):
+        tmpl = MarkupTemplate("""<html xmlns:py="http://genshi.edgewall.org/">
+          ${gettext("Grüße")}
+        </html>""")
+        translator = Translator()
+        messages = list(translator.extract(tmpl.stream))
+        self.assertEqual(1, len(messages))
+        self.assertEqual((2, 'gettext', u'Gr\xfc\xdfe'), messages[0])
 
     def test_extract_included_attribute_text(self):
         tmpl = MarkupTemplate("""<html xmlns:py="http://genshi.edgewall.org/">
@@ -268,6 +311,18 @@ class ExtractTestCase(unittest.TestCase):
                              []),
         ], results)
 
+    def test_extraction_without_text(self):
+        buf = StringIO("""<html xmlns:py="http://genshi.edgewall.org/">
+          <p title="Bar">Foo</p>
+          ${ngettext("Singular", "Plural", num)}
+        </html>""")
+        results = list(extract(buf, ['_', 'ngettext'], [], {
+            'extract_text': 'no'
+        }))
+        self.assertEqual([
+            (3, 'ngettext', (u'Singular', u'Plural', None), []),
+        ], results)
+
     def test_text_template_extraction(self):
         buf = StringIO("""${_("Dear %(name)s") % {'name': name}},
         
@@ -332,7 +387,7 @@ class ExtractTestCase(unittest.TestCase):
 
 def suite():
     suite = unittest.TestSuite()
-    suite.addTests(doctest.DocTestSuite(Translator.__module__))
+    suite.addTest(doctest.DocTestSuite(Translator.__module__))
     suite.addTest(unittest.makeSuite(TranslatorTestCase, 'test'))
     suite.addTest(unittest.makeSuite(ExtractTestCase, 'test'))
     return suite

@@ -15,6 +15,11 @@
 
 import htmlentitydefs
 import re
+try:
+    set
+except NameError:
+    from sets import ImmutableSet as frozenset
+    from sets import Set as set
 
 __docformat__ = 'restructuredtext en'
 
@@ -152,7 +157,7 @@ def flatten(items):
     """
     retval = []
     for item in items:
-        if isinstance(item, (list, tuple)):
+        if isinstance(item, (frozenset, list, set, tuple)):
             retval += flatten(item)
         else:
             retval.append(item)
@@ -223,7 +228,7 @@ def stripentities(text, keepxmlentities=False):
                     return ref
     return _STRIPENTITIES_RE.sub(_replace_entity, text)
 
-_STRIPTAGS_RE = re.compile(r'<[^>]*?>')
+_STRIPTAGS_RE = re.compile(r'(<!--.*?-->|<[^>]*>)')
 def striptags(text):
     """Return a copy of the text with any XML/HTML tags removed.
     
@@ -233,6 +238,11 @@ def striptags(text):
     'Foo'
     >>> striptags('Foo<br />')
     'Foo'
+    
+    HTML/XML comments are stripped, too:
+    
+    >>> striptags('<!-- <blub>hehe</blah> -->test')
+    'test'
     
     :param text: the string to remove tags from
     :return: the text with tags removed

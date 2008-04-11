@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2007 Edgewall Software
+# Copyright (C) 2007-2008 Edgewall Software
 # All rights reserved.
 #
 # This software is licensed as described in the file COPYING, which
@@ -30,8 +30,7 @@ NAMESTART = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_'
 NAMECHARS = NAMESTART + '.0123456789'
 PREFIX = '$'
 
-def interpolate(text, basedir=None, filename=None, lineno=-1, offset=0,
-                lookup='lenient'):
+def interpolate(text, filepath=None, lineno=-1, offset=0, lookup='strict'):
     """Parse the given string and extract expressions.
     
     This function is a generator that yields `TEXT` events for literal strings,
@@ -45,9 +44,8 @@ def interpolate(text, basedir=None, filename=None, lineno=-1, offset=0,
     TEXT u'bar'
     
     :param text: the text to parse
-    :param basedir: base directory of the file in which the text was found
-                    (optional)
-    :param filename: basename of the file in which the text was found (optional)
+    :param filepath: absolute path to the file in which the text was found
+                     (optional)
     :param lineno: the line number at which the text was found (optional)
     :param offset: the column number at which the text starts in the source
                    (optional)
@@ -57,9 +55,6 @@ def interpolate(text, basedir=None, filename=None, lineno=-1, offset=0,
     :raise TemplateSyntaxError: when a syntax error in an expression is
                                 encountered
     """
-    filepath = filename
-    if filepath and basedir:
-        filepath = os.path.join(basedir, filepath)
     pos = [filepath, lineno, offset]
 
     textbuf = []
@@ -73,7 +68,7 @@ def interpolate(text, basedir=None, filename=None, lineno=-1, offset=0,
             if chunk:
                 try:
                     expr = Expression(chunk.strip(), pos[0], pos[1],
-                                     lookup=lookup)
+                                      lookup=lookup)
                     yield EXPR, expr, tuple(pos)
                 except SyntaxError, err:
                     raise TemplateSyntaxError(err, filepath, pos[1],

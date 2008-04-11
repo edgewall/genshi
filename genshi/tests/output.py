@@ -23,6 +23,15 @@ from genshi.output import DocType, XMLSerializer, XHTMLSerializer, \
 
 class XMLSerializerTestCase(unittest.TestCase):
 
+    def test_xml_serialiser_with_decl(self):
+        stream = Stream([(Stream.XML_DECL, ('1.0', None, -1), (None, -1, -1))])
+        output = stream.render(XMLSerializer, doctype='xhtml')
+        self.assertEqual('<?xml version="1.0"?>\n'
+                         '<!DOCTYPE html PUBLIC '
+                         '"-//W3C//DTD XHTML 1.0 Strict//EN" '
+                         '"http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">\n',
+                         output)
+
     def test_doctype_in_stream(self):
         stream = Stream([(Stream.DOCTYPE, DocType.HTML_STRICT, (None, -1, -1))])
         output = stream.render(XMLSerializer)
@@ -219,7 +228,7 @@ class XHTMLSerializerTestCase(unittest.TestCase):
     def test_xml_space(self):
         text = '<foo xml:space="preserve"> Do not mess  \n\n with me </foo>'
         output = XML(text).render(XHTMLSerializer)
-        self.assertEqual(text, output)
+        self.assertEqual('<foo> Do not mess  \n\n with me </foo>', output)
 
     def test_empty_script(self):
         text = """<html xmlns="http://www.w3.org/1999/xhtml">

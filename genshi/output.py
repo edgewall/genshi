@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2006-2007 Edgewall Software
+# Copyright (C) 2006-2008 Edgewall Software
 # All rights reserved.
 #
 # This software is licensed as described in the file COPYING, which
@@ -30,7 +30,7 @@ __all__ = ['encode', 'get_serializer', 'DocType', 'XMLSerializer',
            'XHTMLSerializer', 'HTMLSerializer', 'TextSerializer']
 __docformat__ = 'restructuredtext en'
 
-def encode(iterator, method='xml', encoding='utf-8'):
+def encode(iterator, method='xml', encoding='utf-8', out=None):
     """Encode serializer output into a string.
     
     :param iterator: the iterator returned from serializing a stream (basically
@@ -39,16 +39,27 @@ def encode(iterator, method='xml', encoding='utf-8'):
                    representable in the specified encoding are treated
     :param encoding: how the output string should be encoded; if set to `None`,
                      this method returns a `unicode` object
-    :return: a string or unicode object (depending on the `encoding` parameter)
+    :param out: a file-like object that the output should be written to
+                instead of being returned as one big string; note that if
+                this is a file or socket (or similar), the `encoding` must
+                not be `None` (that is, the output must be encoded)
+    :return: a `str` or `unicode` object (depending on the `encoding`
+             parameter), or `None` if the `out` parameter is provided
+    
     :since: version 0.4.1
+    :note: Changed in 0.5: added the `out` parameter
     """
-    output = u''.join(list(iterator))
     if encoding is not None:
         errors = 'replace'
         if method != 'text' and not isinstance(method, TextSerializer):
             errors = 'xmlcharrefreplace'
-        return output.encode(encoding, errors)
-    return output
+        _encode = lambda string: string.encode(encoding, errors)
+    else:
+        _encode = lambda string: string
+    if out is None:
+        return _encode(u''.join(list(iterator)))
+    for chunk in iterator:
+        out.write(_encode(chunk))
 
 def get_serializer(method='xml', **kwargs):
     """Return a serializer object for the given method.
@@ -103,6 +114,20 @@ class DocType(object):
     )
     XHTML = XHTML_STRICT
 
+    SVG_FULL = (
+        'svg', '-//W3C//DTD SVG 1.1//EN',
+        'http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd'
+    )
+    SVG_BASIC = (
+        'svg', '-//W3C//DTD SVG Basic 1.1//EN',
+        'http://www.w3.org/Graphics/SVG/1.1/DTD/svg11-basic.dtd'
+    )
+    SVG_TINY = (
+        'svg', '-//W3C//DTD SVG Tiny 1.1//EN',
+        'http://www.w3.org/Graphics/SVG/1.1/DTD/svg11-tiny.dtd'
+    )
+    SVG = SVG_FULL
+
     def get(cls, name):
         """Return the ``(name, pubid, sysid)`` tuple of the ``DOCTYPE``
         declaration for the specified name.
@@ -115,6 +140,9 @@ class DocType(object):
          * "xhtml" or "xhtml-strict" for the XHTML 1.0 strict DTD
          * "xhtml-transitional" for the XHTML 1.0 transitional DTD
          * "xhtml-frameset" for the XHTML 1.0 frameset DTD
+         * "svg" or "svg-full" for the SVG 1.1 DTD
+         * "svg-basic" for the SVG Basic 1.1 DTD
+         * "svg-tiny" for the SVG Tiny 1.1 DTD
         
         :param name: the name of the ``DOCTYPE``
         :return: the ``(name, pubid, sysid)`` tuple for the requested
@@ -129,6 +157,9 @@ class DocType(object):
             'xhtml': cls.XHTML, 'xhtml-strict': cls.XHTML_STRICT,
             'xhtml-transitional': cls.XHTML_TRANSITIONAL,
             'xhtml-frameset': cls.XHTML_FRAMESET,
+            'svg': cls.SVG, 'svg-full': cls.SVG_FULL,
+            'svg-basic': cls.SVG_BASIC,
+            'svg-tiny': cls.SVG_TINY
         }.get(name.lower())
     get = classmethod(get)
 
@@ -156,21 +187,17 @@ class XMLSerializer(object):
                                  stripped from the output
         :note: Changed in 0.4.2: The  `doctype` parameter can now be a string.
         """
-        self.preamble = []
-        if doctype:
-            if isinstance(doctype, basestring):
-                doctype = DocType.get(doctype)
-            self.preamble.append((DOCTYPE, doctype, (None, -1, -1)))
         self.filters = [EmptyTagFilter()]
         if strip_whitespace:
             self.filters.append(WhitespaceFilter(self._PRESERVE_SPACE))
         self.filters.append(NamespaceFlattener(prefixes=namespace_prefixes))
+        if doctype:
+            self.filters.append(DocTypeInserter(doctype))
 
     def __call__(self, stream):
         have_decl = have_doctype = False
         in_cdata = False
 
-        stream = chain(self.preamble, stream)
         for filter_ in self.filters:
             stream = filter_(stream)
         for kind, data, pos in stream:
@@ -217,7 +244,7 @@ class XMLSerializer(object):
                 if sysid:
                     buf.append(' "%s"')
                 buf.append('>\n')
-                yield Markup(u''.join(buf), *filter(None, data))
+                yield Markup(u''.join(buf)) % filter(None, data)
                 have_doctype = True
 
             elif kind is START_CDATA:
@@ -261,6 +288,8 @@ class XHTMLSerializer(XMLSerializer):
         namespace_prefixes = namespace_prefixes or {}
         namespace_prefixes['http://www.w3.org/1999/xhtml'] = ''
         self.filters.append(NamespaceFlattener(prefixes=namespace_prefixes))
+        if doctype:
+            self.filters.append(DocTypeInserter(doctype))
 
     def __call__(self, stream):
         boolean_attrs = self._BOOLEAN_ATTRS
@@ -268,7 +297,6 @@ class XHTMLSerializer(XMLSerializer):
         have_doctype = False
         in_cdata = False
 
-        stream = chain(self.preamble, stream)
         for filter_ in self.filters:
             stream = filter_(stream)
         for kind, data, pos in stream:
@@ -281,6 +309,8 @@ class XHTMLSerializer(XMLSerializer):
                         value = attr
                     elif attr == u'xml:lang' and u'lang' not in attrib:
                         buf += [' lang="', escape(value), '"']
+                    elif attr == u'xml:space':
+                        continue
                     buf += [' ', attr, '="', escape(value), '"']
                 if kind is EMPTY:
                     if tag in empty_elems:
@@ -313,7 +343,7 @@ class XHTMLSerializer(XMLSerializer):
                 if sysid:
                     buf.append(' "%s"')
                 buf.append('>\n')
-                yield Markup(u''.join(buf), *filter(None, data))
+                yield Markup(u''.join(buf)) % filter(None, data)
                 have_doctype = True
 
             elif kind is START_CDATA:
@@ -359,6 +389,8 @@ class HTMLSerializer(XHTMLSerializer):
         self.filters.append(NamespaceFlattener(prefixes={
             'http://www.w3.org/1999/xhtml': ''
         }))
+        if doctype:
+            self.filters.append(DocTypeInserter(doctype))
 
     def __call__(self, stream):
         boolean_attrs = self._BOOLEAN_ATTRS
@@ -367,7 +399,6 @@ class HTMLSerializer(XHTMLSerializer):
         have_doctype = False
         noescape = False
 
-        stream = chain(self.preamble, stream)
         for filter_ in self.filters:
             stream = filter_(stream)
         for kind, data, pos in stream:
@@ -415,7 +446,7 @@ class HTMLSerializer(XHTMLSerializer):
                 if sysid:
                     buf.append(' "%s"')
                 buf.append('>\n')
-                yield Markup(u''.join(buf), *filter(None, data))
+                yield Markup(u''.join(buf)) % filter(None, data)
                 have_doctype = True
 
             elif kind is PI:
@@ -436,20 +467,29 @@ class TextSerializer(object):
     <Hello!>
 
     If text events contain literal markup (instances of the `Markup` class),
-    tags or entities are stripped from the output:
+    that markup is by default passed through unchanged:
     
-    >>> elem = tag.div(Markup('<a href="foo">Hello!</a><br/>'))
-    >>> print elem
-    <div><a href="foo">Hello!</a><br/></div>
-    >>> print ''.join(TextSerializer()(elem.generate()))
-    Hello!
+    >>> elem = tag.div(Markup('<a href="foo">Hello &amp; Bye!</a><br/>'))
+    >>> print elem.generate().render(TextSerializer)
+    <a href="foo">Hello &amp; Bye!</a><br/>
+    
+    You can use the `strip_markup` to change this behavior, so that tags and
+    entities are stripped from the output (or in the case of entities,
+    replaced with the equivalent character):
+
+    >>> print elem.generate().render(TextSerializer, strip_markup=True)
+    Hello & Bye!
     """
 
+    def __init__(self, strip_markup=False):
+        self.strip_markup = strip_markup
+
     def __call__(self, stream):
+        strip_markup = self.strip_markup
         for event in stream:
             if event[0] is TEXT:
                 data = event[1]
-                if type(data) is Markup:
+                if strip_markup and type(data) is Markup:
                     data = data.striptags().stripentities()
                 yield unicode(data)
 
@@ -667,3 +707,33 @@ class WhitespaceFilter(object):
 
                 if kind:
                     yield kind, data, pos
+
+
+class DocTypeInserter(object):
+    """A filter that inserts the DOCTYPE declaration in the correct location,
+    after the XML declaration.
+    """
+    def __init__(self, doctype):
+        """Initialize the filter.
+
+        :param doctype: DOCTYPE as a string or DocType object.
+        """
+        if isinstance(doctype, basestring):
+            doctype = DocType.get(doctype)
+        self.doctype_event = (DOCTYPE, doctype, (None, -1, -1))
+
+    def __call__(self, stream):
+        doctype_inserted = False
+        for kind, data, pos in stream:
+            if not doctype_inserted:
+                doctype_inserted = True
+                if kind is XML_DECL:
+                    yield (kind, data, pos)
+                    yield self.doctype_event
+                    continue
+                yield self.doctype_event
+
+            yield (kind, data, pos)
+
+        if not doctype_inserted:
+            yield self.doctype_event

@@ -14,8 +14,11 @@
 """Support for "safe" evaluation of Python expressions."""
 
 import __builtin__
-from compiler import ast, parse
-from compiler.pycodegen import ExpressionCodeGenerator, ModuleCodeGenerator
+try:
+    from compiler import ast, parse
+    from compiler.pycodegen import ExpressionCodeGenerator, ModuleCodeGenerator
+except ImportError:
+    ast = parse = None
 import new
 try:
     set
@@ -54,26 +57,35 @@ class Code(object):
                       if `None`, the appropriate transformation is chosen
                       depending on the mode
         """
-        if isinstance(source, basestring):
-            self.source = source
-            node = _parse(source, mode=self.mode)
-        else:
-            assert isinstance(source, ast.Node), \
-                'Expected string or AST node, but got %r' % source
-            self.source = '?'
-            if self.mode == 'eval':
-                node = ast.Expression(source)
+        if ast:
+            if isinstance(source, basestring):
+                self.source = source
+                node = _parse(source, mode=self.mode)
             else:
-                node = ast.Module(None, source)
+                assert isinstance(source, ast.Node), \
+                    'Expected string or AST node, but got %r' % source
+                self.source = '?'
+                if self.mode == 'eval':
+                    node = ast.Expression(source)
+                else:
+                    node = ast.Module(None, source)
 
-        self.ast = node
-        self.code = _compile(node, self.source, mode=self.mode,
-                             filename=filename, lineno=lineno, xform=xform)
-        if lookup is None:
-            lookup = LenientLookup
-        elif isinstance(lookup, basestring):
-            lookup = {'lenient': LenientLookup, 'strict': StrictLookup}[lookup]
-        self._globals = lookup.globals
+            self.ast = node
+            self.code = _compile(node, self.source, mode=self.mode,
+                                 filename=filename, lineno=lineno, xform=xform)
+            if lookup is None:
+                lookup = LenientLookup
+            elif isinstance(lookup, basestring):
+                lookup = {
+                    'lenient': LenientLookup,
+                    'strict': StrictLookup
+                }[lookup]
+            self._globals = lookup.globals
+        else:
+            self.ast = None
+            self.source = source
+            self.code = compile(source, filename or '<string>', self.mode)
+            self._globals = lambda data: data
 
     def __getstate__(self):
         state = {'source': self.source, 'ast': self.ast,
@@ -399,18 +411,20 @@ def _parse(source, mode='eval'):
 
 def _compile(node, source=None, mode='eval', filename=None, lineno=-1,
              xform=None):
-    if xform is None:
-        xform = {'eval': ExpressionASTTransformer}.get(mode,
-                                                       TemplateASTTransformer)
-    tree = xform().visit(node)
     if isinstance(filename, unicode):
         # unicode file names not allowed for code objects
         filename = filename.encode('utf-8', 'replace')
     elif not filename:
         filename = '<string>'
-    tree.filename = filename
     if lineno <= 0:
         lineno = 1
+
+    if xform is None:
+        xform = {
+            'eval': ExpressionASTTransformer
+        }.get(mode, TemplateASTTransformer)
+    tree = xform().visit(node)
+    tree.filename = filename
 
     if mode == 'eval':
         gen = ExpressionCodeGenerator(tree)

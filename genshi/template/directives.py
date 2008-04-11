@@ -13,7 +13,10 @@
 
 """Implementation of the various template directives."""
 
-import compiler
+try:
+    import compiler
+except ImportError:
+    compiler = None
 try:
     frozenset
 except NameError:

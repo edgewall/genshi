@@ -84,7 +84,8 @@ class Code(object):
         else:
             self.ast = None
             self.source = source
-            self.code = compile(source, filename or '<string>', self.mode)
+            self.code = compile('\n' * (lineno - 1) + source,
+                                filename or '<string>', self.mode)
             self._globals = lambda data: data
 
     def __getstate__(self):

@@ -21,6 +21,7 @@ try:
     frozenset
 except NameError:
     from sets import ImmutableSet as frozenset
+import inspect
 
 from genshi.core import QName, Stream
 from genshi.path import Path
@@ -266,28 +267,44 @@ class DefDirective(Directive):
 
     def __init__(self, args, template, namespaces=None, lineno=-1, offset=-1):
         Directive.__init__(self, None, template, namespaces, lineno, offset)
-        ast = _parse(args).node
-        self.args = []
-        self.star_args = None
-        self.dstar_args = None
-        self.defaults = {}
-        if isinstance(ast, compiler.ast.CallFunc):
-            self.name = ast.node.name
-            for arg in ast.args:
-                if isinstance(arg, compiler.ast.Keyword):
-                    self.args.append(arg.name)
-                    self.defaults[arg.name] = Expression(arg.expr,
-                                                         template.filepath,
-                                                         lineno,
-                                                         lookup=template.lookup)
-                else:
-                    self.args.append(arg.name)
-            if ast.star_args:
-                self.star_args = ast.star_args.name
-            if ast.dstar_args:
-                self.dstar_args = ast.dstar_args.name
+        if compiler:
+            ast = _parse(args).node
+            self.args = []
+            self.star_args = None
+            self.dstar_args = None
+            self.defaults = {}
+            if isinstance(ast, compiler.ast.CallFunc):
+                self.name = ast.node.name
+                for arg in ast.args:
+                    if isinstance(arg, compiler.ast.Keyword):
+                        self.args.append(arg.name)
+                        self.defaults[arg.name] = Expression(
+                            arg.expr, template.filepath, lineno,
+                            lookup=template.lookup
+                        )
+                    else:
+                        self.args.append(arg.name)
+                if ast.star_args:
+                    self.star_args = ast.star_args.name
+                if ast.dstar_args:
+                    self.dstar_args = ast.dstar_args.name
+            else:
+                self.name = ast.name
         else:
-            self.name = ast.name
+            args = args.strip()
+            if not args.endswith(')'):
+                args = '%s()' % args
+            temp = {}
+            exec 'def %s: pass' % args in {}, temp
+            func = temp.values()[0]
+            self.name = func.func_name
+            argspec = inspect.getargspec(func)
+            self.args, self.star_args, self.dstar_args, defaults = argspec
+            self.defaults = {}
+            if defaults:
+                for idx, value in enumerate(defaults):
+                    name = self.args[idx + len(self.args) - len(defaults)]
+                    self.defaults[name] = value
 
     def attach(cls, template, stream, value, namespaces, pos):
         if type(value) is dict:
@@ -309,7 +326,9 @@ class DefDirective(Directive):
                     if name in kwargs:
                         val = kwargs.pop(name)
                     else:
-                        val = _eval_expr(self.defaults.get(name), ctxt, **vars)
+                        val = self.defaults.get(name)
+                        if isinstance(val, Expression):
+                            val = _eval_expr(val, ctxt, **vars)
                     scope[name] = val
             if not self.star_args is None:
                 scope[self.star_args] = args

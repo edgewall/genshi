@@ -16,7 +16,6 @@
 :since: version 0.4
 """
 
-from compiler import ast
 try:
     frozenset
 except NameError:
@@ -401,6 +400,8 @@ def extract_from_code(code, gettext_functions):
     :param gettext_functions: a sequence of function names
     :since: version 0.5
     """
+    from compiler import ast
+
     def _walk(node):
         if isinstance(node, ast.CallFunc) and isinstance(node.node, ast.Name) \
                 and node.node.name in gettext_functions:
@@ -423,6 +424,7 @@ def extract_from_code(code, gettext_functions):
             for child in node.getChildNodes():
                 for funcname, strings in _walk(child):
                     yield funcname, strings
+
     return _walk(code.ast)
 
 def parse_msg(string, regex=re.compile(r'(?:\[(\d+)\:)|\]')):

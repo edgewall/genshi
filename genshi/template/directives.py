@@ -737,7 +737,7 @@ class WithDirective(Directive):
         frame = {}
         ctxt.push(frame)
         for targets, expr in self.vars:
-            value = expr.evaluate(ctxt.data)
+            value = _eval_expr(expr, ctxt, **vars)
             for assign in targets:
                 assign(frame, value)
             ctxt.pop()

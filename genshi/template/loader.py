@@ -178,7 +178,7 @@ class TemplateLoader(object):
                 uptodate = self._uptodate[cachekey]
                 if uptodate is not None and uptodate():
                     return tmpl
-            except KeyError, OSError:
+            except (KeyError, OSError):
                 pass
 
             search_path = self.search_path

@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2006-2007 Edgewall Software
+# Copyright (C) 2006-2008 Edgewall Software
 # All rights reserved.
 #
 # This software is licensed as described in the file COPYING, which
@@ -178,7 +178,7 @@ class TemplateLoader(object):
                 uptodate = self._uptodate[cachekey]
                 if uptodate is not None and uptodate():
                     return tmpl
-            except KeyError, OSError:
+            except (KeyError, OSError):
                 pass
 
             search_path = self.search_path

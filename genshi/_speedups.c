@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2006 Edgewall Software
+ * Copyright (C) 2006-2008 Edgewall Software
  * All rights reserved.
  *
  * This software is licensed as described in the file COPYING, which
@@ -13,6 +13,12 @@
 
 #include <Python.h>
 #include <structmember.h>
+
+#if PY_VERSION_HEX < 0x02050000 && !defined(PY_SSIZE_T_MIN)
+typedef int Py_ssize_t;
+#define PY_SSIZE_T_MAX INT_MAX
+#define PY_SSIZE_T_MIN INT_MIN
+#endif
 
 static PyObject *amp1, *amp2, *lt1, *lt2, *gt1, *gt2, *qt1, *qt2;
 static PyObject *stripentities, *striptags;
@@ -293,7 +299,11 @@ Markup_mod(PyObject *self, PyObject *args)
     }
     if (kwds && PyDict_Size(kwds)) {
         PyObject *kwcopy, *key, *value;
+#if PY_VERSION_HEX >= 0x02050000
         Py_ssize_t pos = 0;
+#else
+        int pos = 0;
+#endif
 
         kwcopy = PyDict_Copy( kwds );
         if (kwcopy == NULL) {
@@ -536,7 +546,7 @@ PyTypeObject MarkupType = {
     sizeof(MarkupObject),
     0,
     0,          /*tp_dealloc*/
-    0,          /*tp_print*/ 
+    0,          /*tp_print*/
     0,          /*tp_getattr*/
     0,          /*tp_setattr*/
     0,          /*tp_compare*/
@@ -554,7 +564,7 @@ PyTypeObject MarkupType = {
 
     Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE | Py_TPFLAGS_CHECKTYPES, /*tp_flags*/
     Markup__doc__,/*tp_doc*/
-    
+
     0,          /*tp_traverse*/
     0,          /*tp_clear*/
 
@@ -571,11 +581,11 @@ PyTypeObject MarkupType = {
     0,          /*tp_getset*/
     0,          /*tp_base*/
     0,          /*tp_dict*/
-    
+
     0,          /*tp_descr_get*/
     0,          /*tp_descr_set*/
     0,          /*tp_dictoffset*/
-    
+
     0,          /*tp_init*/
     0,          /*tp_alloc  will be set to PyType_GenericAlloc in module init*/
     0,          /*tp_new*/

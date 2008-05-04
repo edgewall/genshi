@@ -178,6 +178,15 @@ This would produce the following output:
     <span>1</span>
   </div>
 
+These directives can also be used as elements:
+
+.. code-block:: genshi
+
+  <py:choose test="1">
+    <py:when test="0">0</py:when>
+    <py:when test="1">1</py:when>
+    <py:otherwise>2</py:otherwise>
+  </py:choose>
 
 Looping
 =======

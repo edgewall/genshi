@@ -372,7 +372,7 @@ class HTMLSerializerTestCase(unittest.TestCase):
 
     def test_empty_script(self):
         text = '<script src="foo.js" />'
-        output = XML(text).render(XHTMLSerializer)
+        output = XML(text).render(HTMLSerializer)
         self.assertEqual('<script src="foo.js"></script>', output)
 
     def test_script_escaping(self):

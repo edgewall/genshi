@@ -546,13 +546,17 @@ class Transformer(object):
         Refer to the documentation for ``re.sub()`` for details.
 
         >>> html = HTML('<html><body>Some text, some more text and '
-        ...             '<b>some bold text</b></body></html>')
-        >>> print html | Transformer('body').substitute('(?i)some', 'SOME')
-        <html><body>SOME text, some more text and <b>SOME bold text</b></body></html>
-        >>> tags = tag.html(tag.body('Some text, some more text and ',
+        ...             '<b>some bold text</b>\\n'
+        ...             '<i>some italicised text</i></body></html>')
+        >>> print html | Transformer('body/b').substitute('(?i)some', 'SOME')
+        <html><body>Some text, some more text and <b>SOME bold text</b>
+        <i>some italicised text</i></body></html>
+        >>> tags = tag.html(tag.body('Some text, some more text and\\n',
         ...      Markup('<b>some bold text</b>')))
-        >>> print tags.generate() | Transformer('body').substitute('(?i)some', 'SOME')
-        <html><body>SOME text, some more text and <b>SOME bold text</b></body></html>
+        >>> print tags.generate() | Transformer('body').substitute(
+        ...     '(?i)some', 'SOME')
+        <html><body>SOME text, some more text and
+        <b>SOME bold text</b></body></html>
 
         :param pattern: A regular expression object or string.
         :param replace: Replacement pattern.
@@ -868,7 +872,7 @@ class SubstituteTransformation(object):
         :param stream: The marked event stream to filter
         """
         for mark, (kind, data, pos) in stream:
-            if kind is TEXT:
+            if mark is not None and kind is TEXT:
                 new_data = self.pattern.sub(self.replace, data, self.count)
                 if isinstance(data, Markup):
                     data = Markup(new_data)

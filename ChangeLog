@@ -79,6 +79,9 @@ http://svn.edgewall.org/repos/genshi/tags/0.5.0/
    base class (ticket #211).
  * The `Template` class and its subclasses, as well as the interpolation API,
    now take an `filepath` parameter instead of `basedir` (ticket #207).
+ * The `XHTMLSerializer` now has a `drop_xml_decl` option that defaults to
+   `True`. Setting it to `False` will cause any XML decl in the serialized
+   stream to be included in the output as it would for XML serialization.
 
 
 Version 0.4.4

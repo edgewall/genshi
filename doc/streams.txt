@@ -220,6 +220,13 @@ options are supported by the built-in serializers:
 
   (This option is not available for serialization to HTML or plain text.)
 
+``drop_xml_decl``
+  Whether to remove the XML declaration (the ``<?xml ?>`` part at the
+  beginning of a document) when serializing. This defaults to ``True`` as an
+  XML declaration throws some older browsers into "Quirks" rendering mode.
+
+  (This option is only available for serialization to XHTML.)
+
 
 
 Using XPath

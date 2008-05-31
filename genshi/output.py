@@ -114,6 +114,11 @@ class DocType(object):
     )
     XHTML = XHTML_STRICT
 
+    XHTML11 = (
+        'html', '-//W3C//DTD XHTML 1.1//EN',
+        'http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd'
+    )
+
     SVG_FULL = (
         'svg', '-//W3C//DTD SVG 1.1//EN',
         'http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd'
@@ -140,6 +145,7 @@ class DocType(object):
          * "xhtml" or "xhtml-strict" for the XHTML 1.0 strict DTD
          * "xhtml-transitional" for the XHTML 1.0 transitional DTD
          * "xhtml-frameset" for the XHTML 1.0 frameset DTD
+         * "xhtml11" for the XHTML 1.1 DTD
          * "svg" or "svg-full" for the SVG 1.1 DTD
          * "svg-basic" for the SVG Basic 1.1 DTD
          * "svg-tiny" for the SVG Tiny 1.1 DTD
@@ -157,6 +163,7 @@ class DocType(object):
             'xhtml': cls.XHTML, 'xhtml-strict': cls.XHTML_STRICT,
             'xhtml-transitional': cls.XHTML_TRANSITIONAL,
             'xhtml-frameset': cls.XHTML_FRAMESET,
+            'xhtml11': cls.XHTML11,
             'svg': cls.SVG, 'svg-full': cls.SVG_FULL,
             'svg-basic': cls.SVG_BASIC,
             'svg-tiny': cls.SVG_TINY
@@ -280,7 +287,7 @@ class XHTMLSerializer(XMLSerializer):
     ])
 
     def __init__(self, doctype=None, strip_whitespace=True,
-                 namespace_prefixes=None):
+                 namespace_prefixes=None, drop_xml_decl=True):
         super(XHTMLSerializer, self).__init__(doctype, False)
         self.filters = [EmptyTagFilter()]
         if strip_whitespace:
@@ -290,11 +297,13 @@ class XHTMLSerializer(XMLSerializer):
         self.filters.append(NamespaceFlattener(prefixes=namespace_prefixes))
         if doctype:
             self.filters.append(DocTypeInserter(doctype))
+        self.drop_xml_decl = drop_xml_decl
 
     def __call__(self, stream):
         boolean_attrs = self._BOOLEAN_ATTRS
         empty_elems = self._EMPTY_ELEMS
-        have_doctype = False
+        drop_xml_decl = self.drop_xml_decl
+        have_decl = have_doctype = False
         in_cdata = False
 
         for filter_ in self.filters:
@@ -345,6 +354,18 @@ class XHTMLSerializer(XMLSerializer):
                 buf.append('>\n')
                 yield Markup(u''.join(buf)) % filter(None, data)
                 have_doctype = True
+
+            elif kind is XML_DECL and not have_decl and not drop_xml_decl:
+                version, encoding, standalone = data
+                buf = ['<?xml version="%s"' % version]
+                if encoding:
+                    buf.append(' encoding="%s"' % encoding)
+                if standalone != -1:
+                    standalone = standalone and 'yes' or 'no'
+                    buf.append(' standalone="%s"' % standalone)
+                buf.append('?>\n')
+                yield Markup(u''.join(buf))
+                have_decl = True
 
             elif kind is START_CDATA:
                 yield Markup('<![CDATA[')

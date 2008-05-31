@@ -42,6 +42,15 @@ class ElementFactoryTestCase(unittest.TestCase):
                           (None, -1, -1)),
                          event)
 
+    def test_duplicate_attributes(self):
+        link = tag.a(href='#1', href_='#2')('Bar')
+        bits = iter(link.generate())
+        self.assertEqual((Stream.START,
+                          ('a', Attrs([('href', "#1")])),
+                          (None, -1, -1)), bits.next())
+        self.assertEqual((Stream.TEXT, u'Bar', (None, -1, -1)), bits.next())
+        self.assertEqual((Stream.END, 'a', (None, -1, -1)), bits.next())
+
     def test_stream_as_child(self):
         xml = list(tag.span(XML('<b>Foo</b>')).generate())
         self.assertEqual(5, len(xml))

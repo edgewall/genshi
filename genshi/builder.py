@@ -68,6 +68,11 @@ returns an object of type `Fragment`:
 Hello, <em>world</em>!
 """
 
+try:
+    set
+except NameError:
+    from sets import Set as set
+
 from genshi.core import Attrs, Namespace, QName, Stream, START, END, TEXT
 
 __all__ = ['Fragment', 'Element', 'ElementFactory', 'tag']
@@ -146,14 +151,13 @@ class Fragment(object):
         return Stream(self._generate())
 
 
-def _value_to_unicode(value):
-    if isinstance(value, unicode):
-        return value
-    return unicode(value)
-
 def _kwargs_to_attrs(kwargs):
-    return [(QName(k.rstrip('_').replace('_', '-')), _value_to_unicode(v))
-            for k, v in kwargs.items() if v is not None]
+    retval = {}
+    for name, value in kwargs.items():
+        name = name.rstrip('_').replace('_', '-')
+        if value is not None and name not in retval:
+            retval[QName(name)] = unicode(value)
+    return Attrs(retval.items())
 
 
 class Element(Fragment):
@@ -240,7 +244,7 @@ class Element(Fragment):
     def __init__(self, tag_, **attrib):
         Fragment.__init__(self)
         self.tag = QName(tag_)
-        self.attrib = Attrs(_kwargs_to_attrs(attrib))
+        self.attrib = _kwargs_to_attrs(attrib)
 
     def __call__(self, *args, **kwargs):
         """Append any positional arguments as child nodes, and keyword arguments
@@ -250,7 +254,7 @@ class Element(Fragment):
         :rtype: `Element`
         :see: `Fragment.append`
         """
-        self.attrib |= Attrs(_kwargs_to_attrs(kwargs))
+        self.attrib |= _kwargs_to_attrs(kwargs)
         Fragment.__call__(self, *args)
         return self
 

@@ -571,6 +571,12 @@ x = create()
         suite.execute(data)
         assert 'ifilter' in data
 
+    def test_import_star(self):
+        suite = Suite("from itertools import *")
+        data = {}
+        suite.execute(data)
+        assert 'ifilter' in data
+
     def test_for(self):
         suite = Suite("""x = []
 for i in range(3):

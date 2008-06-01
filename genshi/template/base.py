@@ -244,6 +244,10 @@ class Context(object):
         """
         return [(key, self.get(key)) for key in self.keys()]
 
+    def update(self, mapping):
+        """Update the context from the mapping provided."""
+        self.frames[0].update(mapping)
+
     def push(self, data):
         """Push a new scope on the stack.
         

@@ -186,6 +186,11 @@ class InterpolateTestCase(unittest.TestCase):
         self.assertEqual(TEXT, parts[2][0])
         self.assertEqual(' baz', parts[2][1])
 
+    def test_interpolate_triplequoted(self):
+        parts = list(interpolate('${"""foo\nbar"""}'))
+        self.assertEqual(1, len(parts))
+        self.assertEqual('"""foo\nbar"""', parts[0][1].source)
+
 
 def suite():
     suite = unittest.TestSuite()

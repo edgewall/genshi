@@ -440,8 +440,12 @@ class Transformer(object):
 
     #{ Buffer operations
 
-    def copy(self, buffer):
+    def copy(self, buffer, accumulate=False):
         """Copy selection into buffer.
+
+        The buffer is replaced by each contiguous selection before being passed
+        to the next transformation. If accumulate=True, further selections will
+        be appended to the buffer rather than replacing it.
 
         >>> from genshi.builder import tag
         >>> buffer = StreamBuffer()
@@ -452,17 +456,14 @@ class Transformer(object):
         <html><head><title>Some Title</title></head><body><h1>Some
         Title</h1>Some <em>body</em> text.</body></html>
 
-        To ensure that a transformation can be reused deterministically, the
-        contents of ``buffer`` is replaced by the ``copy()`` operation:
+        This example illustrates that only a single contiguous selection will
+        be buffered:
 
-        >>> print buffer
-        Some Title
         >>> print html | Transformer('head/title/text()').copy(buffer) \\
         ...     .end().select('body/em').copy(buffer).end().select('body') \\
         ...     .prepend(tag.h1(buffer))
-        <html><head><title>Some
-        Title</title></head><body><h1><em>body</em></h1>Some <em>body</em>
-        text.</body></html>
+        <html><head><title>Some Title</title></head><body><h1>Some
+        Title</h1>Some <em>body</em> text.</body></html>
         >>> print buffer
         <em>body</em>
 
@@ -475,7 +476,8 @@ class Transformer(object):
         >>> def apply_attr(name, entry):
         ...     return list(buffer)[0][1][1].get('class')
         >>> print html | Transformer('body/em[@class]/@class').copy(buffer) \\
-        ...     .end().select('body/em[not(@class)]').attr('class', apply_attr)
+        ...     .end().buffer().select('body/em[not(@class)]') \\
+        ...     .attr('class', apply_attr)
         <html><head><title>Some Title</title></head><body><em
         class="before">Some</em> <em class="before">body</em><em
         class="before">text</em>.</body></html>
@@ -486,9 +488,9 @@ class Transformer(object):
         :rtype: `Transformer`
         :note: this transformation will buffer the entire input stream
         """
-        return self.apply(CopyTransformation(buffer))
+        return self.apply(CopyTransformation(buffer, accumulate))
 
-    def cut(self, buffer):
+    def cut(self, buffer, accumulate=False):
         """Copy selection into buffer and remove the selection from the stream.
 
         >>> from genshi.builder import tag
@@ -500,12 +502,40 @@ class Transformer(object):
         <html><head><title>Some Title</title></head><body>Some
         <em/><h1>body</h1> text.</body></html>
 
+        Specifying accumulate=True, appends all selected intervals onto the
+        buffer. Combining this with the .buffer() operation allows us operate
+        on all copied events rather than per-segment. See the documentation on
+        buffer() for more information.
+
         :param buffer: the `StreamBuffer` in which the selection should be
                        stored
         :rtype: `Transformer`
         :note: this transformation will buffer the entire input stream
         """
-        return self.apply(CutTransformation(buffer))
+        return self.apply(CutTransformation(buffer, accumulate))
+
+    def buffer(self):
+        """Buffer the entire stream (can consume a considerable amount of
+        memory).
+
+        Useful in conjunction with copy(accumulate=True) and
+        cut(accumulate=True) to ensure that all marked events in the entire
+        stream are copied to the buffer before further transformations are
+        applied.
+
+        For example, to move all <note> elements inside a <notes> tag at the
+        top of the document:
+
+        >>> doc = HTML('<doc><notes></notes><body>Some <note>one</note> '
+        ...            'text <note>two</note>.</body></doc>')
+        >>> buffer = StreamBuffer()
+        >>> print doc | Transformer('body/note').cut(buffer, accumulate=True) \\
+        ...     .end().buffer().select('notes').prepend(buffer)
+        <doc><notes><note>one</note><note>two</note></notes><body>Some  text
+        .</body></doc>
+
+        """
+        return self.apply(list)
 
     #{ Miscellaneous operations
 
@@ -1087,25 +1117,35 @@ class StreamBuffer(Stream):
 class CopyTransformation(object):
     """Copy selected events into a buffer for later insertion."""
 
-    def __init__(self, buffer):
+    def __init__(self, buffer, accumulate=False):
         """Create the copy transformation.
 
         :param buffer: the `StreamBuffer` in which the selection should be
                        stored
         """
+        if not accumulate:
+            buffer.reset()
         self.buffer = buffer
+        self.accumulate = accumulate
 
     def __call__(self, stream):
         """Apply the transformation to the marked stream.
 
         :param stream: the marked event stream to filter
         """
-        self.buffer.reset()
-        stream = list(stream)
+        stream = iter(stream)
         for mark, event in stream:
             if mark:
-                self.buffer.append(event)
-        return stream
+                if not self.accumulate:
+                    self.buffer.reset()
+                events = []
+                while mark:
+                    events.append((mark, event))
+                    self.buffer.append(event)
+                    mark, event = stream.next()
+                for i in events:
+                    yield i
+            yield mark, event
 
 
 class CutTransformation(object):
@@ -1113,36 +1153,39 @@ class CutTransformation(object):
     selection.
     """
 
-    def __init__(self, buffer):
+    def __init__(self, buffer, accumulate=False):
         """Create the cut transformation.
 
         :param buffer: the `StreamBuffer` in which the selection should be
                        stored
         """
+        if not accumulate:
+            buffer.reset()
         self.buffer = buffer
+        self.accumulate = accumulate
+
 
     def __call__(self, stream):
         """Apply the transform filter to the marked stream.
 
         :param stream: the marked event stream to filter
         """
-        out_stream = []
         attributes = None
-        for mark, (kind, data, pos) in stream:
-            if attributes:
-                assert kind is START
-                data = (data[0], data[1] - attributes)
-                attributes = None
+        stream = iter(stream)
+        for mark, event in stream:
             if mark:
-                # There is some magic here. ATTR marked events are pushed into
-                # the stream *before* the START event they originated from.
-                # This allows cut() to strip out the attributes from START
-                # event as would be expected.
-                if mark is ATTR:
-                    self.buffer.append((kind, data, pos))
-                    attributes = [name for name, _ in data[1]]
-                else:
-                    self.buffer.append((kind, data, pos))
-            else:
-                out_stream.append((mark, (kind, data, pos)))
-        return out_stream
+                if not self.accumulate:
+                    self.buffer.reset()
+                while mark:
+                    if mark is ATTR:
+                        attributes = [name for name, _ in data[1]]
+                    self.buffer.append(event)
+                    mark, event = stream.next()
+                # If we've cut attributes, the associated element should START
+                # immediately after.
+                if attributes:
+                    assert kind is START
+                    data = (data[0], data[1] - attributes)
+                    attributes = None
+
+            yield mark, event

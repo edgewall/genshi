@@ -35,7 +35,7 @@ __docformat__ = 'restructuredtext en'
 
 # Check for a Python 2.4 bug in the eval loop
 try:
-    class _FakeMapping(object):
+    class _FakeMapping(dict):
         __getitem__ = __setitem__ = lambda *a: None
     exec 'from sys import *' in {}, _FakeMapping()
 except SystemError:
@@ -53,7 +53,7 @@ def _star_import_patch(mapping, modname):
         members = module.__all__
     else:
         members = [x for x in module.__dict__ if not x.startswith('_')]
-    mapping.update((name, getattr(module, name)) for name in members)
+    mapping.update([(name, getattr(module, name)) for name in members])
 
 
 class Code(object):

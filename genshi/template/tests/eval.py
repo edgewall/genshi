@@ -18,6 +18,7 @@ import sys
 import unittest
 
 from genshi.core import Markup
+from genshi.template.base import Context
 from genshi.template.eval import Expression, Suite, Undefined, UndefinedError, \
                                  UNDEFINED
 
@@ -573,7 +574,7 @@ x = create()
 
     def test_import_star(self):
         suite = Suite("from itertools import *")
-        data = {}
+        data = Context()
         suite.execute(data)
         assert 'ifilter' in data
 

@@ -22,7 +22,6 @@ try:
 except NameError:
     from sets import ImmutableSet as frozenset
     from sets import Set as set
-import sys
 from textwrap import dedent
 
 from genshi.core import Markup
@@ -35,10 +34,10 @@ __docformat__ = 'restructuredtext en'
 
 # Check for a Python 2.4 bug in the eval loop
 try:
-    class _FakeMapping(dict):
+    class _FakeMapping(object):
         __getitem__ = __setitem__ = lambda *a: None
     exec 'from sys import *' in {}, _FakeMapping()
-except SystemError:
+except (SystemError, TypeError):
     has_star_import_bug = True
 else:
     has_star_import_bug = False
@@ -485,7 +484,7 @@ class ASTTransformer(object):
         if lineno is not None:
             node.lineno = lineno
         if isinstance(node, (ast.Class, ast.Function, ast.Lambda)) or \
-                sys.version_info > (2, 4) and isinstance(node, ast.GenExpr):
+                hasattr(ast, 'GenExpr') and isinstance(node, ast.GenExpr):
             node.filename = '<string>' # workaround for bug in pycodegen
         return node
 

@@ -152,12 +152,14 @@ class Fragment(object):
 
 
 def _kwargs_to_attrs(kwargs):
-    retval = {}
+    attrs = []
+    names = set()
     for name, value in kwargs.items():
         name = name.rstrip('_').replace('_', '-')
-        if value is not None and name not in retval:
-            retval[QName(name)] = unicode(value)
-    return Attrs(retval.items())
+        if value is not None and name not in names:
+            attrs.append((QName(name), unicode(value)))
+            names.add(name)
+    return Attrs(attrs)
 
 
 class Element(Fragment):

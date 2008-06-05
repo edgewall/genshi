@@ -16,7 +16,7 @@ from HTMLParser import HTMLParseError
 import unittest
 
 from genshi.builder import Element, tag
-from genshi.core import Attrs, Stream
+from genshi.core import Attrs, Markup, Stream
 from genshi.input import XML
 
 
@@ -60,6 +60,12 @@ class ElementFactoryTestCase(unittest.TestCase):
         self.assertEqual((Stream.END, 'b'), xml[3][:2])
         self.assertEqual((Stream.END, 'span'), xml[4][:2])
 
+    def test_markup_escape(self):
+        from genshi.core import Markup
+        m = Markup('See %s') % tag.a('genshi',
+                                     href='http://genshi.edgwall.org')
+        self.assertEqual(m, Markup('See <a href="http://genshi.edgwall.org">'
+                                   'genshi</a>'))
 
 def suite():
     suite = unittest.TestSuite()

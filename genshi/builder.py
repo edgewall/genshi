@@ -73,7 +73,8 @@ try:
 except NameError:
     from sets import Set as set
 
-from genshi.core import Attrs, Namespace, QName, Stream, START, END, TEXT
+from genshi.core import Attrs, Markup, Namespace, QName, Stream, \
+                        START, END, TEXT
 
 __all__ = ['Fragment', 'Element', 'ElementFactory', 'tag']
 __docformat__ = 'restructuredtext en'
@@ -111,6 +112,9 @@ class Fragment(object):
 
     def __unicode__(self):
         return unicode(self.generate())
+
+    def __html__(self):
+        return Markup(self.generate())
 
     def append(self, node):
         """Append an element or string as child node.

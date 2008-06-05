@@ -61,6 +61,18 @@ escape(PyObject *text, int quotes)
         Py_INCREF(text);
         return text;
     }
+    if (PyObject_HasAttrString(text, "__html__")) {
+        ret = PyObject_CallMethod(text, "__html__", NULL);
+        args = PyTuple_New(1);
+        if (args == NULL) {
+            Py_DECREF(ret);
+            return NULL;
+        }
+        PyTuple_SET_ITEM(args, 0, ret);
+        ret = MarkupType.tp_new(&MarkupType, args, NULL);
+        Py_DECREF(args);
+        return ret;
+    }
     in = (PyUnicodeObject *) PyObject_Unicode(text);
     if (in == NULL) {
         return NULL;
@@ -189,6 +201,13 @@ Markup_escape(PyTypeObject* type, PyObject *args, PyObject *kwds)
         return text;
     }
     return escape(text, quotes);
+}
+
+static PyObject *
+Markup_html(PyObject *self)
+{
+    Py_INCREF(self);
+    return self;
 }
 
 PyDoc_STRVAR(join__doc__,
@@ -516,6 +535,7 @@ typedef struct {
 } MarkupObject;
 
 static PyMethodDef Markup_methods[] = {
+    {"__html__", (PyCFunction) Markup_html, METH_NOARGS, NULL},
     {"escape", (PyCFunction) Markup_escape,
      METH_VARARGS|METH_CLASS|METH_KEYWORDS, escape__doc__},
     {"join", (PyCFunction)Markup_join, METH_VARARGS|METH_KEYWORDS, join__doc__},

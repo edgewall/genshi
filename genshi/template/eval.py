@@ -33,14 +33,15 @@ __all__ = ['Code', 'Expression', 'Suite', 'LenientLookup', 'StrictLookup',
 __docformat__ = 'restructuredtext en'
 
 # Check for a Python 2.4 bug in the eval loop
+has_star_import_bug = False
 try:
     class _FakeMapping(object):
         __getitem__ = __setitem__ = lambda *a: None
     exec 'from sys import *' in {}, _FakeMapping()
-except (SystemError, TypeError):
+except SystemError:
     has_star_import_bug = True
-else:
-    has_star_import_bug = False
+except TypeError:
+    pass # Python 2.3
 del _FakeMapping
 
 def _star_import_patch(mapping, modname):
@@ -519,10 +520,13 @@ class ASTTransformer(object):
             # This is a Python 2.4 bug. Only if we have a broken Python
             # version we have to apply the hack
             return node
-        return ast.Discard(ast.CallFunc(
+        new_node = ast.Discard(ast.CallFunc(
             ast.Name('_star_import_patch'),
             [ast.Name('__data__'), ast.Const(node.modname)], None, None
-        ), lineno=node.lineno)
+        ))
+        if hasattr(node, 'lineno'): # No lineno in Python 2.3
+            new_node.lineno = node.lineno
+        return new_node
 
     def visitFunction(self, node):
         args = []

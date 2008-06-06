@@ -494,7 +494,7 @@ class TextSerializer(object):
     >>> print elem.generate().render(TextSerializer)
     <a href="foo">Hello &amp; Bye!</a><br/>
     
-    You can use the `strip_markup` to change this behavior, so that tags and
+    You can use the ``strip_markup`` to change this behavior, so that tags and
     entities are stripped from the output (or in the case of entities,
     replaced with the equivalent character):
 
@@ -503,6 +503,11 @@ class TextSerializer(object):
     """
 
     def __init__(self, strip_markup=False):
+        """Create the serializer.
+        
+        :param strip_markup: whether markup (tags and encoded characters) found
+                             in the text should be removed
+        """
         self.strip_markup = strip_markup
 
     def __call__(self, stream):

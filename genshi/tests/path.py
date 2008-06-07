@@ -39,7 +39,7 @@ class PathTestCase(unittest.TestCase):
         self.assertEqual('<elem/>', path.select(xml).render())
 
         path = Path('//elem')
-        self.assertEqual('<Path "descendant-or-self::node()/child::elem">',
+        self.assertEqual('<Path "descendant-or-self::elem">',
                          repr(path))
         self.assertEqual('<elem/>', path.select(xml).render())
 
@@ -74,7 +74,7 @@ class PathTestCase(unittest.TestCase):
         self.assertEqual('<elem/>', Path('child::node()').select(xml).render())
 
         path = Path('//*')
-        self.assertEqual('<Path "descendant-or-self::node()/child::*">',
+        self.assertEqual('<Path "descendant-or-self::*">',
                          repr(path))
         self.assertEqual('<root><elem/></root>', path.select(xml).render())
 
@@ -104,7 +104,7 @@ class PathTestCase(unittest.TestCase):
         self.assertEqual('Hey', path.select(xml).render())
 
         path = Path('//text()')
-        self.assertEqual('<Path "descendant-or-self::node()/child::text()">',
+        self.assertEqual('<Path "descendant-or-self::text()">',
                          repr(path))
         self.assertEqual('Hey', path.select(xml).render())
 
@@ -162,7 +162,7 @@ class PathTestCase(unittest.TestCase):
         self.assertEqual('Foo', path.select(xml).render())
 
         path = Path('//text()')
-        self.assertEqual('<Path "descendant-or-self::node()/child::text()">',
+        self.assertEqual('<Path "descendant-or-self::text()">',
                          repr(path))
         self.assertEqual('Foo', path.select(xml).render())
 
@@ -192,7 +192,7 @@ class PathTestCase(unittest.TestCase):
 
         xml = XML('<root><foo><bar id="1"/></foo><bar id="2"/></root>')
         path = Path('//bar')
-        self.assertEqual('<Path "descendant-or-self::node()/child::bar">',
+        self.assertEqual('<Path "descendant-or-self::bar">',
                          repr(path))
         self.assertEqual('<bar id="1"/><bar id="2"/>',
                          path.select(xml).render())
@@ -218,11 +218,16 @@ class PathTestCase(unittest.TestCase):
     def test_node_type_processing_instruction(self):
         xml = XML('<?python x = 2 * 3 ?><root><?php echo("x") ?></root>')
 
-        path = Path('processing-instruction()')
-        self.assertEqual('<Path "child::processing-instruction()">',
+        path = Path('//processing-instruction()')
+        self.assertEqual('<Path "descendant-or-self::processing-instruction()">',
                          repr(path))
         self.assertEqual('<?python x = 2 * 3 ?><?php echo("x") ?>',
                          path.select(xml).render())
+
+        path = Path('processing-instruction()')
+        self.assertEqual('<Path "child::processing-instruction()">',
+                         repr(path))
+        self.assertEqual('<?php echo("x") ?>', path.select(xml).render())
 
         path = Path('processing-instruction("php")')
         self.assertEqual('<Path "child::processing-instruction(\"php\")">',

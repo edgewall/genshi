@@ -181,122 +181,154 @@ class Path(object):
                  stream against the path
         :rtype: ``function``
         """
-        paths = [(p, len(p), [0], [], [0] * len(p)) for p in [
-            (ignore_context and [_DOTSLASHSLASH] or []) + p for p in self.paths
-        ]]
+        #For every path we store (path, stack, isDescendant)
+        paths = []
+        for p in self.paths:
+            if ignore_context:
+                if p[0][0] is ATTRIBUTE:
+                    steps = [_DOTSLASHSLASH] + p
+                else:
+                    steps = [(DESCENDANT_OR_SELF, p[0][1], p[0][2],)] + p[1:]
+            elif p[0][0] is CHILD or p[0][0] is ATTRIBUTE:
+                steps = [_DOTSLASH] + p
+            else:
+                steps = p
+
+            #for node it contains all positions of xpath expression
+            #where its child should start checking for matches
+            stack = [[0]]
+
+            #for every position in expression stores counters' list
+            #it is used for position based predicates
+            counters = [[] for _ in xrange(len(steps))]
+
+            #indexes where explession has descendant(-or-self) axis
+            descendantAxes = [i for (i, (a, _, _,),) in
+                                 enumerate(steps) if a is DESCENDANT 
+                                 or a is DESCENDANT_OR_SELF]
+
+            paths.append((steps, stack, descendantAxes, counters,))
 
         def _test(event, namespaces, variables, updateonly=False):
+
             kind, data, pos = event[:3]
             retval = None
-            for steps, size, cursors, cutoff, counter in paths:
+            for steps, stack, descendantAxes, counters in paths:
                 # Manage the stack that tells us "where we are" in the stream
                 if kind is END:
-                    if cursors:
-                        cursors.pop()
+                    stack.pop()
                     continue
                 elif kind is START:
-                    cursors.append(cursors and cursors[-1] or 0)
+                    pass
                 elif kind is START_NS or kind is END_NS \
                         or kind is START_CDATA or kind is END_CDATA:
+                    #should we make namespaces work?
                     continue
 
-                if updateonly or retval or not cursors:
-                    continue
-                cursor = cursors[-1]
-                depth = len(cursors)
+                #FIXME: Need to find out when we can do this
+                #if updateonly:
+                #    continue
 
-                if cutoff and depth + int(kind is not START) > cutoff[0]:
-                    continue
+                myPositions = stack[-1]
+                nextPositions = []
 
-                ctxtnode = not ignore_context and kind is START \
-                                              and depth == 2
-                matched = None
-                while 1:
-                    # Fetch the next location step
-                    axis, nodetest, predicates = steps[cursor]
+                #length of real part of path - we omit attribute axis
+                realLen = len(steps) - ((steps[-1][0] == ATTRIBUTE) or 1 and 0)
+                lastChecked = realLen
+                
+                #places where we have to check for match, are these
+                #provided by parent
+                for position in myPositions:
 
-                    # If this is the start event for the context node, and the
-                    # axis of the location step doesn't include the current
-                    # element, skip the test
-                    if ctxtnode and (axis is CHILD or axis is DESCENDANT):
-                        break
+                    #we have already checked this position
+                    #(it had to be because of self-like axes)
+                    if position >= lastChecked:
+                        continue
 
-                    # Is this the last step of the location path?
-                    last_step = cursor + 1 == size
+                    for x in xrange(position, realLen):
+                        #number of counters - we have to create one
+                        #for every context position based predicate
+                        cnum = 0
 
-                    # Perform the actual node test
-                    matched = nodetest(kind, data, pos, namespaces, variables)
+                        axis, nodetest, predicates = steps[x]
 
-                    # The node test matched
-                    if matched:
+                        if x != position and axis is not SELF:
+                            nextPositions.append(x)
 
-                        # Check all the predicates for this step
-                        if predicates:
+                        #to go further we have to use self-like axes
+                        if axis is not DESCENDANT_OR_SELF and \
+                            axis is not SELF and x != position:
+                            break
+
+
+                        #tells if we have match with position x
+                        matched = False
+
+                        #nodetest first
+                        if nodetest(kind, data, pos, namespaces, variables):
+                            matched = True
+
+                        #TODO: or maybe add nodetest here 
+                        #(chain((nodetest,), predicates))?
+                        if matched and predicates:
                             for predicate in predicates:
-                                pretval = predicate(kind, data, pos, namespaces,
+                                pretval = predicate(kind, data, pos,
+                                                    namespaces,
                                                     variables)
                                 if type(pretval) is float: # FIXME <- need to
                                                            # check this for
                                                            # other types that
                                                            # can be coerced to
                                                            # float
-                                    counter[cursor] += 1
-                                    if counter[cursor] != int(pretval):
+                                    if len(counters[x]) < cnum+1:
+                                        counters[x].append(0)
+                                    counters[x][cnum] += 1 
+                                    if counters[x][cnum] != int(pretval):
                                         pretval = False
+                                    cnum += 1
                                 if not pretval:
-                                    matched = None
-                                    break
-
-                        # Both the node test and the predicates matched
-                        if matched:
-                            if last_step:
-                                if not ctxtnode or kind is not START \
-                                        or axis is ATTRIBUTE or axis is SELF:
-                                    retval = matched
-                            elif not ctxtnode or axis is SELF \
-                                              or axis is DESCENDANT_OR_SELF:
-                                cursor += 1
-                                cursors[-1] = cursor
-                            cutoff[:] = []
-
-                    if kind is START:
-                        if last_step and not (axis is DESCENDANT or
-                                              axis is DESCENDANT_OR_SELF):
-                            cutoff[:] = [depth]
-
-                        elif steps[cursor][0] is ATTRIBUTE:
-                            # If the axis of the next location step is the
-                            # attribute axis, we need to move on to processing
-                            # that step without waiting for the next markup
-                            # event
-                            continue
-
-                    # We're done with this step if it's the last step or the
-                    # axis isn't "self"
-                    if not matched or last_step or not (
-                            axis is SELF or axis is DESCENDANT_OR_SELF):
-                        break
-                    if ctxtnode and axis is DESCENDANT_OR_SELF:
-                        ctxtnode = False
-
-                if (retval or not matched) and kind is START and \
-                        not (axis is DESCENDANT or axis is DESCENDANT_OR_SELF):
-                    # If this step is not a closure, it cannot be matched until
-                    # the current element is closed... so we need to move the
-                    # cursor back to the previous closure and retest that
-                    # against the current element
-                    backsteps = [(i, k, d, p) for i, (k, d, p)
-                                 in enumerate(steps[:cursor])
-                                 if k is DESCENDANT or k is DESCENDANT_OR_SELF]
-                    backsteps.reverse()
-                    for cursor, axis, nodetest, predicates in backsteps:
-                        if nodetest(kind, data, pos, namespaces, variables):
-                            cutoff[:] = []
+                                     matched = False
+                                     break
+                        if not matched:
                             break
-                    cursors[-1] = cursor
+                    else:
+                        #we reached end of expression, because x
+                        #is equal to the length of expression
+                        matched = True
+                        axis, nodetest, predicates = steps[-1]
+                        if axis is ATTRIBUTE:
+                            matched = nodetest(kind, data, pos, \
+                                    namespaces, variables)
+                        if matched:
+                            retval = matched
+
+
+                if kind is START:
+                    #in nextPositions there are positions that are implied
+                    #by current matches, but we have to add previous
+                    #descendant-like axis positions
+                    #(which can "jump" over tree)
+                    i = 0
+                    stack.append([])
+                    #every descendant axis before furthest position is ok
+                    for pos in nextPositions:
+                        while i != len(descendantAxes) \
+                                and descendantAxes[i] < pos:
+                            stack[-1].append(descendantAxes[i])
+                            i += 1
+                        if i != len(descendantAxes) \
+                                and descendantAxes[i] == pos:
+                            i += 1
+                        stack[-1].append(pos)
+
+                    #every descendant that was parent's one is ok
+                    if myPositions:
+                        while i != len(descendantAxes) \
+                                 and descendantAxes[i] <= myPositions[-1]:
+                            stack[-1].append(descendantAxes[i])
+                            i += 1
 
             return retval
-
         return _test
 
 
@@ -370,19 +402,28 @@ class PathParser(object):
         steps = []
         while True:
             if self.cur_token.startswith('/'):
-                if self.cur_token == '//':
+                if not steps:
+                    if self.cur_token == '//':
+                        #hack to make //* match every node - also root
+                        self.next_token()
+                        axis, nodetest, predicates = self._location_step()
+                        steps.append((DESCENDANT_OR_SELF, nodetest, 
+                                      predicates))
+                        if self.at_end or not self.cur_token.startswith('/'):
+                            break
+                        continue
+                    else:
+                        raise PathSyntaxError('Absolute location paths not '
+                                              'supported', self.filename,
+                                              self.lineno)
+                elif self.cur_token == '//':
                     steps.append((DESCENDANT_OR_SELF, NodeTest(), []))
-                elif not steps:
-                    raise PathSyntaxError('Absolute location paths not '
-                                          'supported', self.filename,
-                                          self.lineno)
                 self.next_token()
 
             axis, nodetest, predicates = self._location_step()
             if not axis:
                 axis = CHILD
             steps.append((axis, nodetest, predicates))
-
             if self.at_end or not self.cur_token.startswith('/'):
                 break
 
@@ -1168,3 +1209,4 @@ _operator_map = {'=': EqualsOperator, '!=': NotEqualsOperator,
 
 
 _DOTSLASHSLASH = (DESCENDANT_OR_SELF, PrincipalTypeTest(None), ())
+_DOTSLASH = (SELF, PrincipalTypeTest(None), ())

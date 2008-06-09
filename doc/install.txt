@@ -10,8 +10,8 @@ Installing Genshi
 Prerequisites
 -------------
 
-* Python_ 2.3 or later (2.4 or later is strongly recommended)
-* Optional: Setuptools_ 0.6a2 or later
+* Python_ 2.4 or later
+* Optional: Setuptools_ 0.6c3 or later
 
 .. _python: http://www.python.org/
 .. _setuptools: http://cheeseshop.python.org/pypi/setuptools

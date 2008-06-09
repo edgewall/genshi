@@ -1,3 +1,10 @@
+Version 0.6
+http://svn.edgewall.org/repos/genshi/tags/0.6.0/
+(???, from branches/stable/0.6.x)
+
+ * Support for Python 2.3 has been dropped.
+
+
 Version 0.5
 http://svn.edgewall.org/repos/genshi/tags/0.5.0/
 (Jun 9 2008, from branches/stable/0.5.x)

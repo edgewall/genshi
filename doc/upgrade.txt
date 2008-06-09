@@ -9,6 +9,17 @@ Upgrading Genshi
 
 
 ------------------------------------
+Upgrading from Genshi 0.5.x to 0.6.x
+------------------------------------
+
+Required Python Version
+-----------------------
+
+Support for Python 2.3 has been dropped in this release. Python 2.4 is
+now the minimum version of Python required to run Genshi.
+
+
+------------------------------------
 Upgrading from Genshi 0.4.x to 0.5.x
 ------------------------------------
 

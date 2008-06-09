@@ -12,10 +12,6 @@
 # history and logs, available at http://genshi.edgewall.org/log/.
 
 import doctest
-try:
-    set
-except NameError:
-    from sets import Set as set
 import unittest
 
 from genshi.input import HTML, ParseError

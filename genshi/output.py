@@ -140,7 +140,7 @@ class DocType(object):
         The following names are recognized in this version:
          * "html" or "html-strict" for the HTML 4.01 strict DTD
          * "html-transitional" for the HTML 4.01 transitional DTD
-         * "html-transitional" for the HTML 4.01 frameset DTD
+         * "html-frameset" for the HTML 4.01 frameset DTD
          * "html5" for the ``DOCTYPE`` proposed for HTML5
          * "xhtml" or "xhtml-strict" for the XHTML 1.0 strict DTD
          * "xhtml-transitional" for the XHTML 1.0 transitional DTD

@@ -8,7 +8,7 @@ A stream is the common representation of markup as a *stream of events*.
 
 
 .. contents:: Contents
-   :depth: 1
+   :depth: 2
 .. sectnum::
 
 
@@ -132,10 +132,11 @@ Serialization means producing some kind of textual output from a stream of
 events, which you'll need when you want to transmit or store the results of
 generating or otherwise processing markup.
 
-The ``Stream`` class provides two methods for serialization: ``serialize()`` and
-``render()``. The former is a generator that yields chunks of ``Markup`` objects
-(which are basically unicode strings that are considered safe for output on the
-web). The latter returns a single string, by default UTF-8 encoded.
+The ``Stream`` class provides two methods for serialization: ``serialize()``
+and ``render()``. The former is a generator that yields chunks of ``Markup``
+objects (which are basically unicode strings that are considered safe for
+output on the web). The latter returns a single string, by default UTF-8
+encoded.
 
 Here's the output from ``serialize()``:
 
@@ -161,8 +162,8 @@ And here's the output from ``render()``:
   <p class="intro">Some text and <a href="http://example.org/">a link</a>.<br/></p>
 
 Both methods can be passed a ``method`` parameter that determines how exactly
-the events are serialzed to text. This parameter can be either “xml” (the
-default), “xhtml”, “html”, “text”, or a custom serializer class:
+the events are serialized to text. This parameter can be either a string or a 
+custom serializer class:
 
 .. code-block:: pycon
 
@@ -170,7 +171,7 @@ default), “xhtml”, “html”, “text”, or a custom serializer class:
   <p class="intro">Some text and <a href="http://example.org/">a link</a>.<br></p>
 
 Note how the `<br>` element isn't closed, which is the right thing to do for
-HTML.
+HTML. See  `serialization methods`_ for more details.
 
 In addition, the ``render()`` method takes an ``encoding`` parameter, which
 defaults to “UTF-8”. If set to ``None``, the result will be a unicode string.
@@ -193,6 +194,54 @@ The pipe operator allows a nicer syntax:
   Some text and a link.
 
 
+.. _`serialization methods`:
+
+Serialization Methods
+---------------------
+
+Genshi supports the use of different serialization methods to use for creating
+a text representation of a markup stream.
+
+``xml``
+  The ``XMLSerializer`` is the default serialization method and results in
+  proper XML output including namespace support, the XML declaration, CDATA
+  sections, and so on. It is not generally not suitable for serving HTML or
+  XHTML web pages (unless you want to use true XHTML 1.1), for which the
+  ``xhtml`` and ``html`` serializers described below should be preferred.
+
+``xhtml``
+  The ``XHTMLSerializer`` is a specialization of the generic ``XMLSerializer``
+  that understands the pecularities of producing XML-compliant output that can
+  also be parsed without problems by the HTML parsers found in modern web
+  browsers. Thus, the output by this serializer should be usable whether sent
+  as "text/html" or "application/xhtml+html" (although there are a lot of
+  subtle issues to pay attention to when switching between the two, in
+  particular with respect to differences in the DOM and CSS).
+
+  For example, instead of rendering a script tag as ``<script/>`` (which
+  confuses the HTML parser in many browsers), it will produce
+  ``<script></script>``. Also, it will normalize any boolean attributes values
+  that are minimized in HTML, so that for example ``<hr noshade="1"/>``
+  becomes ``<hr noshade="noshade" />``.
+
+  This serializer supports the use of namespaces for compound documents, for
+  example to use inline SVG inside an XHTML document.
+
+``html``
+  The ``HTMLSerializer`` produces proper HTML markup. The main differences
+  compared to ``xhtml`` serialization are that boolean attributes are
+  minimized, empty tags are not self-closing (so it's ``<br>`` instead of
+  ``<br />``), and that the contents of ``<script>`` and ``<style>`` elements
+  are not escaped.
+
+``text``
+  The ``TextSerializer`` produces plain text from markup streams. This is
+  useful primarily for `text templates`_, but can also be used to produce
+  plain text output from markup templates or other sources.
+
+.. _`text templates`: text-templates.html
+
+
 Serialization Options
 ---------------------
 
@@ -201,8 +250,8 @@ are passed through to the initializer of the serializer class. The following
 options are supported by the built-in serializers:
 
 ``strip_whitespace``
-  Whether the serializer should remove trailing spaces and empty lines. Defaults
-  to ``True``.
+  Whether the serializer should remove trailing spaces and empty lines.
+  Defaults to ``True``.
 
   (This option is not available for serialization to plain text.)
 
@@ -211,6 +260,38 @@ options are supported by the built-in serializers:
   system identifier of a ``DOCTYPE`` declaration to prepend to the generated
   output. If provided, this declaration will override any ``DOCTYPE``
   declaration in the stream.
+
+  The parameter can also be specified as a string to refer to commonly used
+  doctypes:
+  
+  +-----------------------------+-------------------------------------------+
+  | Shorthand                   | DOCTYPE                                   |
+  +=============================+===========================================+
+  | ``html`` or                 | HTML 4.01 Strict                          |
+  | ``html-strict``             |                                           |
+  +-----------------------------+-------------------------------------------+
+  | ``html-transitional``       | HTML 4.01 Transitional                    |
+  +-----------------------------+-------------------------------------------+
+  | ``html-frameset``           | HTML 4.01 Frameset                        |
+  +-----------------------------+-------------------------------------------+
+  | ``html5``                   | DOCTYPE proposed for the work-in-progress |
+  |                             | HTML5 standard                            |
+  +-----------------------------+-------------------------------------------+
+  | ``xhtml`` or                | XHTML 1.0 Strict                          |
+  | ``xhtml-strict``            |                                           |
+  +-----------------------------+-------------------------------------------+
+  | ``xhtml-transitional``      | XHTML 1.0 Transitional                    |
+  +-----------------------------+-------------------------------------------+
+  | ``xhtml-frameset``          | XHTML 1.0 Frameset                        |
+  +-----------------------------+-------------------------------------------+
+  | ``xhtml11``                 | XHTML 1.1                                 |
+  +-----------------------------+-------------------------------------------+
+  | ``svg`` or ``svg-full``     | SVG 1.1                                   |
+  +-----------------------------+-------------------------------------------+
+  | ``svg-basic``               | SVG 1.1 Basic                             |
+  +-----------------------------+-------------------------------------------+
+  | ``svg-tiny``                | SVG 1.1 Tiny                              |
+  +-----------------------------+-------------------------------------------+
 
   (This option is not available for serialization to plain text.)
 
@@ -226,6 +307,12 @@ options are supported by the built-in serializers:
   XML declaration throws some older browsers into "Quirks" rendering mode.
 
   (This option is only available for serialization to XHTML.)
+
+``strip_markup``
+  Whether the text serializer should detect and remove any tags or entity
+  encoded characters in the text.
+
+  (This option is only available for serialization to plain text.)
 
 
 

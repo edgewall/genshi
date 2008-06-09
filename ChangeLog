@@ -1,6 +1,6 @@
 Version 0.5
 http://svn.edgewall.org/repos/genshi/tags/0.5.0/
-(?, from branches/stable/0.5.x)
+(Jun 9 2008, from branches/stable/0.5.x)
 
  * Added #include directive for text templates (ticket #115).
  * Added new markup transformation filter contributed by Alec Thomas. This

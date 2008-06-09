@@ -15,11 +15,6 @@
 
 import htmlentitydefs
 import re
-try:
-    set
-except NameError:
-    from sets import ImmutableSet as frozenset
-    from sets import Set as set
 
 __docformat__ = 'restructuredtext en'
 

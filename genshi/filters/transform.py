@@ -55,7 +55,7 @@ from genshi.core import Stream, Attrs, QName, TEXT, START, END, _ensure, Markup
 from genshi.path import Path
 
 __all__ = ['Transformer', 'StreamBuffer', 'InjectorTransformation', 'ENTER',
-           'EXIT', 'INSIDE', 'OUTSIDE']
+           'EXIT', 'INSIDE', 'OUTSIDE', 'BREAK']
 
 
 class TransformMark(str):
@@ -85,6 +85,40 @@ ATTR = TransformMark('ATTR')
 EXIT = TransformMark('EXIT')
 """Stream augmentation mark indicating that a selected element is being
 exited."""
+
+BREAK = TransformMark('BREAK')
+"""Stream augmentation mark indicating a break between two otherwise contiguous
+blocks of marked events.
+
+This is used primarily by the cut() transform to provide later transforms with
+an opportunity to operate on the cut buffer.
+"""
+
+
+class PushBackStream(object):
+    """Allows a single event to be pushed back onto the stream and re-consumed.
+    """
+    def __init__(self, stream):
+        self.stream = iter(stream)
+        self.peek = None
+
+    def push(self, event):
+        assert self.peek is None
+        self.peek = event
+
+    def __iter__(self):
+        while True:
+            if self.peek is not None:
+                peek = self.peek
+                self.peek = None
+                yield peek
+            else:
+                try:
+                    event = self.stream.next()
+                    yield event
+                except StopIteration:
+                    if self.peek is None:
+                        raise
 
 
 class Transformer(object):
@@ -150,17 +184,21 @@ class Transformer(object):
         """
         self.transforms = [SelectTransformation(path)]
 
-    def __call__(self, stream):
+    def __call__(self, stream, keep_marks=False):
         """Apply the transform filter to the marked stream.
 
         :param stream: the marked event stream to filter
+        :param keep_marks: Do not strip transformer selection marks from the
+                           stream. Useful for testing.
         :return: the transformed stream
         :rtype: `Stream`
         """
         transforms = self._mark(stream)
         for link in self.transforms:
             transforms = link(transforms)
-        return Stream(self._unmark(transforms),
+        if not keep_marks:
+            transforms = self._unmark(transforms)
+        return Stream(transforms,
                       serializer=getattr(stream, 'serializer', None))
 
     def apply(self, function):
@@ -329,7 +367,8 @@ class Transformer(object):
         <html><head><title>New Title</title></head><body>Some <em>body</em>
         text.</body></html>
 
-        :param content: Either an iterable of events or a string to insert.
+        :param content: Either a callable, an iterable of events, or a string
+                        to insert.
         :rtype: `Transformer`
         """
         return self.apply(ReplaceTransformation(content))
@@ -346,7 +385,8 @@ class Transformer(object):
         <html><head><title>Some Title</title></head><body>Some emphasised
         <em>body</em> text.</body></html>
 
-        :param content: Either an iterable of events or a string to insert.
+        :param content: Either a callable, an iterable of events, or a string
+                        to insert.
         :rtype: `Transformer`
         """
         return self.apply(BeforeTransformation(content))
@@ -362,7 +402,8 @@ class Transformer(object):
         <html><head><title>Some Title</title></head><body>Some <em>body</em>
         rock text.</body></html>
 
-        :param content: Either an iterable of events or a string to insert.
+        :param content: Either a callable, an iterable of events, or a string
+                        to insert.
         :rtype: `Transformer`
         """
         return self.apply(AfterTransformation(content))
@@ -378,7 +419,8 @@ class Transformer(object):
         <html><head><title>Some Title</title></head><body>Some new body text.
         Some <em>body</em> text.</body></html>
 
-        :param content: Either an iterable of events or a string to insert.
+        :param content: Either a callable, an iterable of events, or a string
+                        to insert.
         :rtype: `Transformer`
         """
         return self.apply(PrependTransformation(content))
@@ -392,7 +434,8 @@ class Transformer(object):
         <html><head><title>Some Title</title></head><body>Some <em>body</em>
         text. Some new body text.</body></html>
 
-        :param content: Either an iterable of events or a string to insert.
+        :param content: Either a callable, an iterable of events, or a string
+                        to insert.
         :rtype: `Transformer`
         """
         return self.apply(AppendTransformation(content))
@@ -443,7 +486,7 @@ class Transformer(object):
     def copy(self, buffer, accumulate=False):
         """Copy selection into buffer.
 
-        The buffer is replaced by each contiguous selection before being passed
+        The buffer is replaced by each *contiguous* selection before being passed
         to the next transformation. If accumulate=True, further selections will
         be appended to the buffer rather than replacing it.
 
@@ -486,7 +529,14 @@ class Transformer(object):
         :param buffer: the `StreamBuffer` in which the selection should be
                        stored
         :rtype: `Transformer`
-        :note: this transformation will buffer the entire input stream
+        note: Copy (and cut) copy each individual selected object into the
+               buffer before passing to the next transform. For example, the
+               XPath ``*|text()`` will select all elements and text, each
+               instance of which will be copied to the buffer individually
+               before passing to the next transform. This has implications for
+               how ``StreamBuffer`` objects can be used, so some
+               experimentation may be required.
+
         """
         return self.apply(CopyTransformation(buffer, accumulate))
 
@@ -634,7 +684,8 @@ class Transformer(object):
 
     def _unmark(self, stream):
         for mark, event in stream:
-            if event[0] is not None:
+            kind = event[0]
+            if not (kind is None or kind is ATTR or kind is BREAK):
                 yield event
 
 
@@ -686,9 +737,12 @@ class SelectTransformation(object):
             elif isinstance(result, Attrs):
                 # XXX  Selected *attributes* are given a "kind" of None to
                 # indicate they are not really part of the stream.
-                yield ATTR, (None, (QName(event[1][0] + '@*'), result), event[2])
+                yield ATTR, (ATTR, (QName(event[1][0] + '@*'), result), event[2])
                 yield None, event
+            elif isinstance(result, tuple):
+                yield OUTSIDE, result
             elif result:
+                # XXX Assume everything else is "text"?
                 yield None, (TEXT, unicode(result), (None, -1, -1))
             else:
                 yield None, event
@@ -734,8 +788,12 @@ class EmptyTransformation(object):
         :param stream: the marked event stream to filter
         """
         for mark, event in stream:
-            if mark not in (INSIDE, OUTSIDE):
-                yield mark, event
+            yield mark, event
+            if mark is ENTER:
+                for mark, event in stream:
+                    if mark is EXIT:
+                        yield mark, event
+                        break
 
 
 class RemoveTransformation(object):
@@ -780,16 +838,21 @@ class WrapTransformation(object):
                 for prefix in element[:-1]:
                     yield None, prefix
                 yield mark, event
-                while True:
-                    try:
-                        mark, event = stream.next()
-                    except StopIteration:
-                        yield None, element[-1]
+                start = mark
+                stopped = False
+                for mark, event in stream:
+                    if start is ENTER and mark is EXIT:
+                        yield mark, event
+                        stopped = True
+                        break
                     if not mark:
                         break
                     yield mark, event
+                else:
+                    stopped = True
                 yield None, element[-1]
-                yield mark, event
+                if not stopped:
+                    yield mark, event
             else:
                 yield mark, event
 
@@ -818,7 +881,7 @@ class TraceTransformation(object):
 
 class FilterTransformation(object):
     """Apply a normal stream filter to the selection. The filter is called once
-    for each contiguous block of marked events."""
+    for each selection."""
 
     def __init__(self, filter):
         """Create the transform.
@@ -840,14 +903,31 @@ class FilterTransformation(object):
 
         queue = []
         for mark, event in stream:
-            if mark:
+            if mark is ENTER:
                 queue.append(event)
-            else:
+                for mark, event in stream:
+                    queue.append(event)
+                    if mark is EXIT:
+                        break
                 for queue_event in flush(queue):
                     yield queue_event
-                yield None, event
-        for event in flush(queue):
-            yield event
+            elif mark is OUTSIDE:
+                stopped = True
+                queue.append(event)
+                for mark, event in stream:
+                    if mark is not OUTSIDE:
+                        break
+                    queue.append(event)
+                else:
+                    stopped = True
+                for queue_event in flush(queue):
+                    yield queue_event
+                if not stopped:
+                    yield None, event
+            else:
+                yield mark, event
+        for queue_event in flush(queue):
+            yield queue_event
 
 
 class MapTransformation(object):
@@ -882,7 +962,7 @@ class SubstituteTransformation(object):
 
     Refer to the documentation for ``re.sub()`` for details.
     """
-    def __init__(self, pattern, replace, count=1):
+    def __init__(self, pattern, replace, count=0):
         """Create the transform.
 
         :param pattern: A regular expression object, or string.
@@ -956,7 +1036,10 @@ class InjectorTransformation(object):
         self.content = content
 
     def _inject(self):
-        for event in _ensure(self.content):
+        content = self.content
+        if callable(content):
+            content = content()
+        for event in _ensure(content):
             yield None, event
 
 
@@ -968,14 +1051,18 @@ class ReplaceTransformation(InjectorTransformation):
 
         :param stream: The marked event stream to filter
         """
+        stream = PushBackStream(stream)
         for mark, event in stream:
             if mark is not None:
+                start = mark
                 for subevent in self._inject():
                     yield subevent
-                while True:
-                    mark, event = stream.next()
-                    if mark is None:
-                        yield mark, event
+                for mark, event in stream:
+                    if start is ENTER:
+                        if mark is EXIT:
+                            break
+                    elif mark != start:
+                        stream.push((mark, event))
                         break
             else:
                 yield mark, event
@@ -989,17 +1076,22 @@ class BeforeTransformation(InjectorTransformation):
 
         :param stream: The marked event stream to filter
         """
+        stream = PushBackStream(stream)
         for mark, event in stream:
             if mark is not None:
+                start = mark
                 for subevent in self._inject():
                     yield subevent
                 yield mark, event
-                while True:
-                    mark, event = stream.next()
-                    if not mark:
+                for mark, event in stream:
+                    if mark != start and start is not ENTER:
+                        stream.push((mark, event))
                         break
                     yield mark, event
-            yield mark, event
+                    if start is ENTER and mark is EXIT:
+                        break
+            else:
+                yield mark, event
 
 
 class AfterTransformation(InjectorTransformation):
@@ -1010,20 +1102,20 @@ class AfterTransformation(InjectorTransformation):
 
         :param stream: The marked event stream to filter
         """
+        stream = PushBackStream(stream)
         for mark, event in stream:
             yield mark, event
             if mark:
-                while True:
-                    try:
-                        mark, event = stream.next()
-                    except StopIteration:
-                        break
-                    if not mark:
+                start = mark
+                for mark, event in stream:
+                    if start is not ENTER and mark != start:
+                        stream.push((mark, event))
                         break
                     yield mark, event
+                    if start is ENTER and mark is EXIT:
+                        break
                 for subevent in self._inject():
                     yield subevent
-                yield mark, event
 
 
 class PrependTransformation(InjectorTransformation):
@@ -1036,7 +1128,7 @@ class PrependTransformation(InjectorTransformation):
         """
         for mark, event in stream:
             yield mark, event
-            if mark in (ENTER, OUTSIDE):
+            if mark is ENTER:
                 for subevent in self._inject():
                     yield subevent
 
@@ -1052,8 +1144,7 @@ class AppendTransformation(InjectorTransformation):
         for mark, event in stream:
             yield mark, event
             if mark is ENTER:
-                while True:
-                    mark, event = stream.next()
+                for mark, event in stream:
                     if mark is EXIT:
                         break
                     yield mark, event
@@ -1110,7 +1201,7 @@ class StreamBuffer(Stream):
         self.events.append(event)
 
     def reset(self):
-        """Reset the buffer so that it's empty."""
+        """Empty the buffer of events."""
         del self.events[:]
 
 
@@ -1133,19 +1224,27 @@ class CopyTransformation(object):
 
         :param stream: the marked event stream to filter
         """
-        stream = iter(stream)
+        stream = PushBackStream(stream)
+
         for mark, event in stream:
             if mark:
                 if not self.accumulate:
                     self.buffer.reset()
-                events = []
-                while mark:
+                events = [(mark, event)]
+                self.buffer.append(event)
+                start = mark
+                for mark, event in stream:
+                    if start is not ENTER and mark != start:
+                        stream.push((mark, event))
+                        break
                     events.append((mark, event))
                     self.buffer.append(event)
-                    mark, event = stream.next()
+                    if start is ENTER and mark is EXIT:
+                        break
                 for i in events:
                     yield i
-            yield mark, event
+            else:
+                yield mark, event
 
 
 class CutTransformation(object):
@@ -1159,8 +1258,6 @@ class CutTransformation(object):
         :param buffer: the `StreamBuffer` in which the selection should be
                        stored
         """
-        if not accumulate:
-            buffer.reset()
         self.buffer = buffer
         self.accumulate = accumulate
 
@@ -1170,22 +1267,43 @@ class CutTransformation(object):
 
         :param stream: the marked event stream to filter
         """
-        attributes = None
-        stream = iter(stream)
+        attributes = []
+        stream = PushBackStream(stream)
+        broken = False
+        if not self.accumulate:
+            self.buffer.reset()
         for mark, event in stream:
             if mark:
+                # Send a BREAK event if there was no other event sent between 
                 if not self.accumulate:
+                    if not broken and self.buffer:
+                        yield BREAK, (BREAK, None, None)
                     self.buffer.reset()
-                while mark:
-                    if mark is ATTR:
-                        attributes = [name for name, _ in data[1]]
+                self.buffer.append(event)
+                start = mark
+                if mark is ATTR:
+                    attributes.extend([name for name, _ in event[1][1]])
+                for mark, event in stream:
+                    if start is mark is ATTR:
+                        attributes.extend([name for name, _ in event[1][1]])
+                    # Handle non-element contiguous selection
+                    if start is not ENTER and mark != start:
+                        # Operating on the attributes of a START event
+                        if start is ATTR:
+                            kind, data, pos = event
+                            assert kind is START
+                            data = (data[0], data[1] - attributes)
+                            attributes = None
+                            stream.push((mark, (kind, data, pos)))
+                        else:
+                            stream.push((mark, event))
+                        break
                     self.buffer.append(event)
-                    mark, event = stream.next()
-                # If we've cut attributes, the associated element should START
-                # immediately after.
-                if attributes:
-                    assert kind is START
-                    data = (data[0], data[1] - attributes)
-                    attributes = None
-
-            yield mark, event
+                    if start is ENTER and mark is EXIT:
+                        break
+                broken = False
+            else:
+                broken = True
+                yield mark, event
+        if not broken and self.buffer:
+            yield BREAK, (BREAK, None, None)

@@ -529,7 +529,7 @@ class Transformer(object):
         :param buffer: the `StreamBuffer` in which the selection should be
                        stored
         :rtype: `Transformer`
-        note: Copy (and cut) copy each individual selected object into the
+        :note: Copy (and cut) copy each individual selected object into the
                buffer before passing to the next transform. For example, the
                XPath ``*|text()`` will select all elements and text, each
                instance of which will be copied to the buffer individually

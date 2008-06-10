@@ -33,15 +33,15 @@ def _simplify(stream, with_attrs=False):
         for mark, (kind, data, pos) in stream:
             if kind is START:
                 if with_attrs:
-                    data = (unicode(data[0]), dict((unicode(k), v)
-                                                   for k, v in data[1]))
+                    data = (unicode(data[0]), dict([(unicode(k), v)
+                                                    for k, v in data[1]]))
                 else:
                     data = unicode(data[0])
             elif kind is END:
                 data = unicode(data)
             elif kind is ATTR:
                 kind = ATTR
-                data = dict((unicode(k), v) for k, v in data[1])
+                data = dict([(unicode(k), v) for k, v in data[1]])
             yield mark, kind, data
     return list(_generate())
 

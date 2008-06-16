@@ -221,7 +221,7 @@ class MarkupTemplate(Template):
         assert len(streams) == 1
         return streams[0]
 
-    def _match(self, stream, ctxt, match_templates=None, **vars):
+    def _match(self, stream, ctxt, match_templates=None, offset=0, **vars):
         """Internal stream filter that applies any defined match templates
         to the stream.
         """
@@ -254,6 +254,8 @@ class MarkupTemplate(Template):
 
             for idx, (test, path, template, hints, namespaces, directives) \
                     in enumerate(match_templates):
+                if idx < offset:
+                    continue
 
                 if test(event, namespaces, ctxt) is True:
                     if 'match_once' in hints:
@@ -296,7 +298,7 @@ class MarkupTemplate(Template):
                                     self._flatten(template, ctxt, **vars),
                                     ctxt, **vars),
                                 ctxt, **vars),
-                            ctxt, match_templates[idx + 1:], **vars):
+                            ctxt, match_templates, offset=idx + 1, **vars):
                         yield event
 
                     break

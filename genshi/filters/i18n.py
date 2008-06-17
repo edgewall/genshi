@@ -185,7 +185,7 @@ class Translator(object):
                 if not msgbuf:
                     text = data.strip()
                     if text:
-                        data = data.replace(text, translate(text))
+                        data = data.replace(text, unicode(translate(text)))
                     yield kind, data, pos
                 else:
                     msgbuf.append(kind, data, pos)

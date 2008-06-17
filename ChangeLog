@@ -12,6 +12,10 @@ http://svn.edgewall.org/repos/genshi/tags/0.5.1/
  * Fix problem with nested match templates not being applied when buffering
    on the outer `py:match` is disabled. Thanks to Erik Bray for reporting the
    problem and providing a test case!
+ * Fix problem in `Translator` filter that would cause the translation of
+   text nodes to fail if the translation function returned an object that was
+   not directly a string, but rather something like an instance of the
+   `LazyProxy` class in Babel (ticket #145).
 
 
 Version 0.5

@@ -181,7 +181,7 @@ class Path(object):
                  stream against the path
         :rtype: ``function``
         """
-        #For every path we store (path, stack, isDescendant)
+
         paths = []
         for p in self.paths:
             if ignore_context:
@@ -194,26 +194,27 @@ class Path(object):
             else:
                 steps = p
 
-            #for node it contains all positions of xpath expression
-            #where its child should start checking for matches
+            # for node it contains all positions of xpath expression
+            # where its child should start checking for matches
+            # it's always increasing sequence (invariant)
             stack = [[0]]
 
-            #for every position in expression stores counters' list
-            #it is used for position based predicates
+            # for every position in expression stores counters' list
+            # it is used for position based predicates
             counters = [[] for _ in xrange(len(steps))]
 
-            #indexes where explession has descendant(-or-self) axis
-            descendantAxes = [i for (i, (a, _, _,),) in
+            # indexes where expression has descendant(-or-self) axis
+            descendant_axes = [i for (i, (a, _, _,),) in
                                  enumerate(steps) if a is DESCENDANT 
                                  or a is DESCENDANT_OR_SELF]
 
-            paths.append((steps, stack, descendantAxes, counters,))
+            paths.append((steps, stack, descendant_axes, counters,))
 
         def _test(event, namespaces, variables, updateonly=False):
 
             kind, data, pos = event[:3]
             retval = None
-            for steps, stack, descendantAxes, counters in paths:
+            for steps, stack, descendant_axes, counters in paths:
                 # Manage the stack that tells us "where we are" in the stream
                 if kind is END:
                     stack.pop()
@@ -222,54 +223,56 @@ class Path(object):
                     pass
                 elif kind is START_NS or kind is END_NS \
                         or kind is START_CDATA or kind is END_CDATA:
-                    #should we make namespaces work?
+                    # should we make namespaces work?
                     continue
 
-                #FIXME: Need to find out when we can do this
+                # FIXME: Need to find out when we can do this
                 #if updateonly:
                 #    continue
 
-                myPositions = stack[-1]
-                nextPositions = []
+                my_positions = stack[-1]
+                next_positions = []
 
-                #length of real part of path - we omit attribute axis
-                realLen = len(steps) - ((steps[-1][0] == ATTRIBUTE) or 1 and 0)
-                lastChecked = realLen
+                # length of real part of path - we omit attribute axis
+                real_len = len(steps) - ((steps[-1][0] == ATTRIBUTE) or 1 and 0)
+                last_checked = -1
                 
-                #places where we have to check for match, are these
-                #provided by parent
-                for position in myPositions:
+                # places where we have to check for match, are these
+                # provided by parent
+                for position in my_positions:
 
-                    #we have already checked this position
-                    #(it had to be because of self-like axes)
-                    if position >= lastChecked:
+                    # we have already checked this position
+                    # (it had to be because of self-like axes)
+                    if position <= last_checked:
                         continue
 
-                    for x in xrange(position, realLen):
-                        #number of counters - we have to create one
-                        #for every context position based predicate
+                    for x in xrange(position, real_len):
+                        # number of counters - we have to create one
+                        # for every context position based predicate
                         cnum = 0
 
                         axis, nodetest, predicates = steps[x]
 
                         if x != position and axis is not SELF:
-                            nextPositions.append(x)
+                            next_positions.append(x)
 
-                        #to go further we have to use self-like axes
+                        # to go further we have to use self-like axes
                         if axis is not DESCENDANT_OR_SELF and \
                             axis is not SELF and x != position:
+                            x -= 1 # x hasn't been really checked so we can't
+                                   # reall save it to last_checked
                             break
 
 
-                        #tells if we have match with position x
+                        # tells if we have match with position x
                         matched = False
 
-                        #nodetest first
+                        # nodetest first
                         if nodetest(kind, data, pos, namespaces, variables):
                             matched = True
 
-                        #TODO: or maybe add nodetest here 
-                        #(chain((nodetest,), predicates))?
+                        # TODO: or maybe add nodetest here 
+                        # (chain((nodetest,), predicates))?
                         if matched and predicates:
                             for predicate in predicates:
                                 pretval = predicate(kind, data, pos,
@@ -292,8 +295,8 @@ class Path(object):
                         if not matched:
                             break
                     else:
-                        #we reached end of expression, because x
-                        #is equal to the length of expression
+                        # we reached end of expression, because x
+                        # is equal to the length of expression
                         matched = True
                         axis, nodetest, predicates = steps[-1]
                         if axis is ATTRIBUTE:
@@ -301,31 +304,33 @@ class Path(object):
                                     namespaces, variables)
                         if matched:
                             retval = matched
+                    # in x is stored the last index for which check was done
+                    last_checked = x
 
 
                 if kind is START:
-                    #in nextPositions there are positions that are implied
-                    #by current matches, but we have to add previous
-                    #descendant-like axis positions
-                    #(which can "jump" over tree)
+                    # in next_positions there are positions that are implied
+                    # by current matches, but we have to add previous
+                    # descendant-like axis positions
+                    # (which can "jump" over tree)
                     i = 0
                     stack.append([])
-                    #every descendant axis before furthest position is ok
-                    for pos in nextPositions:
-                        while i != len(descendantAxes) \
-                                and descendantAxes[i] < pos:
-                            stack[-1].append(descendantAxes[i])
+                    # every descendant axis before furthest position is ok
+                    for pos in next_positions:
+                        while i != len(descendant_axes) \
+                                and descendant_axes[i] < pos:
+                            stack[-1].append(descendant_axes[i])
                             i += 1
-                        if i != len(descendantAxes) \
-                                and descendantAxes[i] == pos:
+                        if i != len(descendant_axes) \
+                                and descendant_axes[i] == pos:
                             i += 1
                         stack[-1].append(pos)
 
-                    #every descendant that was parent's one is ok
-                    if myPositions:
-                        while i != len(descendantAxes) \
-                                 and descendantAxes[i] <= myPositions[-1]:
-                            stack[-1].append(descendantAxes[i])
+                    # every descendant that was parent's one is ok
+                    if my_positions:
+                        while i != len(descendant_axes) \
+                                 and descendant_axes[i] <= my_positions[-1]:
+                            stack[-1].append(descendant_axes[i])
                             i += 1
 
             return retval
@@ -404,7 +409,7 @@ class PathParser(object):
             if self.cur_token.startswith('/'):
                 if not steps:
                     if self.cur_token == '//':
-                        #hack to make //* match every node - also root
+                        # hack to make //* match every node - also root
                         self.next_token()
                         axis, nodetest, predicates = self._location_step()
                         steps.append((DESCENDANT_OR_SELF, nodetest, 

@@ -16,6 +16,7 @@ http://svn.edgewall.org/repos/genshi/tags/0.5.1/
    text nodes to fail if the translation function returned an object that was
    not directly a string, but rather something like an instance of the
    `LazyProxy` class in Babel (ticket #145).
+ * Fix problem with match templates incorrectly being applied multiple times.
 
 
 Version 0.5

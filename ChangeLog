@@ -17,6 +17,9 @@ http://svn.edgewall.org/repos/genshi/tags/0.5.1/
    not directly a string, but rather something like an instance of the
    `LazyProxy` class in Babel (ticket #145).
  * Fix problem with match templates incorrectly being applied multiple times.
+ * Includes from templates loaded via an absolute path now include the correct
+   file in nested directories as long if no search path has been configured
+   (ticket #240).
 
 
 Version 0.5

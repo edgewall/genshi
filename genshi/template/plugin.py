@@ -16,8 +16,6 @@
 CherryPy/Buffet.
 """
 
-from pkg_resources import resource_filename
-
 from genshi.input import ET, HTML, XML
 from genshi.output import DocType
 from genshi.template.base import Template
@@ -91,6 +89,7 @@ class AbstractTemplateEnginePlugin(object):
         if self.use_package_naming:
             divider = templatename.rfind('.')
             if divider >= 0:
+                from pkg_resources import resource_filename
                 package = templatename[:divider]
                 basename = templatename[divider + 1:] + self.extension
                 templatename = resource_filename(package, basename)

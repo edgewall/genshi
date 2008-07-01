@@ -261,6 +261,47 @@ class TemplateLoaderTestCase(unittest.TestCase):
             </html>""", tmpl1.generate().render())
         assert 'tmpl2.html' in loader._cache
 
+    def test_abspath_include_caching_without_search_path(self):
+        file1 = open(os.path.join(self.dirname, 'tmpl1.html'), 'w')
+        try:
+            file1.write("""<html xmlns:xi="http://www.w3.org/2001/XInclude">
+              <xi:include href="tmpl2.html" />
+            </html>""")
+        finally:
+            file1.close()
+
+        file2 = open(os.path.join(self.dirname, 'tmpl2.html'), 'w')
+        try:
+            file2.write("""<div>Included</div>""")
+        finally:
+            file2.close()
+
+        os.mkdir(os.path.join(self.dirname, 'sub'))
+        file3 = open(os.path.join(self.dirname, 'sub', 'tmpl1.html'), 'w')
+        try:
+            file3.write("""<html xmlns:xi="http://www.w3.org/2001/XInclude">
+              <xi:include href="tmpl2.html" />
+            </html>""")
+        finally:
+            file3.close()
+
+        file4 = open(os.path.join(self.dirname, 'sub', 'tmpl2.html'), 'w')
+        try:
+            file4.write("""<div>Included from sub</div>""")
+        finally:
+            file4.close()
+
+        loader = TemplateLoader()
+        tmpl1 = loader.load(os.path.join(self.dirname, 'tmpl1.html'))
+        self.assertEqual("""<html>
+              <div>Included</div>
+            </html>""", tmpl1.generate().render())
+        tmpl2 = loader.load(os.path.join(self.dirname, 'sub', 'tmpl1.html'))
+        self.assertEqual("""<html>
+              <div>Included from sub</div>
+            </html>""", tmpl2.generate().render())
+        assert 'tmpl2.html' not in loader._cache
+
     def test_load_with_default_encoding(self):
         f = open(os.path.join(self.dirname, 'tmpl.html'), 'w')
         try:

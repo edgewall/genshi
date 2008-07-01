@@ -163,8 +163,14 @@ class TemplateLoader(object):
         """
         if cls is None:
             cls = self.default_class
-        if relative_to and not os.path.isabs(relative_to):
+        search_path = self.search_path
+
+        # Make the filename relative to the template file its being loaded
+        # from, but only if that file is specified as a relative path, or no
+        # search path has been set up
+        if relative_to and (not search_path or not os.path.isabs(relative_to)):
             filename = os.path.join(os.path.dirname(relative_to), filename)
+
         filename = os.path.normpath(filename)
         cachekey = filename
 
@@ -181,7 +187,6 @@ class TemplateLoader(object):
             except (KeyError, OSError):
                 pass
 
-            search_path = self.search_path
             isabs = False
 
             if os.path.isabs(filename):

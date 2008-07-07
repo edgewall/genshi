@@ -708,6 +708,25 @@ class MarkupTemplateTestCase(unittest.TestCase):
             </body>
         </html>""", tmpl.generate().render())
 
+    def test_match_without_select(self):
+        # See <http://genshi.edgewall.org/ticket/243>
+        xml = ("""<html xmlns:py="http://genshi.edgewall.org/">
+          <py:match path="body" buffer="false">
+            <body>
+              This replaces the other text.
+            </body>
+          </py:match>
+          <body>
+            This gets replaced.
+          </body>
+        </html>""")
+        tmpl = MarkupTemplate(xml, filename='test.html')
+        self.assertEqual("""<html>
+            <body>
+              This replaces the other text.
+            </body>
+        </html>""", tmpl.generate().render())
+
 
 def suite():
     suite = unittest.TestSuite()

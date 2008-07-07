@@ -20,6 +20,9 @@ http://svn.edgewall.org/repos/genshi/tags/0.5.1/
  * Includes from templates loaded via an absolute path now include the correct
    file in nested directories as long if no search path has been configured
    (ticket #240).
+ * Unbuffered match templates could result in parts of the matched content
+   being included in the output if the match template didn't actually consume
+   it via one or more calls to the `select()` function (ticket #243).
 
 
 Version 0.5

@@ -278,13 +278,11 @@ class MarkupTemplate(Template):
                     if 'not_buffered' not in hints:
                         content = list(content)
 
-                    if tail:
-                        for test in [mt[0] for mt in match_templates]:
-                            test(tail[0], namespaces, ctxt, updateonly=True)
-
                     # Make the select() function available in the body of the
                     # match template
+                    selected = [False]
                     def select(path):
+                        selected[0] = True
                         return Stream(content).select(path, namespaces, ctxt)
                     vars = dict(select=select)
 
@@ -299,6 +297,19 @@ class MarkupTemplate(Template):
                                 ctxt, **vars),
                             ctxt, start=idx + 1, **vars):
                         yield event
+
+                    # If the match template did not actually call select to
+                    # consume the matched stream, the original events need to
+                    # be consumed here or they'll get appended to the output
+                    if not selected[0]:
+                        for event in content:
+                            pass
+
+                    # Let the remaining match templates know about the last
+                    # event in the matched content, so they can update their
+                    # internal state accordingly
+                    for test in [mt[0] for mt in match_templates]:
+                        test(tail[0], namespaces, ctxt, updateonly=True)
 
                     break
 

@@ -22,7 +22,8 @@ except ImportError:
 from genshi.template.base import TemplateError
 from genshi.util import LRUCache
 
-__all__ = ['TemplateLoader', 'TemplateNotFound']
+__all__ = ['TemplateLoader', 'TemplateNotFound', 'directory', 'package',
+           'prefixed']
 __docformat__ = 'restructuredtext en'
 
 

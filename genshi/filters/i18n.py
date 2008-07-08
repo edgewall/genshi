@@ -347,6 +347,8 @@ class MessageBuffer(object):
     def __init__(self, params=u'', lineno=-1):
         """Initialize the message buffer.
         
+        :param params: comma-separated list of parameter names
+        :type params: `basestring`
         :param lineno: the line number on which the first stream event
                        belonging to the message was found
         """
@@ -463,6 +465,7 @@ def parse_msg(string, regex=re.compile(r'(?:\[(\d+)\:)|\]')):
 
     return parts
 
+
 def extract_from_code(code, gettext_functions):
     """Extract strings from Python bytecode.
     
@@ -505,6 +508,7 @@ def extract_from_code(code, gettext_functions):
                 for funcname, strings in _walk(child):
                     yield funcname, strings
     return _walk(code.ast)
+
 
 def extract(fileobj, keywords, comment_tags, options):
     """Babel extraction method for Genshi templates.

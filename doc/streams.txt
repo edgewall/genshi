@@ -379,7 +379,7 @@ declarations):
 
 .. code-block:: python
 
-  START, (QName(u'p'), Attrs([(u'class', u'intro')])), pos
+  START, (QName(u'p'), Attrs([(QName(u'class'), u'intro')])), pos
 
 END
 ---

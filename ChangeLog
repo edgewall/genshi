@@ -7,7 +7,7 @@ http://svn.edgewall.org/repos/genshi/tags/0.6.0/
 
 Version 0.5.1
 http://svn.edgewall.org/repos/genshi/tags/0.5.1/
-(???, from branches/stable/0.5.x)
+(Jul 9 2008, from branches/stable/0.5.x)
 
  * Fix problem with nested match templates not being applied when buffering
    on the outer `py:match` is disabled. Thanks to Erik Bray for reporting the

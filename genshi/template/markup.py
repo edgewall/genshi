@@ -25,6 +25,7 @@ from genshi.template.eval import Suite
 from genshi.template.interpolation import interpolate
 from genshi.template.directives import *
 from genshi.template.text import NewTextTemplate
+from genshi.optimization import OPTIMIZED_FRAGMENT
 
 __all__ = ['MarkupTemplate']
 __docformat__ = 'restructuredtext en'
@@ -53,6 +54,7 @@ class MarkupTemplate(Template):
                   ('if', IfDirective),
                   ('choose', ChooseDirective),
                   ('with', WithDirective),
+                  ('optimize', OptimizeDirective),
                   ('replace', ReplaceDirective),
                   ('content', ContentDirective),
                   ('attrs', AttrsDirective),
@@ -221,7 +223,7 @@ class MarkupTemplate(Template):
         assert len(streams) == 1
         return streams[0]
 
-    def _match(self, stream, ctxt, match_templates=None, **vars):
+    def _match(self, stream, ctxt, match_templates=None, _matched=None, **vars):
         """Internal stream filter that applies any defined match templates
         to the stream.
         """
@@ -245,6 +247,18 @@ class MarkupTemplate(Template):
 
         for event in stream:
 
+            if event[0] is OPTIMIZED_FRAGMENT:
+                substream = iter(event[1].process_stream())
+                matched = [False]
+                substream = self._match(substream, ctxt, match_templates, matched)
+                substream = list(substream)
+                if not matched[0]:
+                    yield event
+                else:
+                    for subevent in substream:
+                        yield subevent
+                continue
+
             # We (currently) only care about start and end events for matching
             # We might care about namespace events in the future, though
             if not match_templates or (event[0] is not START and
@@ -256,6 +270,8 @@ class MarkupTemplate(Template):
                     in enumerate(match_templates):
 
                 if test(event, namespaces, ctxt) is True:
+                    if _matched is not None:
+                        _matched[0] = True
                     if 'match_once' in hints:
                         del match_templates[idx]
                         idx -= 1
@@ -293,7 +309,9 @@ class MarkupTemplate(Template):
                     for event in self._match(
                             self._exec(
                                 self._eval(
-                                    self._flatten(template, ctxt, **vars),
+                                    self._optimize(
+                                        self._flatten(template, ctxt, **vars),
+                                        ctxt, **vars),
                                     ctxt, **vars),
                                 ctxt, **vars),
                             ctxt, match_templates[idx + 1:], **vars):

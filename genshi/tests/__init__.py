@@ -15,7 +15,8 @@ import unittest
 
 def suite():
     import genshi
-    from genshi.tests import builder, core, input, output, path, util
+    from genshi.tests import builder, core, input, optimization, \
+                             output, path, util
     from genshi.filters import tests as filters
     from genshi.template import tests as template
 
@@ -25,6 +26,7 @@ def suite():
     suite.addTest(filters.suite())
     suite.addTest(input.suite())
     suite.addTest(output.suite())
+    suite.addTest(optimization.suite())
     suite.addTest(path.suite())
     suite.addTest(template.suite())
     suite.addTest(util.suite())

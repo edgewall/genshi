@@ -45,6 +45,7 @@ import re
 from genshi.core import Stream, Attrs, Namespace, QName
 from genshi.core import START, END, TEXT, START_NS, END_NS, COMMENT, PI, \
                         START_CDATA, END_CDATA
+from genshi.optimization import OPTIMIZED_FRAGMENT
 
 __all__ = ['Path', 'PathSyntaxError']
 __docformat__ = 'restructuredtext en'
@@ -128,24 +129,43 @@ class Path(object):
             namespaces = {}
         if variables is None:
             variables = {}
-        stream = iter(stream)
+        #stream stack
+        ss = [iter(stream)]
         def _generate():
             test = self.test()
-            for event in stream:
+            while ss:
+                try:
+                    event = ss[-1].next()
+                except StopIteration:
+                    ss.pop()
+                    continue
+                if event[0] is OPTIMIZED_FRAGMENT:
+                    ss.append(iter(event[1].process_stream()))
+                    continue
                 result = test(event, namespaces, variables)
                 if result is True:
                     yield event
+                    if event[0] is OPTIMIZED_FRAGMENT:
+                        for e in optimized_flatten(event[1]):
+                            test(e, namespaces, variables,
+                                 updateonly=True)
+
                     if event[0] is START:
                         depth = 1
                         while depth > 0:
-                            subevent = stream.next()
+                            subevent = ss[-1].next()
                             if subevent[0] is START:
                                 depth += 1
                             elif subevent[0] is END:
                                 depth -= 1
                             yield subevent
-                            test(subevent, namespaces, variables,
-                                 updateonly=True)
+                            if event[0] is OPTIMIZED_FRAGMENT:
+                                for e in optimized_flatten(event[1]):
+                                    test(e, namespaces, variables,
+                                         updateonly=True)
+                            else:
+                                test(subevent, namespaces, variables,
+                                     updateonly=True)
                 elif result:
                     yield result
         return Stream(_generate(),

@@ -25,6 +25,7 @@ import re
 from genshi.core import escape, Attrs, Markup, Namespace, QName, StreamEventKind
 from genshi.core import START, END, TEXT, XML_DECL, DOCTYPE, START_NS, END_NS, \
                         START_CDATA, END_CDATA, PI, COMMENT, XML_NAMESPACE
+from genshi.optimization import OPTIMIZED_FRAGMENT
 
 __all__ = ['encode', 'get_serializer', 'DocType', 'XMLSerializer',
            'XHTMLSerializer', 'HTMLSerializer', 'TextSerializer']
@@ -61,6 +62,7 @@ def encode(iterator, method='xml', encoding='utf-8', out=None):
     for chunk in iterator:
         out.write(_encode(chunk))
 
+
 def get_serializer(method='xml', **kwargs):
     """Return a serializer object for the given method.
     
@@ -73,7 +75,10 @@ def get_serializer(method='xml', **kwargs):
     :see: `XMLSerializer`, `XHTMLSerializer`, `HTMLSerializer`, `TextSerializer`
     :since: version 0.4.1
     """
-    if isinstance(method, basestring):
+    serializers = XMLSerializer, XHTMLSerializer, HTMLSerializer, TextSerializer
+    if isinstance(method, serializers):
+        return method
+    elif isinstance(method, basestring):
         method = {'xml':   XMLSerializer,
                   'xhtml': XHTMLSerializer,
                   'html':  HTMLSerializer,
@@ -202,68 +207,75 @@ class XMLSerializer(object):
             self.filters.append(DocTypeInserter(doctype))
 
     def __call__(self, stream):
-        have_decl = have_doctype = False
-        in_cdata = False
 
         for filter_ in self.filters:
             stream = filter_(stream)
-        for kind, data, pos in stream:
+        def _process(stream):
+            #TODO SOC: You know what to check :-)
+            have_decl = have_doctype = False
+            in_cdata = False
+            for kind, data, pos in stream:
 
-            if kind is START or kind is EMPTY:
-                tag, attrib = data
-                buf = ['<', tag]
-                for attr, value in attrib:
-                    buf += [' ', attr, '="', escape(value), '"']
-                buf.append(kind is EMPTY and '/>' or '>')
-                yield Markup(u''.join(buf))
+                if kind is OPTIMIZED_FRAGMENT:
+                    frag = data.create_child(self, 
+                                            _process(data.get_stream()))
+                    yield (kind, frag, pos,)
+                elif kind is START or kind is EMPTY:
+                    tag, attrib = data
+                    buf = ['<', tag]
+                    for attr, value in attrib:
+                        buf += [' ', attr, '="', escape(value), '"']
+                    buf.append(kind is EMPTY and '/>' or '>')
+                    yield Markup(u''.join(buf))
 
-            elif kind is END:
-                yield Markup('</%s>' % data)
+                elif kind is END:
+                    yield Markup('</%s>' % data)
 
-            elif kind is TEXT:
-                if in_cdata:
-                    yield data
-                else:
-                    yield escape(data, quotes=False)
+                elif kind is TEXT:
+                    if in_cdata:
+                        yield data
+                    else:
+                        yield escape(data, quotes=False)
 
-            elif kind is COMMENT:
-                yield Markup('<!--%s-->' % data)
+                elif kind is COMMENT:
+                    yield Markup('<!--%s-->' % data)
 
-            elif kind is XML_DECL and not have_decl:
-                version, encoding, standalone = data
-                buf = ['<?xml version="%s"' % version]
-                if encoding:
-                    buf.append(' encoding="%s"' % encoding)
-                if standalone != -1:
-                    standalone = standalone and 'yes' or 'no'
-                    buf.append(' standalone="%s"' % standalone)
-                buf.append('?>\n')
-                yield Markup(u''.join(buf))
-                have_decl = True
+                elif kind is XML_DECL and not have_decl:
+                    version, encoding, standalone = data
+                    buf = ['<?xml version="%s"' % version]
+                    if encoding:
+                        buf.append(' encoding="%s"' % encoding)
+                    if standalone != -1:
+                        standalone = standalone and 'yes' or 'no'
+                        buf.append(' standalone="%s"' % standalone)
+                    buf.append('?>\n')
+                    yield Markup(u''.join(buf))
+                    have_decl = True
 
-            elif kind is DOCTYPE and not have_doctype:
-                name, pubid, sysid = data
-                buf = ['<!DOCTYPE %s']
-                if pubid:
-                    buf.append(' PUBLIC "%s"')
-                elif sysid:
-                    buf.append(' SYSTEM')
-                if sysid:
-                    buf.append(' "%s"')
-                buf.append('>\n')
-                yield Markup(u''.join(buf)) % filter(None, data)
-                have_doctype = True
+                elif kind is DOCTYPE and not have_doctype:
+                    name, pubid, sysid = data
+                    buf = ['<!DOCTYPE %s']
+                    if pubid:
+                        buf.append(' PUBLIC "%s"')
+                    elif sysid:
+                        buf.append(' SYSTEM')
+                    if sysid:
+                        buf.append(' "%s"')
+                    buf.append('>\n')
+                    yield Markup(u''.join(buf)) % filter(None, data)
+                    have_doctype = True
 
-            elif kind is START_CDATA:
-                yield Markup('<![CDATA[')
-                in_cdata = True
+                elif kind is START_CDATA:
+                    yield Markup('<![CDATA[')
+                    in_cdata = True
 
-            elif kind is END_CDATA:
-                yield Markup(']]>')
-                in_cdata = False
+                elif kind is END_CDATA:
+                    yield Markup(']]>')
+                    in_cdata = False
 
-            elif kind is PI:
-                yield Markup('<?%s %s?>' % data)
+                elif kind is PI:
+                    yield Markup('<?%s %s?>' % data)
+        return _process(stream)
 
 
 class XHTMLSerializer(XMLSerializer):
@@ -303,80 +315,85 @@ class XHTMLSerializer(XMLSerializer):
         boolean_attrs = self._BOOLEAN_ATTRS
         empty_elems = self._EMPTY_ELEMS
         drop_xml_decl = self.drop_xml_decl
-        have_decl = have_doctype = False
-        in_cdata = False
 
         for filter_ in self.filters:
             stream = filter_(stream)
-        for kind, data, pos in stream:
+        def _process(stream, have_decl=True, have_doctype=True):
+            in_cdata = False
+            for kind, data, pos in stream:
 
-            if kind is START or kind is EMPTY:
-                tag, attrib = data
-                buf = ['<', tag]
-                for attr, value in attrib:
-                    if attr in boolean_attrs:
-                        value = attr
-                    elif attr == u'xml:lang' and u'lang' not in attrib:
-                        buf += [' lang="', escape(value), '"']
-                    elif attr == u'xml:space':
-                        continue
-                    buf += [' ', attr, '="', escape(value), '"']
-                if kind is EMPTY:
-                    if tag in empty_elems:
-                        buf.append(' />')
+                if kind is OPTIMIZED_FRAGMENT:
+                    frag = data.create_child(self, 
+                                            _process(data.get_stream()))
+                    yield (kind, frag, pos,)
+                elif kind is START or kind is EMPTY:
+                    tag, attrib = data
+                    buf = ['<', tag]
+                    for attr, value in attrib:
+                        if attr in boolean_attrs:
+                            value = attr
+                        elif attr == u'xml:lang' and u'lang' not in attrib:
+                            buf += [' lang="', escape(value), '"']
+                        elif attr == u'xml:space':
+                            continue
+                        buf += [' ', attr, '="', escape(value), '"']
+                    if kind is EMPTY:
+                        if tag in empty_elems:
+                            buf.append(' />')
+                        else:
+                            buf.append('></%s>' % tag)
                     else:
-                        buf.append('></%s>' % tag)
-                else:
-                    buf.append('>')
-                yield Markup(u''.join(buf))
+                        buf.append('>')
+                    yield Markup(u''.join(buf))
 
-            elif kind is END:
-                yield Markup('</%s>' % data)
+                elif kind is END:
+                    yield Markup('</%s>' % data)
 
-            elif kind is TEXT:
-                if in_cdata:
-                    yield data
-                else:
-                    yield escape(data, quotes=False)
+                elif kind is TEXT:
+                    if in_cdata:
+                        yield data
+                    else:
+                        yield escape(data, quotes=False)
 
-            elif kind is COMMENT:
-                yield Markup('<!--%s-->' % data)
+                elif kind is COMMENT:
+                    yield Markup('<!--%s-->' % data)
 
-            elif kind is DOCTYPE and not have_doctype:
-                name, pubid, sysid = data
-                buf = ['<!DOCTYPE %s']
-                if pubid:
-                    buf.append(' PUBLIC "%s"')
-                elif sysid:
-                    buf.append(' SYSTEM')
-                if sysid:
-                    buf.append(' "%s"')
-                buf.append('>\n')
-                yield Markup(u''.join(buf)) % filter(None, data)
-                have_doctype = True
+                elif kind is DOCTYPE and not have_doctype:
+                    name, pubid, sysid = data
+                    buf = ['<!DOCTYPE %s']
+                    if pubid:
+                        buf.append(' PUBLIC "%s"')
+                    elif sysid:
+                        buf.append(' SYSTEM')
+                    if sysid:
+                        buf.append(' "%s"')
+                    buf.append('>\n')
+                    yield Markup(u''.join(buf)) % filter(None, data)
+                    have_doctype = True
 
-            elif kind is XML_DECL and not have_decl and not drop_xml_decl:
-                version, encoding, standalone = data
-                buf = ['<?xml version="%s"' % version]
-                if encoding:
-                    buf.append(' encoding="%s"' % encoding)
-                if standalone != -1:
-                    standalone = standalone and 'yes' or 'no'
-                    buf.append(' standalone="%s"' % standalone)
-                buf.append('?>\n')
-                yield Markup(u''.join(buf))
-                have_decl = True
+                elif kind is XML_DECL and not have_decl and not drop_xml_decl:
+                    version, encoding, standalone = data
+                    buf = ['<?xml version="%s"' % version]
+                    if encoding:
+                        buf.append(' encoding="%s"' % encoding)
+                    if standalone != -1:
+                        standalone = standalone and 'yes' or 'no'
+                        buf.append(' standalone="%s"' % standalone)
+                    buf.append('?>\n')
+                    yield Markup(u''.join(buf))
+                    have_decl = True
 
-            elif kind is START_CDATA:
-                yield Markup('<![CDATA[')
-                in_cdata = True
+                elif kind is START_CDATA:
+                    yield Markup('<![CDATA[')
+                    in_cdata = True
 
-            elif kind is END_CDATA:
-                yield Markup(']]>')
-                in_cdata = False
+                elif kind is END_CDATA:
+                    yield Markup(']]>')
+                    in_cdata = False
 
-            elif kind is PI:
-                yield Markup('<?%s %s?>' % data)
+                elif kind is PI:
+                    yield Markup('<?%s %s?>' % data)
+        return _process(stream, False, False)
 
 
 class HTMLSerializer(XHTMLSerializer):
@@ -417,61 +434,65 @@ class HTMLSerializer(XHTMLSerializer):
         boolean_attrs = self._BOOLEAN_ATTRS
         empty_elems = self._EMPTY_ELEMS
         noescape_elems = self._NOESCAPE_ELEMS
-        have_doctype = False
-        noescape = False
 
         for filter_ in self.filters:
             stream = filter_(stream)
-        for kind, data, pos in stream:
+        def _process(stream, noescape, have_doctype=True):
+            for kind, data, pos in stream:
 
-            if kind is START or kind is EMPTY:
-                tag, attrib = data
-                buf = ['<', tag]
-                for attr, value in attrib:
-                    if attr in boolean_attrs:
-                        if value:
-                            buf += [' ', attr]
-                    elif ':' in attr:
-                        if attr == 'xml:lang' and u'lang' not in attrib:
-                            buf += [' lang="', escape(value), '"']
-                    elif attr != 'xmlns':
-                        buf += [' ', attr, '="', escape(value), '"']
-                buf.append('>')
-                if kind is EMPTY:
-                    if tag not in empty_elems:
-                        buf.append('</%s>' % tag)
-                yield Markup(u''.join(buf))
-                if tag in noescape_elems:
-                    noescape = True
+                if kind is OPTIMIZED_FRAGMENT:
+                    frag = data.create_child((self, noescape), 
+                                        _process(data.get_stream(), noescape))
+                    yield (kind, frag, pos,)
+                elif kind is START or kind is EMPTY:
+                    tag, attrib = data
+                    buf = ['<', tag]
+                    for attr, value in attrib:
+                        if attr in boolean_attrs:
+                            if value:
+                                buf += [' ', attr]
+                        elif ':' in attr:
+                            if attr == 'xml:lang' and u'lang' not in attrib:
+                                buf += [' lang="', escape(value), '"']
+                        elif attr != 'xmlns':
+                            buf += [' ', attr, '="', escape(value), '"']
+                    buf.append('>')
+                    if kind is EMPTY:
+                        if tag not in empty_elems:
+                            buf.append('</%s>' % tag)
+                    yield Markup(u''.join(buf))
+                    if tag in noescape_elems:
+                        noescape = True
 
-            elif kind is END:
-                yield Markup('</%s>' % data)
-                noescape = False
+                elif kind is END:
+                    yield Markup('</%s>' % data)
+                    noescape = False
 
-            elif kind is TEXT:
-                if noescape:
-                    yield data
-                else:
-                    yield escape(data, quotes=False)
+                elif kind is TEXT:
+                    if noescape:
+                        yield data
+                    else:
+                        yield escape(data, quotes=False)
 
-            elif kind is COMMENT:
-                yield Markup('<!--%s-->' % data)
+                elif kind is COMMENT:
+                    yield Markup('<!--%s-->' % data)
 
-            elif kind is DOCTYPE and not have_doctype:
-                name, pubid, sysid = data
-                buf = ['<!DOCTYPE %s']
-                if pubid:
-                    buf.append(' PUBLIC "%s"')
-                elif sysid:
-                    buf.append(' SYSTEM')
-                if sysid:
-                    buf.append(' "%s"')
-                buf.append('>\n')
-                yield Markup(u''.join(buf)) % filter(None, data)
-                have_doctype = True
+                elif kind is DOCTYPE and not have_doctype:
+                    name, pubid, sysid = data
+                    buf = ['<!DOCTYPE %s']
+                    if pubid:
+                        buf.append(' PUBLIC "%s"')
+                    elif sysid:
+                        buf.append(' SYSTEM')
+                    if sysid:
+                        buf.append(' "%s"')
+                    buf.append('>\n')
+                    yield Markup(u''.join(buf)) % filter(None, data)
+                    have_doctype = True
 
-            elif kind is PI:
-                yield Markup('<?%s %s?>' % data)
+                elif kind is PI:
+                    yield Markup('<?%s %s?>' % data)
+        return _process(stream, False, False)
 
 
 class TextSerializer(object):
@@ -512,12 +533,18 @@ class TextSerializer(object):
 
     def __call__(self, stream):
         strip_markup = self.strip_markup
-        for event in stream:
-            if event[0] is TEXT:
-                data = event[1]
-                if strip_markup and type(data) is Markup:
-                    data = data.striptags().stripentities()
-                yield unicode(data)
+        def _process(stream):
+            for event in stream:
+                if event[0] is OPTIMIZED_FRAGMENT:
+                    frag = event[1].create_child((self, noescape), 
+                                            _process(event[1].get_stream()))
+                    yield (event[0], frag, event[2],)
+                elif event[0] is TEXT:
+                    data = event[1]
+                    if strip_markup and type(data) is Markup:
+                        data = data.striptags().stripentities()
+                    yield unicode(data)
+        return _process(stream)
 
 
 class EmptyTagFilter(object):
@@ -528,23 +555,31 @@ class EmptyTagFilter(object):
     EMPTY = StreamEventKind('EMPTY')
 
     def __call__(self, stream):
-        prev = (None, None, None)
-        for ev in stream:
-            if prev[0] is START:
-                if ev[0] is END:
-                    prev = EMPTY, prev[1], prev[2]
-                    yield prev
-                    continue
+        def _process(stream):
+            prev = (None, None, None)
+            for ev in stream:
+                if ev[0] is OPTIMIZED_FRAGMENT:
+                    frag = ev[1].create_child(EmptyTagFilter, 
+                                            _process(ev[1].get_stream()))
+                    yield (ev[0], frag, ev[2],)
                 else:
-                    yield prev
-            if ev[0] is not START:
-                yield ev
-            prev = ev
+                    if prev[0] is START:
+                        if ev[0] is END:
+                            prev = EMPTY, prev[1], prev[2]
+                            yield prev
+                            continue
+                        else:
+                            yield prev
+                    if ev[0] is not START:
+                        yield ev
+                    prev = ev
+        return _process(stream)
 
 
 EMPTY = EmptyTagFilter.EMPTY
 
 
+#TODO SOC
 class NamespaceFlattener(object):
     r"""Output stream filter that removes namespace information from the stream,
     instead adding namespace attributes and prefixes as needed.
@@ -589,76 +624,84 @@ class NamespaceFlattener(object):
                 yield 'ns%d' % val
         _gen_prefix = _gen_prefix().next
 
-        for kind, data, pos in stream:
+        # TODO SOC: that rather doesn't work...
+        def _process(stream):
+            for kind, data, pos in stream:
 
-            if kind is START or kind is EMPTY:
-                tag, attrs = data
+                if kind is OPTIMIZED_FRAGMENT:
+                    sstream = _process(data.get_stream())
+                    frag = data.create_child(self, sstream)
+                    yield (kind, frag, pos,)
+                elif kind is START or kind is EMPTY:
+                    tag, attrs = data
 
-                tagname = tag.localname
-                tagns = tag.namespace
-                if tagns:
-                    if tagns in namespaces:
+                    tagname = tag.localname
+                    tagns = tag.namespace
+                    if tagns:
+                        if tagns in namespaces:
+                            prefix = namespaces[tagns][-1]
+                            if prefix:
+                                tagname = u'%s:%s' % (prefix, tagname)
+                        else:
+                            _push_ns_attr((u'xmlns', tagns))
+                            _push_ns('', tagns)
+
+                    new_attrs = []
+                    for attr, value in attrs:
+                        attrname = attr.localname
+                        attrns = attr.namespace
+                        if attrns:
+                            if attrns not in namespaces:
+                                prefix = _gen_prefix()
+                                _push_ns(prefix, attrns)
+                                _push_ns_attr(('xmlns:%s' % prefix, attrns))
+                            else:
+                                prefix = namespaces[attrns][-1]
+                            if prefix:
+                                attrname = u'%s:%s' % (prefix, attrname)
+                        new_attrs.append((attrname, value))
+
+                    yield kind, (tagname, Attrs(ns_attrs + new_attrs)), pos
+                    del ns_attrs[:]
+
+                elif kind is END:
+                    tagname = data.localname
+                    tagns = data.namespace
+                    if tagns:
                         prefix = namespaces[tagns][-1]
                         if prefix:
                             tagname = u'%s:%s' % (prefix, tagname)
-                    else:
-                        _push_ns_attr((u'xmlns', tagns))
-                        _push_ns('', tagns)
+                    yield kind, tagname, pos
 
-                new_attrs = []
-                for attr, value in attrs:
-                    attrname = attr.localname
-                    attrns = attr.namespace
-                    if attrns:
-                        if attrns not in namespaces:
-                            prefix = _gen_prefix()
-                            _push_ns(prefix, attrns)
-                            _push_ns_attr(('xmlns:%s' % prefix, attrns))
-                        else:
-                            prefix = namespaces[attrns][-1]
-                        if prefix:
-                            attrname = u'%s:%s' % (prefix, attrname)
-                    new_attrs.append((attrname, value))
+                elif kind is START_NS:
+                    prefix, uri = data
+                    if uri not in namespaces:
+                        prefix = prefixes.get(uri, [prefix])[-1]
+                        _push_ns_attr(_make_ns_attr(prefix, uri))
+                    _push_ns(prefix, uri)
 
-                yield kind, (tagname, Attrs(ns_attrs + new_attrs)), pos
-                del ns_attrs[:]
+                elif kind is END_NS:
+                    if data in prefixes:
+                        uris = prefixes.get(data)
+                        uri = uris.pop()
+                        if not uris:
+                            del prefixes[data]
+                        if uri not in uris or uri != uris[-1]:
+                            uri_prefixes = namespaces[uri]
+                            uri_prefixes.pop()
+                            if not uri_prefixes:
+                                del namespaces[uri]
+                        if ns_attrs:
+                            attr = _make_ns_attr(data, uri)
+                            if attr in ns_attrs:
+                                ns_attrs.remove(attr)
 
-            elif kind is END:
-                tagname = data.localname
-                tagns = data.namespace
-                if tagns:
-                    prefix = namespaces[tagns][-1]
-                    if prefix:
-                        tagname = u'%s:%s' % (prefix, tagname)
-                yield kind, tagname, pos
-
-            elif kind is START_NS:
-                prefix, uri = data
-                if uri not in namespaces:
-                    prefix = prefixes.get(uri, [prefix])[-1]
-                    _push_ns_attr(_make_ns_attr(prefix, uri))
-                _push_ns(prefix, uri)
-
-            elif kind is END_NS:
-                if data in prefixes:
-                    uris = prefixes.get(data)
-                    uri = uris.pop()
-                    if not uris:
-                        del prefixes[data]
-                    if uri not in uris or uri != uris[-1]:
-                        uri_prefixes = namespaces[uri]
-                        uri_prefixes.pop()
-                        if not uri_prefixes:
-                            del namespaces[uri]
-                    if ns_attrs:
-                        attr = _make_ns_attr(data, uri)
-                        if attr in ns_attrs:
-                            ns_attrs.remove(attr)
-
-            else:
-                yield kind, data, pos
+                else:
+                    yield kind, data, pos
+        return _process(stream)
 
 
+#TODO SOC
 class WhitespaceFilter(object):
     """A filter that removes extraneous ignorable white space from the
     stream.
@@ -688,51 +731,60 @@ class WhitespaceFilter(object):
                  collapse_lines=re.compile('\n{2,}').sub):
         mjoin = Markup('').join
         preserve_elems = self.preserve
-        preserve = 0
         noescape_elems = self.noescape
-        noescape = False
 
-        textbuf = []
-        push_text = textbuf.append
-        pop_text = textbuf.pop
-        for kind, data, pos in chain(stream, [(None, None, None)]):
+        def _process(stream, preserve=0, noescape=False):
+            textbuf = []
+            push_text = textbuf.append
+            pop_text = textbuf.pop
+            for kind, data, pos in chain(stream, [(None, None, None)]):
 
-            if kind is TEXT:
-                if noescape:
-                    data = Markup(data)
-                push_text(data)
-            else:
-                if textbuf:
-                    if len(textbuf) > 1:
-                        text = mjoin(textbuf, escape_quotes=False)
-                        del textbuf[:]
-                    else:
-                        text = escape(pop_text(), quotes=False)
-                    if not preserve:
-                        text = collapse_lines('\n', trim_trailing_space('', text))
-                    yield TEXT, Markup(text), pos
+                if kind is TEXT:
+                    if noescape:
+                        data = Markup(data)
+                    push_text(data)
+                else:
+                    if textbuf:
+                        if len(textbuf) > 1:
+                            text = mjoin(textbuf, escape_quotes=False)
+                            del textbuf[:]
+                        else:
+                            text = escape(pop_text(), quotes=False)
+                        if not preserve:
+                            text = collapse_lines('\n',
+                                       trim_trailing_space('', text))
+                        yield TEXT, Markup(text), pos
 
-                if kind is START:
-                    tag, attrs = data
-                    if preserve or (tag in preserve_elems or
-                                    attrs.get(space) == 'preserve'):
-                        preserve += 1
-                    if not noescape and tag in noescape_elems:
+                    if kind is OPTIMIZED_FRAGMENT:
+                        # there's exactly the same nubmer of STARTs as ENDs
+                        # in optimized fragment, so no need for higher pres
+                        pres = preserve and 1 or 0
+                        sstream = _process(data.get_stream(), pres, noescape)
+                        frag = data.create_child((self, pres, noescape), 
+                                                 sstream)
+                        yield (kind, frag, pos,)
+                    elif kind is START:
+                        tag, attrs = data
+                        if preserve or (tag in preserve_elems or
+                                        attrs.get(space) == 'preserve'):
+                            preserve += 1
+                        if not noescape and tag in noescape_elems:
+                            noescape = True
+
+                    elif kind is END:
+                        noescape = False
+                        if preserve:
+                            preserve -= 1
+
+                    elif kind is START_CDATA:
                         noescape = True
 
-                elif kind is END:
-                    noescape = False
-                    if preserve:
-                        preserve -= 1
+                    elif kind is END_CDATA:
+                        noescape = False
 
-                elif kind is START_CDATA:
-                    noescape = True
-
-                elif kind is END_CDATA:
-                    noescape = False
-
-                if kind:
-                    yield kind, data, pos
+                    if kind:
+                        yield kind, data, pos
+        return _process(stream)
 
 
 class DocTypeInserter(object):
@@ -748,8 +800,7 @@ class DocTypeInserter(object):
             doctype = DocType.get(doctype)
         self.doctype_event = (DOCTYPE, doctype, (None, -1, -1))
 
-    def __call__(self, stream):
-        doctype_inserted = False
+    def __call__(self, stream, doctype_inserted = False):
         for kind, data, pos in stream:
             if not doctype_inserted:
                 doctype_inserted = True
@@ -759,7 +810,13 @@ class DocTypeInserter(object):
                     continue
                 yield self.doctype_event
 
-            yield (kind, data, pos)
+            #There cannot be XML Declaration in optimized fragments
+            if kind is OPTIMIZED_FRAGMENT:
+                sstream = self(data.get_stream(), True)
+                frag = data.create_child(DocTypeInserter, sstream)
+                yield (kind, frag, pos,)
+            else:
+                yield (kind, data, pos)
 
         if not doctype_inserted:
             yield self.doctype_event

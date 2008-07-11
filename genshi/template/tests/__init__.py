@@ -16,13 +16,15 @@ import unittest
 
 def suite():
     from genshi.template.tests import base, directives, eval, interpolation, \
-                                      loader, markup, plugin, text
+                                      loader, optimization, markup, plugin, \
+                                      text
     suite = unittest.TestSuite()
     suite.addTest(base.suite())
     suite.addTest(directives.suite())
     suite.addTest(eval.suite())
     suite.addTest(interpolation.suite())
     suite.addTest(loader.suite())
+    suite.addTest(optimization.suite())
     suite.addTest(markup.suite())
     suite.addTest(plugin.suite())
     suite.addTest(text.suite())

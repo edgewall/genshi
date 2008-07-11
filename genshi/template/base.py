@@ -25,6 +25,7 @@ import sys
 
 from genshi.core import Attrs, Stream, StreamEventKind, START, TEXT, _ensure
 from genshi.input import ParseError
+from genshi.optimization import OPTIMIZATION_POSSIBILITY, OPTIMIZED_FRAGMENT, Optimizer, OptimizedFragment
 
 __all__ = ['Context', 'Template', 'TemplateError', 'TemplateRuntimeError',
            'TemplateSyntaxError', 'BadDirectiveError']
@@ -343,6 +344,7 @@ class Template(object):
     _number_conv = unicode # function used to convert numbers to event data
 
     def __init__(self, source, filepath=None, filename=None, loader=None,
+                 optimizer=None, serializer = None,
                  encoding=None, lookup='strict', allow_exec=True):
         """Initialize a template from either a string, a file-like object, or
         an already parsed markup stream.
@@ -378,6 +380,14 @@ class Template(object):
         except ParseError, e:
             raise TemplateSyntaxError(e.msg, self.filepath, e.lineno, e.offset)
 
+        self.optimizer = optimizer
+        from genshi.output import get_serializer
+        if serializer is None:
+            self.serializerObject = get_serializer(self.serializer)
+        else:
+            self.serializerObject = get_serializer(serializer)
+
+
     def __getstate__(self):
         state = self.__dict__.copy()
         state['filters'] = []
@@ -391,7 +401,7 @@ class Template(object):
         return '<%s "%s">' % (self.__class__.__name__, self.filename)
 
     def _init_filters(self):
-        self.filters = [self._flatten, self._eval, self._exec]
+        self.filters = [self._flatten, self._optimize, self._eval, self._exec]
         if self.loader:
             self.filters.append(self._include)
 
@@ -484,7 +494,7 @@ class Template(object):
         stream = self.stream
         for filter_ in self.filters:
             stream = filter_(iter(stream), ctxt, **vars)
-        return Stream(stream, self.serializer)
+        return Stream(stream, self.serializerObject)
 
     def _eval(self, stream, ctxt, **vars):
         """Internal stream filter that evaluates any expressions in `START` and
@@ -588,6 +598,32 @@ class Template(object):
                         fallback = filter_(iter(fallback), ctxt, **vars)
                     for event in fallback:
                         yield event
+            else:
+                yield event
+
+    def _optimize(self, stream, ctx, **vars):
+        """Changes optimization possibilities into optimized fragments"""
+        for event in stream:
+            if event[0] is OPTIMIZATION_POSSIBILITY:
+                substream, subvars, subid = event[1]
+
+                # don't want match here, match should work after all optimizations
+                filters = (self._flatten, self._optimize,
+                           self._eval, self._exec)
+                for filter_ in filters:
+                    substream = filter_(substream, ctx, **vars)
+                if self.optimizer is None:
+                    for subevent in substream:
+                        yield subevent
+                elif len(subvars) == 0:
+                    fragmentId = self.optimizer.get_fragment_id(subid, 
+                                                                *subvars)
+                    ret = OptimizedFragment(substream, self.optimizer,
+                                            fragmentId)
+                    yield (OPTIMIZED_FRAGMENT, ret, event[2],)
+                else:                        
+                    for subevent in self._optimize(substream, ctx, **vars):
+                        yield subevent
             else:
                 yield event
 

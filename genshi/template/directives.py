@@ -25,9 +25,12 @@ from genshi.template.base import TemplateRuntimeError, TemplateSyntaxError, \
                                  EXPR, _apply_directives, _eval_expr, \
                                  _exec_suite
 from genshi.template.eval import Expression, ExpressionASTTransformer, _parse
+from genshi.optimization import OPTIMIZATION_POSSIBILITY
 
+#TODO SOC: after choosing name repair line breaks
 __all__ = ['AttrsDirective', 'ChooseDirective', 'ContentDirective',
            'DefDirective', 'ForDirective', 'IfDirective', 'MatchDirective',
+           'OptimizeDirective',
            'OtherwiseDirective', 'ReplaceDirective', 'StripDirective',
            'WhenDirective', 'WithDirective']
 __docformat__ = 'restructuredtext en'
@@ -463,6 +466,29 @@ class MatchDirective(Directive):
     def __repr__(self):
         return '<%s "%s">' % (self.__class__.__name__, self.path.source)
 
+class OptimizeDirective(Directive):
+    """Implementation of the ``py:optimize`` template directive.
+
+    This directive marks subtree in stream as optimization safe and depending
+    only on variables which names are given in argument.
+    """
+
+    def __init__(self, value, template=None, namespaces=None, lineno=-1,
+                 offset=-1):
+        self.vars = filter(None, (x.strip() for x in value.split(",")))
+
+    def attach(cls, template, stream, value, namespaces, pos):
+        if type(value) is dict:
+            value = value.get('vars')
+        return super(OptimizeDirective, cls).attach(template, stream, value,
+                                              namespaces, pos)
+    attach = classmethod(attach)
+
+    def __call__(self, stream, directives, ctxt, **vars):
+        stream = _apply_directives(stream, directives, ctxt, **vars)
+        #TODO SOC: Should we really return id as identifier
+        return ((OPTIMIZATION_POSSIBILITY, (stream, self.vars, id(self)),
+                                           (None, -1, -1),),)
 
 class ReplaceDirective(Directive):
     """Implementation of the ``py:replace`` template directive.

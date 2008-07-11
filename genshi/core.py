@@ -235,9 +235,11 @@ class Stream(object):
         :see: XMLSerializer, XHTMLSerializer, HTMLSerializer, TextSerializer
         """
         from genshi.output import get_serializer
+        from genshi.optimization import optimized_flatten
         if method is None:
             method = self.serializer or 'xml'
-        return get_serializer(method, **kwargs)(_ensure(self))
+        return optimized_flatten(get_serializer(method, **kwargs)
+                                                (_ensure(self)))
 
     def __str__(self):
         return self.render()

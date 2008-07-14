@@ -244,10 +244,9 @@ class MarkupTemplate(Template):
 
         for event in stream:
 
-            # We (currently) only care about start and end events for matching
+            # We (currently) only care about start events for matching
             # We might care about namespace events in the future, though
-            if not match_templates or (event[0] is not START and
-                                       event[0] is not END):
+            if not match_templates or event[0] is not START:
                 yield event
                 continue
 

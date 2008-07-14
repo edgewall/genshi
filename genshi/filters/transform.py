@@ -494,7 +494,7 @@ class Transformer(object):
         >>> buffer = StreamBuffer()
         >>> html = HTML('<html><head><title>Some Title</title></head>'
         ...             '<body>Some <em>body</em> text.</body></html>')
-        >>> print html | Transformer('title/text()').copy(buffer) \\
+        >>> print html | Transformer('head/title/text()').copy(buffer) \\
         ...     .end().select('body').prepend(tag.h1(buffer))
         <html><head><title>Some Title</title></head><body><h1>Some
         Title</h1>Some <em>body</em> text.</body></html>

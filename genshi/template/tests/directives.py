@@ -496,8 +496,7 @@ class ForDirectiveTestCase(unittest.TestCase):
                              frames[-1].tb_frame.f_code.co_name)
             self.assertEqual('test.html',
                              frames[-1].tb_frame.f_code.co_filename)
-            if sys.version_info[:2] >= (2, 4):
-                self.assertEqual(2, frames[-1].tb_lineno)
+            self.assertEqual(2, frames[-1].tb_lineno)
 
     def test_for_with_empty_value(self):
         """
@@ -970,8 +969,7 @@ class ContentDirectiveTestCase(unittest.TestCase):
             self.fail('Expected TemplateSyntaxError')
         except TemplateSyntaxError, e:
             self.assertEqual('test.html', e.filename)
-            if sys.version_info[:2] >= (2, 4):
-                self.assertEqual(2, e.lineno)
+            self.assertEqual(2, e.lineno)
 
 
 class ReplaceDirectiveTestCase(unittest.TestCase):
@@ -989,8 +987,7 @@ class ReplaceDirectiveTestCase(unittest.TestCase):
             self.fail('Expected TemplateSyntaxError')
         except TemplateSyntaxError, e:
             self.assertEqual('test.html', e.filename)
-            if sys.version_info[:2] >= (2, 4):
-                self.assertEqual(2, e.lineno)
+            self.assertEqual(2, e.lineno)
 
     def test_as_element(self):
         tmpl = MarkupTemplate("""<div xmlns:py="http://genshi.edgewall.org/">

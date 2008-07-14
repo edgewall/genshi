@@ -1,6 +1,33 @@
+Version 0.6
+http://svn.edgewall.org/repos/genshi/tags/0.6.0/
+(???, from branches/stable/0.6.x)
+
+ * Support for Python 2.3 has been dropped.
+
+
+Version 0.5.1
+http://svn.edgewall.org/repos/genshi/tags/0.5.1/
+(Jul 9 2008, from branches/stable/0.5.x)
+
+ * Fix problem with nested match templates not being applied when buffering
+   on the outer `py:match` is disabled. Thanks to Erik Bray for reporting the
+   problem and providing a test case!
+ * Fix problem in `Translator` filter that would cause the translation of
+   text nodes to fail if the translation function returned an object that was
+   not directly a string, but rather something like an instance of the
+   `LazyProxy` class in Babel (ticket #145).
+ * Fix problem with match templates incorrectly being applied multiple times.
+ * Includes from templates loaded via an absolute path now include the correct
+   file in nested directories as long if no search path has been configured
+   (ticket #240).
+ * Unbuffered match templates could result in parts of the matched content
+   being included in the output if the match template didn't actually consume
+   it via one or more calls to the `select()` function (ticket #243).
+
+
 Version 0.5
 http://svn.edgewall.org/repos/genshi/tags/0.5.0/
-(?, from branches/stable/0.5.x)
+(Jun 9 2008, from branches/stable/0.5.x)
 
  * Added #include directive for text templates (ticket #115).
  * Added new markup transformation filter contributed by Alec Thomas. This

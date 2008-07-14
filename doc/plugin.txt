@@ -22,12 +22,11 @@ API is sitting between your code and Genshi).
 Introduction
 ============
 
-Most Python web frameworks (with the notable exception of Django_) support
-a variety of different templating engines through the `Template Engine Plugin
-API`_, which was first developed by the Buffet_ and TurboGears_ projects.
+Some Python web frameworks support a variety of different templating engines
+through the `Template Engine Plugin API`_, which was first developed by the
+Buffet_ and TurboGears_ projects.
 
 .. _`Template Engine Plugin API`: http://docs.turbogears.org/1.0/TemplatePlugins
-.. _`Django`: http://www.djangoproject.com/
 .. _`Buffet`: http://projects.dowski.com/projects/buffet
 .. _`TurboGears`: http://www.turbogears.org/
 
@@ -72,8 +71,31 @@ method when you want to use a text template. Or you'd specify "xml" for the
 format when you want to produce an Atom feed or other XML content.
 
 
+Template Paths
+--------------
+
+How you specify template paths depends on whether you have a `search path`_ set
+up or not. The search path is a list of directories that Genshi should load
+templates from. Now when you request a template using a relative path such as
+``mytmpl.html`` or ``foo/mytmpl.html``, Genshi will look for that file in the
+directories on the search path.
+
+For mostly historical reasons, the Genshi template engine plugin uses a
+different approach when you **haven't** configured the template search path:
+you now load templates using *dotted notation*, for example ``mytmpl`` or
+``foo.mytmpl``.  Note how you've lost the ability to explicitly specify the
+file extension: you now have to use ``.html`` for markup templates, and
+``.txt`` for text templates.
+
+Using the search path is recommended for a number of reasons: First, it's
+the native Genshi model and is thus more robust and better supported.
+Second, a search path gives you much more flexibility for organizing your
+application templates. And as noted above, you aren't forced to use hardcoded
+filename extensions for your template files.
+
+
 Extra Implicit Objects
-======================
+----------------------
 
 The "genshi-markup" template engine plugin adds some extra functions that are
 made available to all templates implicitly, namely:
@@ -229,6 +251,8 @@ enable the new syntax, or "no" to use the old syntax.
 
 In the version of Genshi, the default is to use the old syntax for
 backwards-compatibility, but that will change in a future release.
+
+.. _`search path`:
 
 ``genshi.search_path``
 ----------------------

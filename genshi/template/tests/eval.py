@@ -18,7 +18,7 @@ import sys
 import unittest
 
 from genshi.core import Markup
-from genshi.template.base import Context, _ctxt2dict
+from genshi.template.base import Context
 from genshi.template.eval import Expression, Suite, Undefined, UndefinedError, \
                                  UNDEFINED
 
@@ -241,11 +241,6 @@ class ExpressionTestCase(unittest.TestCase):
         self.assertEqual(42, expr.evaluate({'foo': foo, 'bar': {"x": 42}}))
 
     def test_lambda(self):
-        # Define a custom `sorted` function cause the builtin isn't available
-        # on Python 2.3
-        def sorted(items, compfunc):
-            items.sort(compfunc)
-            return items
         data = {'items': [{'name': 'b', 'value': 0}, {'name': 'a', 'value': 1}],
                 'sorted': sorted}
         expr = Expression("sorted(items, lambda a, b: cmp(a.name, b.name))")
@@ -274,30 +269,27 @@ class ExpressionTestCase(unittest.TestCase):
         expr = Expression("[i['name'] for i in items if i['value'] > 1]")
         self.assertEqual(['b'], expr.evaluate({'items': items}))
 
-    if sys.version_info >= (2, 4):
-        # Generator expressions only supported in Python 2.4 and up
+    def test_generator_expression(self):
+        expr = Expression("list(n for n in numbers if n < 2)")
+        self.assertEqual([0, 1], expr.evaluate({'numbers': range(5)}))
 
-        def test_generator_expression(self):
-            expr = Expression("list(n for n in numbers if n < 2)")
-            self.assertEqual([0, 1], expr.evaluate({'numbers': range(5)}))
+        expr = Expression("list((i, n + 1) for i, n in enumerate(numbers))")
+        self.assertEqual([(0, 1), (1, 2), (2, 3), (3, 4), (4, 5)],
+                         expr.evaluate({'numbers': range(5)}))
 
-            expr = Expression("list((i, n + 1) for i, n in enumerate(numbers))")
-            self.assertEqual([(0, 1), (1, 2), (2, 3), (3, 4), (4, 5)],
-                             expr.evaluate({'numbers': range(5)}))
+        expr = Expression("list(offset + n for n in numbers)")
+        self.assertEqual([2, 3, 4, 5, 6],
+                         expr.evaluate({'numbers': range(5), 'offset': 2}))
 
-            expr = Expression("list(offset + n for n in numbers)")
-            self.assertEqual([2, 3, 4, 5, 6],
-                             expr.evaluate({'numbers': range(5), 'offset': 2}))
+    def test_generator_expression_with_getattr(self):
+        items = [{'name': 'a', 'value': 1}, {'name': 'b', 'value': 2}]
+        expr = Expression("list(i.name for i in items if i.value > 1)")
+        self.assertEqual(['b'], expr.evaluate({'items': items}))
 
-        def test_generator_expression_with_getattr(self):
-            items = [{'name': 'a', 'value': 1}, {'name': 'b', 'value': 2}]
-            expr = Expression("list(i.name for i in items if i.value > 1)")
-            self.assertEqual(['b'], expr.evaluate({'items': items}))
-
-        def test_generator_expression_with_getitem(self):
-            items = [{'name': 'a', 'value': 1}, {'name': 'b', 'value': 2}]
-            expr = Expression("list(i['name'] for i in items if i['value'] > 1)")
-            self.assertEqual(['b'], expr.evaluate({'items': items}))
+    def test_generator_expression_with_getitem(self):
+        items = [{'name': 'a', 'value': 1}, {'name': 'b', 'value': 2}]
+        expr = Expression("list(i['name'] for i in items if i['value'] > 1)")
+        self.assertEqual(['b'], expr.evaluate({'items': items}))
 
     if sys.version_info >= (2, 5):
         def test_conditional_expression(self):
@@ -575,7 +567,7 @@ x = create()
     def test_import_star(self):
         suite = Suite("from itertools import *")
         data = Context()
-        suite.execute(_ctxt2dict(data))
+        suite.execute(data)
         assert 'ifilter' in data
 
     def test_for(self):

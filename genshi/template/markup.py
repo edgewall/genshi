@@ -221,12 +221,11 @@ class MarkupTemplate(Template):
         assert len(streams) == 1
         return streams[0]
 
-    def _match(self, stream, ctxt, match_templates=None, **vars):
+    def _match(self, stream, ctxt, start=0, end=None, **vars):
         """Internal stream filter that applies any defined match templates
         to the stream.
         """
-        if match_templates is None:
-            match_templates = ctxt._match_templates
+        match_templates = ctxt._match_templates
 
         tail = []
         def _strip(stream):
@@ -254,6 +253,8 @@ class MarkupTemplate(Template):
 
             for idx, (test, path, template, hints, namespaces, directives) \
                     in enumerate(match_templates):
+                if idx < start or end is not None and idx >= end:
+                    continue
 
                 if test(event, namespaces, ctxt) is True:
                     if 'match_once' in hints:
@@ -267,23 +268,21 @@ class MarkupTemplate(Template):
 
                     # Consume and store all events until an end event
                     # corresponding to this start event is encountered
-                    pre_match_templates = match_templates[:idx + 1]
+                    pre_end = idx + 1
                     if 'match_once' not in hints and 'not_recursive' in hints:
-                        pre_match_templates.pop()
+                        pre_end -= 1
                     inner = _strip(stream)
-                    if pre_match_templates:
-                        inner = self._match(inner, ctxt, pre_match_templates)
+                    if pre_end > 0:
+                        inner = self._match(inner, ctxt, end=pre_end)
                     content = self._include(chain([event], inner, tail), ctxt)
                     if 'not_buffered' not in hints:
                         content = list(content)
 
-                    if tail:
-                        for test in [mt[0] for mt in match_templates]:
-                            test(tail[0], namespaces, ctxt, updateonly=True)
-
                     # Make the select() function available in the body of the
                     # match template
+                    selected = [False]
                     def select(path):
+                        selected[0] = True
                         return Stream(content).select(path, namespaces, ctxt)
                     vars = dict(select=select)
 
@@ -296,8 +295,21 @@ class MarkupTemplate(Template):
                                     self._flatten(template, ctxt, **vars),
                                     ctxt, **vars),
                                 ctxt, **vars),
-                            ctxt, match_templates[idx + 1:], **vars):
+                            ctxt, start=idx + 1, **vars):
                         yield event
+
+                    # If the match template did not actually call select to
+                    # consume the matched stream, the original events need to
+                    # be consumed here or they'll get appended to the output
+                    if not selected[0]:
+                        for event in content:
+                            pass
+
+                    # Let the remaining match templates know about the last
+                    # event in the matched content, so they can update their
+                    # internal state accordingly
+                    for test in [mt[0] for mt in match_templates]:
+                        test(tail[0], namespaces, ctxt, updateonly=True)
 
                     break
 

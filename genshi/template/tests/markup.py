@@ -81,8 +81,7 @@ class MarkupTemplateTestCase(unittest.TestCase):
             tmpl = MarkupTemplate(xml, filename='test.html')
         except BadDirectiveError, e:
             self.assertEqual('test.html', e.filename)
-            if sys.version_info[:2] >= (2, 4):
-                self.assertEqual(1, e.lineno)
+            self.assertEqual(1, e.lineno)
 
     def test_directive_value_syntax_error(self):
         xml = """<p xmlns:py="http://genshi.edgewall.org/" py:if="bar'" />"""
@@ -91,8 +90,7 @@ class MarkupTemplateTestCase(unittest.TestCase):
             self.fail('Expected SyntaxError')
         except TemplateSyntaxError, e:
             self.assertEqual('test.html', e.filename)
-            if sys.version_info[:2] >= (2, 4):
-                self.assertEqual(1, e.lineno)
+            self.assertEqual(1, e.lineno)
 
     def test_expression_syntax_error(self):
         xml = """<p>
@@ -103,8 +101,7 @@ class MarkupTemplateTestCase(unittest.TestCase):
             self.fail('Expected SyntaxError')
         except TemplateSyntaxError, e:
             self.assertEqual('test.html', e.filename)
-            if sys.version_info[:2] >= (2, 4):
-                self.assertEqual(2, e.lineno)
+            self.assertEqual(2, e.lineno)
 
     def test_expression_syntax_error_multi_line(self):
         xml = """<p><em></em>
@@ -117,8 +114,7 @@ class MarkupTemplateTestCase(unittest.TestCase):
             self.fail('Expected SyntaxError')
         except TemplateSyntaxError, e:
             self.assertEqual('test.html', e.filename)
-            if sys.version_info[:2] >= (2, 4):
-                self.assertEqual(3, e.lineno)
+            self.assertEqual(3, e.lineno)
 
     def test_markup_noescape(self):
         """
@@ -690,6 +686,46 @@ class MarkupTemplateTestCase(unittest.TestCase):
 """, tmpl.generate().render())
         finally:
             shutil.rmtree(dirname)
+
+    def test_nested_matches_without_buffering(self):
+        xml = ("""<html xmlns:py="http://genshi.edgewall.org/">
+          <py:match path="body" once="true" buffer="false">
+            <body>
+              ${select('*|text')}
+              And some other stuff...
+            </body>
+          </py:match>
+          <body>
+            <span py:match="span">Foo</span>
+            <span>Bar</span>
+          </body>
+        </html>""")
+        tmpl = MarkupTemplate(xml, filename='test.html')
+        self.assertEqual("""<html>
+            <body>
+              <span>Foo</span>
+              And some other stuff...
+            </body>
+        </html>""", tmpl.generate().render())
+
+    def test_match_without_select(self):
+        # See <http://genshi.edgewall.org/ticket/243>
+        xml = ("""<html xmlns:py="http://genshi.edgewall.org/">
+          <py:match path="body" buffer="false">
+            <body>
+              This replaces the other text.
+            </body>
+          </py:match>
+          <body>
+            This gets replaced.
+          </body>
+        </html>""")
+        tmpl = MarkupTemplate(xml, filename='test.html')
+        self.assertEqual("""<html>
+            <body>
+              This replaces the other text.
+            </body>
+        </html>""", tmpl.generate().render())
 
 
 def suite():

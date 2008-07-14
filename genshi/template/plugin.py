@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2006-2007 Edgewall Software
+# Copyright (C) 2006-2008 Edgewall Software
 # Copyright (C) 2006 Matthew Good
 # All rights reserved.
 #
@@ -15,8 +15,6 @@
 """Basic support for the template engine plugin API used by TurboGears and
 CherryPy/Buffet.
 """
-
-from pkg_resources import resource_filename
 
 from genshi.input import ET, HTML, XML
 from genshi.output import DocType
@@ -91,6 +89,7 @@ class AbstractTemplateEnginePlugin(object):
         if self.use_package_naming:
             divider = templatename.rfind('.')
             if divider >= 0:
+                from pkg_resources import resource_filename
                 package = templatename[:divider]
                 basename = templatename[divider + 1:] + self.extension
                 templatename = resource_filename(package, basename)

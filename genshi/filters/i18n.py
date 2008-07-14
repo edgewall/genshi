@@ -17,10 +17,6 @@
 """
 
 from compiler import ast
-try:
-    frozenset
-except NameError:
-    from sets import ImmutableSet as frozenset
 from gettext import gettext
 import re
 
@@ -180,7 +176,10 @@ class Translator(object):
                     msgbuf.append(kind, data, pos)
                     continue
                 elif i18n_msg in attrs:
-                    msgbuf = MessageBuffer()
+                    params = attrs.get(i18n_msg)
+                    if params and type(params) is list: # event tuple
+                        params = params[0][1]
+                    msgbuf = MessageBuffer(params)
                     attrs -= i18n_msg
 
                 yield kind, (tag, attrs), pos
@@ -189,10 +188,13 @@ class Translator(object):
                 if not msgbuf:
                     text = data.strip()
                     if text:
-                        data = data.replace(text, translate(text))
+                        data = data.replace(text, unicode(translate(text)))
                     yield kind, data, pos
                 else:
                     msgbuf.append(kind, data, pos)
+
+            elif msgbuf and kind is EXPR:
+                msgbuf.append(kind, data, pos)
 
             elif not skip and msgbuf and kind is END:
                 msgbuf.append(kind, data, pos)
@@ -301,7 +303,10 @@ class Translator(object):
                 if msgbuf:
                     msgbuf.append(kind, data, pos)
                 elif i18n_msg in attrs:
-                    msgbuf = MessageBuffer(pos[1])
+                    params = attrs.get(i18n_msg)
+                    if params and type(params) is list: # event tuple
+                        params = params[0][1]
+                    msgbuf = MessageBuffer(params, pos[1])
 
             elif not skip and search_text and kind is TEXT:
                 if not msgbuf:
@@ -318,6 +323,8 @@ class Translator(object):
                     msgbuf = None
 
             elif kind is EXPR or kind is EXEC:
+                if msgbuf:
+                    msgbuf.append(kind, data, pos)
                 for funcname, strings in extract_from_code(data,
                                                            gettext_functions):
                     yield pos[1], funcname, strings
@@ -337,15 +344,19 @@ class MessageBuffer(object):
     :since: version 0.5
     """
 
-    def __init__(self, lineno=-1):
+    def __init__(self, params=u'', lineno=-1):
         """Initialize the message buffer.
         
+        :param params: comma-separated list of parameter names
+        :type params: `basestring`
         :param lineno: the line number on which the first stream event
                        belonging to the message was found
         """
+        self.params = [name.strip() for name in params.split(',')]
         self.lineno = lineno
         self.string = []
         self.events = {}
+        self.values = {}
         self.depth = 1
         self.order = 1
         self.stack = [0]
@@ -360,6 +371,11 @@ class MessageBuffer(object):
         if kind is TEXT:
             self.string.append(data)
             self.events.setdefault(self.stack[-1], []).append(None)
+        elif kind is EXPR:
+            param = self.params.pop(0)
+            self.string.append('%%(%s)s' % param)
+            self.events.setdefault(self.stack[-1], []).append(None)
+            self.values[param] = (kind, data, pos)
         else:
             if kind is START:
                 self.string.append(u'[%d:' % self.order)
@@ -380,7 +396,7 @@ class MessageBuffer(object):
         """
         return u''.join(self.string).strip()
 
-    def translate(self, string):
+    def translate(self, string, regex=re.compile(r'%\((\w+)\)s')):
         """Interpolate the given message translation with the events in the
         buffer and return the translated stream.
         
@@ -390,15 +406,19 @@ class MessageBuffer(object):
         for order, string in parts:
             events = self.events[order]
             while events:
-                event = self.events[order].pop(0)
-                if not event:
+                event = events.pop(0)
+                if event:
+                    yield event
+                else:
                     if not string:
                         break
-                    yield TEXT, string, (None, -1, -1)
+                    for idx, part in enumerate(regex.split(string)):
+                        if idx % 2:
+                            yield self.values[part]
+                        elif part:
+                            yield TEXT, part, (None, -1, -1)
                     if not self.events[order] or not self.events[order][0]:
                         break
-                else:
-                    yield event
 
 
 def parse_msg(string, regex=re.compile(r'(?:\[(\d+)\:)|\]')):
@@ -445,6 +465,7 @@ def parse_msg(string, regex=re.compile(r'(?:\[(\d+)\:)|\]')):
 
     return parts
 
+
 def extract_from_code(code, gettext_functions):
     """Extract strings from Python bytecode.
     
@@ -487,6 +508,7 @@ def extract_from_code(code, gettext_functions):
                 for funcname, strings in _walk(child):
                     yield funcname, strings
     return _walk(code.ast)
+
 
 def extract(fileobj, keywords, comment_tags, options):
     """Babel extraction method for Genshi templates.

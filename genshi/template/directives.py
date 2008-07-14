@@ -14,10 +14,6 @@
 """Implementation of the various template directives."""
 
 import compiler
-try:
-    frozenset
-except NameError:
-    from sets import ImmutableSet as frozenset
 
 from genshi.core import QName, Stream
 from genshi.path import Path
@@ -316,11 +312,7 @@ class DefDirective(Directive):
             for event in _apply_directives(stream, directives, ctxt, **vars):
                 yield event
             ctxt.pop()
-        try:
-            function.__name__ = self.name
-        except TypeError:
-            # Function name can't be set in Python 2.3 
-            pass
+        function.__name__ = self.name
 
         # Store the function reference in the bottom context frame so that it
         # doesn't get popped off before processing the template has finished

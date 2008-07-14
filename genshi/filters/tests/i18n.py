@@ -11,6 +11,7 @@
 # individuals. For the exact contribution history, see the revision
 # history and logs, available at http://genshi.edgewall.org/log/.
 
+from datetime import datetime
 import doctest
 from StringIO import StringIO
 import unittest
@@ -261,6 +262,73 @@ class TranslatorTestCase(unittest.TestCase):
         self.assertEqual("""<html>
           <p><input type="text" name="num"/> Eintr\xc3\xa4ge pro Seite, beginnend auf Seite <input type="text" name="num"/>.</p>
         </html>""", tmpl.generate().render())
+
+    def test_extract_i18n_msg_with_param(self):
+        tmpl = MarkupTemplate("""<html xmlns:py="http://genshi.edgewall.org/"
+            xmlns:i18n="http://genshi.edgewall.org/i18n">
+          <p i18n:msg="name">
+            Hello, ${user.name}!
+          </p>
+        </html>""")
+        translator = Translator()
+        messages = list(translator.extract(tmpl.stream))
+        self.assertEqual(1, len(messages))
+        self.assertEqual('Hello, %(name)s!', messages[0][2])
+
+    def test_translate_i18n_msg_with_param(self):
+        tmpl = MarkupTemplate("""<html xmlns:py="http://genshi.edgewall.org/"
+            xmlns:i18n="http://genshi.edgewall.org/i18n">
+          <p i18n:msg="name">
+            Hello, ${user.name}!
+          </p>
+        </html>""")
+        gettext = lambda s: u"Hallo, %(name)s!"
+        tmpl.filters.insert(0, Translator(gettext))
+        self.assertEqual("""<html>
+          <p>Hallo, Jim!</p>
+        </html>""", tmpl.generate(user=dict(name='Jim')).render())
+
+    def test_translate_i18n_msg_with_param_reordered(self):
+        tmpl = MarkupTemplate("""<html xmlns:py="http://genshi.edgewall.org/"
+            xmlns:i18n="http://genshi.edgewall.org/i18n">
+          <p i18n:msg="name">
+            Hello, ${user.name}!
+          </p>
+        </html>""")
+        gettext = lambda s: u"%(name)s, sei gegrüßt!"
+        tmpl.filters.insert(0, Translator(gettext))
+        self.assertEqual("""<html>
+          <p>Jim, sei gegrüßt!</p>
+        </html>""", tmpl.generate(user=dict(name='Jim')).render())
+
+    def test_extract_i18n_msg_with_two_params(self):
+        tmpl = MarkupTemplate("""<html xmlns:py="http://genshi.edgewall.org/"
+            xmlns:i18n="http://genshi.edgewall.org/i18n">
+          <p i18n:msg="name, time">
+            Posted by ${post.author} at ${entry.time.strftime('%H:%m')}
+          </p>
+        </html>""")
+        translator = Translator()
+        messages = list(translator.extract(tmpl.stream))
+        self.assertEqual(1, len(messages))
+        self.assertEqual('Posted by %(name)s at %(time)s', messages[0][2])
+
+    def test_translate_i18n_msg_with_two_params(self):
+        tmpl = MarkupTemplate("""<html xmlns:py="http://genshi.edgewall.org/"
+            xmlns:i18n="http://genshi.edgewall.org/i18n">
+          <p i18n:msg="name, time">
+            Written by ${entry.author} at ${entry.time.strftime('%H:%M')}
+          </p>
+        </html>""")
+        gettext = lambda s: u"%(name)s schrieb dies um %(time)s"
+        tmpl.filters.insert(0, Translator(gettext))
+        entry = {
+            'author': 'Jim',
+            'time': datetime(2008, 4, 1, 14, 30)
+        }
+        self.assertEqual("""<html>
+          <p>Jim schrieb dies um 14:30</p>
+        </html>""", tmpl.generate(entry=entry).render())
 
     def test_extract_i18n_msg_with_directive(self):
         tmpl = MarkupTemplate("""<html xmlns:py="http://genshi.edgewall.org/"

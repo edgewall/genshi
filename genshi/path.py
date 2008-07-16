@@ -91,7 +91,9 @@ class Path(object):
         :param lineno: the line on which the expression was found
         """
         self.source = text
+        open("path.log","a").write(text+"\n")
         self.paths = PathParser(text, filename, lineno).parse()
+        self.strategies = map(GenericStrategy, self.paths)
 
     def __repr__(self):
         paths = []
@@ -182,160 +184,177 @@ class Path(object):
         :rtype: ``function``
         """
 
-        paths = []
-        for p in self.paths:
-            if ignore_context:
-                if p[0][0] is ATTRIBUTE:
-                    steps = [_DOTSLASHSLASH] + p
-                else:
-                    steps = [(DESCENDANT_OR_SELF, p[0][1], p[0][2],)] + p[1:]
-            elif p[0][0] is CHILD or p[0][0] is ATTRIBUTE:
-                steps = [_DOTSLASH] + p
+        # test for every subpath
+        tests = []
+        for s in self.strategies:
+            tests.append(s.test(ignore_context))
+
+        def _test(event, namespaces, variables, updateonly=False):
+            retval = None
+            for t in tests:
+                val = t(event, namespaces, variables, updateonly)
+                # TODO SOC: collect attributes
+                if retval is None:
+                    retval = val
+            return retval
+
+        return _test
+
+
+class GenericStrategy(object):
+    def __init__(self, path):
+        self.path = path
+    def test(self, ignore_context):
+        p = self.path
+        if ignore_context:
+            if p[0][0] is ATTRIBUTE:
+                steps = [_DOTSLASHSLASH] + p
             else:
-                steps = p
+                steps = [(DESCENDANT_OR_SELF, p[0][1], p[0][2],)] + p[1:]
+        elif p[0][0] is CHILD or p[0][0] is ATTRIBUTE:
+            steps = [_DOTSLASH] + p
+        else:
+            steps = p
 
-            # for node it contains all positions of xpath expression
-            # where its child should start checking for matches
-            # it's always increasing sequence (invariant)
-            stack = [[0]]
+        # for node it contains all positions of xpath expression
+        # where its child should start checking for matches
+        # it's always increasing sequence (invariant)
+        stack = [[0]]
 
-            # for every position in expression stores counters' list
-            # it is used for position based predicates
-            counters = [[] for _ in xrange(len(steps))]
+        # for every position in expression stores counters' list
+        # it is used for position based predicates
+        counters = [[] for _ in xrange(len(steps))]
 
-            # indexes where expression has descendant(-or-self) axis
-            descendant_axes = [i for (i, (a, _, _,),) in
-                                 enumerate(steps) if a is DESCENDANT 
-                                 or a is DESCENDANT_OR_SELF]
-
-            paths.append((steps, stack, descendant_axes, counters,))
+        # indexes where expression has descendant(-or-self) axis
+        descendant_axes = [i for (i, (a, _, _,),) in
+                             enumerate(steps) if a is DESCENDANT 
+                             or a is DESCENDANT_OR_SELF]
 
         def _test(event, namespaces, variables, updateonly=False):
 
             kind, data, pos = event[:3]
+
             retval = None
-            for steps, stack, descendant_axes, counters in paths:
-                # Manage the stack that tells us "where we are" in the stream
-                if kind is END:
-                    stack.pop()
+            # Manage the stack that tells us "where we are" in the stream
+            if kind is END:
+                stack.pop()
+                return None
+            elif kind is START:
+                pass
+            elif kind is START_NS or kind is END_NS \
+                    or kind is START_CDATA or kind is END_CDATA:
+                # should we make namespaces work?
+                return None
+
+            # FIXME: Need to find out when we can do this
+            #if updateonly:
+            #    continue
+
+            my_positions = stack[-1]
+            next_positions = []
+
+            # length of real part of path - we omit attribute axis
+            real_len = len(steps) - ((steps[-1][0] == ATTRIBUTE) or 1 and 0)
+            last_checked = -1
+            
+            # places where we have to check for match, are these
+            # provided by parent
+            for position in my_positions:
+
+                # we have already checked this position
+                # (it had to be because of self-like axes)
+                if position <= last_checked:
                     continue
-                elif kind is START:
-                    pass
-                elif kind is START_NS or kind is END_NS \
-                        or kind is START_CDATA or kind is END_CDATA:
-                    # should we make namespaces work?
-                    continue
 
-                # FIXME: Need to find out when we can do this
-                #if updateonly:
-                #    continue
+                for x in xrange(position, real_len):
+                    # number of counters - we have to create one
+                    # for every context position based predicate
+                    cnum = 0
 
-                my_positions = stack[-1]
-                next_positions = []
+                    axis, nodetest, predicates = steps[x]
 
-                # length of real part of path - we omit attribute axis
-                real_len = len(steps) - ((steps[-1][0] == ATTRIBUTE) or 1 and 0)
-                last_checked = -1
-                
-                # places where we have to check for match, are these
-                # provided by parent
-                for position in my_positions:
+                    if x != position and axis is not SELF:
+                        next_positions.append(x)
 
-                    # we have already checked this position
-                    # (it had to be because of self-like axes)
-                    if position <= last_checked:
-                        continue
-
-                    for x in xrange(position, real_len):
-                        # number of counters - we have to create one
-                        # for every context position based predicate
-                        cnum = 0
-
-                        axis, nodetest, predicates = steps[x]
-
-                        if x != position and axis is not SELF:
-                            next_positions.append(x)
-
-                        # to go further we have to use self-like axes
-                        if axis is not DESCENDANT_OR_SELF and \
-                            axis is not SELF and x != position:
-                            x -= 1 # x hasn't been really checked so we can't
-                                   # reall save it to last_checked
-                            break
+                    # to go further we have to use self-like axes
+                    if axis is not DESCENDANT_OR_SELF and \
+                        axis is not SELF and x != position:
+                        x -= 1 # x hasn't been really checked so we can't
+                               # reall save it to last_checked
+                        break
 
 
-                        # tells if we have match with position x
-                        matched = False
+                    # tells if we have match with position x
+                    matched = False
 
-                        # nodetest first
-                        if nodetest(kind, data, pos, namespaces, variables):
-                            matched = True
-
-                        # TODO: or maybe add nodetest here 
-                        # (chain((nodetest,), predicates))?
-                        if matched and predicates:
-                            for predicate in predicates:
-                                pretval = predicate(kind, data, pos,
-                                                    namespaces,
-                                                    variables)
-                                if type(pretval) is float: # FIXME <- need to
-                                                           # check this for
-                                                           # other types that
-                                                           # can be coerced to
-                                                           # float
-                                    if len(counters[x]) < cnum+1:
-                                        counters[x].append(0)
-                                    counters[x][cnum] += 1 
-                                    if counters[x][cnum] != int(pretval):
-                                        pretval = False
-                                    cnum += 1
-                                if not pretval:
-                                     matched = False
-                                     break
-                        if not matched:
-                            break
-                    else:
-                        # we reached end of expression, because x
-                        # is equal to the length of expression
+                    # nodetest first
+                    if nodetest(kind, data, pos, namespaces, variables):
                         matched = True
-                        axis, nodetest, predicates = steps[-1]
-                        if axis is ATTRIBUTE:
-                            matched = nodetest(kind, data, pos, \
-                                    namespaces, variables)
-                        if matched:
-                            retval = matched
-                    # in x is stored the last index for which check was done
-                    last_checked = x
+
+                    # TODO: or maybe add nodetest here 
+                    # (chain((nodetest,), predicates))?
+                    if matched and predicates:
+                        for predicate in predicates:
+                            pretval = predicate(kind, data, pos,
+                                                namespaces,
+                                                variables)
+                            if type(pretval) is float: # FIXME <- need to
+                                                       # check this for
+                                                       # other types that
+                                                       # can be coerced to
+                                                       # float
+                                if len(counters[x]) < cnum+1:
+                                    counters[x].append(0)
+                                counters[x][cnum] += 1 
+                                if counters[x][cnum] != int(pretval):
+                                    pretval = False
+                                cnum += 1
+                            if not pretval:
+                                 matched = False
+                                 break
+                    if not matched:
+                        break
+                else:
+                    # we reached end of expression, because x
+                    # is equal to the length of expression
+                    matched = True
+                    axis, nodetest, predicates = steps[-1]
+                    if axis is ATTRIBUTE:
+                        matched = nodetest(kind, data, pos, \
+                                namespaces, variables)
+                    if matched:
+                        retval = matched
+                # in x is stored the last index for which check was done
+                last_checked = x
 
 
-                if kind is START:
-                    # in next_positions there are positions that are implied
-                    # by current matches, but we have to add previous
-                    # descendant-like axis positions
-                    # (which can "jump" over tree)
-                    i = 0
-                    stack.append([])
-                    # every descendant axis before furthest position is ok
-                    for pos in next_positions:
-                        while i != len(descendant_axes) \
-                                and descendant_axes[i] < pos:
-                            stack[-1].append(descendant_axes[i])
-                            i += 1
-                        if i != len(descendant_axes) \
-                                and descendant_axes[i] == pos:
-                            i += 1
-                        stack[-1].append(pos)
+            if kind is START:
+                # in next_positions there are positions that are implied
+                # by current matches, but we have to add previous
+                # descendant-like axis positions
+                # (which can "jump" over tree)
+                i = 0
+                stack.append([])
+                # every descendant axis before furthest position is ok
+                for pos in next_positions:
+                    while i != len(descendant_axes) \
+                            and descendant_axes[i] < pos:
+                        stack[-1].append(descendant_axes[i])
+                        i += 1
+                    if i != len(descendant_axes) \
+                            and descendant_axes[i] == pos:
+                        i += 1
+                    stack[-1].append(pos)
 
-                    # every descendant that was parent's one is ok
-                    if my_positions:
-                        while i != len(descendant_axes) \
-                                 and descendant_axes[i] <= my_positions[-1]:
-                            stack[-1].append(descendant_axes[i])
-                            i += 1
+                # every descendant that was parent's one is ok
+                if my_positions:
+                    while i != len(descendant_axes) \
+                             and descendant_axes[i] <= my_positions[-1]:
+                        stack[-1].append(descendant_axes[i])
+                        i += 1
 
             return retval
         return _test
-
 
 class PathSyntaxError(Exception):
     """Exception raised when an XPath expression is syntactically incorrect."""

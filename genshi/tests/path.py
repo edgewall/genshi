@@ -477,6 +477,18 @@ class PathTestCase(unittest.TestCase):
         path = Path('foo[@f:*]')
         self.assertEqual('<foo xmlns:ns1="FOO" ns1:bar="baz"/>',
                          path.select(xml, namespaces={'f': 'FOO'}).render())
+    def test_self_and_descendant(self):
+        xml = XML('<root><foo/></root>')
+        self.assertEqual('<root><foo/></root>',
+                Path('self::root').select(xml).render())
+        self.assertEqual('', Path('self::foo').select(xml).render())
+        self.assertEqual('', Path('descendant::root').select(xml).render())
+        self.assertEqual('<foo/>',
+                Path('descendant::foo').select(xml).render())
+        self.assertEqual('<root><foo/></root>',
+                Path('descendant-or-self::root').select(xml).render())
+        self.assertEqual('<foo/>',
+                Path('descendant-or-self::foo').select(xml).render())
 
 
 def suite():

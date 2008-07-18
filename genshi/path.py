@@ -93,7 +93,14 @@ class Path(object):
         self.source = text
         open("path.log","a").write(text+"\n")
         self.paths = PathParser(text, filename, lineno).parse()
-        self.strategies = map(GenericStrategy, self.paths)
+        self.strategies = []
+        for path in self.paths:
+            if len(path) == 1:
+                # only one axis
+                strategy = SingleAxisStrategy(path)
+            else:
+                strategy = GenericStrategy(path)
+            self.strategies.append(strategy)
 
     def __repr__(self):
         paths = []
@@ -183,6 +190,9 @@ class Path(object):
                  stream against the path
         :rtype: ``function``
         """
+
+        if len(self.strategies) == 1:                             
+            return self.strategies[0].test(ignore_context)   
 
         # test for every subpath
         tests = []
@@ -354,6 +364,88 @@ class GenericStrategy(object):
                         i += 1
 
             return retval
+        return _test
+
+class SingleAxisStrategy(object):
+    def __init__(self, path):
+        self.path = path
+    def test(self, ignore_context):
+        p = self.path
+        if p[0][0] is ATTRIBUTE:
+            steps = [_DOTSLASH] + self.path
+        else:
+            steps = p
+
+        if ignore_context and steps[0][0] is not DESCENDANT:
+            steps = [(DESCENDANT_OR_SELF, p[0][1], p[0][2],)] + p[1:]
+
+        # for every position in expression stores counters' list
+        # it is used for position based predicates
+        counters = []
+        depth = [0]
+
+        def _test(event, namespaces, variables, updateonly=False):
+
+            kind, data, pos = event[:3]
+
+            retval = None
+            # Manage the stack that tells us "where we are" in the stream
+            if kind is END:
+                depth[0] -= 1
+                return None
+            elif kind is START_NS or kind is END_NS \
+                    or kind is START_CDATA or kind is END_CDATA:
+                # should we make namespaces work?
+                return None
+
+            depth[0] += 1
+            bad_depth = False
+
+            if (steps[0][0] is SELF and depth[0] != 1) \
+                    or (steps[0][0] is CHILD and depth[0] != 2) \
+                    or (steps[0][0] is DESCENDANT and depth[0] < 2):
+                bad_depth = True
+
+            if kind is not START:
+                depth[0] -= 1
+
+            if bad_depth:
+                return None
+
+            axis, nodetest, predicates = steps[0]
+
+            # nodetest first
+            if not nodetest(kind, data, pos, namespaces, variables):
+                return None
+
+            # TODO: or maybe add nodetest here 
+            # (chain((nodetest,), predicates))?
+            cnum = 0
+            if predicates:
+                for predicate in predicates:
+                    pretval = predicate(kind, data, pos,
+                                        namespaces,
+                                        variables)
+                    if type(pretval) is float: # FIXME <- need to
+                                               # check this for
+                                               # other types that
+                                               # can be coerced to
+                                               # float
+                        if len(counters) < cnum+1:
+                            counters.append(0)
+                        counters[cnum] += 1 
+                        if counters[cnum] != int(pretval):
+                            pretval = False
+                        cnum += 1
+                    if not pretval:
+                         return None
+            axis, nodetest, predicates = steps[-1]
+            if axis is ATTRIBUTE:
+                return nodetest(kind, data, pos, \
+                        namespaces, variables)
+            else:
+                return True
+
         return _test
 
 class PathSyntaxError(Exception):

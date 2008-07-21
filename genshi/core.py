@@ -245,6 +245,9 @@ class Stream(object):
     def __unicode__(self):
         return self.render(encoding=None)
 
+    def __html__(self):
+        return self
+
 
 START = Stream.START
 END = Stream.END
@@ -485,6 +488,9 @@ class Markup(unicode):
             return cls()
         if type(text) is cls:
             return text
+        if hasattr(text, '__html__'):
+            return Markup(text.__html__())
+
         text = unicode(text).replace('&', '&amp;') \
                             .replace('<', '&lt;') \
                             .replace('>', '&gt;')

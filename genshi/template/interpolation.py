@@ -17,7 +17,8 @@ parts that are literal strings, and others that are Python expressions.
 
 from itertools import chain
 import os
-from tokenize import tokenprog
+import re
+from tokenize import PseudoToken
 
 from genshi.core import TEXT
 from genshi.template.base import TemplateSyntaxError, EXPR
@@ -29,6 +30,11 @@ __docformat__ = 'restructuredtext en'
 NAMESTART = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_'
 NAMECHARS = NAMESTART + '.0123456789'
 PREFIX = '$'
+
+token_re = re.compile('%s|%s(?s)' % (
+    r'[uU]?[rR]?("""|\'\'\')((?<!\\)\\\1|.)*?\1',
+    PseudoToken
+))
 
 def interpolate(text, filepath=None, lineno=-1, offset=0, lookup='strict'):
     """Parse the given string and extract expressions.
@@ -106,7 +112,7 @@ def lex(text, textpos, filepath):
             pos = offset + 2
             level = 1
             while level:
-                match = tokenprog.match(text, pos)
+                match = token_re.match(text, pos)
                 if match is None:
                     raise TemplateSyntaxError('invalid syntax',  filepath,
                                               *textpos[1:])

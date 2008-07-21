@@ -56,7 +56,7 @@ completely removed).
 ``Markup`` Constructor
 ----------------------
 
-The ``Markup`` class now longer has a specialized constructor. The old
+The ``Markup`` class no longer has a specialized constructor. The old
 (undocumented) constructor provided a shorthand for doing positional
 substitutions. If you have code like this:
 
@@ -64,7 +64,7 @@ substitutions. If you have code like this:
 
   Markup('<b>%s</b>', name)
 
-You can simply replace it by the more explicit:
+You must replace it by the more explicit:
 
 .. code-block:: python
 

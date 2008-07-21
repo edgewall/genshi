@@ -180,7 +180,10 @@ class Translator(object):
                     msgbuf.append(kind, data, pos)
                     continue
                 elif i18n_msg in attrs:
-                    msgbuf = MessageBuffer()
+                    params = attrs.get(i18n_msg)
+                    if params and type(params) is list: # event tuple
+                        params = params[0][1]
+                    msgbuf = MessageBuffer(params)
                     attrs -= i18n_msg
 
                 yield kind, (tag, attrs), pos
@@ -189,10 +192,13 @@ class Translator(object):
                 if not msgbuf:
                     text = data.strip()
                     if text:
-                        data = data.replace(text, translate(text))
+                        data = data.replace(text, unicode(translate(text)))
                     yield kind, data, pos
                 else:
                     msgbuf.append(kind, data, pos)
+
+            elif msgbuf and kind is EXPR:
+                msgbuf.append(kind, data, pos)
 
             elif not skip and msgbuf and kind is END:
                 msgbuf.append(kind, data, pos)
@@ -301,7 +307,10 @@ class Translator(object):
                 if msgbuf:
                     msgbuf.append(kind, data, pos)
                 elif i18n_msg in attrs:
-                    msgbuf = MessageBuffer(pos[1])
+                    params = attrs.get(i18n_msg)
+                    if params and type(params) is list: # event tuple
+                        params = params[0][1]
+                    msgbuf = MessageBuffer(params, pos[1])
 
             elif not skip and search_text and kind is TEXT:
                 if not msgbuf:
@@ -318,6 +327,8 @@ class Translator(object):
                     msgbuf = None
 
             elif kind is EXPR or kind is EXEC:
+                if msgbuf:
+                    msgbuf.append(kind, data, pos)
                 for funcname, strings in extract_from_code(data,
                                                            gettext_functions):
                     yield pos[1], funcname, strings
@@ -332,26 +343,46 @@ class Translator(object):
 
 
 class MessageBuffer(object):
-    """Helper class for managing localizable mixed content.
+    """Helper class for managing internationalized mixed content.
     
     :since: version 0.5
     """
 
-    def __init__(self, lineno=-1):
+    def __init__(self, params=u'', lineno=-1):
+        """Initialize the message buffer.
+        
+        :param params: comma-separated list of parameter names
+        :type params: `basestring`
+        :param lineno: the line number on which the first stream event
+                       belonging to the message was found
+        """
+        self.params = [name.strip() for name in params.split(',')]
         self.lineno = lineno
-        self.strings = []
+        self.string = []
         self.events = {}
+        self.values = {}
         self.depth = 1
         self.order = 1
         self.stack = [0]
 
     def append(self, kind, data, pos):
+        """Append a stream event to the buffer.
+        
+        :param kind: the stream event kind
+        :param data: the event data
+        :param pos: the position of the event in the source
+        """
         if kind is TEXT:
-            self.strings.append(data)
+            self.string.append(data)
             self.events.setdefault(self.stack[-1], []).append(None)
+        elif kind is EXPR:
+            param = self.params.pop(0)
+            self.string.append('%%(%s)s' % param)
+            self.events.setdefault(self.stack[-1], []).append(None)
+            self.values[param] = (kind, data, pos)
         else:
             if kind is START:
-                self.strings.append(u'[%d:' % self.order)
+                self.string.append(u'[%d:' % self.order)
                 self.events.setdefault(self.order, []).append((kind, data, pos))
                 self.stack.append(self.order)
                 self.depth += 1
@@ -360,26 +391,83 @@ class MessageBuffer(object):
                 self.depth -= 1
                 if self.depth:
                     self.events[self.stack[-1]].append((kind, data, pos))
-                    self.strings.append(u']')
+                    self.string.append(u']')
                     self.stack.pop()
 
     def format(self):
-        return u''.join(self.strings).strip()
+        """Return a message identifier representing the content in the
+        buffer.
+        """
+        return u''.join(self.string).strip()
 
-    def translate(self, string):
+    def translate(self, string, regex=re.compile(r'%\((\w+)\)s')):
+        """Interpolate the given message translation with the events in the
+        buffer and return the translated stream.
+        
+        :param string: the translated message string
+        """
         parts = parse_msg(string)
         for order, string in parts:
             events = self.events[order]
             while events:
-                event = self.events[order].pop(0)
-                if not event:
+                event = events.pop(0)
+                if event:
+                    yield event
+                else:
                     if not string:
                         break
-                    yield TEXT, string, (None, -1, -1)
+                    for idx, part in enumerate(regex.split(string)):
+                        if idx % 2:
+                            yield self.values[part]
+                        elif part:
+                            yield TEXT, part, (None, -1, -1)
                     if not self.events[order] or not self.events[order][0]:
                         break
-                else:
-                    yield event
+
+
+def parse_msg(string, regex=re.compile(r'(?:\[(\d+)\:)|\]')):
+    """Parse a translated message using Genshi mixed content message
+    formatting.
+
+    >>> parse_msg("See [1:Help].")
+    [(0, 'See '), (1, 'Help'), (0, '.')]
+
+    >>> parse_msg("See [1:our [2:Help] page] for details.")
+    [(0, 'See '), (1, 'our '), (2, 'Help'), (1, ' page'), (0, ' for details.')]
+
+    >>> parse_msg("[2:Details] finden Sie in [1:Hilfe].")
+    [(2, 'Details'), (0, ' finden Sie in '), (1, 'Hilfe'), (0, '.')]
+
+    >>> parse_msg("[1:] Bilder pro Seite anzeigen.")
+    [(1, ''), (0, ' Bilder pro Seite anzeigen.')]
+
+    :param string: the translated message string
+    :return: a list of ``(order, string)`` tuples
+    :rtype: `list`
+    """
+    parts = []
+    stack = [0]
+    while True:
+        mo = regex.search(string)
+        if not mo:
+            break
+
+        if mo.start() or stack[-1]:
+            parts.append((stack[-1], string[:mo.start()]))
+        string = string[mo.end():]
+
+        orderno = mo.group(1)
+        if orderno is not None:
+            stack.append(int(orderno))
+        else:
+            stack.pop()
+        if not stack:
+            break
+
+    if string:
+        parts.append((stack[-1], string))
+
+    return parts
 
 
 def extract_from_code(code, gettext_functions):
@@ -425,46 +513,6 @@ def extract_from_code(code, gettext_functions):
                     yield funcname, strings
     return _walk(code.ast)
 
-def parse_msg(string, regex=re.compile(r'(?:\[(\d+)\:)|\]')):
-    """Parse a message using Genshi compound message formatting.
-
-    >>> parse_msg("See [1:Help].")
-    [(0, 'See '), (1, 'Help'), (0, '.')]
-
-    >>> parse_msg("See [1:our [2:Help] page] for details.")
-    [(0, 'See '), (1, 'our '), (2, 'Help'), (1, ' page'), (0, ' for details.')]
-
-    >>> parse_msg("[2:Details] finden Sie in [1:Hilfe].")
-    [(2, 'Details'), (0, ' finden Sie in '), (1, 'Hilfe'), (0, '.')]
-    
-    >>> parse_msg("[1:] Bilder pro Seite anzeigen.")
-    [(1, ''), (0, ' Bilder pro Seite anzeigen.')]
-    
-    :since: version 0.5
-    """
-    parts = []
-    stack = [0]
-    while True:
-        mo = regex.search(string)
-        if not mo:
-            break
-
-        if mo.start() or stack[-1]:
-            parts.append((stack[-1], string[:mo.start()]))
-        string = string[mo.end():]
-
-        orderno = mo.group(1)
-        if orderno is not None:
-            stack.append(int(orderno))
-        else:
-            stack.pop()
-        if not stack:
-            break
-
-    if string:
-        parts.append((stack[-1], string))
-
-    return parts
 
 def extract(fileobj, keywords, comment_tags, options):
     """Babel extraction method for Genshi templates.

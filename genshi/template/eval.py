@@ -22,7 +22,6 @@ try:
 except NameError:
     from sets import ImmutableSet as frozenset
     from sets import Set as set
-import sys
 from textwrap import dedent
 
 from genshi.core import Markup
@@ -32,6 +31,29 @@ from genshi.util import flatten
 __all__ = ['Code', 'Expression', 'Suite', 'LenientLookup', 'StrictLookup',
            'Undefined', 'UndefinedError']
 __docformat__ = 'restructuredtext en'
+
+# Check for a Python 2.4 bug in the eval loop
+has_star_import_bug = False
+try:
+    class _FakeMapping(object):
+        __getitem__ = __setitem__ = lambda *a: None
+    exec 'from sys import *' in {}, _FakeMapping()
+except SystemError:
+    has_star_import_bug = True
+except TypeError:
+    pass # Python 2.3
+del _FakeMapping
+
+def _star_import_patch(mapping, modname):
+    """This function is used as helper if a Python version with a broken
+    star-import opcode is in use.
+    """
+    module = __import__(modname, None, None, ['__all__'])
+    if hasattr(module, '__all__'):
+        members = module.__all__
+    else:
+        members = [x for x in module.__dict__ if not x.startswith('_')]
+    mapping.update([(name, getattr(module, name)) for name in members])
 
 
 class Code(object):
@@ -270,6 +292,7 @@ class LookupBase(object):
             '_lookup_name': cls.lookup_name,
             '_lookup_attr': cls.lookup_attr,
             '_lookup_item': cls.lookup_item,
+            '_star_import_patch': _star_import_patch,
             'UndefinedError': UndefinedError,
         }
     globals = classmethod(globals)
@@ -462,7 +485,7 @@ class ASTTransformer(object):
         if lineno is not None:
             node.lineno = lineno
         if isinstance(node, (ast.Class, ast.Function, ast.Lambda)) or \
-                sys.version_info > (2, 4) and isinstance(node, ast.GenExpr):
+                hasattr(ast, 'GenExpr') and isinstance(node, ast.GenExpr):
             node.filename = '<string>' # workaround for bug in pycodegen
         return node
 
@@ -491,6 +514,19 @@ class ASTTransformer(object):
         return self._clone(node, node.name, [self.visit(x) for x in node.bases],
             node.doc, self.visit(node.code)
         )
+
+    def visitFrom(self, node):
+        if not has_star_import_bug or node.names != [('*', None)]:
+            # This is a Python 2.4 bug. Only if we have a broken Python
+            # version we have to apply the hack
+            return node
+        new_node = ast.Discard(ast.CallFunc(
+            ast.Name('_star_import_patch'),
+            [ast.Name('__data__'), ast.Const(node.modname)], None, None
+        ))
+        if hasattr(node, 'lineno'): # No lineno in Python 2.3
+            new_node.lineno = node.lineno
+        return new_node
 
     def visitFunction(self, node):
         args = []

@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2006-2007 Edgewall Software
+# Copyright (C) 2006-2008 Edgewall Software
 # All rights reserved.
 #
 # This software is licensed as described in the file COPYING, which
@@ -23,7 +23,7 @@ from genshi.output import DocType, XMLSerializer, XHTMLSerializer, \
 
 class XMLSerializerTestCase(unittest.TestCase):
 
-    def test_xml_serialiser_with_decl(self):
+    def test_with_xml_decl(self):
         stream = Stream([(Stream.XML_DECL, ('1.0', None, -1), (None, -1, -1))])
         output = stream.render(XMLSerializer, doctype='xhtml')
         self.assertEqual('<?xml version="1.0"?>\n'
@@ -203,6 +203,24 @@ class XMLSerializerTestCase(unittest.TestCase):
 
 class XHTMLSerializerTestCase(unittest.TestCase):
 
+    def test_xml_decl_dropped(self):
+        stream = Stream([(Stream.XML_DECL, ('1.0', None, -1), (None, -1, -1))])
+        output = stream.render(XHTMLSerializer, doctype='xhtml')
+        self.assertEqual('<!DOCTYPE html PUBLIC '
+                         '"-//W3C//DTD XHTML 1.0 Strict//EN" '
+                         '"http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">\n',
+                         output)
+
+    def test_xml_decl_included(self):
+        stream = Stream([(Stream.XML_DECL, ('1.0', None, -1), (None, -1, -1))])
+        output = stream.render(XHTMLSerializer, doctype='xhtml',
+                               drop_xml_decl=False)
+        self.assertEqual('<?xml version="1.0"?>\n'
+                         '<!DOCTYPE html PUBLIC '
+                         '"-//W3C//DTD XHTML 1.0 Strict//EN" '
+                         '"http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">\n',
+                         output)
+
     def test_xml_lang(self):
         text = '<p xml:lang="en">English text</p>'
         output = XML(text).render(XHTMLSerializer)
@@ -372,7 +390,7 @@ class HTMLSerializerTestCase(unittest.TestCase):
 
     def test_empty_script(self):
         text = '<script src="foo.js" />'
-        output = XML(text).render(XHTMLSerializer)
+        output = XML(text).render(HTMLSerializer)
         self.assertEqual('<script src="foo.js"></script>', output)
 
     def test_script_escaping(self):

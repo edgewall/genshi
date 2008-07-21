@@ -691,6 +691,46 @@ class MarkupTemplateTestCase(unittest.TestCase):
         finally:
             shutil.rmtree(dirname)
 
+    def test_nested_matches_without_buffering(self):
+        xml = ("""<html xmlns:py="http://genshi.edgewall.org/">
+          <py:match path="body" once="true" buffer="false">
+            <body>
+              ${select('*|text')}
+              And some other stuff...
+            </body>
+          </py:match>
+          <body>
+            <span py:match="span">Foo</span>
+            <span>Bar</span>
+          </body>
+        </html>""")
+        tmpl = MarkupTemplate(xml, filename='test.html')
+        self.assertEqual("""<html>
+            <body>
+              <span>Foo</span>
+              And some other stuff...
+            </body>
+        </html>""", tmpl.generate().render())
+
+    def test_match_without_select(self):
+        # See <http://genshi.edgewall.org/ticket/243>
+        xml = ("""<html xmlns:py="http://genshi.edgewall.org/">
+          <py:match path="body" buffer="false">
+            <body>
+              This replaces the other text.
+            </body>
+          </py:match>
+          <body>
+            This gets replaced.
+          </body>
+        </html>""")
+        tmpl = MarkupTemplate(xml, filename='test.html')
+        self.assertEqual("""<html>
+            <body>
+              This replaces the other text.
+            </body>
+        </html>""", tmpl.generate().render())
+
 
 def suite():
     suite = unittest.TestSuite()

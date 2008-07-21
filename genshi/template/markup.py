@@ -303,7 +303,9 @@ class MarkupTemplate(Template):
 
                     # Make the select() function available in the body of the
                     # match template
+                    selected = [False]
                     def select(path):
+                        selected[0] = True
                         return Stream(content).select(path, namespaces, ctxt)
                     vars = dict(select=select)
 
@@ -319,6 +321,13 @@ class MarkupTemplate(Template):
                             ctxt, post_match_templates,
                             **vars):
                         yield event
+
+                    # If the match template did not actually call select to
+                    # consume the matched stream, the original events need to
+                    # be consumed here or they'll get appended to the output
+                    if not selected[0]:
+                        for event in content:
+                            pass
 
                     break
 

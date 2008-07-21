@@ -18,6 +18,7 @@ import sys
 import unittest
 
 from genshi.core import Markup
+from genshi.template.base import Context, _ctxt2dict
 from genshi.template.eval import Expression, Suite, Undefined, UndefinedError, \
                                  UNDEFINED
 
@@ -569,6 +570,12 @@ x = create()
         suite = Suite("from itertools import ifilter")
         data = {}
         suite.execute(data)
+        assert 'ifilter' in data
+
+    def test_import_star(self):
+        suite = Suite("from itertools import *")
+        data = Context()
+        suite.execute(_ctxt2dict(data))
         assert 'ifilter' in data
 
     def test_for(self):

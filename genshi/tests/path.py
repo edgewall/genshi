@@ -437,6 +437,14 @@ class PathTestCase(unittest.TestCase):
         path = Path('descendant-or-self::*/descendant-or-self::*/descendant-or-self::*[2]/self::*/descendant::*[3]')
         self.assertEqual('<d><e/></d>', path.select(xml).render())
 
+    def test_predicate_child_position(self):
+        xml = XML('\
+<root><a><b>1</b><b>2</b><b>3</b></a><a><b>4</b><b>5</b></a></root>')
+        path = Path('//a/b[2]')
+        self.assertEqual('<b>2</b><b>5</b>', path.select(xml).render())
+        path = Path('//a/b[3]')
+        self.assertEqual('<b>3</b>', path.select(xml).render())
+
     def test_name_with_namespace(self):
         xml = XML('<root xmlns:f="FOO"><f:foo>bar</f:foo></root>')
         path = Path('f:foo')

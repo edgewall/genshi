@@ -41,6 +41,8 @@ structures), it only implements a subset of the full XPath 1.0 language.
 from math import ceil, floor
 import operator
 import re
+from collections import deque
+from itertools import chain
 
 from genshi.core import Stream, Attrs, Namespace, QName
 from genshi.core import START, END, TEXT, START_NS, END_NS, COMMENT, PI, \
@@ -97,7 +99,8 @@ class Path(object):
         for path in self.paths:
             if len(path) == 1:
                 # only one axis
-                strategy = SingleAxisStrategy(path)
+                #strategy = SingleAxisStrategy(path)
+                strategy = GenericStrategy(path)
             else:
                 strategy = GenericStrategy(path)
             self.strategies.append(strategy)
@@ -221,19 +224,26 @@ class GenericStrategy(object):
                 steps = [_DOTSLASHSLASH] + p
             else:
                 steps = [(DESCENDANT_OR_SELF, p[0][1], p[0][2],)] + p[1:]
-        elif p[0][0] is CHILD or p[0][0] is ATTRIBUTE:
+        elif p[0][0] is CHILD or p[0][0] is ATTRIBUTE \
+                or p[0][0] is DESCENDANT:
             steps = [_DOTSLASH] + p
         else:
             steps = p
 
         # for node it contains all positions of xpath expression
         # where its child should start checking for matches
-        # it's always increasing sequence (invariant)
-        stack = [[0]]
+        # with list of corresponding context counters
+        # there can be many of them, because position that is from
+        # descendant-like axis can be achieved from different nodes
+        # for example <a><a><b/></a></a> should match both //a//b[1]
+        # and //a//b[2]
+        # positions always form increasing sequence (invariant)
+        firstpos = [(0, [[]])]
+        stack = [firstpos]
 
         # for every position in expression stores counters' list
         # it is used for position based predicates
-        counters = [[] for _ in xrange(len(steps))]
+        #counters = [[] for _ in xrange(len(steps))]
 
         # indexes where expression has descendant(-or-self) axis
         descendant_axes = [i for (i, (a, _, _,),) in
@@ -260,7 +270,7 @@ class GenericStrategy(object):
             #if updateonly:
             #    continue
 
-            my_positions = stack[-1]
+            positions_queue = deque((pos, cou, []) for pos, cou in stack[-1])
             next_positions = []
 
             # length of real part of path - we omit attribute axis
@@ -269,63 +279,77 @@ class GenericStrategy(object):
             
             # places where we have to check for match, are these
             # provided by parent
-            for position in my_positions:
+            while len(positions_queue) > 0:
+                x, pcou, mcou = positions_queue.popleft()
 
-                # we have already checked this position
-                # (it had to be because of self-like axes)
-                if position <= last_checked:
+                axis, nodetest, predicates = steps[x]
+
+                # we need to push descendant-like positions from parent
+                # further
+                if (axis is DESCENDANT or axis is DESCENDANT_OR_SELF) \
+                        and len(pcou) > 0:
+                    if len(next_positions) > 0 \
+                            and next_positions[-1][0] == x:
+                        next_positions[-1][1].extend(pcou)
+                    else:
+                        next_positions.append((x, pcou))
+
+                # nodetest first
+                if not nodetest(kind, data, pos, namespaces, variables):
                     continue
 
-                for x in xrange(position, real_len):
-                    # number of counters - we have to create one
-                    # for every context position based predicate
-                    cnum = 0
+                # counters packs that were already bad
+                missed = set()
+                counters_len = len(pcou) + len(mcou)
 
-                    axis, nodetest, predicates = steps[x]
+                # number of counters - we have to create one
+                # for every context position based predicate
+                cnum = 0
 
-                    if x != position and axis is not SELF:
-                        next_positions.append(x)
+                # tells if we have match with position x
+                matched = True
 
-                    # to go further we have to use self-like axes
-                    if axis is not DESCENDANT_OR_SELF and \
-                        axis is not SELF and x != position:
-                        x -= 1 # x hasn't been really checked so we can't
-                               # reall save it to last_checked
-                        break
+                if predicates:
+                    for predicate in predicates:
+                        pretval = predicate(kind, data, pos,
+                                            namespaces,
+                                            variables)
+                        if type(pretval) is float: # FIXME <- need to
+                                                   # check this for
+                                                   # other types that
+                                                   # can be coerced to
+                                                   # float
 
+                            # each counter pack needs to be checked
+                            for i, cou in enumerate(chain(pcou, mcou)):
+                                # it was bad before
+                                if i in missed:
+                                    continue
 
-                    # tells if we have match with position x
-                    matched = False
+                                if len(cou) < cnum+1:
+                                    cou.append(0)
+                                cou[cnum] += 1 
 
-                    # nodetest first
-                    if nodetest(kind, data, pos, namespaces, variables):
-                        matched = True
+                                # it is bad now
+                                if cou[cnum] != int(pretval):
+                                    missed.add(i)
 
-                    # TODO: or maybe add nodetest here 
-                    # (chain((nodetest,), predicates))?
-                    if matched and predicates:
-                        for predicate in predicates:
-                            pretval = predicate(kind, data, pos,
-                                                namespaces,
-                                                variables)
-                            if type(pretval) is float: # FIXME <- need to
-                                                       # check this for
-                                                       # other types that
-                                                       # can be coerced to
-                                                       # float
-                                if len(counters[x]) < cnum+1:
-                                    counters[x].append(0)
-                                counters[x][cnum] += 1 
-                                if counters[x][cnum] != int(pretval):
-                                    pretval = False
-                                cnum += 1
-                            if not pretval:
-                                 matched = False
-                                 break
-                    if not matched:
-                        break
-                else:
-                    # we reached end of expression, because x
+                            # none of counters pack was good
+                            if len(missed) == counters_len:
+                                pretval = False
+                            cnum += 1
+                        if not pretval:
+                             matched = False
+                             break
+
+                if not matched:
+                    continue
+
+                # counter for next position with current node as context node
+                child_counter = []
+
+                if x + 1 == real_len:
+                    # we reached end of expression, because x + 1
                     # is equal to the length of expression
                     matched = True
                     axis, nodetest, predicates = steps[-1]
@@ -334,34 +358,25 @@ class GenericStrategy(object):
                                 namespaces, variables)
                     if matched:
                         retval = matched
-                # in x is stored the last index for which check was done
-                last_checked = x
+                else:
+                    naxis = steps[x + 1][0]
 
+                    # if next axis allows matching self we have
+                    # to add next position to our queue
+                    if naxis is DESCENDANT_OR_SELF or naxis is SELF:
+                        if len(positions_queue) == 0 \
+                                or positions_queue[0][0] > x + 1:
+                            positions_queue.appendleft(
+                                            (x + 1, [], [child_counter]),)
+                        else:
+                            positions_queue[0][2].append(child_counter)
+
+                    # if axis is not self we have to add it to child's list
+                    if naxis is not SELF:
+                        next_positions.append((x+1, [child_counter],))
 
             if kind is START:
-                # in next_positions there are positions that are implied
-                # by current matches, but we have to add previous
-                # descendant-like axis positions
-                # (which can "jump" over tree)
-                i = 0
-                stack.append([])
-                # every descendant axis before furthest position is ok
-                for pos in next_positions:
-                    while i != len(descendant_axes) \
-                            and descendant_axes[i] < pos:
-                        stack[-1].append(descendant_axes[i])
-                        i += 1
-                    if i != len(descendant_axes) \
-                            and descendant_axes[i] == pos:
-                        i += 1
-                    stack[-1].append(pos)
-
-                # every descendant that was parent's one is ok
-                if my_positions:
-                    while i != len(descendant_axes) \
-                             and descendant_axes[i] <= my_positions[-1]:
-                        stack[-1].append(descendant_axes[i])
-                        i += 1
+                stack.append(next_positions)
 
             return retval
         return _test

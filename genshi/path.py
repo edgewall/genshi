@@ -75,148 +75,14 @@ DESCENDANT = Axis.DESCENDANT
 DESCENDANT_OR_SELF = Axis.DESCENDANT_OR_SELF
 SELF = Axis.SELF
 
-
-class Path(object):
-    """Implements basic XPath support on streams.
-    
-    Instances of this class represent a "compiled" XPath expression, and provide
-    methods for testing the path against a stream, as well as extracting a
-    substream matching that path.
-    """
-
-    def __init__(self, text, filename=None, lineno=-1):
-        """Create the path object from a string.
-        
-        :param text: the path expression
-        :param filename: the name of the file in which the path expression was
-                         found (used in error messages)
-        :param lineno: the line on which the expression was found
-        """
-        self.source = text
-        open("path.log","a").write(text+"\n")
-        self.paths = PathParser(text, filename, lineno).parse()
-        self.strategies = []
-        for path in self.paths:
-            if len(path) == 1:
-                # only one axis
-                #strategy = SingleAxisStrategy(path)
-                strategy = GenericStrategy(path)
-            else:
-                strategy = GenericStrategy(path)
-            self.strategies.append(strategy)
-
-    def __repr__(self):
-        paths = []
-        for path in self.paths:
-            steps = []
-            for axis, nodetest, predicates in path:
-                steps.append('%s::%s' % (axis, nodetest))
-                for predicate in predicates:
-                    steps[-1] += '[%s]' % predicate
-            paths.append('/'.join(steps))
-        return '<%s "%s">' % (self.__class__.__name__, '|'.join(paths))
-
-    def select(self, stream, namespaces=None, variables=None):
-        """Returns a substream of the given stream that matches the path.
-        
-        If there are no matches, this method returns an empty stream.
-        
-        >>> from genshi.input import XML
-        >>> xml = XML('<root><elem><child>Text</child></elem></root>')
-        
-        >>> print Path('.//child').select(xml)
-        <child>Text</child>
-        
-        >>> print Path('.//child/text()').select(xml)
-        Text
-        
-        :param stream: the stream to select from
-        :param namespaces: (optional) a mapping of namespace prefixes to URIs
-        :param variables: (optional) a mapping of variable names to values
-        :return: the substream matching the path, or an empty stream
-        :rtype: `Stream`
-        """
-        if namespaces is None:
-            namespaces = {}
-        if variables is None:
-            variables = {}
-        stream = iter(stream)
-        def _generate():
-            test = self.test()
-            for event in stream:
-                result = test(event, namespaces, variables)
-                if result is True:
-                    yield event
-                    if event[0] is START:
-                        depth = 1
-                        while depth > 0:
-                            subevent = stream.next()
-                            if subevent[0] is START:
-                                depth += 1
-                            elif subevent[0] is END:
-                                depth -= 1
-                            yield subevent
-                            test(subevent, namespaces, variables,
-                                 updateonly=True)
-                elif result:
-                    yield result
-        return Stream(_generate(),
-                      serializer=getattr(stream, 'serializer', None))
-
-    def test(self, ignore_context=False):
-        """Returns a function that can be used to track whether the path matches
-        a specific stream event.
-        
-        The function returned expects the positional arguments ``event``,
-        ``namespaces`` and ``variables``. The first is a stream event, while the
-        latter two are a mapping of namespace prefixes to URIs, and a mapping
-        of variable names to values, respectively. In addition, the function
-        accepts an ``updateonly`` keyword argument that default to ``False``. If
-        it is set to ``True``, the function only updates its internal state,
-        but does not perform any tests or return a result.
-        
-        If the path matches the event, the function returns the match (for
-        example, a `START` or `TEXT` event.) Otherwise, it returns ``None``.
-        
-        >>> from genshi.input import XML
-        >>> xml = XML('<root><elem><child id="1"/></elem><child id="2"/></root>')
-        >>> test = Path('child').test()
-        >>> for event in xml:
-        ...     if test(event, {}, {}):
-        ...         print event[0], repr(event[1])
-        START (QName(u'child'), Attrs([(QName(u'id'), u'2')]))
-        
-        :param ignore_context: if `True`, the path is interpreted like a pattern
-                               in XSLT, meaning for example that it will match
-                               at any depth
-        :return: a function that can be used to test individual events in a
-                 stream against the path
-        :rtype: ``function``
-        """
-
-        if len(self.strategies) == 1:                             
-            return self.strategies[0].test(ignore_context)   
-
-        # test for every subpath
-        tests = []
-        for s in self.strategies:
-            tests.append(s.test(ignore_context))
-
-        def _test(event, namespaces, variables, updateonly=False):
-            retval = None
-            for t in tests:
-                val = t(event, namespaces, variables, updateonly)
-                # TODO SOC: collect attributes
-                if retval is None:
-                    retval = val
-            return retval
-
-        return _test
-
-
 class GenericStrategy(object):
     def __init__(self, path):
         self.path = path
+
+    @classmethod
+    def supports(cls, path):
+        return True
+
     def test(self, ignore_context):
         p = self.path
         if ignore_context:
@@ -384,6 +250,11 @@ class GenericStrategy(object):
 class SingleAxisStrategy(object):
     def __init__(self, path):
         self.path = path
+
+    @classmethod
+    def supports(cls, path):
+        return len(path) == 1
+
     def test(self, ignore_context):
         p = self.path
         if p[0][0] is ATTRIBUTE:
@@ -460,6 +331,145 @@ class SingleAxisStrategy(object):
                         namespaces, variables)
             else:
                 return True
+
+        return _test
+
+class Path(object):
+    """Implements basic XPath support on streams.
+    
+    Instances of this class represent a "compiled" XPath expression, and provide
+    methods for testing the path against a stream, as well as extracting a
+    substream matching that path.
+    """
+
+    available_strategies = [SingleAxisStrategy, GenericStrategy]
+
+    def __init__(self, text, filename=None, lineno=-1):
+        """Create the path object from a string.
+        
+        :param text: the path expression
+        :param filename: the name of the file in which the path expression was
+                         found (used in error messages)
+        :param lineno: the line on which the expression was found
+        """
+        self.source = text
+        open("path.log","a").write(text+"\n")
+        self.paths = PathParser(text, filename, lineno).parse()
+        self.strategies = []
+        for path in self.paths:
+            for strategy_class in self.available_strategies:
+                if strategy_class.supports(path):
+                    self.strategies.append(strategy_class(path))
+                    break
+            else:
+                raise NotImplemented, "This path is not implemented"
+                    
+
+    def __repr__(self):
+        paths = []
+        for path in self.paths:
+            steps = []
+            for axis, nodetest, predicates in path:
+                steps.append('%s::%s' % (axis, nodetest))
+                for predicate in predicates:
+                    steps[-1] += '[%s]' % predicate
+            paths.append('/'.join(steps))
+        return '<%s "%s">' % (self.__class__.__name__, '|'.join(paths))
+
+    def select(self, stream, namespaces=None, variables=None):
+        """Returns a substream of the given stream that matches the path.
+        
+        If there are no matches, this method returns an empty stream.
+        
+        >>> from genshi.input import XML
+        >>> xml = XML('<root><elem><child>Text</child></elem></root>')
+        
+        >>> print Path('.//child').select(xml)
+        <child>Text</child>
+        
+        >>> print Path('.//child/text()').select(xml)
+        Text
+        
+        :param stream: the stream to select from
+        :param namespaces: (optional) a mapping of namespace prefixes to URIs
+        :param variables: (optional) a mapping of variable names to values
+        :return: the substream matching the path, or an empty stream
+        :rtype: `Stream`
+        """
+        if namespaces is None:
+            namespaces = {}
+        if variables is None:
+            variables = {}
+        stream = iter(stream)
+        def _generate():
+            test = self.test()
+            for event in stream:
+                result = test(event, namespaces, variables)
+                if result is True:
+                    yield event
+                    if event[0] is START:
+                        depth = 1
+                        while depth > 0:
+                            subevent = stream.next()
+                            if subevent[0] is START:
+                                depth += 1
+                            elif subevent[0] is END:
+                                depth -= 1
+                            yield subevent
+                            test(subevent, namespaces, variables,
+                                 updateonly=True)
+                elif result:
+                    yield result
+        return Stream(_generate(),
+                      serializer=getattr(stream, 'serializer', None))
+
+    def test(self, ignore_context=False):
+        """Returns a function that can be used to track whether the path matches
+        a specific stream event.
+        
+        The function returned expects the positional arguments ``event``,
+        ``namespaces`` and ``variables``. The first is a stream event, while the
+        latter two are a mapping of namespace prefixes to URIs, and a mapping
+        of variable names to values, respectively. In addition, the function
+        accepts an ``updateonly`` keyword argument that default to ``False``. If
+        it is set to ``True``, the function only updates its internal state,
+        but does not perform any tests or return a result.
+        
+        If the path matches the event, the function returns the match (for
+        example, a `START` or `TEXT` event.) Otherwise, it returns ``None``.
+        
+        >>> from genshi.input import XML
+        >>> xml = XML('<root><elem><child id="1"/></elem><child id="2"/></root>')
+        >>> test = Path('child').test()
+        >>> for event in xml:
+        ...     if test(event, {}, {}):
+        ...         print event[0], repr(event[1])
+        START (QName(u'child'), Attrs([(QName(u'id'), u'2')]))
+        
+        :param ignore_context: if `True`, the path is interpreted like a pattern
+                               in XSLT, meaning for example that it will match
+                               at any depth
+        :return: a function that can be used to test individual events in a
+                 stream against the path
+        :rtype: ``function``
+        """
+
+        if len(self.strategies) == 1:                             
+            return self.strategies[0].test(ignore_context)   
+
+        # test for every subpath
+        tests = []
+        for s in self.strategies:
+            tests.append(s.test(ignore_context))
+
+        def _test(event, namespaces, variables, updateonly=False):
+            retval = None
+            for t in tests:
+                val = t(event, namespaces, variables, updateonly)
+                # TODO SOC: collect attributes
+                if retval is None:
+                    retval = val
+            return retval
 
         return _test
 

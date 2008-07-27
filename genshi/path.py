@@ -353,7 +353,6 @@ class Path(object):
         :param lineno: the line on which the expression was found
         """
         self.source = text
-        open("path.log","a").write(text+"\n")
         self.paths = PathParser(text, filename, lineno).parse()
         self.strategies = []
         for path in self.paths:

@@ -423,12 +423,11 @@ class SimpleStrategy(object):
                 fid = 0
                 while len(frags[fid][0]) == 0:
                     fid += 1
-                if frags[fid][3]:
-                    # first fragment self-beginning
-                    p, ic = 0, (fid > 0)
-                else:
-                    # it is child or descendant so no match in first
-                    stack.append((fid, 0, fid > 0,))
+                p = 0
+                ic = ignore_context or (fid > 0)
+                if not frags[fid][3] and not ignore_context:
+                    # axis is not self-beggining, we have to skip this node
+                    stack.append((fid, p, ic,))
                     return None
             else:
                 fid, p, ic = stack[-1]

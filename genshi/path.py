@@ -334,6 +334,159 @@ class SingleAxisStrategy(object):
 
         return _test
 
+
+class SimpleStrategy(object):
+    """Strategy for path with only local names, attributes and text nodes"""
+
+    @classmethod
+    def supports(cls, path):
+        _allowed_nodes = (LocalNameTest, CommentNodeTest, TextNodeTest)
+        if path[0][0] is ATTRIBUTE:
+            return False
+        for _, nodetest, predicates in path:
+            if predicates:
+                return False
+            if not isinstance(nodetest, _allowed_nodes):
+                return False
+        return True
+    def __init__(self, path):
+        self.fragments = []
+        self_beginning = False
+        fragment = []
+
+        def nodes_equal(node1, node2):
+            if node1.__class__ is not node2.__class__:
+                return False
+            if node1.__class__ == LocalNameTest:
+                return node1.name == node2.name
+            return True
+
+
+        def calculate_pi(f):
+            """KMP prefix calculation for table"""
+            # the indexes in prefix table are 
+            if len(f) == 0:
+                return []
+            pi = [0]
+            s = 0
+            for i in xrange(1, len(f)):
+                while s > 0 and not nodes_equal(f[s], f[i]):
+                    s = pi[s-1]
+                if nodes_equal(f[s], f[i]):
+                    s += 1
+                pi.append(s)
+            return pi
+
+
+        for axis in path:
+            if axis[0] is SELF:
+                if len(fragment) != 0:
+                    if axis[1] != fragment[-1][1]:
+                        # self axis has to be te same thing as previous one
+                        self.fragments = None
+                        return
+                else:
+                    self_beginning = True
+                    fragment.append(axis[1])
+            elif axis[0] is CHILD:
+                fragment.append(axis[1])
+            elif axis[0] is ATTRIBUTE:
+                pi = calculate_pi(fragment)
+                self.fragments.append((fragment, pi, axis[1], self_beginning))
+                return
+            else:
+                pi = calculate_pi(fragment)
+                self.fragments.append((fragment, pi, None, self_beginning))
+                fragment = [axis[1]]
+                if axis[0] is DESCENDANT:
+                    self_beginning = False
+                else:
+                    #DESCENDANT_OR_SELF
+                    self_beginning = True
+        pi = calculate_pi(fragment)
+        self.fragments.append((fragment, pi, None, self_beginning))
+            
+    def test(self, ignore_context):
+        stack = []
+        frags = self.fragments
+        def _test(event, namespaces, variables, updateonly=False):
+            kind, data, pos = event[:3]
+            if kind is START_NS or kind is END_NS \
+                    or kind is START_CDATA or kind is END_CDATA:
+                return None
+            elif kind is END:
+                stack.pop()
+                return None
+
+            if len(stack) == 0:
+                # root node
+                fid = 0
+                while len(frags[fid][0]) == 0:
+                    fid += 1
+                if frags[fid][3]:
+                    # first fragment self-beginning
+                    p, ic = 0, (fid > 0)
+                else:
+                    # it is child or descendant so no match in first
+                    stack.append((fid, 0, fid > 0,))
+                    return None
+            else:
+                fid, p, ic = stack[-1]
+
+            if fid is not None and not ic:
+                frag, pi, attrib, _ = frags[fid]
+                if p == len(frag):
+                    pass
+                elif frag[p](kind, data, pos, namespaces, variables):
+                    p += 1
+                else:
+                    fid, p = None, None
+                if p == len(frag) and fid + 1 != len(frags):
+                    fid += 1
+                    p = 0
+                    ic = True
+
+            if fid is None:
+                if kind is START:
+                    stack.append((fid, p, ic))
+                return None
+
+            if ic:
+                while True:
+                    frag, pi, attrib, _ = frags[fid]
+                    while p > 0 and (p >= len(frag) or \
+                            not frag[p](kind, data, pos, namespaces, variables)):
+                        p = pi[p-1]
+                    if frag[p](kind, data, pos, namespaces, variables):
+                        p += 1
+                    if p == len(frag):
+                        if fid + 1 == len(frags) or not frags[fid+1][2]:
+                            break
+                        else:
+                            fid += 1
+                            p = 0
+                            ic = True
+                            if not frags[fid][2]:
+                                #fragment not self-beginning
+                                break
+                    else:
+                        break
+
+            if kind is START:
+                if not ic and fid + 1 == len(frags) and p == len(frag):
+                    stack.append((None, None, ic))
+                else:
+                    stack.append((fid, p, ic))
+
+            if fid + 1 == len(frags) and p == len(frag):
+                if attrib:
+                    return attrib(kind, data, pos, namespaces, variables)
+                else:
+                    return True
+            else:
+                return None
+        return _test
+
 class Path(object):
     """Implements basic XPath support on streams.
     
@@ -342,7 +495,7 @@ class Path(object):
     substream matching that path.
     """
 
-    available_strategies = [SingleAxisStrategy, GenericStrategy]
+    available_strategies = [SingleAxisStrategy, SimpleStrategy, GenericStrategy]
 
     def __init__(self, text, filename=None, lineno=-1):
         """Create the path object from a string.
@@ -892,6 +1045,7 @@ class BooleanFunction(Function):
     value.
     """
     __slots__ = ['expr']
+    _return_type = bool
     def __init__(self, expr):
         self.expr = expr
     def __call__(self, kind, data, pos, namespaces, variables):

@@ -56,27 +56,22 @@ def spell(t):
         name = units[i][1]
     return "%f %s"%(t, name)
 
-def test_paths_in_streams(paths, streams):
-    for path, pname in paths:
-        print "Testing %s path"%pname
+def test_paths_in_streams(exprs, streams):
+    for expr, ename in exprs:
+        print "Testing %s path"%ename
         for stream, sname in streams:
-            print '\tRunning on "%s" example:'%sname,
+            print '\tRunning on "%s" example:'%sname
+            path = Path(expr)
             def f():
                 for e in path.select(stream):
                     pass
             t = spell(benchmark(f))
-            print "\t%s"%t
-
-def test_path_expressions_in_streams(paths, streams):
-    for path, pname in paths:
-        print "Testing %s path"%pname
-        for stream, sname in streams:
-            print '\tRunning on "%s" example:'%sname,
+            print "\t\tJust select:\t\t%s"%t
             def f():
-                for e in stream.select(path):
+                for e in stream.select(expr):
                     pass
             t = spell(benchmark(f))
-            print "\t%s"%t
+            print "\t\t__init + select:\t%s"%t
 
 def test_documents():
     streams = []
@@ -101,45 +96,45 @@ def test_documents():
     <body>
         <h1>Hello</h1>
         <div id="splash">
-        <ul>
-<li><a class="b1" href="http://genshi.edgewall.org/">
-<strong>Genshi</strong>
-Python toolkit for generating output for the web</a></li>
-<li><a class="b2" href="http://babel.edgewall.org/">
-<strong>Babel</strong>
-Python library for I18n/L10n in web applications</a></li>
-<li><a class="b3" href="http://bitten.edgewall.org/">
-<strong>Bitten</strong>
-Continuous integration plugin for Trac</a></li>
-<li><a class="b4" href="http://posterity.edgewall.org/">
-<strong>Posterity</strong>
-Web-based email system</a></li>
-</ul>
-<div id="trac-splash">
-<a href="http://trac.edgewall.org/">
-<strong>Trac</strong> Web-based lightweight project management
-system
-</a>
-</div>
-</div>
+            <ul>
+                <li><a class="b1" href="http://genshi.edgewall.org/">
+                        <strong>Genshi</strong>
+                        Python toolkit for generating output for the web</a></li>
+                <li><a class="b2" href="http://babel.edgewall.org/">
+                        <strong>Babel</strong>
+                        Python library for I18n/L10n in web applications</a></li>
+                <li><a class="b3" href="http://bitten.edgewall.org/">
+                        <strong>Bitten</strong>
+                        Continuous integration plugin for Trac</a></li>
+                <li><a class="b4" href="http://posterity.edgewall.org/">
+                        <strong>Posterity</strong>
+                        Web-based email system</a></li>
+            </ul>
+            <div id="trac-splash">
+                <a href="http://trac.edgewall.org/">
+                    <strong>Trac</strong> Web-based lightweight project management
+                    system
+                </a>
+            </div>
+        </div>
     </body>
 </html>
 """)
     streams.append((s, "big document",))
 
     paths = []
-    spaths = []
     
     def add_path(expr, name):
-        paths.append((Path(expr), name))
-        spaths.append((expr, name,))
+        paths.append((expr, name,))
     add_path('.', "self")
     add_path('html/body/h1/text()', "quite long")
+    add_path('html/body/div/a/@href', "quite long + parameter")
+    add_path('html/body/div[@id = "splash"]/a[@class = "b4"]/strong/text()',
+                "complicated")
     add_path('descendant-or-self::text()', "all text")
     add_path('descendant-or-self::h1/text()', "tag text")
 
     test_paths_in_streams(paths, streams)
-    test_path_expressions_in_streams(spaths, streams)
 
 if __name__ == '__main__':
     test_documents()

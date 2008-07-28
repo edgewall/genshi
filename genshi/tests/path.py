@@ -16,7 +16,7 @@ import unittest
 
 from genshi.input import XML
 from genshi.path import Path, PathSyntaxError, GenericStrategy, \
-                        SingleAxisStrategy
+                        SingleAxisStrategy, SimpleStrategy
 
 
 class FakePath(Path):
@@ -27,7 +27,7 @@ class FakePath(Path):
 
 class PathTestCase(unittest.TestCase):
 
-    strategies = [GenericStrategy, SingleAxisStrategy]
+    strategies = [GenericStrategy, SingleAxisStrategy, SimpleStrategy]
     def _create_path(self, expression, expected):
         return path
 

@@ -350,11 +350,20 @@ class SimpleStrategy(object):
                 return False
         return True
     def __init__(self, path):
+        # fragments is list of tuples (fragment, pi, attr, self_beginning)
+        # fragment is list of nodetests for fragment of path with only
+        # child:: axes between
+        # pi is KMP partial match table for this fragment
+        # attr is attribute nodetest if fragment ends with @ and None otherwise
+        # self_beginning is True if axis for first fragment element
+        # was self (first fragment) or descendant-or-self (farther fragment)
         self.fragments = []
+
         self_beginning = False
         fragment = []
 
         def nodes_equal(node1, node2):
+            """Tests if two node tests are equal"""
             if node1.__class__ is not node2.__class__:
                 return False
             if node1.__class__ == LocalNameTest:
@@ -364,7 +373,9 @@ class SimpleStrategy(object):
 
         def calculate_pi(f):
             """KMP prefix calculation for table"""
-            # the indexes in prefix table are 
+            # the indexes in prefix table are shifted by one
+            # in comparision with common implementations
+            # pi[i] = NORMAL_PI[i + 1]
             if len(f) == 0:
                 return []
             pi = [0]
@@ -381,8 +392,10 @@ class SimpleStrategy(object):
         for axis in path:
             if axis[0] is SELF:
                 if len(fragment) != 0:
+                    # if element is not first in fragment it has to be
+                    # the same as previous one
+                    # for example child::a/self::b is always wrong
                     if axis[1] != fragment[-1][1]:
-                        # self axis has to be te same thing as previous one
                         self.fragments = None
                         return
                 else:
@@ -393,6 +406,7 @@ class SimpleStrategy(object):
             elif axis[0] is ATTRIBUTE:
                 pi = calculate_pi(fragment)
                 self.fragments.append((fragment, pi, axis[1], self_beginning))
+                # attribute has always to be at the end, so we can jump out
                 return
             else:
                 pi = calculate_pi(fragment)
@@ -407,10 +421,21 @@ class SimpleStrategy(object):
         self.fragments.append((fragment, pi, None, self_beginning))
             
     def test(self, ignore_context):
+        # stack of triples (fid, p, ic,)
+        # fid is index of current fragment
+        # p is position in this fragment
+        # ic is if we ignore context in this fragment
         stack = []
         frags = self.fragments
         def _test(event, namespaces, variables, updateonly=False):
+
+            # expression found impossible during init
+            if frags is None:
+                return None
+
             kind, data, pos = event[:3]
+
+            # skip unimportant events
             if kind is START_NS or kind is END_NS \
                     or kind is START_CDATA or kind is END_CDATA:
                 return None
@@ -419,66 +444,93 @@ class SimpleStrategy(object):
                 return None
 
             if len(stack) == 0:
-                # root node
+                # root node, nothing on stack, special case
                 fid = 0
+                # skip empty fragments (there can be actually only one)
                 while len(frags[fid][0]) == 0:
                     fid += 1
                 p = 0
+                # empty fragment means descendant node at beginning
                 ic = ignore_context or (fid > 0)
-                if not frags[fid][3] and not ignore_context:
+
+                # expression can match first node, if first axis is self::,
+                # descendant-or-self:: or if ignore_context is True and
+                # axis is not descendant::
+                if not frags[fid][3] and (not ignore_context or fid > 0):
                     # axis is not self-beggining, we have to skip this node
                     stack.append((fid, p, ic,))
                     return None
             else:
+                # take position of parent
                 fid, p, ic = stack[-1]
 
             if fid is not None and not ic:
+                # fragment not ignoring context - we can't jump back
                 frag, pi, attrib, _ = frags[fid]
+
                 if p == len(frag):
+                    # that probably means empty first fragment
                     pass
                 elif frag[p](kind, data, pos, namespaces, variables):
+                    # match, so we can go further
                     p += 1
                 else:
+                    # not matched, so there will be no match in subtree
                     fid, p = None, None
+
                 if p == len(frag) and fid + 1 != len(frags):
+                    # we made it to end of fragment, we can go to following
                     fid += 1
                     p = 0
                     ic = True
 
             if fid is None:
+                # there was no match in fragment not ignoring context
                 if kind is START:
                     stack.append((fid, p, ic))
                 return None
 
             if ic:
+                # we are in fragment ignoring context
                 while True:
                     frag, pi, attrib, _ = frags[fid]
+
+                    # KMP new "character"
                     while p > 0 and (p >= len(frag) or \
                             not frag[p](kind, data, pos, namespaces, variables)):
                         p = pi[p-1]
                     if frag[p](kind, data, pos, namespaces, variables):
                         p += 1
+
                     if p == len(frag):
-                        if fid + 1 == len(frags) or not frags[fid+1][2]:
+                        # end of fragment reached
+                        if fid + 1 == len(frags):
+                            # that was last fragment
                             break
                         else:
                             fid += 1
                             p = 0
                             ic = True
-                            if not frags[fid][2]:
-                                #fragment not self-beginning
+                            if not frags[fid][3]:
+                                # next fragment not self-beginning
                                 break
                     else:
                         break
 
             if kind is START:
+                # we have to put new position on stack, for children
+
                 if not ic and fid + 1 == len(frags) and p == len(frag):
+                    # it is end of the only, not context ignoring fragment
+                    # so there will be no matches in subtree
                     stack.append((None, None, ic))
                 else:
                     stack.append((fid, p, ic))
 
             if fid + 1 == len(frags) and p == len(frag):
+                # end of last fragment reached
                 if attrib:
+                    # attribute ended path
                     return attrib(kind, data, pos, namespaces, variables)
                 else:
                     return True

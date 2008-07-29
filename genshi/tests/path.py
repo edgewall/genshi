@@ -15,7 +15,7 @@ import doctest
 import unittest
 
 from genshi.input import XML
-from genshi.path import Path, PathSyntaxError, GenericStrategy, \
+from genshi.path import Path, PathParser, PathSyntaxError, GenericStrategy, \
                         SingleAxisStrategy, SimpleStrategy
 
 
@@ -40,6 +40,8 @@ class PathTestCase(unittest.TestCase):
             rendered = FakePath(s).select(stream,namespaces=namespaces,
                                             variables=variables).render()
             msg = "Bad render using %s strategy"%str(strategy)
+            msg += "\nExpected:\t'%s'"%render
+            msg += "\nRendered:\t'%s'"%rendered
             self.assertEqual(render, rendered, msg)
 
     def _test_expression(self, text, expected, stream=None, render="",
@@ -53,7 +55,10 @@ class PathTestCase(unittest.TestCase):
 
         rendered = path.select(stream, namespaces=namespaces,
                                     variables=variables).render()
-        self.assertEqual(render, rendered, "Bad render using whole path")
+        msg = "Bad render using whole path"
+        msg += "\nExpected:\t'%s'"%render
+        msg += "\nRendered:\t'%s'"%rendered
+        self.assertEqual(render, rendered, msg)
 
         if len(path.paths) == 1:
             self._test_strategies(stream, path.paths[0], render,
@@ -539,6 +544,43 @@ class PathTestCase(unittest.TestCase):
                                 '<root><foo/></root>')
         self._test_expression('descendant-or-self::foo', None, xml, '<foo/>')
 
+    def test_long_simple_paths(self):
+        xml = XML('<root><a><b><a><d><a><b><a><b><a><b><a><c>!'
+                    '</c></a></b></a></b></a></b></a></d></a></b></a></root>')
+        self._test_expression('//a/b/a/b/a/c', None, xml, '<c>!</c>')
+        self._test_expression('//a/b/a/c', None, xml, '<c>!</c>')
+        self._test_expression('//a/c', None, xml, '<c>!</c>')
+        self._test_expression('//c', None, xml, '<c>!</c>')
+        # Please note that a//b is NOT the same as a/descendant::b 
+        # it is a/descendant-or-self::node()/b, which SimpleStrategy
+        # does NOT support
+        self._test_expression('a/b/descendant::a/c', None, xml, '<c>!</c>')
+        self._test_expression('a/b/descendant::a/d/descendant::a/c',
+                                None, xml, '<c>!</c>')
+        self._test_expression('a/b/descendant::a/d/a/c', None, xml, '')
+        self._test_expression('//d/descendant::b/descendant::b/descendant::b'
+                                '/descendant::c', None, xml, '<c>!</c>')
+        self._test_expression('//d/descendant::b/descendant::b/descendant::b'
+                                '/descendant::b/descendant::c', None, xml, '')
+    def _test_support(self, strategy_class, text):
+        path = PathParser(text, None, -1).parse()[0]
+        return strategy_class.supports(path)
+    def test_simple_strategy_support(self):
+        self.assert_(self._test_support(SimpleStrategy, 'a/b'))
+        self.assert_(self._test_support(SimpleStrategy, 'self::a/b'))
+        self.assert_(self._test_support(SimpleStrategy, 'descendant::a/b'))
+        self.assert_(self._test_support(SimpleStrategy,
+                         'descendant-or-self::a/b'))
+        self.assert_(self._test_support(SimpleStrategy, '//a/b'))
+        self.assert_(self._test_support(SimpleStrategy, 'a/@b'))
+        self.assert_(self._test_support(SimpleStrategy, 'a/text()'))
+
+        # a//b is a/descendant-or-self::node()/b
+        self.assert_(not self._test_support(SimpleStrategy, 'a//b'))
+        self.assert_(not self._test_support(SimpleStrategy, 'node()/@a'))
+        self.assert_(not self._test_support(SimpleStrategy, '@a'))
+        self.assert_(not self._test_support(SimpleStrategy, 'foo:bar'))
+        self.assert_(not self._test_support(SimpleStrategy, 'a/@foo:bar'))
 
 def suite():
     suite = unittest.TestSuite()

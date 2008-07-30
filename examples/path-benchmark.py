@@ -16,7 +16,8 @@ try:
     from os import times
     def time_func():
         tup = times()
-        return tup[0] + tup[1]
+        #just user time
+        return tup[0] # + tup[1]
 except ImportError:
     from time import time as time_func
 from genshi.path import Path
@@ -56,7 +57,7 @@ def spell(t):
         name = units[i][1]
     return "%f %s"%(t, name)
 
-def test_paths_in_streams(exprs, streams):
+def test_paths_in_streams(exprs, streams, test_strategies=False):
     for expr, ename in exprs:
         print "Testing %s path"%ename
         for stream, sname in streams:
@@ -71,9 +72,26 @@ def test_paths_in_streams(exprs, streams):
                 for e in stream.select(expr):
                     pass
             t = spell(benchmark(f))
-            print "\t\t__init + select:\t%s"%t
+            print "\t\t__init__ + select:\t%s"%t
+            if test_strategies and len(path.paths) == 1:
+                from genshi.path import GenericStrategy, SingleAxisStrategy, \
+                                        SimpleStrategy
+                from genshi.tests.path import FakePath
+                strategies = (GenericStrategy, SingleAxisStrategy, \
+                                SimpleStrategy)
+                for strategy in strategies:
+                    if not strategy.supports(path.paths[0]):
+                        continue
+                    print "\t\t%s Strategy"%strategy.__name__
+                    fp = FakePath(strategy(path.paths[0]))
+                    def f():
+                        for e in fp.select(stream):
+                            pass
+                    t = spell(benchmark(f))
+                    print "\t\t\tselect:\t\t%s"%t
 
-def test_documents():
+
+def test_documents(test_strategies=False):
     streams = []
     s = XML("""\
 <html xmlns="http://www.w3.org/1999/xhtml" xml:lang="pl" xmlns:py="http://genshi.edgewall.org/" py:strip="">
@@ -134,7 +152,12 @@ def test_documents():
     add_path('descendant-or-self::text()', "all text")
     add_path('descendant-or-self::h1/text()', "tag text")
 
-    test_paths_in_streams(paths, streams)
+    test_paths_in_streams(paths, streams, test_strategies)
 
 if __name__ == '__main__':
-    test_documents()
+    from sys import argv
+    if "--strategies" in argv:
+        test_strategies = True
+    else:
+        test_strategies = False
+    test_documents(test_strategies)

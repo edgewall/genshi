@@ -163,7 +163,7 @@ class Translator(object):
                             newval = self.translate(value)
                     else:
                         newval = list(self(_ensure(value), ctxt,
-                            search_text=False, msgbuf=msgbuf)
+                            search_text=False)
                         )
                     if newval != value:
                         value = newval

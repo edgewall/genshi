@@ -20,9 +20,11 @@ from glob import glob
 import os
 try:
     from setuptools import setup, Extension, Feature
+    from setuptools.command.bdist_egg import bdist_egg
 except ImportError:
     from distutils.core import setup, Extension
     Feature = None
+    bdist_egg = None
 import sys
 
 sys.path.append(os.path.join('doc', 'common'))
@@ -31,6 +33,7 @@ try:
 except ImportError:
     build_doc = test_doc = None
 
+_speedup_available = False
 
 class optional_build_ext(build_ext):
     # This class allows C extension building to fail.
@@ -43,6 +46,8 @@ class optional_build_ext(build_ext):
     def build_extension(self, ext):
         try:
             build_ext.build_extension(self, ext)
+            global _speedup_available
+            _speedup_available = True
         except CCompilerError, x:
             self._unavailable()
 
@@ -65,6 +70,19 @@ if Feature:
 else:
     speedups = None
 
+
+# Setuptools need some help figuring out if the egg is "zip_safe" or not
+if bdist_egg:
+    class my_bdist_egg(bdist_egg):
+        def zip_safe(self):
+            return not _speedup_available and bdist_egg.zip_safe(self)
+
+
+cmdclass = {'build_doc': build_doc, 'test_doc': test_doc,
+            'build_ext': optional_build_ext}
+if bdist_egg:
+    cmdclass['bdist_egg'] = my_bdist_egg
+
 setup(
     name = 'Genshi',
     version = '0.6',
@@ -79,7 +97,6 @@ feature is a template language, which is heavily inspired by Kid.""",
     license = 'BSD',
     url = 'http://genshi.edgewall.org/',
     download_url = 'http://genshi.edgewall.org/wiki/Download',
-    zip_safe = True,
 
     classifiers = [
         'Development Status :: 4 - Beta',
@@ -112,6 +129,5 @@ feature is a template language, which is heavily inspired by Kid.""",
     """,
 
     features = {'speedups': speedups},
-    cmdclass = {'build_doc': build_doc, 'test_doc': test_doc,
-                'build_ext': optional_build_ext}
+    cmdclass = cmdclass
 )

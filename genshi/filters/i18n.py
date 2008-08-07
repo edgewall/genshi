@@ -129,9 +129,11 @@ class Translator(object):
         translate = self.translate
         if not self.extract_text:
             search_text = False
-        skip = 0
-        i18n_msg = I18N_NAMESPACE['msg']
+
         ns_prefixes = []
+        skip = 0
+        i18n_comment = I18N_NAMESPACE['comment']
+        i18n_msg = I18N_NAMESPACE['msg']
         xml_lang = XML_NAMESPACE['lang']
 
         for kind, data, pos in stream:
@@ -180,7 +182,7 @@ class Translator(object):
                     if params and type(params) is list: # event tuple
                         params = params[0][1]
                     msgbuf = MessageBuffer(params)
-                    attrs -= i18n_msg
+                attrs -= (i18n_comment, i18n_msg)
 
                 yield kind, (tag, attrs), pos
 
@@ -226,13 +228,16 @@ class Translator(object):
         """Extract localizable strings from the given template stream.
         
         For every string found, this function yields a ``(lineno, function,
-        message)`` tuple, where:
+        message, comments)`` tuple, where:
         
         * ``lineno`` is the number of the line on which the string was found,
         * ``function`` is the name of the ``gettext`` function used (if the
           string was extracted from embedded Python code), and
         *  ``message`` is the string itself (a ``unicode`` object, or a tuple
-           of ``unicode`` objects for functions with multiple string arguments).
+           of ``unicode`` objects for functions with multiple string
+           arguments).
+        *  ``comments`` is a list of comments related to the message, extracted
+           from ``i18n:comment`` attributes found in the markup
         
         >>> from genshi.template import MarkupTemplate
         >>> 
@@ -247,8 +252,8 @@ class Translator(object):
         ...   </body>
         ... </html>''', filename='example.html')
         >>> 
-        >>> for lineno, funcname, message in Translator().extract(tmpl.stream):
-        ...    print "%d, %r, %r" % (lineno, funcname, message)
+        >>> for line, func, msg, comments in Translator().extract(tmpl.stream):
+        ...    print "%d, %r, %r" % (line, func, msg)
         3, None, u'Example'
         6, None, u'Example'
         7, '_', u'Hello, %(name)s'
@@ -265,10 +270,13 @@ class Translator(object):
         :note: Changed in 0.4.1: For a function with multiple string arguments
                (such as ``ngettext``), a single item with a tuple of strings is
                yielded, instead an item for each string argument.
+        :note: Changed in 0.6: The returned tuples now include a 4th element,
+               which is a list of comments for the translator
         """
         if not self.extract_text:
             search_text = False
         skip = 0
+        i18n_comment = I18N_NAMESPACE['comment']
         i18n_msg = I18N_NAMESPACE['msg']
         xml_lang = XML_NAMESPACE['lang']
 
@@ -293,33 +301,37 @@ class Translator(object):
                         if name in self.include_attrs:
                             text = value.strip()
                             if text:
-                                yield pos[1], None, text
+                                yield pos[1], None, text, []
                     else:
-                        for lineno, funcname, text in self.extract(
+                        for lineno, funcname, text, comments in self.extract(
                                 _ensure(value), gettext_functions,
                                 search_text=False):
-                            yield lineno, funcname, text
+                            yield lineno, funcname, text, comments
 
                 if msgbuf:
                     msgbuf.append(kind, data, pos)
-                elif i18n_msg in attrs:
-                    params = attrs.get(i18n_msg)
-                    if params and type(params) is list: # event tuple
-                        params = params[0][1]
-                    msgbuf = MessageBuffer(params, pos[1])
+                else:
+                    msg_params = attrs.get(i18n_msg)
+                    if msg_params is not None:
+                        if type(msg_params) is list: # event tuple
+                            msg_params = msg_params[0][1]
+                        msgbuf = MessageBuffer(
+                            msg_params, attrs.get(i18n_comment), pos[1]
+                        )
 
             elif not skip and search_text and kind is TEXT:
                 if not msgbuf:
                     text = data.strip()
                     if text and filter(None, [ch.isalpha() for ch in text]):
-                        yield pos[1], None, text
+                        yield pos[1], None, text, []
                 else:
                     msgbuf.append(kind, data, pos)
 
             elif not skip and msgbuf and kind is END:
                 msgbuf.append(kind, data, pos)
                 if not msgbuf.depth:
-                    yield msgbuf.lineno, None, msgbuf.format()
+                    yield msgbuf.lineno, None, msgbuf.format(), \
+                          filter(None, [msgbuf.comment])
                     msgbuf = None
 
             elif kind is EXPR or kind is EXEC:
@@ -327,15 +339,15 @@ class Translator(object):
                     msgbuf.append(kind, data, pos)
                 for funcname, strings in extract_from_code(data,
                                                            gettext_functions):
-                    yield pos[1], funcname, strings
+                    yield pos[1], funcname, strings, []
 
             elif kind is SUB:
                 subkind, substream = data
                 messages = self.extract(substream, gettext_functions,
                                         search_text=search_text and not skip,
                                         msgbuf=msgbuf)
-                for lineno, funcname, text in messages:
-                    yield lineno, funcname, text
+                for lineno, funcname, text, comments in messages:
+                    yield lineno, funcname, text, comments
 
 
 class MessageBuffer(object):
@@ -344,7 +356,7 @@ class MessageBuffer(object):
     :since: version 0.5
     """
 
-    def __init__(self, params=u'', lineno=-1):
+    def __init__(self, params=u'', comment=None, lineno=-1):
         """Initialize the message buffer.
         
         :param params: comma-separated list of parameter names
@@ -353,6 +365,7 @@ class MessageBuffer(object):
                        belonging to the message was found
         """
         self.params = [name.strip() for name in params.split(',')]
+        self.comment = comment
         self.lineno = lineno
         self.string = []
         self.events = {}
@@ -545,6 +558,5 @@ def extract(fileobj, keywords, comment_tags, options):
     tmpl = template_class(fileobj, filename=getattr(fileobj, 'name', None),
                           encoding=encoding)
     translator = Translator(None, ignore_tags, include_attrs, extract_text)
-    for lineno, func, message in translator.extract(tmpl.stream,
-                                                    gettext_functions=keywords):
-        yield lineno, func, message, []
+    for message in translator.extract(tmpl.stream, gettext_functions=keywords):
+        yield message

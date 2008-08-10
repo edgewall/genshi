@@ -17,8 +17,9 @@
 """
 
 from compiler import ast
-from gettext import gettext
+from gettext import NullTranslations
 import re
+from types import FunctionType
 
 from genshi.core import Attrs, Namespace, QName, START, END, TEXT, START_NS, \
                         END_NS, XML_NAMESPACE, _ensure
@@ -125,7 +126,7 @@ class Translator(DirectiveFactory):
                                'summary', 'title'])
     NAMESPACE = I18N_NAMESPACE
 
-    def __init__(self, translate=gettext, ignore_tags=IGNORE_TAGS,
+    def __init__(self, translate=NullTranslations(), ignore_tags=IGNORE_TAGS,
                  include_attrs=INCLUDE_ATTRS, extract_text=True):
         """Initialize the translator.
         
@@ -136,6 +137,10 @@ class Translator(DirectiveFactory):
         :param extract_text: whether the content of text nodes should be
                              extracted, or only text in explicit ``gettext``
                              function calls
+
+        :note: Changed in 0.6: the `translate` parameter can now be either
+               a ``gettext``-style function, or an object compatible with the
+               ``NullTransalations`` or ``GNUTranslations`` interface
         """
         self.translate = translate
         self.ignore_tags = ignore_tags
@@ -159,7 +164,10 @@ class Translator(DirectiveFactory):
         """
         ignore_tags = self.ignore_tags
         include_attrs = self.include_attrs
-        translate = self.translate
+        if type(self.translate) is FunctionType:
+            gettext = self.translate
+        else:
+            gettext = self.translate.ugettext
         if not self.extract_text:
             search_text = False
 
@@ -169,7 +177,7 @@ class Translator(DirectiveFactory):
         i18n_msg = I18N_NAMESPACE['msg']
         xml_lang = XML_NAMESPACE['lang']
         if ctxt:
-            ctxt['_i18n.gettext'] = translate
+            ctxt['_i18n.gettext'] = gettext
 
         for kind, data, pos in stream:
 
@@ -197,7 +205,7 @@ class Translator(DirectiveFactory):
                     newval = value
                     if search_text and isinstance(value, basestring):
                         if name in include_attrs:
-                            newval = self.translate(value)
+                            newval = gettext(value)
                     else:
                         newval = list(self(_ensure(value), ctxt,
                             search_text=False)
@@ -214,7 +222,7 @@ class Translator(DirectiveFactory):
             elif search_text and kind is TEXT:
                 text = data.strip()
                 if text:
-                    data = data.replace(text, unicode(translate(text)))
+                    data = data.replace(text, unicode(gettext(text)))
                 yield kind, data, pos
 
             elif kind is SUB:

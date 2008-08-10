@@ -76,6 +76,40 @@ class MarkupTemplate(Template):
         if self.loader:
             self.filters.append(self._include)
 
+    def _parse(self, source, encoding):
+        if not isinstance(source, Stream):
+            source = XMLParser(source, filename=self.filename,
+                               encoding=encoding)
+        stream = []
+
+        for kind, data, pos in source:
+
+            if kind is TEXT:
+                for kind, data, pos in interpolate(data, self.filepath, pos[1],
+                                                   pos[2], lookup=self.lookup):
+                    stream.append((kind, data, pos))
+
+            elif kind is PI and data[0] == 'python':
+                if not self.allow_exec:
+                    raise TemplateSyntaxError('Python code blocks not allowed',
+                                              self.filepath, *pos[1:])
+                try:
+                    suite = Suite(data[1], self.filepath, pos[1],
+                                  lookup=self.lookup)
+                except SyntaxError, err:
+                    raise TemplateSyntaxError(err, self.filepath,
+                                              pos[1] + (err.lineno or 1) - 1,
+                                              pos[2] + (err.offset or 0))
+                stream.append((EXEC, suite, pos))
+
+            elif kind is COMMENT and not data.lstrip().startswith('!'):
+                stream.append((kind, data, pos))
+
+            else:
+                stream.append((kind, data, pos))
+
+        return stream
+
     def _extract_directives(self, stream, namespace, factory):
         depth = 0
         dirmap = {} # temporary mapping of directives to elements
@@ -252,7 +286,9 @@ class MarkupTemplate(Template):
             yield kind, data, pos
 
     def _prepare(self, stream):
-        return Template._prepare(self, self._extract_includes(self._interpolate_attrs(stream)))
+        return Template._prepare(self,
+            self._extract_includes(self._interpolate_attrs(stream))
+        )
 
     def add_directive_factory(self, namespace, factory):
         """Register a custom `DirectiveFactory` for a given namespace.
@@ -267,42 +303,6 @@ class MarkupTemplate(Template):
                                    'template already prepared'
         self._stream = self._extract_directives(self._stream, namespace,
                                                 factory)
-
-    def _parse(self, source, encoding):
-        if not isinstance(source, Stream):
-            source = XMLParser(source, filename=self.filename,
-                               encoding=encoding)
-
-        stream = []
-
-        for kind, data, pos in source:
-
-            if kind is TEXT:
-                for kind, data, pos in interpolate(data, self.filepath, pos[1],
-                                                   pos[2], lookup=self.lookup):
-                    stream.append((kind, data, pos))
-
-            elif kind is PI and data[0] == 'python':
-                if not self.allow_exec:
-                    raise TemplateSyntaxError('Python code blocks not allowed',
-                                              self.filepath, *pos[1:])
-                try:
-                    suite = Suite(data[1], self.filepath, pos[1],
-                                  lookup=self.lookup)
-                except SyntaxError, err:
-                    raise TemplateSyntaxError(err, self.filepath,
-                                              pos[1] + (err.lineno or 1) - 1,
-                                              pos[2] + (err.offset or 0))
-                stream.append((EXEC, suite, pos))
-
-            elif kind is COMMENT:
-                if not data.lstrip().startswith('!'):
-                    stream.append((kind, data, pos))
-
-            else:
-                stream.append((kind, data, pos))
-
-        return stream
 
     def _match(self, stream, ctxt, start=0, end=None, **vars):
         """Internal stream filter that applies any defined match templates

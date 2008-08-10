@@ -102,8 +102,9 @@ class MarkupTemplate(Template):
                                               pos[2] + (err.offset or 0))
                 stream.append((EXEC, suite, pos))
 
-            elif kind is COMMENT and not data.lstrip().startswith('!'):
-                stream.append((kind, data, pos))
+            elif kind is COMMENT:
+                if not data.lstrip().startswith('!'):
+                    stream.append((kind, data, pos))
 
             else:
                 stream.append((kind, data, pos))

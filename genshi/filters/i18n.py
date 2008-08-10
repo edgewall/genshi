@@ -17,8 +17,9 @@
 """
 
 from compiler import ast
-from gettext import gettext
+from gettext import NullTranslations
 import re
+from types import FunctionType
 
 from genshi.core import Attrs, Namespace, QName, START, END, TEXT, START_NS, \
                         END_NS, XML_NAMESPACE, _ensure
@@ -91,7 +92,7 @@ class Translator(object):
     INCLUDE_ATTRS = frozenset(['abbr', 'alt', 'label', 'prompt', 'standby',
                                'summary', 'title'])
 
-    def __init__(self, translate=gettext, ignore_tags=IGNORE_TAGS,
+    def __init__(self, translate=NullTranslations(), ignore_tags=IGNORE_TAGS,
                  include_attrs=INCLUDE_ATTRS, extract_text=True):
         """Initialize the translator.
         
@@ -102,6 +103,10 @@ class Translator(object):
         :param extract_text: whether the content of text nodes should be
                              extracted, or only text in explicit ``gettext``
                              function calls
+
+        :note: Changed in 0.6: the `translate` parameter can now be either
+               a ``gettext``-style function, or an object compatible with the
+               ``NullTransalations`` or ``GNUTranslations`` interface
         """
         self.translate = translate
         self.ignore_tags = ignore_tags
@@ -126,7 +131,10 @@ class Translator(object):
         """
         ignore_tags = self.ignore_tags
         include_attrs = self.include_attrs
-        translate = self.translate
+        if type(self.translate) is FunctionType:
+            gettext = self.translate
+        else:
+            gettext = self.translate.ugettext
         if not self.extract_text:
             search_text = False
 
@@ -162,7 +170,7 @@ class Translator(object):
                     newval = value
                     if search_text and isinstance(value, basestring):
                         if name in include_attrs:
-                            newval = self.translate(value)
+                            newval = gettext(value)
                     else:
                         newval = list(self(_ensure(value), ctxt,
                             search_text=False)
@@ -190,7 +198,7 @@ class Translator(object):
                 if not msgbuf:
                     text = data.strip()
                     if text:
-                        data = data.replace(text, unicode(translate(text)))
+                        data = data.replace(text, unicode(gettext(text)))
                     yield kind, data, pos
                 else:
                     msgbuf.append(kind, data, pos)
@@ -201,7 +209,7 @@ class Translator(object):
             elif not skip and msgbuf and kind is END:
                 msgbuf.append(kind, data, pos)
                 if not msgbuf.depth:
-                    for event in msgbuf.translate(translate(msgbuf.format())):
+                    for event in msgbuf.translate(gettext(msgbuf.format())):
                         yield event
                     msgbuf = None
                     yield kind, data, pos

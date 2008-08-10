@@ -13,6 +13,7 @@
 
 from datetime import datetime
 import doctest
+from gettext import NullTranslations
 from StringIO import StringIO
 import unittest
 
@@ -20,6 +21,22 @@ from genshi.core import Attrs
 from genshi.template import MarkupTemplate
 from genshi.filters.i18n import Translator, extract
 from genshi.input import HTML
+
+
+class DummyTranslations(NullTranslations):
+
+    def __init__(self, catalog):
+        NullTranslations.__init__(self)
+        self._catalog = catalog
+
+    def ugettext(self, message):
+        missing = object()
+        tmsg = self._catalog.get(message, missing)
+        if tmsg is missing:
+            if self._fallback:
+                return self._fallback.ugettext(message)
+            return unicode(message)
+        return tmsg
 
 
 class TranslatorTestCase(unittest.TestCase):
@@ -387,6 +404,17 @@ class TranslatorTestCase(unittest.TestCase):
         </html>""")
         gettext = lambda s: u"Voh"
         tmpl.filters.insert(0, Translator(gettext))
+        self.assertEqual("""<html>
+          <p>Voh</p>
+        </html>""", tmpl.generate().render())
+
+    def test_translate_with_translations_object(self):
+        tmpl = MarkupTemplate("""<html xmlns:py="http://genshi.edgewall.org/"
+            xmlns:i18n="http://genshi.edgewall.org/i18n">
+          <p i18n:msg="" i18n:comment="As in foo bar">Foo</p>
+        </html>""")
+        translations = DummyTranslations({'Foo': 'Voh'})
+        tmpl.filters.insert(0, Translator(translations))
         self.assertEqual("""<html>
           <p>Voh</p>
         </html>""", tmpl.generate().render())

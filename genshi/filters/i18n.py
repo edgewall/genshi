@@ -33,6 +33,15 @@ __docformat__ = 'restructuredtext en'
 I18N_NAMESPACE = Namespace('http://genshi.edgewall.org/i18n')
 
 
+class CommentDirective(Directive):
+
+    __slots__ = []
+
+    @classmethod
+    def attach(cls, template, stream, value, namespaces, pos):
+        return None, stream
+
+
 class MsgDirective(Directive):
 
     __slots__ = ['lineno', 'params']
@@ -115,6 +124,7 @@ class Translator(DirectiveFactory):
     """
 
     directives = [
+        ('comment', CommentDirective),
         ('msg', MsgDirective)
     ]
 

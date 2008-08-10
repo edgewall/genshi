@@ -157,7 +157,9 @@ class TranslatorTestCase(unittest.TestCase):
           </p>
         </html>""")
         gettext = lambda s: u"Für Details siehe bitte [1:Hilfe]."
-        tmpl.filters.insert(0, Translator(gettext))
+        translator = Translator(gettext)
+        tmpl.filters.insert(0, translator)
+        tmpl.add_directive_factory(Translator.NAMESPACE, translator)
         self.assertEqual("""<html>
           <p>Für Details siehe bitte <a href="help.html">Hilfe</a>.</p>
         </html>""", tmpl.generate().render())
@@ -183,7 +185,9 @@ class TranslatorTestCase(unittest.TestCase):
           </p>
         </html>""")
         gettext = lambda s: u"Für Details siehe bitte [1:[2:Hilfeseite]]."
-        tmpl.filters.insert(0, Translator(gettext))
+        translator = Translator(gettext)
+        tmpl.filters.insert(0, translator)
+        tmpl.add_directive_factory(Translator.NAMESPACE, translator)
         self.assertEqual("""<html>
           <p>Für Details siehe bitte <a href="help.html"><em>Hilfeseite</em></a>.</p>
         </html>""", tmpl.generate().render())
@@ -208,7 +212,9 @@ class TranslatorTestCase(unittest.TestCase):
           </p>
         </html>""")
         gettext = lambda s: u"[1:] Einträge pro Seite anzeigen."
-        tmpl.filters.insert(0, Translator(gettext))
+        translator = Translator(gettext)
+        tmpl.filters.insert(0, translator)
+        tmpl.add_directive_factory(Translator.NAMESPACE, translator)
         self.assertEqual("""<html>
           <p><input type="text" name="num"/> Einträge pro Seite anzeigen.</p>
         </html>""", tmpl.generate().render())
@@ -233,7 +239,9 @@ class TranslatorTestCase(unittest.TestCase):
           </p>
         </html>""")
         gettext = lambda s: u"Für [2:Details] siehe bitte [1:Hilfe]."
-        tmpl.filters.insert(0, Translator(gettext))
+        translator = Translator(gettext)
+        tmpl.filters.insert(0, translator)
+        tmpl.add_directive_factory(Translator.NAMESPACE, translator)
         self.assertEqual("""<html>
           <p>Für <em>Details</em> siehe bitte <a href="help.html">Hilfe</a>.</p>
         </html>""", tmpl.generate().render())
@@ -259,7 +267,9 @@ class TranslatorTestCase(unittest.TestCase):
           </p>
         </html>""")
         gettext = lambda s: u"[1:] Einträge pro Seite, beginnend auf Seite [2:]."
-        tmpl.filters.insert(0, Translator(gettext))
+        translator = Translator(gettext)
+        tmpl.filters.insert(0, translator)
+        tmpl.add_directive_factory(Translator.NAMESPACE, translator)
         self.assertEqual("""<html>
           <p><input type="text" name="num"/> Eintr\xc3\xa4ge pro Seite, beginnend auf Seite <input type="text" name="num"/>.</p>
         </html>""", tmpl.generate().render())
@@ -284,7 +294,9 @@ class TranslatorTestCase(unittest.TestCase):
           </p>
         </html>""")
         gettext = lambda s: u"Hallo, %(name)s!"
-        tmpl.filters.insert(0, Translator(gettext))
+        translator = Translator(gettext)
+        tmpl.filters.insert(0, translator)
+        tmpl.add_directive_factory(Translator.NAMESPACE, translator)
         self.assertEqual("""<html>
           <p>Hallo, Jim!</p>
         </html>""", tmpl.generate(user=dict(name='Jim')).render())
@@ -297,7 +309,9 @@ class TranslatorTestCase(unittest.TestCase):
           </p>
         </html>""")
         gettext = lambda s: u"%(name)s, sei gegrüßt!"
-        tmpl.filters.insert(0, Translator(gettext))
+        translator = Translator(gettext)
+        tmpl.filters.insert(0, translator)
+        tmpl.add_directive_factory(Translator.NAMESPACE, translator)
         self.assertEqual("""<html>
           <p>Jim, sei gegrüßt!</p>
         </html>""", tmpl.generate(user=dict(name='Jim')).render())
@@ -310,7 +324,9 @@ class TranslatorTestCase(unittest.TestCase):
           </p>
         </html>""")
         gettext = lambda s: u"Sei gegrüßt, [1:Alter]!"
-        tmpl.filters.insert(0, Translator(gettext))
+        translator = Translator(gettext)
+        tmpl.filters.insert(0, translator)
+        tmpl.add_directive_factory(Translator.NAMESPACE, translator)
         self.assertEqual("""<html>
           <p>Sei gegrüßt, <a href="#42">Alter</a>!</p>
         </html>""", tmpl.generate(anchor='42').render())
@@ -335,7 +351,9 @@ class TranslatorTestCase(unittest.TestCase):
           </p>
         </html>""")
         gettext = lambda s: u"%(name)s schrieb dies um %(time)s"
-        tmpl.filters.insert(0, Translator(gettext))
+        translator = Translator(gettext)
+        tmpl.filters.insert(0, translator)
+        tmpl.add_directive_factory(Translator.NAMESPACE, translator)
         entry = {
             'author': 'Jim',
             'time': datetime(2008, 4, 1, 14, 30)
@@ -386,7 +404,9 @@ class TranslatorTestCase(unittest.TestCase):
           <p i18n:msg="" i18n:comment="As in foo bar">Foo</p>
         </html>""")
         gettext = lambda s: u"Voh"
-        tmpl.filters.insert(0, Translator(gettext))
+        translator = Translator(gettext)
+        tmpl.filters.insert(0, translator)
+        tmpl.add_directive_factory(Translator.NAMESPACE, translator)
         self.assertEqual("""<html>
           <p>Voh</p>
         </html>""", tmpl.generate().render())

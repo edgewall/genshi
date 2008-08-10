@@ -22,7 +22,8 @@ import re
 
 from genshi.core import Attrs, Namespace, QName, START, END, TEXT, START_NS, \
                         END_NS, XML_NAMESPACE, _ensure
-from genshi.template.base import Template, EXPR, SUB
+from genshi.template.base import DirectiveFactory, EXPR, SUB, _apply_directives
+from genshi.template.directives import Directive
 from genshi.template.markup import MarkupTemplate, EXEC
 
 __all__ = ['Translator', 'extract']
@@ -31,7 +32,35 @@ __docformat__ = 'restructuredtext en'
 I18N_NAMESPACE = Namespace('http://genshi.edgewall.org/i18n')
 
 
-class Translator(object):
+class MsgDirective(Directive):
+
+    __slots__ = ['lineno', 'params']
+
+    def __init__(self, value, template, hints=None, namespaces=None,
+                 lineno=-1, offset=-1):
+        Directive.__init__(self, None, template, namespaces, lineno, offset)
+        self.lineno = lineno
+        self.params = [name.strip() for name in value.split(',')]
+
+    def __call__(self, stream, directives, ctxt, **vars):
+        msgbuf = MessageBuffer(self.params, lineno=self.lineno)
+
+        stream = iter(stream)
+        yield stream.next()
+        previous = stream.next()
+        for event in stream:
+            msgbuf.append(*previous)
+            previous = event
+
+        gettext = ctxt.get('_i18n.gettext')
+        translation = gettext(msgbuf.format())
+        for event in msgbuf.translate(translation):
+            yield event
+
+        yield previous
+
+
+class Translator(DirectiveFactory):
     """Can extract and translate localizable strings from markup streams and
     templates.
     
@@ -84,12 +113,17 @@ class Translator(object):
     exclude specific parts of a template from being extracted and translated.
     """
 
+    directives = [
+        ('msg', MsgDirective)
+    ]
+
     IGNORE_TAGS = frozenset([
         QName('script'), QName('http://www.w3.org/1999/xhtml}script'),
         QName('style'), QName('http://www.w3.org/1999/xhtml}style')
     ])
     INCLUDE_ATTRS = frozenset(['abbr', 'alt', 'label', 'prompt', 'standby',
                                'summary', 'title'])
+    NAMESPACE = I18N_NAMESPACE
 
     def __init__(self, translate=gettext, ignore_tags=IGNORE_TAGS,
                  include_attrs=INCLUDE_ATTRS, extract_text=True):
@@ -108,7 +142,7 @@ class Translator(object):
         self.include_attrs = include_attrs
         self.extract_text = extract_text
 
-    def __call__(self, stream, ctxt=None, search_text=True, msgbuf=None):
+    def __call__(self, stream, ctxt=None, search_text=True):
         """Translate any localizable strings in the given stream.
         
         This function shouldn't be called directly. Instead, an instance of
@@ -121,7 +155,6 @@ class Translator(object):
         :param ctxt: the template context (not used)
         :param search_text: whether text nodes should be translated (used
                             internally)
-        :param msgbuf: a `MessageBuffer` object or `None` (used internally)
         :return: the localized stream
         """
         ignore_tags = self.ignore_tags
@@ -135,6 +168,8 @@ class Translator(object):
         i18n_comment = I18N_NAMESPACE['comment']
         i18n_msg = I18N_NAMESPACE['msg']
         xml_lang = XML_NAMESPACE['lang']
+        if ctxt:
+            ctxt['_i18n.gettext'] = translate
 
         for kind, data, pos in stream:
 
@@ -174,48 +209,18 @@ class Translator(object):
                 if changed:
                     attrs = Attrs(new_attrs)
 
-                if msgbuf:
-                    msgbuf.append(kind, data, pos)
-                    continue
-                elif i18n_msg in attrs:
-                    params = attrs.get(i18n_msg)
-                    if params and type(params) is list: # event tuple
-                        params = params[0][1]
-                    msgbuf = MessageBuffer(params)
-                attrs -= (i18n_comment, i18n_msg)
-
                 yield kind, (tag, attrs), pos
 
             elif search_text and kind is TEXT:
-                if not msgbuf:
-                    text = data.strip()
-                    if text:
-                        data = data.replace(text, unicode(translate(text)))
-                    yield kind, data, pos
-                else:
-                    msgbuf.append(kind, data, pos)
-
-            elif msgbuf and kind is EXPR:
-                msgbuf.append(kind, data, pos)
-
-            elif not skip and msgbuf and kind is END:
-                msgbuf.append(kind, data, pos)
-                if not msgbuf.depth:
-                    for event in msgbuf.translate(translate(msgbuf.format())):
-                        yield event
-                    msgbuf = None
-                    yield kind, data, pos
+                text = data.strip()
+                if text:
+                    data = data.replace(text, unicode(translate(text)))
+                yield kind, data, pos
 
             elif kind is SUB:
                 subkind, substream = data
-                new_substream = list(self(substream, ctxt, msgbuf=msgbuf))
+                new_substream = list(self(substream, ctxt))
                 yield kind, (subkind, new_substream), pos
-
-            elif kind is START_NS and data[1] == I18N_NAMESPACE:
-                ns_prefixes.append(data[0])
-
-            elif kind is END_NS and data in ns_prefixes:
-                ns_prefixes.remove(data)
 
             else:
                 yield kind, data, pos
@@ -364,7 +369,9 @@ class MessageBuffer(object):
         :param lineno: the line number on which the first stream event
                        belonging to the message was found
         """
-        self.params = [name.strip() for name in params.split(',')]
+        if isinstance(params, basestring):
+            params = [name.strip() for name in params.split(',')]
+        self.params = params
         self.comment = comment
         self.lineno = lineno
         self.string = []

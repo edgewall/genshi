@@ -44,30 +44,28 @@ class CommentDirective(Directive):
 
 class MsgDirective(Directive):
 
-    __slots__ = ['lineno', 'params']
+    __slots__ = ['params']
 
     def __init__(self, value, template, hints=None, namespaces=None,
                  lineno=-1, offset=-1):
         Directive.__init__(self, None, template, namespaces, lineno, offset)
-        self.lineno = lineno
         self.params = [name.strip() for name in value.split(',')]
 
     def __call__(self, stream, directives, ctxt, **vars):
-        msgbuf = MessageBuffer(self.params, lineno=self.lineno)
+        msgbuf = MessageBuffer(self.params)
 
         stream = iter(stream)
-        yield stream.next()
+        yield stream.next() # the outer start tag
         previous = stream.next()
         for event in stream:
             msgbuf.append(*previous)
             previous = event
 
         gettext = ctxt.get('_i18n.gettext')
-        translation = gettext(msgbuf.format())
-        for event in msgbuf.translate(translation):
+        for event in msgbuf.translate(gettext(msgbuf.format())):
             yield event
 
-        yield previous
+        yield previous # the outer end tag
 
 
 class Translator(DirectiveFactory):
@@ -174,18 +172,15 @@ class Translator(DirectiveFactory):
         """
         ignore_tags = self.ignore_tags
         include_attrs = self.include_attrs
+        skip = 0
+        xml_lang = XML_NAMESPACE['lang']
+
         if type(self.translate) is FunctionType:
             gettext = self.translate
         else:
             gettext = self.translate.ugettext
         if not self.extract_text:
             search_text = False
-
-        ns_prefixes = []
-        skip = 0
-        i18n_comment = I18N_NAMESPACE['comment']
-        i18n_msg = I18N_NAMESPACE['msg']
-        xml_lang = XML_NAMESPACE['lang']
         if ctxt:
             ctxt['_i18n.gettext'] = gettext
 
@@ -236,9 +231,12 @@ class Translator(DirectiveFactory):
                 yield kind, data, pos
 
             elif kind is SUB:
-                subkind, substream = data
-                new_substream = list(self(substream, ctxt))
-                yield kind, (subkind, new_substream), pos
+                directives, substream = data
+                # If this is an i18n:msg directive, no need to translate here
+                if not filter(None, [isinstance(d, MsgDirective)
+                                     for d in directives]):
+                    substream = list(self(substream, ctxt))
+                yield kind, (directives, substream), pos
 
             else:
                 yield kind, data, pos

@@ -65,7 +65,7 @@ class MarkupTemplate(Template):
         Template.__init__(self, source, filepath=filepath, filename=filename,
                           loader=loader, encoding=encoding, lookup=lookup,
                           allow_exec=allow_exec)
-        self.add_directive_factory(self.DIRECTIVE_NAMESPACE, self)
+        self.add_directives(self.DIRECTIVE_NAMESPACE, self)
 
     def _init_filters(self):
         Template._init_filters(self)
@@ -292,7 +292,7 @@ class MarkupTemplate(Template):
             self._extract_includes(self._interpolate_attrs(stream))
         )
 
-    def add_directive_factory(self, namespace, factory):
+    def add_directives(self, namespace, factory):
         """Register a custom `DirectiveFactory` for a given namespace.
         
         :param namespace: the namespace URI

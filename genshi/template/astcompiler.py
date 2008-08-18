@@ -1,3 +1,20 @@
+# -*- coding: utf-8 -*-
+#
+# Copyright (C) 2006-2008 Edgewall Software
+# All rights reserved.
+#
+# This software is licensed as described in the file COPYING, which
+# you should have received as part of this distribution. The terms
+# are also available at http://genshi.edgewall.org/wiki/License.
+#
+# This software consists of voluntary contributions made by many
+# individuals. For the exact contribution history, see the revision
+# history and logs, available at http://genshi.edgewall.org/log/.
+
+"""Module generating Python code from AST tree and then compiling it"""
+
+__docformat__ = 'restructuredtext en'
+
 from ast import _ast
 from sys import stderr
 
@@ -253,7 +270,18 @@ class CodeGenerator(object):
 
     # With(expr context_expr, expr? optional_vars, stmt* body)
     def visitWith(self, node):
-        raise NotImplemented
+        self.new_line()
+        self.write("with ")
+        self.visit(node.context_expr)
+        if getattr(node, "optional_vars", None):
+            self.write(" as ")
+            self.visit(node.optional_vars)
+        self.write(":")
+        self.change_indent(1)
+        for statement in node.body:
+            self.visit(statement)
+        self.change_indent(-1)
+
 
     # Raise(expr? type, expr? inst, expr? tback)
     def visitRaise(self, node):

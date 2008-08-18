@@ -1,4 +1,4 @@
-import _ast
+from ast import _ast
 from sys import stderr
 
 class CodeGenerator(object):

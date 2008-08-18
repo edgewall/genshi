@@ -19,6 +19,7 @@ from genshi.template.base import TemplateRuntimeError, TemplateSyntaxError, \
                                  EXPR, _apply_directives, _eval_expr, \
                                  _exec_suite
 from genshi.template.eval import Expression, ExpressionASTTransformer, _parse
+from ast import _ast
 
 __all__ = ['AttrsDirective', 'ChooseDirective', 'ContentDirective',
            'DefDirective', 'ForDirective', 'IfDirective', 'MatchDirective',
@@ -26,6 +27,33 @@ __all__ = ['AttrsDirective', 'ChooseDirective', 'ContentDirective',
            'WhenDirective', 'WithDirective']
 __docformat__ = 'restructuredtext en'
 
+def _assignment(ast):
+    """Takes the AST representation of an assignment, and returns a
+    function that applies the assignment of a given value to a dictionary.           
+    """                                                                     
+    def _names(node):                                                       
+        if isinstance(node, _ast.Tuple):   
+            return tuple([_names(child) for child in node.elts])
+        elif isinstance(node, _ast.Name):   
+            return node.id                                                
+    def _assign(data, value, names=_names(ast)):                            
+        if type(names) is tuple:                                            
+            for idx in range(len(names)):                                   
+                _assign(data, value[idx], names[idx])                       
+        else:                                                               
+            data[names] = value                                             
+    return _assign    
+
+def wrap_tree(source, mode):
+    assert isinstance(source, _ast.AST), \
+        'Expected string or AST node, but got %r' % source
+    if mode == 'eval':
+        node = _ast.Expression()
+        node.body = source
+    else:
+        node = _ast.Module()
+        node.body = [source]
+    return node
 
 class DirectiveMeta(type):
     """Meta class for template directives."""
@@ -115,45 +143,6 @@ class Directive(object):
     _parse_expr = classmethod(_parse_expr)
 
 
-try:
-    import _ast
-except ImportError:
-    new_ast = False
-    import compiler.ast
-    def _assignment(ast):
-        """Takes the AST representation of an assignment, and returns a
-        function that applies the assignment of a given value to a dictionary.
-        """
-        def _names(node):
-            if isinstance(node, (compiler.ast.AssTuple, compiler.ast.Tuple)):
-                return tuple([_names(child) for child in node.nodes])
-            elif isinstance(node, (compiler.ast.AssName, compiler.ast.Name)):
-                return node.name
-        def _assign(data, value, names=_names(ast)):
-            if type(names) is tuple:
-                for idx in range(len(names)):
-                    _assign(data, value[idx], names[idx])
-            else:
-                data[names] = value
-        return _assign
-else:
-    new_ast = True
-    def _assignment(ast):
-        """Takes the AST representation of an assignment, and returns a
-        function that applies the assignment of a given value to a dictionary.           
-        """                                                                     
-        def _names(node):                                                       
-            if isinstance(node, _ast.Tuple):   
-                return tuple([_names(child) for child in node.elts])
-            elif isinstance(node, _ast.Name):   
-                return node.id                                                
-        def _assign(data, value, names=_names(ast)):                            
-            if type(names) is tuple:                                            
-                for idx in range(len(names)):                                   
-                    _assign(data, value[idx], names[idx])                       
-            else:                                                               
-                data[names] = value                                             
-        return _assign    
 
 
 class AttrsDirective(Directive):
@@ -278,58 +267,31 @@ class DefDirective(Directive):
     """
     __slots__ = ['name', 'args', 'star_args', 'dstar_args', 'defaults']
 
-    if new_ast:
-        def __init__(self, args, template, namespaces=None,
-                            lineno=-1, offset=-1):
-            Directive.__init__(self, None, template, namespaces,
-                                 lineno, offset)
-            ast = _parse(args).body
-            self.args = []
-            self.star_args = None
-            self.dstar_args = None
-            self.defaults = {}
-            if isinstance(ast, _ast.Call):
-                self.name = ast.func.id
-                for arg in ast.args:
-                    # only names
-                    self.args.append(arg.id)
-                for kwd in ast.keywords:
-                    self.args.append(kwd.arg)
-                    exp = Expression(kwd.value, template.filepath,
-                                     lineno, lookup=template.lookup)
-                    self.defaults[kwd.arg] = exp
-                if getattr(ast, 'starargs', None):
-                    self.star_args = ast.starargs.id
-                if getattr(ast, 'kwargs', None):
-                    self.dstar_args = ast.kwargs.id
-            else:
-                self.name = ast.id
-    else:
-        def __init__(self, args, template, namespaces=None,
-                            lineno=-1, offset=-1):
-            Directive.__init__(self, None, template, namespaces,
-                                 lineno, offset)
-            ast = _parse(args).node
-            self.args = []
-            self.star_args = None
-            self.dstar_args = None
-            self.defaults = {}
-            if isinstance(ast, compiler.ast.CallFunc):
-                self.name = ast.node.name
-                for arg in ast.args:
-                    if isinstance(arg, compiler.ast.Keyword):
-                        self.args.append(arg.name)
-                        exp = Expression(arg.expr, template.filepath,
-                                         lineno, lookup=template.lookup)
-                        self.defaults[arg.name] = exp
-                    else:
-                        self.args.append(arg.name)
-                if ast.star_args:
-                    self.star_args = ast.star_args.name
-                if ast.dstar_args:
-                    self.dstar_args = ast.dstar_args.name
-            else:
-                self.name = ast.name
+    def __init__(self, args, template, namespaces=None,
+                        lineno=-1, offset=-1):
+        Directive.__init__(self, None, template, namespaces,
+                             lineno, offset)
+        ast = _parse(args).body
+        self.args = []
+        self.star_args = None
+        self.dstar_args = None
+        self.defaults = {}
+        if isinstance(ast, _ast.Call):
+            self.name = ast.func.id
+            for arg in ast.args:
+                # only names
+                self.args.append(arg.id)
+            for kwd in ast.keywords:
+                self.args.append(kwd.arg)
+                exp = Expression(kwd.value, template.filepath,
+                                 lineno, lookup=template.lookup)
+                self.defaults[kwd.arg] = exp
+            if getattr(ast, 'starargs', None):
+                self.star_args = ast.starargs.id
+            if getattr(ast, 'kwargs', None):
+                self.dstar_args = ast.kwargs.id
+        else:
+            self.name = ast.id
 
     def attach(cls, template, stream, value, namespaces, pos):
         if type(value) is dict:
@@ -389,34 +351,18 @@ class ForDirective(Directive):
     """
     __slots__ = ['assign', 'filename']
 
-    if new_ast:
-        def __init__(self, value, template, namespaces=None, lineno=-1,
-                        offset=-1):
-            if ' in ' not in value:
-                raise TemplateSyntaxError('"in" keyword missing in '
-                                            '"for" directive',
-                                          template.filepath, lineno, offset)
-            assign, value = value.split(' in ', 1)
-            ast = _parse(assign, 'exec')
-            value = 'iter(%s)' % value.strip()
-            self.assign = _assignment(ast.body[0].value)
-            self.filename = template.filepath
-            Directive.__init__(self, value, template, namespaces, lineno,
-                                offset)
-    else:
-        def __init__(self, value, template, namespaces=None, lineno=-1,
-                        offset=-1):
-            if ' in ' not in value:
-                raise TemplateSyntaxError('"in" keyword missing in '
-                                            '"for" directive',
-                                          template.filepath, lineno, offset)
-            assign, value = value.split(' in ', 1)
-            ast = _parse(assign, 'exec')
-            value = 'iter(%s)' % value.strip()
-            self.assign = _assignment(ast.node.nodes[0].expr)
-            self.filename = template.filepath
-            Directive.__init__(self, value, template, namespaces, lineno,
-                                offset)
+    def __init__(self, value, template, namespaces=None, lineno=-1,
+                    offset=-1):
+        if ' in ' not in value:
+            raise TemplateSyntaxError('"in" keyword missing in '
+                                        '"for" directive',
+                                      template.filepath, lineno, offset)
+        assign, value = value.split(' in ', 1)
+        ast = _parse(assign, 'exec')
+        value = 'iter(%s)' % value.strip()
+        self.assign = _assignment(ast.body[0].value)
+        self.filename = template.filepath
+        Directive.__init__(self, value, template, namespaces, lineno, offset)
 
     def attach(cls, template, stream, value, namespaces, pos):
         if type(value) is dict:
@@ -760,54 +706,28 @@ class WithDirective(Directive):
     """
     __slots__ = ['vars']
 
-    if new_ast:
-        def __init__(self, value, template, namespaces=None,
-                        lineno=-1, offset=-1):
-            Directive.__init__(self, None, template, namespaces, lineno, offset)
-            self.vars = [] 
-            value = value.strip() 
-            try:
-                ast = _parse(value, 'exec')
-                for node in ast.body: 
-                    if not isinstance(node, _ast.Assign): 
-                        msg = 'only assignment allowed in value of' \
-                                ' the "with" directive'
-                        raise TemplateSyntaxError(msg, template.filepath,
-                                                    lineno, offset) 
-                    self.vars.append(([_assignment(n) for n in node.targets], 
-                                      Expression(node.value, template.filepath,
-                                                 lineno, 
-                                                 lookup=template.lookup))) 
-            except SyntaxError, err:
-                msg = ' in expression "%s" of "%s" directive'
-                err.msg += msg % (value, self.tagname)
-                raise TemplateSyntaxError(err, template.filepath, lineno,
-                                          offset + (err.offset or 0))
-    else:
-        def __init__(self, value, template, namespaces=None,
-                        lineno=-1, offset=-1):
-            Directive.__init__(self, None, template, namespaces, lineno, offset)
-            self.vars = [] 
-            value = value.strip() 
-            try:
-                ast = _parse(value, 'exec').node 
-                for node in ast.nodes: 
-                    if isinstance(node, compiler.ast.Discard): 
-                        continue 
-                    elif not isinstance(node, compiler.ast.Assign): 
-                        msg = 'only assignment allowed in value of' \
-                                ' the "with" directive'
-                        raise TemplateSyntaxError(msg, template.filepath,
-                                                    lineno, offset) 
-                    self.vars.append(([_assignment(n) for n in node.nodes], 
-                                      Expression(node.expr, template.filepath, 
-                                                 lineno, 
-                                                 lookup=template.lookup))) 
-            except SyntaxError, err:
-                msg = ' in expression "%s" of "%s" directive'
-                err.msg += msg % (value, self.tagname)
-                raise TemplateSyntaxError(err, template.filepath, lineno,
-                                          offset + (err.offset or 0))
+    def __init__(self, value, template, namespaces=None,
+                    lineno=-1, offset=-1):
+        Directive.__init__(self, None, template, namespaces, lineno, offset)
+        self.vars = [] 
+        value = value.strip() 
+        try:
+            ast = _parse(value, 'exec')
+            for node in ast.body: 
+                if not isinstance(node, _ast.Assign): 
+                    msg = 'only assignment allowed in value of' \
+                            ' the "with" directive'
+                    raise TemplateSyntaxError(msg, template.filepath,
+                                                lineno, offset) 
+                self.vars.append(([_assignment(n) for n in node.targets], 
+                                  Expression(node.value, template.filepath,
+                                             lineno, 
+                                             lookup=template.lookup))) 
+        except SyntaxError, err:
+            msg = ' in expression "%s" of "%s" directive'
+            err.msg += msg % (value, self.tagname)
+            raise TemplateSyntaxError(err, template.filepath, lineno,
+                                      offset + (err.offset or 0))
 
     def attach(cls, template, stream, value, namespaces, pos):
         if type(value) is dict:
@@ -829,3 +749,5 @@ class WithDirective(Directive):
 
     def __repr__(self):
         return '<%s>' % (self.__class__.__name__)
+
+

@@ -179,10 +179,12 @@ class Translator(DirectiveFactory):
             gettext = self.translate
         else:
             gettext = self.translate.ugettext
-        if not self.extract_text:
-            search_text = False
         if ctxt:
             ctxt['_i18n.gettext'] = gettext
+
+        extract_text = self.extract_text
+        if not extract_text:
+            search_text = False
 
         for kind, data, pos in stream:
 
@@ -208,7 +210,7 @@ class Translator(DirectiveFactory):
                 changed = False
                 for name, value in attrs:
                     newval = value
-                    if search_text and isinstance(value, basestring):
+                    if extract_text and isinstance(value, basestring):
                         if name in include_attrs:
                             newval = gettext(value)
                     else:
@@ -232,10 +234,12 @@ class Translator(DirectiveFactory):
 
             elif kind is SUB:
                 directives, substream = data
-                # If this is an i18n:msg directive, no need to translate here
-                if not filter(None, [isinstance(d, MsgDirective)
-                                     for d in directives]):
-                    substream = list(self(substream, ctxt))
+                # If this is an i18n:msg directive, no need to translate text
+                # nodes here
+                is_msg = filter(None, [isinstance(d, MsgDirective)
+                                       for d in directives])
+                substream = list(self(substream, ctxt,
+                                      search_text=not is_msg))
                 yield kind, (directives, substream), pos
 
             else:

@@ -428,6 +428,33 @@ class TranslatorTestCase(unittest.TestCase):
           <p>Voh</p>
         </html>""", tmpl.generate().render())
 
+    def test_extract_i18n_msg_with_attr(self):
+        tmpl = MarkupTemplate("""<html xmlns:py="http://genshi.edgewall.org/"
+            xmlns:i18n="http://genshi.edgewall.org/i18n">
+          <p i18n:msg="" title="Foo bar">Foo</p>
+        </html>""")
+        translator = Translator()
+        messages = list(translator.extract(tmpl.stream))
+        self.assertEqual(2, len(messages))
+        self.assertEqual((3, None, u'Foo bar', []), messages[0])
+        self.assertEqual((3, None, u'Foo', []), messages[1])
+
+    def test_translate_i18n_msg_with_attr(self):
+        tmpl = MarkupTemplate("""<html xmlns:py="http://genshi.edgewall.org/"
+            xmlns:i18n="http://genshi.edgewall.org/i18n">
+          <p i18n:msg="" title="Foo bar">Foo</p>
+        </html>""")
+        gettext = lambda s: u"Voh"
+        translator = Translator(DummyTranslations({
+            'Foo': u'Voh',
+            'Foo bar': u'Voh bär'
+        }))
+        tmpl.filters.insert(0, translator)
+        tmpl.add_directives(Translator.NAMESPACE, translator)
+        self.assertEqual("""<html>
+          <p title="Voh bär">Voh</p>
+        </html>""", tmpl.generate().render())
+
     def test_translate_with_translations_object(self):
         tmpl = MarkupTemplate("""<html xmlns:py="http://genshi.edgewall.org/"
             xmlns:i18n="http://genshi.edgewall.org/i18n">

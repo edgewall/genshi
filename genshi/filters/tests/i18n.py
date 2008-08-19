@@ -301,6 +301,19 @@ class TranslatorTestCase(unittest.TestCase):
           <p>Jim, sei gegrüßt!</p>
         </html>""", tmpl.generate(user=dict(name='Jim')).render())
 
+    def test_translate_i18n_msg_with_attribute_param(self):
+        tmpl = MarkupTemplate("""<html xmlns:py="http://genshi.edgewall.org/"
+            xmlns:i18n="http://genshi.edgewall.org/i18n">
+          <p i18n:msg="">
+            Hello, <a href="#${anchor}">dude</a>!
+          </p>
+        </html>""")
+        gettext = lambda s: u"Sei gegrüßt, [1:Alter]!"
+        tmpl.filters.insert(0, Translator(gettext))
+        self.assertEqual("""<html>
+          <p>Sei gegrüßt, <a href="#42">Alter</a>!</p>
+        </html>""", tmpl.generate(anchor='42').render())
+
     def test_extract_i18n_msg_with_two_params(self):
         tmpl = MarkupTemplate("""<html xmlns:py="http://genshi.edgewall.org/"
             xmlns:i18n="http://genshi.edgewall.org/i18n">

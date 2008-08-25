@@ -42,11 +42,12 @@ if _ast_emulated:
     import compiler.ast
 
     class ASTUpgrader(object):
-        """General purpose base class for AST transformations.
-        
-        Every visitor method can be overridden to return an AST node that has
-        been altered or replaced in some way.
-        """
+        """Transformer changing structure of Python 2.4 ASTs to
+        Python 2.5 ones.
+
+        Transforms compiler.ast Abstract Syntax Tree to builtin _ast.
+        It can use fake _ast classes and this way allow _ast emulation
+        in Python 2.4"""
 
         def __init__(self):
             self.out_flags = None

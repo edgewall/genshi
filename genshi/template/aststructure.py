@@ -1,3 +1,6 @@
+# Generated automatically, please do not edit
+# Generator can be found in Genshi SVN, scripts/ast-generator.py
+__version__ = 43614
 class AST(object):
 	_fields = None
 	__doc__ = None

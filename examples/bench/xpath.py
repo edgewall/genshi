@@ -20,6 +20,8 @@ try:
         return tup[0] # + tup[1]
 except ImportError:
     from time import time as time_func
+
+from genshi.core import START, END
 from genshi.path import Path
 from genshi.input import XML
 
@@ -62,25 +64,27 @@ def test_paths_in_streams(exprs, streams, test_strategies=False):
         print "Testing path %r" % expr
         for stream, sname in streams:
             print '\tRunning on "%s" example:' % sname
+
             path = Path(expr)
             def f():
                 for e in path.select(stream):
                     pass
             t = spell(benchmark(f))
-            print "\t\tJust select:\t\t%s" % t
+            print "\t\tselect:\t\t%s" % t
 
             def f():
-                for e in stream.select(expr):
+                path = Path(expr)
+                for e in path.select(stream):
                     pass
             t = spell(benchmark(f))
-            print "\t\t__init__ + select:\t%s" % t
+            print "\t\tinit + select:\t%s" % t
 
             if test_strategies and len(path.paths) == 1:
-                from genshi.path import GenericStrategy, SingleAxisStrategy, \
-                                        SimpleStrategy
+                from genshi.path import GenericStrategy, SingleStepStrategy, \
+                                        SimplePathStrategy
                 from genshi.tests.path import FakePath
-                strategies = (GenericStrategy, SingleAxisStrategy, \
-                                SimpleStrategy)
+                strategies = (GenericStrategy, SingleStepStrategy,
+                              SimplePathStrategy)
                 for strategy in strategies:
                     if not strategy.supports(path.paths[0]):
                         continue
@@ -95,8 +99,9 @@ def test_paths_in_streams(exprs, streams, test_strategies=False):
 
 def test_documents(test_strategies=False):
     streams = []
+
     s = XML("""\
-<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="pl" xmlns:py="http://genshi.edgewall.org/" py:strip="">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="pl" xmlns:py="http://genshi.edgewall.org/" py:strip="" lang="en">
     <head>
         <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
         <title>Foo</title>
@@ -106,9 +111,10 @@ def test_documents(test_strategies=False):
     </body>
 </html>
 """)
-    streams.append((s, "small document",))
+    streams.append((s, "small document"))
+
     s = XML("""\
-<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="pl" xmlns:py="http://genshi.edgewall.org/" py:strip="">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="pl" xmlns:py="http://genshi.edgewall.org/" py:strip="" lang="en">
     <head>
         <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
         <title>Foo</title>
@@ -140,10 +146,13 @@ def test_documents(test_strategies=False):
     </body>
 </html>
 """)
-    streams.append((s, "big document",))
+    streams.append((s, "big document"))
 
     paths = [
         '.',
+        '*|text()',
+        'html',
+        'html[@lang="en"]',
         'html/body/h1/text()',
         'html/body/div/a/@href',
         'html/body/div[@id="splash"]/a[@class="b4"]/strong/text()',

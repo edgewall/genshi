@@ -114,9 +114,8 @@ class GenericStrategy(object):
         #counters = [[] for _ in xrange(len(steps))]
 
         # indexes where expression has descendant(-or-self) axis
-        descendant_axes = [i for i, (a, _, _) in
-                             enumerate(steps) if a is DESCENDANT 
-                             or a is DESCENDANT_OR_SELF]
+        descendant_axes = [idx for idx, (axis, _, _) in enumerate(steps)
+                           if axis is DESCENDANT or axis is DESCENDANT_OR_SELF]
 
         def _test(event, namespaces, variables, updateonly=False):
             kind, data, pos = event[:3]
@@ -249,7 +248,7 @@ class GenericStrategy(object):
         return _test
 
 
-class SingleAxisStrategy(object):
+class SingleStepStrategy(object):
 
     @classmethod
     def supports(cls, path):
@@ -311,14 +310,10 @@ class SingleAxisStrategy(object):
             cnum = 0
             if predicates:
                 for predicate in predicates:
-                    pretval = predicate(kind, data, pos,
-                                        namespaces,
-                                        variables)
-                    if type(pretval) is float: # FIXME <- need to
-                                               # check this for
-                                               # other types that
-                                               # can be coerced to
-                                               # float
+                    pretval = predicate(kind, data, pos, namespaces, variables)
+                    if type(pretval) is float: # FIXME <- need to check this
+                                               # for other types that can be
+                                               # coerced to float
                         if len(counters) < cnum+1:
                             counters.append(0)
                         counters[cnum] += 1 
@@ -337,8 +332,8 @@ class SingleAxisStrategy(object):
         return _test
 
 
-class SimpleStrategy(object):
-    """Strategy for path with only local names, attributes and text nodes"""
+class SimplePathStrategy(object):
+    """Strategy for path with only local names, attributes and text nodes."""
 
     @classmethod
     def supports(cls, path):
@@ -419,7 +414,7 @@ class SimpleStrategy(object):
                     self_beginning = True
         pi = calculate_pi(fragment)
         self.fragments.append((fragment, pi, None, self_beginning))
-            
+
     def test(self, ignore_context):
         # stack of triples (fid, p, ic)
         # fid is index of current fragment
@@ -427,8 +422,8 @@ class SimpleStrategy(object):
         # ic is if we ignore context in this fragment
         stack = []
         frags = self.fragments
-        def _test(event, namespaces, variables, updateonly=False):
 
+        def _test(event, namespaces, variables, updateonly=False):
             # expression found impossible during init
             if frags is None:
                 return None
@@ -496,8 +491,8 @@ class SimpleStrategy(object):
                     frag, pi, attrib, _ = frags[fid]
 
                     # KMP new "character"
-                    while p > 0 and (p >= len(frag) or \
-                            not frag[p](kind, data, pos, namespaces, variables)):
+                    while p > 0 and (p >= len(frag) or not \
+                            frag[p](kind, data, pos, namespaces, variables)):
                         p = pi[p-1]
                     if frag[p](kind, data, pos, namespaces, variables):
                         p += 1
@@ -548,7 +543,8 @@ class Path(object):
     substream matching that path.
     """
 
-    available_strategies = [SingleAxisStrategy, SimpleStrategy, GenericStrategy]
+    available_strategies = [SingleStepStrategy, SimplePathStrategy,
+                            GenericStrategy]
 
     def __init__(self, text, filename=None, lineno=-1):
         """Create the path object from a string.

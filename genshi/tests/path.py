@@ -16,7 +16,7 @@ import unittest
 
 from genshi.input import XML
 from genshi.path import Path, PathParser, PathSyntaxError, GenericStrategy, \
-                        SingleAxisStrategy, SimpleStrategy
+                        SingleStepStrategy, SimplePathStrategy
 
 
 class FakePath(Path):
@@ -27,7 +27,7 @@ class FakePath(Path):
 
 class PathTestCase(unittest.TestCase):
 
-    strategies = [GenericStrategy, SingleAxisStrategy, SimpleStrategy]
+    strategies = [GenericStrategy, SingleStepStrategy, SimplePathStrategy]
     def _create_path(self, expression, expected):
         return path
 
@@ -552,7 +552,7 @@ class PathTestCase(unittest.TestCase):
         self._test_expression('//a/c', None, xml, '<c>!</c>')
         self._test_expression('//c', None, xml, '<c>!</c>')
         # Please note that a//b is NOT the same as a/descendant::b 
-        # it is a/descendant-or-self::node()/b, which SimpleStrategy
+        # it is a/descendant-or-self::node()/b, which SimplePathStrategy
         # does NOT support
         self._test_expression('a/b/descendant::a/c', None, xml, '<c>!</c>')
         self._test_expression('a/b/descendant::a/d/descendant::a/c',
@@ -566,21 +566,21 @@ class PathTestCase(unittest.TestCase):
         path = PathParser(text, None, -1).parse()[0]
         return strategy_class.supports(path)
     def test_simple_strategy_support(self):
-        self.assert_(self._test_support(SimpleStrategy, 'a/b'))
-        self.assert_(self._test_support(SimpleStrategy, 'self::a/b'))
-        self.assert_(self._test_support(SimpleStrategy, 'descendant::a/b'))
-        self.assert_(self._test_support(SimpleStrategy,
+        self.assert_(self._test_support(SimplePathStrategy, 'a/b'))
+        self.assert_(self._test_support(SimplePathStrategy, 'self::a/b'))
+        self.assert_(self._test_support(SimplePathStrategy, 'descendant::a/b'))
+        self.assert_(self._test_support(SimplePathStrategy,
                          'descendant-or-self::a/b'))
-        self.assert_(self._test_support(SimpleStrategy, '//a/b'))
-        self.assert_(self._test_support(SimpleStrategy, 'a/@b'))
-        self.assert_(self._test_support(SimpleStrategy, 'a/text()'))
+        self.assert_(self._test_support(SimplePathStrategy, '//a/b'))
+        self.assert_(self._test_support(SimplePathStrategy, 'a/@b'))
+        self.assert_(self._test_support(SimplePathStrategy, 'a/text()'))
 
         # a//b is a/descendant-or-self::node()/b
-        self.assert_(not self._test_support(SimpleStrategy, 'a//b'))
-        self.assert_(not self._test_support(SimpleStrategy, 'node()/@a'))
-        self.assert_(not self._test_support(SimpleStrategy, '@a'))
-        self.assert_(not self._test_support(SimpleStrategy, 'foo:bar'))
-        self.assert_(not self._test_support(SimpleStrategy, 'a/@foo:bar'))
+        self.assert_(not self._test_support(SimplePathStrategy, 'a//b'))
+        self.assert_(not self._test_support(SimplePathStrategy, 'node()/@a'))
+        self.assert_(not self._test_support(SimplePathStrategy, '@a'))
+        self.assert_(not self._test_support(SimplePathStrategy, 'foo:bar'))
+        self.assert_(not self._test_support(SimplePathStrategy, 'a/@foo:bar'))
 
 def suite():
     suite = unittest.TestSuite()

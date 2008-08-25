@@ -13,6 +13,7 @@
 
 from datetime import datetime
 import doctest
+from gettext import NullTranslations
 from StringIO import StringIO
 import unittest
 
@@ -20,6 +21,22 @@ from genshi.core import Attrs
 from genshi.template import MarkupTemplate
 from genshi.filters.i18n import Translator, extract
 from genshi.input import HTML
+
+
+class DummyTranslations(NullTranslations):
+
+    def __init__(self, catalog):
+        NullTranslations.__init__(self)
+        self._catalog = catalog
+
+    def ugettext(self, message):
+        missing = object()
+        tmsg = self._catalog.get(message, missing)
+        if tmsg is missing:
+            if self._fallback:
+                return self._fallback.ugettext(message)
+            return unicode(message)
+        return tmsg
 
 
 class TranslatorTestCase(unittest.TestCase):
@@ -44,7 +61,7 @@ class TranslatorTestCase(unittest.TestCase):
         translator = Translator(extract_text=False)
         messages = list(translator.extract(tmpl.stream))
         self.assertEqual(1, len(messages))
-        self.assertEqual((3, 'ngettext', (u'Singular', u'Plural', None)),
+        self.assertEqual((3, 'ngettext', (u'Singular', u'Plural', None), []),
                          messages[0])
 
     def test_extract_plural_form(self):
@@ -54,7 +71,7 @@ class TranslatorTestCase(unittest.TestCase):
         translator = Translator()
         messages = list(translator.extract(tmpl.stream))
         self.assertEqual(1, len(messages))
-        self.assertEqual((2, 'ngettext', (u'Singular', u'Plural', None)),
+        self.assertEqual((2, 'ngettext', (u'Singular', u'Plural', None), []),
                          messages[0])
 
     def test_extract_funky_plural_form(self):
@@ -64,7 +81,7 @@ class TranslatorTestCase(unittest.TestCase):
         translator = Translator()
         messages = list(translator.extract(tmpl.stream))
         self.assertEqual(1, len(messages))
-        self.assertEqual((2, 'ngettext', (None, None)), messages[0])
+        self.assertEqual((2, 'ngettext', (None, None), []), messages[0])
 
     def test_extract_gettext_with_unicode_string(self):
         tmpl = MarkupTemplate("""<html xmlns:py="http://genshi.edgewall.org/">
@@ -73,7 +90,7 @@ class TranslatorTestCase(unittest.TestCase):
         translator = Translator()
         messages = list(translator.extract(tmpl.stream))
         self.assertEqual(1, len(messages))
-        self.assertEqual((2, 'gettext', u'Gr\xfc\xdfe'), messages[0])
+        self.assertEqual((2, 'gettext', u'Gr\xfc\xdfe', []), messages[0])
 
     def test_extract_included_attribute_text(self):
         tmpl = MarkupTemplate("""<html xmlns:py="http://genshi.edgewall.org/">
@@ -82,7 +99,7 @@ class TranslatorTestCase(unittest.TestCase):
         translator = Translator()
         messages = list(translator.extract(tmpl.stream))
         self.assertEqual(1, len(messages))
-        self.assertEqual((2, None, u'Foo'), messages[0])
+        self.assertEqual((2, None, u'Foo', []), messages[0])
 
     def test_extract_attribute_expr(self):
         tmpl = MarkupTemplate("""<html xmlns:py="http://genshi.edgewall.org/">
@@ -91,7 +108,7 @@ class TranslatorTestCase(unittest.TestCase):
         translator = Translator()
         messages = list(translator.extract(tmpl.stream))
         self.assertEqual(1, len(messages))
-        self.assertEqual((2, '_', u'Save'), messages[0])
+        self.assertEqual((2, '_', u'Save', []), messages[0])
 
     def test_extract_non_included_attribute_interpolated(self):
         tmpl = MarkupTemplate("""<html xmlns:py="http://genshi.edgewall.org/">
@@ -100,7 +117,7 @@ class TranslatorTestCase(unittest.TestCase):
         translator = Translator()
         messages = list(translator.extract(tmpl.stream))
         self.assertEqual(1, len(messages))
-        self.assertEqual((2, None, u'Foo'), messages[0])
+        self.assertEqual((2, None, u'Foo', []), messages[0])
 
     def test_extract_text_from_sub(self):
         tmpl = MarkupTemplate("""<html xmlns:py="http://genshi.edgewall.org/">
@@ -109,7 +126,7 @@ class TranslatorTestCase(unittest.TestCase):
         translator = Translator()
         messages = list(translator.extract(tmpl.stream))
         self.assertEqual(1, len(messages))
-        self.assertEqual((2, None, u'Foo'), messages[0])
+        self.assertEqual((2, None, u'Foo', []), messages[0])
 
     def test_ignore_tag_with_fixed_xml_lang(self):
         tmpl = MarkupTemplate("""<html xmlns:py="http://genshi.edgewall.org/">
@@ -126,7 +143,8 @@ class TranslatorTestCase(unittest.TestCase):
         translator = Translator()
         messages = list(translator.extract(tmpl.stream))
         self.assertEqual(1, len(messages))
-        self.assertEqual((2, None, u'(c) 2007 Edgewall Software'), messages[0])
+        self.assertEqual((2, None, u'(c) 2007 Edgewall Software', []),
+                         messages[0])
 
     def test_ignore_attribute_with_expression(self):
         tmpl = MarkupTemplate("""<html xmlns:py="http://genshi.edgewall.org/">
@@ -301,6 +319,19 @@ class TranslatorTestCase(unittest.TestCase):
           <p>Jim, sei gegrüßt!</p>
         </html>""", tmpl.generate(user=dict(name='Jim')).render())
 
+    def test_translate_i18n_msg_with_attribute_param(self):
+        tmpl = MarkupTemplate("""<html xmlns:py="http://genshi.edgewall.org/"
+            xmlns:i18n="http://genshi.edgewall.org/i18n">
+          <p i18n:msg="">
+            Hello, <a href="#${anchor}">dude</a>!
+          </p>
+        </html>""")
+        gettext = lambda s: u"Sei gegrüßt, [1:Alter]!"
+        tmpl.filters.insert(0, Translator(gettext))
+        self.assertEqual("""<html>
+          <p>Sei gegrüßt, <a href="#42">Alter</a>!</p>
+        </html>""", tmpl.generate(anchor='42').render())
+
     def test_extract_i18n_msg_with_two_params(self):
         tmpl = MarkupTemplate("""<html xmlns:py="http://genshi.edgewall.org/"
             xmlns:i18n="http://genshi.edgewall.org/i18n">
@@ -355,6 +386,38 @@ class TranslatorTestCase(unittest.TestCase):
 #        self.assertEqual("""<html>
 #          <p><input type="text" name="num" value="x"/> Einträge pro Seite anzeigen.</p>
 #        </html>""", tmpl.generate().render())
+
+    def test_extract_i18n_msg_with_comment(self):
+        tmpl = MarkupTemplate("""<html xmlns:py="http://genshi.edgewall.org/"
+            xmlns:i18n="http://genshi.edgewall.org/i18n">
+          <p i18n:msg="" i18n:comment="As in foo bar">Foo</p>
+        </html>""")
+        translator = Translator()
+        messages = list(translator.extract(tmpl.stream))
+        self.assertEqual(1, len(messages))
+        self.assertEqual((3, None, u'Foo', ['As in foo bar']), messages[0])
+
+    def test_translate_i18n_msg_with_comment(self):
+        tmpl = MarkupTemplate("""<html xmlns:py="http://genshi.edgewall.org/"
+            xmlns:i18n="http://genshi.edgewall.org/i18n">
+          <p i18n:msg="" i18n:comment="As in foo bar">Foo</p>
+        </html>""")
+        gettext = lambda s: u"Voh"
+        tmpl.filters.insert(0, Translator(gettext))
+        self.assertEqual("""<html>
+          <p>Voh</p>
+        </html>""", tmpl.generate().render())
+
+    def test_translate_with_translations_object(self):
+        tmpl = MarkupTemplate("""<html xmlns:py="http://genshi.edgewall.org/"
+            xmlns:i18n="http://genshi.edgewall.org/i18n">
+          <p i18n:msg="" i18n:comment="As in foo bar">Foo</p>
+        </html>""")
+        translations = DummyTranslations({'Foo': 'Voh'})
+        tmpl.filters.insert(0, Translator(translations))
+        self.assertEqual("""<html>
+          <p>Voh</p>
+        </html>""", tmpl.generate().render())
 
 
 class ExtractTestCase(unittest.TestCase):

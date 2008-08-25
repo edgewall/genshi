@@ -5,6 +5,14 @@ http://svn.edgewall.org/repos/genshi/tags/0.6.0/
  * Support for Python 2.3 has been dropped.
 
 
+Version 0.5.2
+http://svn.edgewall.org/repos/genshi/tags/0.5.2/
+(???, from branches/stable/0.5.x)
+
+ * Fix problem with I18n filter that would get confused by expressions in
+   attribute values when inside an `i18n:msg` block (ticket #250).
+
+
 Version 0.5.1
 http://svn.edgewall.org/repos/genshi/tags/0.5.1/
 (Jul 9 2008, from branches/stable/0.5.x)

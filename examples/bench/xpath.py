@@ -58,21 +58,23 @@ def spell(t):
     return "%f %s"%(t, name)
 
 def test_paths_in_streams(exprs, streams, test_strategies=False):
-    for expr, ename in exprs:
-        print "Testing %s path"%ename
+    for expr in exprs:
+        print "Testing path %r" % expr
         for stream, sname in streams:
-            print '\tRunning on "%s" example:'%sname
+            print '\tRunning on "%s" example:' % sname
             path = Path(expr)
             def f():
                 for e in path.select(stream):
                     pass
             t = spell(benchmark(f))
-            print "\t\tJust select:\t\t%s"%t
+            print "\t\tJust select:\t\t%s" % t
+
             def f():
                 for e in stream.select(expr):
                     pass
             t = spell(benchmark(f))
-            print "\t\t__init__ + select:\t%s"%t
+            print "\t\t__init__ + select:\t%s" % t
+
             if test_strategies and len(path.paths) == 1:
                 from genshi.path import GenericStrategy, SingleAxisStrategy, \
                                         SimpleStrategy
@@ -140,18 +142,14 @@ def test_documents(test_strategies=False):
 """)
     streams.append((s, "big document",))
 
-    paths = []
-    
-    def add_path(expr, name):
-        paths.append((expr, name,))
-    add_path('.', "self")
-    add_path('html/body/h1/text()', "quite long")
-    add_path('html/body/div/a/@href', "quite long + parameter")
-    add_path('html/body/div[@id = "splash"]/a[@class = "b4"]/strong/text()',
-                "complicated")
-    add_path('descendant-or-self::text()', "all text")
-    add_path('descendant-or-self::h1/text()', "tag text")
-
+    paths = [
+        '.',
+        'html/body/h1/text()',
+        'html/body/div/a/@href',
+        'html/body/div[@id="splash"]/a[@class="b4"]/strong/text()',
+        'descendant-or-self::text()',
+        'descendant-or-self::h1/text()',
+    ]
     test_paths_in_streams(paths, streams, test_strategies)
 
 if __name__ == '__main__':

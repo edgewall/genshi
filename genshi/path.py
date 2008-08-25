@@ -75,13 +75,15 @@ DESCENDANT = Axis.DESCENDANT
 DESCENDANT_OR_SELF = Axis.DESCENDANT_OR_SELF
 SELF = Axis.SELF
 
+
 class GenericStrategy(object):
-    def __init__(self, path):
-        self.path = path
 
     @classmethod
     def supports(cls, path):
         return True
+
+    def __init__(self, path):
+        self.path = path
 
     def test(self, ignore_context):
         p = self.path
@@ -89,7 +91,7 @@ class GenericStrategy(object):
             if p[0][0] is ATTRIBUTE:
                 steps = [_DOTSLASHSLASH] + p
             else:
-                steps = [(DESCENDANT_OR_SELF, p[0][1], p[0][2],)] + p[1:]
+                steps = [(DESCENDANT_OR_SELF, p[0][1], p[0][2])] + p[1:]
         elif p[0][0] is CHILD or p[0][0] is ATTRIBUTE \
                 or p[0][0] is DESCENDANT:
             steps = [_DOTSLASH] + p
@@ -112,15 +114,14 @@ class GenericStrategy(object):
         #counters = [[] for _ in xrange(len(steps))]
 
         # indexes where expression has descendant(-or-self) axis
-        descendant_axes = [i for (i, (a, _, _,),) in
+        descendant_axes = [i for i, (a, _, _) in
                              enumerate(steps) if a is DESCENDANT 
                              or a is DESCENDANT_OR_SELF]
 
         def _test(event, namespaces, variables, updateonly=False):
-
             kind, data, pos = event[:3]
-
             retval = None
+
             # Manage the stack that tells us "where we are" in the stream
             if kind is END:
                 stack.pop()
@@ -233,13 +234,13 @@ class GenericStrategy(object):
                         if len(positions_queue) == 0 \
                                 or positions_queue[0][0] > x + 1:
                             positions_queue.appendleft(
-                                            (x + 1, [], [child_counter]),)
+                                            (x + 1, [], [child_counter]))
                         else:
                             positions_queue[0][2].append(child_counter)
 
                     # if axis is not self we have to add it to child's list
                     if naxis is not SELF:
-                        next_positions.append((x+1, [child_counter],))
+                        next_positions.append((x+1, [child_counter]))
 
             if kind is START:
                 stack.append(next_positions)
@@ -247,13 +248,15 @@ class GenericStrategy(object):
             return retval
         return _test
 
+
 class SingleAxisStrategy(object):
-    def __init__(self, path):
-        self.path = path
 
     @classmethod
     def supports(cls, path):
         return len(path) == 1
+
+    def __init__(self, path):
+        self.path = path
 
     def test(self, ignore_context):
         p = self.path
@@ -263,7 +266,7 @@ class SingleAxisStrategy(object):
             steps = p
 
         if ignore_context and steps[0][0] is not DESCENDANT:
-            steps = [(DESCENDANT_OR_SELF, p[0][1], p[0][2],)] + p[1:]
+            steps = [(DESCENDANT_OR_SELF, p[0][1], p[0][2])] + p[1:]
 
         # for every position in expression stores counters' list
         # it is used for position based predicates
@@ -271,7 +274,6 @@ class SingleAxisStrategy(object):
         depth = [0]
 
         def _test(event, namespaces, variables, updateonly=False):
-
             kind, data, pos = event[:3]
 
             retval = None
@@ -325,12 +327,12 @@ class SingleAxisStrategy(object):
                         cnum += 1
                     if not pretval:
                          return None
+
             axis, nodetest, predicates = steps[-1]
             if axis is ATTRIBUTE:
-                return nodetest(kind, data, pos, \
-                        namespaces, variables)
-            else:
-                return True
+                return nodetest(kind, data, pos, namespaces, variables)
+
+            return True
 
         return _test
 
@@ -340,15 +342,16 @@ class SimpleStrategy(object):
 
     @classmethod
     def supports(cls, path):
-        _allowed_nodes = (LocalNameTest, CommentNodeTest, TextNodeTest)
         if path[0][0] is ATTRIBUTE:
             return False
+        allowed_tests = (LocalNameTest, CommentNodeTest, TextNodeTest)
         for _, nodetest, predicates in path:
             if predicates:
                 return False
-            if not isinstance(nodetest, _allowed_nodes):
+            if not isinstance(nodetest, allowed_tests):
                 return False
         return True
+
     def __init__(self, path):
         # fragments is list of tuples (fragment, pi, attr, self_beginning)
         # fragment is list of nodetests for fragment of path with only
@@ -370,7 +373,6 @@ class SimpleStrategy(object):
                 return node1.name == node2.name
             return True
 
-
         def calculate_pi(f):
             """KMP prefix calculation for table"""
             # the indexes in prefix table are shifted by one
@@ -387,7 +389,6 @@ class SimpleStrategy(object):
                     s += 1
                 pi.append(s)
             return pi
-
 
         for axis in path:
             if axis[0] is SELF:
@@ -414,14 +415,13 @@ class SimpleStrategy(object):
                 fragment = [axis[1]]
                 if axis[0] is DESCENDANT:
                     self_beginning = False
-                else:
-                    #DESCENDANT_OR_SELF
+                else: # DESCENDANT_OR_SELF
                     self_beginning = True
         pi = calculate_pi(fragment)
         self.fragments.append((fragment, pi, None, self_beginning))
             
     def test(self, ignore_context):
-        # stack of triples (fid, p, ic,)
+        # stack of triples (fid, p, ic)
         # fid is index of current fragment
         # p is position in this fragment
         # ic is if we ignore context in this fragment
@@ -458,7 +458,7 @@ class SimpleStrategy(object):
                 # axis is not descendant::
                 if not frags[fid][3] and (not ignore_context or fid > 0):
                     # axis is not self-beggining, we have to skip this node
-                    stack.append((fid, p, ic,))
+                    stack.append((fid, p, ic))
                     return None
             else:
                 # take position of parent
@@ -536,7 +536,9 @@ class SimpleStrategy(object):
                     return True
             else:
                 return None
+
         return _test
+
 
 class Path(object):
     """Implements basic XPath support on streams.
@@ -656,7 +658,6 @@ class Path(object):
                  stream against the path
         :rtype: ``function``
         """
-
         if len(self.strategies) == 1:                             
             return self.strategies[0].test(ignore_context)   
 
@@ -667,14 +668,15 @@ class Path(object):
 
         def _test(event, namespaces, variables, updateonly=False):
             retval = None
-            for t in tests:
-                val = t(event, namespaces, variables, updateonly)
+            for test in tests:
+                val = test(event, namespaces, variables, updateonly)
                 # TODO SOC: collect attributes
                 if retval is None:
                     retval = val
             return retval
 
         return _test
+
 
 class PathSyntaxError(Exception):
     """Exception raised when an XPath expression is syntactically incorrect."""

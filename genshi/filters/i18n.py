@@ -62,17 +62,36 @@ class MsgDirective(Directive):
             previous = event
 
         gettext = ctxt.get('_i18n.gettext')
+        dgettext = ctxt.get('_i18n.dgettext')
+        if ctxt.get('_i18n.domain'):
+            assert callable(dgettext), "No domain gettext function passed"
+            gettext = lambda msg: dgettext(ctxt.get('_i18n.domain'), msg)
+            
         for event in msgbuf.translate(gettext(msgbuf.format())):
             yield event
 
         yield previous # the outer end tag
 
+class DomainDirective(Directive):
+
+    __slots__ = ['domain']
+
+    def __init__(self, value, template, hints=None, namespaces=None,
+                 lineno=-1, offset=-1):
+        Directive.__init__(self, None, template, namespaces, lineno, offset)
+        self.domain = value
+
+    def __call__(self, stream, directives, ctxt, **vars):
+        ctxt.push({'_i18n.domain': self.domain})
+        for event in stream:
+            yield event
+        ctxt.pop()
 
 class Translator(DirectiveFactory):
     """Can extract and translate localizable strings from markup streams and
     templates.
     
-    For example, assume the followng template:
+    For example, assume the following template:
     
     >>> from genshi.template import MarkupTemplate
     >>> 
@@ -122,8 +141,9 @@ class Translator(DirectiveFactory):
     """
 
     directives = [
+        ('domain', DomainDirective),
         ('comment', CommentDirective),
-        ('msg', MsgDirective)
+        ('msg', MsgDirective),
     ]
 
     IGNORE_TAGS = frozenset([
@@ -179,8 +199,14 @@ class Translator(DirectiveFactory):
             gettext = self.translate
         else:
             gettext = self.translate.ugettext
+            try:
+                dgettext = self.translate.dugettext
+            except AttributeError:
+                dgettext = lambda x, y: gettext(y)
+                
         if ctxt:
             ctxt['_i18n.gettext'] = gettext
+            ctxt['_i18n.dgettext'] = dgettext
 
         extract_text = self.extract_text
         if not extract_text:
@@ -214,8 +240,8 @@ class Translator(DirectiveFactory):
                         if name in include_attrs:
                             newval = gettext(value)
                     else:
-                        newval = list(self(_ensure(value), ctxt,
-                            search_text=False)
+                        newval = list(
+                            self(_ensure(value), ctxt, search_text=False)
                         )
                     if newval != value:
                         value = newval

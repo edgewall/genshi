@@ -24,10 +24,19 @@ from genshi.input import HTML
 
 
 class DummyTranslations(NullTranslations):
+    _domains = {}
 
     def __init__(self, catalog):
         NullTranslations.__init__(self)
         self._catalog = catalog
+        
+    def add_domain(self, domain, catalog):
+        translation = DummyTranslations(catalog)
+        translation.add_fallback(self)
+        self._domains[domain] = translation
+        
+    def _domain_call(self, func, domain, *args, **kwargs):
+        return getattr(self._domains.get(domain, self), func)(*args, **kwargs)
 
     def ugettext(self, message):
         missing = object()
@@ -37,6 +46,9 @@ class DummyTranslations(NullTranslations):
                 return self._fallback.ugettext(message)
             return unicode(message)
         return tmsg
+    
+    def dugettext(self, domain, message):
+        return self._domain_call('ugettext', domain, message)
 
 
 class TranslatorTestCase(unittest.TestCase):
@@ -464,6 +476,66 @@ class TranslatorTestCase(unittest.TestCase):
         tmpl.filters.insert(0, translator)
         tmpl.add_directives(Translator.NAMESPACE, translator)
         self.assertEqual("""<html>
+          <p>Voh</p>
+        </html>""", tmpl.generate().render())
+        
+    def test_translate_domain_call_with_msg_directives(self):
+        tmpl = MarkupTemplate("""<html xmlns:py="http://genshi.edgewall.org/"
+            xmlns:i18n="http://genshi.edgewall.org/i18n">
+          <div i18n:domain="foo">
+            <p i18n:msg="">FooBar</p>
+            <p i18n:msg="">Bar</p>
+          </div>
+        </html>""")
+        translations = DummyTranslations({'Bar': 'Voh'})
+        translations.add_domain('foo', {'FooBar': 'BarFoo', 'Bar': 'PT_Foo'})
+        translator = Translator(translations)
+        tmpl.filters.insert(0, translator)
+        tmpl.add_directives(Translator.NAMESPACE, translator)
+        self.assertEqual("""<html>
+          <div>
+            <p>BarFoo</p>
+            <p>PT_Foo</p>
+          </div>
+        </html>""", tmpl.generate().render())
+        
+    def test_translate_domain_call_with_inline_directives(self):
+        tmpl = MarkupTemplate("""<html xmlns:py="http://genshi.edgewall.org/"
+            xmlns:i18n="http://genshi.edgewall.org/i18n">
+          <p i18n:msg="" i18n:domain="foo">FooBar</p>
+        </html>""")
+        translations = DummyTranslations({'Bar': 'Voh'})
+        translations.add_domain('foo', {'FooBar': 'BarFoo'})
+        translator = Translator(translations)
+        tmpl.filters.insert(0, translator)
+        tmpl.add_directives(Translator.NAMESPACE, translator)
+        self.assertEqual("""<html>
+          <p>BarFoo</p>
+        </html>""", tmpl.generate().render())
+        
+    def test_translate_domain_call(self):
+        tmpl = MarkupTemplate("""<html xmlns:py="http://genshi.edgewall.org/"
+            xmlns:i18n="http://genshi.edgewall.org/i18n">
+          <p i18n:msg="">Bar</p>
+          <div i18n:domain="foo">
+            <p i18n:msg="">FooBar</p>
+            <p i18n:msg="">Bar</p>            
+            <p>Bar</p>
+          </div>          
+          <p>Bar</p>
+        </html>""")
+        translations = DummyTranslations({'Bar': 'Voh'})
+        translations.add_domain('foo', {'FooBar': 'BarFoo', 'Bar': 'PT_Foo'})
+        translator = Translator(translations)
+        tmpl.filters.insert(0, translator)
+        tmpl.add_directives(Translator.NAMESPACE, translator)
+        self.assertEqual("""<html>
+          <p>Voh</p>
+          <div>
+            <p>BarFoo</p>
+            <p>PT_Foo</p>
+            <p>PT_Foo</p>
+          </div>
           <p>Voh</p>
         </html>""", tmpl.generate().render())
 

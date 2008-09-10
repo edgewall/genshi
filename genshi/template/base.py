@@ -26,8 +26,8 @@ import sys
 from genshi.core import Attrs, Stream, StreamEventKind, START, TEXT, _ensure
 from genshi.input import ParseError
 
-__all__ = ['Context', 'Template', 'TemplateError', 'TemplateRuntimeError',
-           'TemplateSyntaxError', 'BadDirectiveError']
+__all__ = ['Context', 'DirectiveFactory', 'Template', 'TemplateError',
+           'TemplateRuntimeError', 'TemplateSyntaxError', 'BadDirectiveError']
 __docformat__ = 'restructuredtext en'
 
 
@@ -301,8 +301,8 @@ def _exec_suite(suite, ctxt, **vars):
         ctxt.frames[0].update(top)
 
 
-class TemplateMeta(type):
-    """Meta class for templates."""
+class DirectiveFactoryMeta(type):
+    """Meta class for directive factories."""
 
     def __new__(cls, name, bases, d):
         if 'directives' in d:
@@ -312,13 +312,44 @@ class TemplateMeta(type):
         return type.__new__(cls, name, bases, d)
 
 
-class Template(object):
+class DirectiveFactory(object):
+    """Base for classes that provide a set of template directives.
+    
+    :since: version 0.6
+    """
+    __metaclass__ = DirectiveFactoryMeta
+
+    directives = []
+    """A list of `(name, cls)` tuples that define the set of directives
+    provided by this factory.
+    """
+
+    def compare_directives(self):
+        """Return a function that takes two directive classes and compares
+        them to determine their relative ordering.
+        """
+        def _get_index(cls):
+            if cls in self._dir_order:
+                return self._dir_order.index(cls)
+            return 0
+        return lambda a, b: cmp(_get_index(a[0]), _get_index(b[0]))
+
+    def get_directive(self, name):
+        """Return the directive class for the given name.
+        
+        :param name: the directive name as used in the template
+        :return: the directive class
+        :see: `Directive`
+        """
+        return self._dir_by_name.get(name)
+
+
+class Template(DirectiveFactory):
     """Abstract template base class.
     
     This class implements most of the template processing model, but does not
     specify the syntax of templates.
     """
-    __metaclass__ = TemplateMeta
 
     EXEC = StreamEventKind('EXEC')
     """Stream event kind representing a Python code suite to execute."""
@@ -363,13 +394,14 @@ class Template(object):
         self.lookup = lookup
         self.allow_exec = allow_exec
         self._init_filters()
+        self._prepared = False
 
         if isinstance(source, basestring):
             source = StringIO(source)
         else:
             source = source
         try:
-            self.stream = list(self._prepare(self._parse(source, encoding)))
+            self._stream = self._parse(source, encoding)
         except ParseError, e:
             raise TemplateSyntaxError(e.msg, self.filepath, e.lineno, e.offset)
 
@@ -389,6 +421,13 @@ class Template(object):
         self.filters = [self._flatten, self._eval, self._exec]
         if self.loader:
             self.filters.append(self._include)
+
+    def _get_stream(self):
+        if not self._prepared:
+            self._stream = list(self._prepare(self._stream))
+            self._prepared = True
+        return self._stream
+    stream = property(_get_stream)
 
     def _parse(self, source, encoding):
         """Parse the template.

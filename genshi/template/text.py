@@ -216,7 +216,7 @@ class NewTextTemplate(Template):
                                               (self.filepath, lineno, 0))]
 
             elif command:
-                cls = self._dir_by_name.get(command)
+                cls = self.get_directive(command)
                 if cls is None:
                     raise BadDirectiveError(command)
                 directive = cls, value, None, (self.filepath, lineno, 0)
@@ -312,7 +312,7 @@ class OldTextTemplate(Template):
                 pos = (self.filename, lineno, 0)
                 stream.append((INCLUDE, (value.strip(), None, []), pos))
             elif command != '#':
-                cls = self._dir_by_name.get(command)
+                cls = self.get_directive(command)
                 if cls is None:
                     raise BadDirectiveError(command)
                 directive = cls, value, None, (self.filepath, lineno, 0)

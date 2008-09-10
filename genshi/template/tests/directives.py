@@ -504,10 +504,10 @@ class ForDirectiveTestCase(unittest.TestCase):
         """
         try:
             MarkupTemplate("""<doc xmlns:py="http://genshi.edgewall.org/">
-          <py:for each="">
-            empty
-          </py:for>
-        </doc>""", filename='test.html')
+              <py:for each="">
+                empty
+              </py:for>
+            </doc>""", filename='test.html').generate()
             self.fail('ExpectedTemplateSyntaxError')
         except TemplateSyntaxError, e:
             self.assertEqual('test.html', e.filename)
@@ -963,9 +963,9 @@ class ContentDirectiveTestCase(unittest.TestCase):
 
     def test_as_element(self):
         try:
-            tmpl = MarkupTemplate("""<doc xmlns:py="http://genshi.edgewall.org/">
+            MarkupTemplate("""<doc xmlns:py="http://genshi.edgewall.org/">
               <py:content foo="">Foo</py:content>
-            </doc>""", filename='test.html')
+            </doc>""", filename='test.html').generate()
             self.fail('Expected TemplateSyntaxError')
         except TemplateSyntaxError, e:
             self.assertEqual('test.html', e.filename)
@@ -981,9 +981,9 @@ class ReplaceDirectiveTestCase(unittest.TestCase):
         expression is supplied.
         """
         try:
-            tmpl = MarkupTemplate("""<doc xmlns:py="http://genshi.edgewall.org/">
+            MarkupTemplate("""<doc xmlns:py="http://genshi.edgewall.org/">
               <elem py:replace="">Foo</elem>
-            </doc>""", filename='test.html')
+            </doc>""", filename='test.html').generate()
             self.fail('Expected TemplateSyntaxError')
         except TemplateSyntaxError, e:
             self.assertEqual('test.html', e.filename)

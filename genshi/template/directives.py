@@ -530,7 +530,10 @@ class StripDirective(Directive):
 
     def __call__(self, stream, directives, ctxt, **vars):
         def _generate():
-            if _eval_expr(self.expr, ctxt, **vars):
+            if not self.expr:
+                for event in list(stream)[1:-1]:
+                    yield event
+            elif _eval_expr(self.expr, ctxt, **vars):
                 stream.next() # skip start tag
                 previous = stream.next()
                 for event in stream:
@@ -539,14 +542,7 @@ class StripDirective(Directive):
             else:
                 for event in stream:
                     yield event
-        return _apply_directives(_generate(), directives, ctxt, **vars)
-
-    def attach(cls, template, stream, value, namespaces, pos):
-        if not value:
-            return None, stream[1:-1]
-        return super(StripDirective, cls).attach(template, stream, value,
-                                                 namespaces, pos)
-    attach = classmethod(attach)
+        return _apply_directives(_generate(), directives, ctxt)
 
 
 class ChooseDirective(Directive):

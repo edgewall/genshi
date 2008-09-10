@@ -11,20 +11,24 @@
 # individuals. For the exact contribution history, see the revision
 # history and logs, available at http://genshi.edgewall.org/log/.
 
-"""Utilities for internationalization and localization of templates.
+"""Directives and utilities for internationalization and localization of
+templates.
 
 :since: version 0.4
+:note: Directives support added since version 0.6
 """
 
 from compiler import ast
 from gettext import NullTranslations
+import os
 import re
 from types import FunctionType
 
-from genshi.core import Attrs, Namespace, QName, START, END, TEXT, START_NS, \
-                        END_NS, XML_NAMESPACE, _ensure
-from genshi.template.base import DirectiveFactory, EXPR, SUB, _apply_directives
-from genshi.template.directives import Directive
+from genshi.core import Attrs, Namespace, QName, START, END, TEXT, \
+                        XML_NAMESPACE, _ensure, StreamEventKind
+from genshi.template.base import Context, DirectiveFactory, EXPR, SUB, \
+                                 _apply_directives
+from genshi.template.directives import Directive, StripDirective
 from genshi.template.markup import MarkupTemplate, EXEC
 
 __all__ = ['Translator', 'extract']
@@ -32,35 +36,119 @@ __docformat__ = 'restructuredtext en'
 
 I18N_NAMESPACE = Namespace('http://genshi.edgewall.org/i18n')
 
+MSGBUF = StreamEventKind('MSGBUF')
+
+class DirectiveExtract(object):
+    """Simple interface for directives to support messages extraction"""
+
+    def extract(self, stream, ctxt):
+        raise NotImplementedError
 
 class CommentDirective(Directive):
+    """Implementation of the ``i18n:comment`` template directive which adds
+    translation comments.
+    
+    >>> from genshi.filters.i18n import Translator, setup_i18n
+    >>> from genshi.template import MarkupTemplate
+    >>>
+    >>> translator = Translator()
+    >>>
+    >>> tmpl = MarkupTemplate('''<html xmlns:i18n="http://genshi.edgewall.org/i18n">
+    ...   <p i18n:comment="As in Foo Bar">Foo</p>
+    ... </html>''')
+    >>>
+    >>> setup_i18n(tmpl, translator)
+    >>> list(translator.extract(tmpl.stream))
+    [(2, None, u'Foo', [u'As in Foo Bar'])]
+    >>>
+    """
 
-    __slots__ = []
+    __slots__ = ['comment']
 
-    @classmethod
-    def attach(cls, template, stream, value, namespaces, pos):
-        return None, stream
+    def __init__(self, value, template, hints=None, namespaces=None,
+                 lineno=-1, offset=-1):
+        Directive.__init__(self, None, template, namespaces, lineno, offset)
+        self.comment = value
 
+    def __call__(self, stream, directives, ctxt, **vars):
+        return stream
 
-class MsgDirective(Directive):
+class MsgDirective(Directive, DirectiveExtract):
+    r"""Implementation of the ``i18n:msg`` directive which marks inner content
+    as translatable. Consider the following examples:
+    
+    >>> from genshi.filters.i18n import Translator, setup_i18n
+    >>> from genshi.template import MarkupTemplate
+    >>>
+    >>> translator = Translator()
+    >>>
+    >>> tmpl = MarkupTemplate('''<html xmlns:i18n="http://genshi.edgewall.org/i18n">
+    ...   <div i18n:msg="">
+    ...     <p>Foo</p>
+    ...     <p>Bar</p>
+    ...   </div>
+    ...   <p i18n:msg="">Foo <em>bar</em>!</p>
+    ... </html>''')
+    >>>
+    >>> setup_i18n(tmpl, translator)
+    >>>
+    >>> list(translator.extract(tmpl.stream))
+    [(2, None, u'[1:Foo]\n    [2:Bar]', []), (6, None, u'Foo [1:bar]!', [])]
+    >>> print tmpl.generate().render()
+    <html>
+      <div><p>Foo</p>
+        <p>Bar</p></div>
+      <p>Foo <em>bar</em>!</p>
+    </html>
+    >>>
+    >>> tmpl = MarkupTemplate('''<html xmlns:i18n="http://genshi.edgewall.org/i18n">
+    ...   <div i18n:msg="fname, lname">
+    ...     <p>First Name: ${fname}</p>
+    ...     <p>Last Name: ${lname}</p>
+    ...   </div>
+    ...   <p i18n:msg="">Foo <em>bar</em>!</p>
+    ... </html>''')
+    >>> setup_i18n(tmpl, translator)
+    >>> list(translator.extract(tmpl.stream)) #doctest: +NORMALIZE_WHITESPACE
+    [(2, None, u'[1:First Name: %(fname)s]\n    [2:Last Name: %(lname)s]', []),
+    (6, None, u'Foo [1:bar]!', [])]
+    >>>
+    >>> tmpl = MarkupTemplate('''<html xmlns:i18n="http://genshi.edgewall.org/i18n">
+    ...   <div i18n:msg="fname, lname">
+    ...     <p>First Name: ${fname}</p>
+    ...     <p>Last Name: ${lname}</p>
+    ...   </div>
+    ...   <p i18n:msg="">Foo <em>bar</em>!</p>
+    ... </html>''')
+    >>> setup_i18n(tmpl, translator)
+    >>> print tmpl.generate(fname='John', lname='Doe').render()
+    <html>
+      <div><p>First Name: John
+        <p>Last Name: Doe</div>
+      <p>Foo <em>bar</em>!</p>
+    </html>
+    >>>
+    
+    Starting and ending white-space is stripped of to make it simpler for
+    translators. Stripping it is not that important since it's on the html
+    source, the rendered output will remain the same.
+    """
 
     __slots__ = ['params']
 
     def __init__(self, value, template, hints=None, namespaces=None,
                  lineno=-1, offset=-1):
         Directive.__init__(self, None, template, namespaces, lineno, offset)
-        self.params = [name.strip() for name in value.split(',')]
+        self.params = [param.strip() for param in value.split(',') if param]
+
+    @classmethod
+    def attach(cls, template, stream, value, namespaces, pos):
+        if type(value) is dict:
+            value = value.get('params', '').strip()
+        return super(MsgDirective, cls).attach(template, stream, value.strip(),
+                                               namespaces, pos)
 
     def __call__(self, stream, directives, ctxt, **vars):
-        
-        msgbuf = MessageBuffer(self.params)
-
-        stream = iter(stream)
-        yield stream.next() # the outer start tag
-        previous = stream.next()
-        for event in stream:
-            msgbuf.append(*previous)
-            previous = event
 
         gettext = ctxt.get('_i18n.gettext')
         dgettext = ctxt.get('_i18n.dgettext')
@@ -68,21 +156,371 @@ class MsgDirective(Directive):
             assert callable(dgettext), "No domain gettext function passed"
             gettext = lambda msg: dgettext(ctxt.get('_i18n.domain'), msg)
 
+        msgbuf = MessageBuffer(self.params)
+
+        new_stream = []
+        stream = iter(_apply_directives(stream, directives, ctxt))
+        strip_directive = [d for d in directives if
+                           isinstance(d, StripDirective)]
+        new_stream.append(stream.next())
+        previous = stream.next()
+        for kind, data, pos in stream:
+            if kind is SUB and not strip_directive:
+                # py:attrs for example
+                subdirectives, substream = data
+                for skind, sdata, spos in _apply_directives(substream,
+                                                            subdirectives,
+                                                            ctxt):
+                    try:
+                        msgbuf.append(*previous)
+                        previous = skind, sdata, spos
+                    except IndexError:
+                        raise IndexError("Not enough parameters passed to '%s' "
+                                         "on '%s', line number %s: %s" %
+                                         (type(self).__name__,
+                                          os.path.basename(spos[0]), spos[1],
+                                          self.params))
+            try:
+                msgbuf.append(*previous)
+            except IndexError:
+                raise IndexError("Not enough parameters passed to '%s' on '%s',"
+                                 " line number %s: %s" %
+                                 (type(self).__name__,
+                                  os.path.basename(previous[2][0]),
+                                  previous[2][1], self.params), previous[1])
+
+            previous = kind, data, pos
+
         for event in msgbuf.translate(gettext(msgbuf.format())):
-            yield event
+            new_stream.append(event)
+        new_stream.append(previous)
+        if strip_directive:
+            return _apply_directives(new_stream, strip_directive, ctxt)
+        return new_stream
 
+    def extract(self, stream, ctxt):
+        msgbuf = MessageBuffer(self.params)
+
+        stream = iter(stream)
+        stream.next() # the outer start tag
+        previous = stream.next()
+        for event in stream:
+            try:
+                msgbuf.append(*previous)
+            except IndexError:
+                raise IndexError("Not enough parameters passed to '%s' on '%s',"
+                                 " line number %s: %s" %
+                                 (type(self).__name__,
+                                  os.path.basename(previous[2][0]),
+                                  previous[2][1], self.params))
+            previous = event
+
+        yield None, msgbuf.format(), filter(None, [ctxt.get('_i18n.comment')])
+
+class InnerChooseDirective(Directive):
+    __slots__ = []
+
+    def __call__(self, stream, directives, ctxt, **vars):
+
+        msgbuf = MessageBuffer(ctxt.get('_i18n.choose.params', [])[:])
+
+        stream = iter(_apply_directives(stream, directives, ctxt))
+        yield stream.next() # the outer start tag
+        previous = stream.next()
+#        if previous[0] is TEXT and not previous[1].strip():
+#            yield previous  # white space and newlines
+        for kind, data, pos in stream:
+
+            msgbuf.append(*previous)
+            previous = kind, data, pos
+#            if event[0] is TEXT and not event[1].strip():
+#                yield event # white space and newlines
+        yield MSGBUF, (), -1 # the place holder for msgbuf output
         yield previous # the outer end tag
+        ctxt['_i18n.choose.%s' % type(self).__name__] = msgbuf
 
+
+    def extract(self, stream, ctxt, msgbuf):
+
+        stream = iter(stream)
+        stream.next() # the outer start tag
+        previous = stream.next()
+        for event in stream:
+            msgbuf.append(*previous)
+            previous = event
+        return msgbuf
+
+
+class SingularDirective(InnerChooseDirective):
+    """Implementation of the ``i18n:singular`` directive to be used with the
+    ``i18n:choose`` directive."""
+
+
+class PluralDirective(InnerChooseDirective):
+    """Implementation of the ``i18n:plural`` directive to be used with the
+    ``i18n:choose`` directive."""
+
+
+class ChooseDirective(Directive, DirectiveExtract):
+    """Implementation of the ``i18n:choose`` directive which provides plural
+    internationalisation of strings.
+    
+    This directive requires at least one parameter, the one which evaluates to
+    an integer which will allow to choose the plural/singular form. If you also
+    have expressions inside the singular and plural version of the string you
+    also need to pass a name for those parameters. Consider the following
+    examples:
+    
+    >>> from genshi.filters.i18n import Translator, setup_i18n
+    >>> from genshi.template import MarkupTemplate
+    >>>
+    >>> translator = Translator()
+    >>>
+    >>> tmpl = MarkupTemplate('''\
+        <html xmlns:i18n="http://genshi.edgewall.org/i18n">
+    ...   <div i18n:choose="num; num">
+    ...     <p i18n:singular="">There is $num coin</p>
+    ...     <p i18n:plural="">There are $num coins</p>
+    ...   </div>
+    ... </html>''')
+    >>> setup_i18n(tmpl, translator)
+    >>> list(translator.extract(tmpl.stream)) #doctest: +NORMALIZE_WHITESPACE
+    [(2, 'ngettext', (u'There is %(num)s coin',
+                      u'There are %(num)s coins'), [])]
+    >>>
+    >>> tmpl = MarkupTemplate('''\
+        <html xmlns:i18n="http://genshi.edgewall.org/i18n">
+    ...   <div i18n:choose="num; num">
+    ...     <p i18n:singular="">There is $num coin</p>
+    ...     <p i18n:plural="">There are $num coins</p>
+    ...   </div>
+    ... </html>''')
+    >>> setup_i18n(tmpl, translator)
+    >>> print tmpl.generate(num=1).render()
+    <html>
+      <div>
+        <p>There is 1 coin</p>
+      </div>
+    </html>
+    >>> print tmpl.generate(num=2).render()
+    <html>
+      <div>
+        <p>There are 2 coins</p>
+      </div>
+    </html>
+    >>>
+    
+    When used as a directive and not as an attribute:
+    >>> tmpl = MarkupTemplate('''\
+        <html xmlns:i18n="http://genshi.edgewall.org/i18n">
+    ...   <i18n:choose numeral="num" params="num">
+    ...     <p i18n:singular="">There is $num coin</p>
+    ...     <p i18n:plural="">There are $num coins</p>
+    ...   </i18n:choose>
+    ... </html>''')
+    >>> setup_i18n(tmpl, translator)
+    >>> list(translator.extract(tmpl.stream)) #doctest: +NORMALIZE_WHITESPACE
+    [(2, 'ngettext', (u'There is %(num)s coin',
+                      u'There are %(num)s coins'), [])]
+    >>>
+    """
+
+    __slots__ = ['numeral', 'params']
+
+    def __init__(self, value, template, hints=None, namespaces=None,
+                 lineno=-1, offset=-1):
+        Directive.__init__(self, None, template, namespaces, lineno, offset)
+        params = [v.strip() for v in value.split(';')]
+        self.numeral = self._parse_expr(params.pop(0), template, lineno, offset)
+        self.params = params and [name.strip() for name in
+                                  params[0].split(',') if name] or []
+
+    @classmethod
+    def attach(cls, template, stream, value, namespaces, pos):
+        if type(value) is dict:
+            numeral = value.get('numeral', '').strip()
+            assert numeral is not '', "at least pass the numeral param"
+            params = [v.strip() for v in value.get('params', '').split(',')]
+            value = '%s; ' % numeral + ', '.join(params)
+        return super(ChooseDirective, cls).attach(template, stream, value,
+                                                  namespaces, pos)
+
+    def __call__(self, stream, directives, ctxt, **vars):
+
+        ctxt.push({'_i18n.choose.params': self.params,
+                   '_i18n.choose.SingularDirective': None,
+                   '_i18n.choose.PluralDirective': None})
+
+        new_stream = []
+        singular_stream = None
+        singular_msgbuf = None
+        plural_stream = None
+        plural_msgbuf = None
+
+        ngettext = ctxt.get('_i18n.ungettext')
+        assert callable(ngettext), "No ngettext function available"
+        dngettext = ctxt.get('_i18n.dngettext')
+        if not dngettext:
+            dngettext = lambda d, s, p, n: ngettext(s, p, n)
+
+        for kind, event, pos in stream:
+            if kind is SUB:
+                subdirectives, substream = event
+                if isinstance(subdirectives[0],
+                              SingularDirective) and not singular_stream:
+                    # Apply directives to update context
+                    singular_stream = list(_apply_directives(substream,
+                                                             subdirectives,
+                                                             ctxt))
+                    new_stream.append((MSGBUF, (), -1)) # msgbuf place holder
+                    singular_msgbuf = ctxt.get('_i18n.choose.SingularDirective')
+                elif isinstance(subdirectives[0],
+                                PluralDirective) and not plural_stream:
+                    # Apply directives to update context
+                    plural_stream = list(_apply_directives(substream,
+                                                           subdirectives, ctxt))
+                    plural_msgbuf = ctxt.get('_i18n.choose.PluralDirective')
+                else:
+                    new_stream.append((kind, event, pos))
+            else:
+                new_stream.append((kind, event, pos))
+
+        if ctxt.get('_i18n.domain'):
+            ngettext = lambda s, p, n: dngettext(ctxt.get('_i18n.domain'),
+                                                 s, p, n)
+
+        for kind, data, pos in new_stream:
+            if kind is MSGBUF:
+                for skind, sdata, spos in singular_stream:
+                    if skind is MSGBUF:
+                        translation = ngettext(singular_msgbuf.format(),
+                                               plural_msgbuf.format(),
+                                               self.numeral.evaluate(ctxt))
+                        for event in singular_msgbuf.translate(translation):
+                            yield event
+                    else:
+                        yield skind, sdata, spos
+            else:
+                yield kind, data, pos
+
+        ctxt.pop()
+
+    def extract(self, stream, ctxt):
+
+        stream = iter(stream)
+        previous = stream.next()
+        if previous is START:
+            stream.next()
+
+        singular_msgbuf = MessageBuffer(self.params[:])
+        plural_msgbuf = MessageBuffer(self.params[:])
+
+        for kind, event, pos in stream:
+            if kind is SUB:
+                subdirectives, substream = event
+                for subdirective in subdirectives:
+                    if isinstance(subdirective, SingularDirective):
+                        singular_msgbuf = subdirective.extract(substream, ctxt,
+                                                               singular_msgbuf)
+                    elif isinstance(subdirective, PluralDirective):
+                        plural_msgbuf = subdirective.extract(substream, ctxt,
+                                                             plural_msgbuf)
+                    elif not isinstance(subdirective, StripDirective):
+                        try:
+                            singular_msgbuf.append(kind, event, pos)
+                            plural_msgbuf.append(kind, event, pos)
+                        except IndexError:
+                            raise IndexError("Not enough parameters passed to "
+                                             "'%s' on '%s', line number %s: "
+                                             "%s" % (type(self).__name__,
+                                                     os.path.basename(pos[0]),
+                                                     pos[1], self.params))
+            else:
+                try:
+                    singular_msgbuf.append(kind, event, pos)
+                    plural_msgbuf.append(kind, event, pos)
+                except IndexError:
+                    raise IndexError("Not enough parameters passed to '%s' on "
+                                     "'%s', line number %s: %s" %
+                                     (type(self).__name__,
+                                      os.path.basename(pos[0]), pos[1],
+                                      self.params))
+
+        yield 'ngettext', \
+            (singular_msgbuf.format(), plural_msgbuf.format()), \
+            filter(None, [ctxt.get('_i18n.comment')])
 
 class DomainDirective(Directive):
+    """Implementation of the ``i18n:domain`` directive which allows choosing
+    another i18n domain(catalog) to translate from.
+    
+    >>> from gettext import NullTranslations
+    >>> from genshi.filters.i18n import Translator, setup_i18n
+    >>> from genshi.template.markup import MarkupTemplate
+    >>>
+    >>> class DummyTranslations(NullTranslations):
+    ...     _domains = {}
+    ...     def __init__(self, catalog):
+    ...         NullTranslations.__init__(self)
+    ...         self._catalog = catalog
+    ...     def add_domain(self, domain, catalog):
+    ...         translation = DummyTranslations(catalog)
+    ...         translation.add_fallback(self)
+    ...         self._domains[domain] = translation
+    ...     def _domain_call(self, func, domain, *args, **kwargs):
+    ...         return getattr(self._domains.get(domain, self), func)(*args,
+    ...                                                               **kwargs)
+    ...     def ugettext(self, message):
+    ...         missing = object()
+    ...         tmsg = self._catalog.get(message, missing)
+    ...         if tmsg is missing:
+    ...             if self._fallback:
+    ...                 return self._fallback.ugettext(message)
+    ...             return unicode(message)
+    ...         return tmsg
+    ...     def dugettext(self, domain, message):
+    ...         return self._domain_call('ugettext', domain, message)
+    ...
+    >>>
+    >>> tmpl = MarkupTemplate('''\
+        <html xmlns:i18n="http://genshi.edgewall.org/i18n">
+    ...   <p i18n:msg="">Bar</p>
+    ...   <div i18n:domain="foo">
+    ...     <p i18n:msg="">FooBar</p>
+    ...     <p>Bar</p>
+    ...     <p i18n:domain="bar" i18n:msg="">Bar</p>
+    ...     <p i18n:domain="">Bar</p>
+    ...   </div>
+    ...   <p>Bar</p>
+    ... </html>''')
+    >>>
+    >>> translations = DummyTranslations({'Bar': 'Voh'})
+    >>> translations.add_domain('foo', {'FooBar': 'BarFoo', 'Bar': 'foo_Bar'})
+    >>> translations.add_domain('bar', {'Bar': 'bar_Bar'})
+    >>> translator = Translator(translations)
+    >>> setup_i18n(tmpl, translator)
+    >>>
+    >>> print tmpl.generate().render()
+    <html>
+      <p>Voh</p>
+      <div>
+        <p>BarFoo</p>
+        <p>foo_Bar</p>
+        <p>bar_Bar</p>
+        <p>Voh</p>
+      </div>
+      <p>Voh</p>
+    </html>
+    >>>
+    """
 
     __slots__ = ['domain']
 
     def __init__(self, value, template, hints=None, namespaces=None,
                  lineno=-1, offset=-1):
         Directive.__init__(self, None, template, namespaces, lineno, offset)
-        self.domain = value
-        
+        self.domain = value and value.strip() or '__DEFAULT__' 
+
     @classmethod
     def attach(cls, template, stream, value, namespaces, pos):
         if type(value) is dict:
@@ -90,11 +528,12 @@ class DomainDirective(Directive):
         return super(DomainDirective, cls).attach(template, stream, value,
                                                   namespaces, pos)
 
-    def __call__(self, stream, directives, ctxt, **vars):            
-        ctxt.push({'_i18n.domain': self.domain})        
-        for event in stream:
+    def __call__(self, stream, directives, ctxt, **vars):
+        ctxt.push({'_i18n.domain': self.domain})
+        for event in _apply_directives(stream, directives, ctxt):
             yield event
         ctxt.pop()
+
 
 class Translator(DirectiveFactory):
     """Can extract and translate localizable strings from markup streams and
@@ -103,7 +542,7 @@ class Translator(DirectiveFactory):
     For example, assume the following template:
     
     >>> from genshi.template import MarkupTemplate
-    >>> 
+    >>>
     >>> tmpl = MarkupTemplate('''<html xmlns:py="http://genshi.edgewall.org/">
     ...   <head>
     ...     <title>Example</title>
@@ -122,7 +561,7 @@ class Translator(DirectiveFactory):
     ...         'Example': 'Beispiel',
     ...         'Hello, %(name)s': 'Hallo, %(name)s'
     ...     }[string]
-    >>> 
+    >>>
     >>> translator = Translator(pseudo_gettext)
     
     Next, the translator needs to be prepended to any already defined filters
@@ -143,7 +582,7 @@ class Translator(DirectiveFactory):
         <p>Hallo, Hans</p>
       </body>
     </html>
-
+    
     Note that elements defining ``xml:lang`` attributes that do not contain
     variable expressions are ignored by this filter. That can be used to
     exclude specific parts of a template from being extracted and translated.
@@ -152,15 +591,19 @@ class Translator(DirectiveFactory):
     directives = [
         ('domain', DomainDirective),
         ('comment', CommentDirective),
-        ('msg', MsgDirective)
+        ('msg', MsgDirective),
+        ('choose', ChooseDirective),
+        ('singular', SingularDirective),
+        ('plural', PluralDirective)
     ]
 
     IGNORE_TAGS = frozenset([
         QName('script'), QName('http://www.w3.org/1999/xhtml}script'),
         QName('style'), QName('http://www.w3.org/1999/xhtml}style')
     ])
-    INCLUDE_ATTRS = frozenset(['abbr', 'alt', 'label', 'prompt', 'standby',
-                               'summary', 'title'])
+    INCLUDE_ATTRS = frozenset([
+        'abbr', 'alt', 'label', 'prompt', 'standby', 'summary', 'title'
+    ])
     NAMESPACE = I18N_NAMESPACE
 
     def __init__(self, translate=NullTranslations(), ignore_tags=IGNORE_TAGS,
@@ -174,7 +617,7 @@ class Translator(DirectiveFactory):
         :param extract_text: whether the content of text nodes should be
                              extracted, or only text in explicit ``gettext``
                              function calls
-
+        
         :note: Changed in 0.6: the `translate` parameter can now be either
                a ``gettext``-style function, or an object compatible with the
                ``NullTransalations`` or ``GNUTranslations`` interface
@@ -206,23 +649,38 @@ class Translator(DirectiveFactory):
 
         if type(self.translate) is FunctionType:
             gettext = self.translate
+            if ctxt:
+                ctxt['_i18n.gettext'] = gettext
         else:
             gettext = self.translate.ugettext
             try:
                 dgettext = self.translate.dugettext
             except AttributeError:
                 dgettext = lambda x, y: gettext(y)
-                
-        if ctxt:
-            ctxt['_i18n.gettext'] = gettext
-            ctxt['_i18n.dgettext'] = dgettext
+            ngettext = self.translate.ungettext
+            try:
+                dngettext = self.translate.dungettext
+            except AttributeError:
+                dngettext = lambda d, s, p, n: ngettext(s, p, n)
+
+            if ctxt:
+                ctxt['_i18n.gettext'] = gettext
+                ctxt['_i18n.ugettext'] = gettext
+                ctxt['_i18n.dgettext'] = dgettext
+                ctxt['_i18n.ngettext'] = ngettext
+                ctxt['_i18n.ungettext'] = ngettext
+                ctxt['_i18n.dngettext'] = dngettext
 
         extract_text = self.extract_text
         if not extract_text:
             search_text = False
 
+        if ctxt and ctxt.get('_i18n.domain'):
+            old_gettext = gettext
+            gettext = lambda msg: dgettext(ctxt.get('_i18n.domain'), msg)
+
         for kind, data, pos in stream:
-            
+
             # skip chunks that should not be localized
             if skip:
                 if kind is START:
@@ -243,6 +701,7 @@ class Translator(DirectiveFactory):
 
                 new_attrs = []
                 changed = False
+
                 for name, value in attrs:
                     newval = value
                     if extract_text and isinstance(value, basestring):
@@ -262,31 +721,36 @@ class Translator(DirectiveFactory):
                 yield kind, (tag, attrs), pos
 
             elif search_text and kind is TEXT:
-                if ctxt and ctxt.get('_i18n.domain'):
-                    old_gettext = gettext
-                    gettext = lambda x: dgettext(ctxt.get('_i18n.domain'), x)
                 text = data.strip()
                 if text:
                     data = data.replace(text, unicode(gettext(text)))
                 yield kind, data, pos
-                if ctxt and ctxt.get('_i18n.domain'):
-                    gettext = old_gettext
 
             elif kind is SUB:
                 directives, substream = data
-                current_domain = [d.domain for d in directives if
-                                  isinstance(d, DomainDirective)]
-                if current_domain:
-                    ctxt.push({'_i18n.domain': current_domain[0]})
+                current_domain = None
+                for idx, directive in enumerate(directives):
+                    # Organize directives to make everything work
+                    if isinstance(directive, StripDirective):
+                        # Push stripping to last
+                        directives.append(directives.pop(idx))
+                    elif isinstance(directive, DomainDirective):
+                        # Grab current domain and update context
+                        current_domain = directive.domain
+                        ctxt.push({'_i18n.domain': current_domain})
+                        # Put domain directive as the first one in order to
+                        # update context before any other directives evaluation
+                        directives.insert(0, directives.pop(idx))
 
-                # If this is an i18n:msg directive, no need to translate text
+                # If this is an i18n directive, no need to translate text
                 # nodes here
-                is_msg = filter(None, [isinstance(d, MsgDirective)
-                                       for d in directives])
+                is_i18n_directive = filter(None,
+                                           [isinstance(d, DirectiveExtract)
+                                            for d in directives])
                 substream = list(self(substream, ctxt,
-                                      search_text=not is_msg))
+                                      search_text=not is_i18n_directive))
                 yield kind, (directives, substream), pos
-                
+
                 if current_domain:
                     ctxt.pop()
             else:
@@ -296,7 +760,7 @@ class Translator(DirectiveFactory):
                          'ugettext', 'ungettext')
 
     def extract(self, stream, gettext_functions=GETTEXT_FUNCTIONS,
-                search_text=True, msgbuf=None):
+                search_text=True, msgbuf=None, ctxt=Context()):
         """Extract localizable strings from the given template stream.
         
         For every string found, this function yields a ``(lineno, function,
@@ -312,7 +776,7 @@ class Translator(DirectiveFactory):
            from ``i18n:comment`` attributes found in the markup
         
         >>> from genshi.template import MarkupTemplate
-        >>> 
+        >>>
         >>> tmpl = MarkupTemplate('''<html xmlns:py="http://genshi.edgewall.org/">
         ...   <head>
         ...     <title>Example</title>
@@ -323,7 +787,7 @@ class Translator(DirectiveFactory):
         ...     <p>${ngettext("You have %d item", "You have %d items", num)}</p>
         ...   </body>
         ... </html>''', filename='example.html')
-        >>> 
+        >>>
         >>> for line, func, msg, comments in Translator().extract(tmpl.stream):
         ...    print "%d, %r, %r" % (line, func, msg)
         3, None, u'Example'
@@ -338,22 +802,26 @@ class Translator(DirectiveFactory):
                                   functions
         :param search_text: whether the content of text nodes should be
                             extracted (used internally)
+        :param ctxt: the current extraction context (used internaly)
         
         :note: Changed in 0.4.1: For a function with multiple string arguments
                (such as ``ngettext``), a single item with a tuple of strings is
                yielded, instead an item for each string argument.
         :note: Changed in 0.6: The returned tuples now include a 4th element,
-               which is a list of comments for the translator
+               which is a list of comments for the translator. Added an ``ctxt``
+               argument which is used to pass arround the current extraction
+               context.
         """
         if not self.extract_text:
             search_text = False
         skip = 0
-        i18n_comment = I18N_NAMESPACE['comment']
-        i18n_msg = I18N_NAMESPACE['msg']
+
+        # Un-comment bellow to extract messages without adding directives
+#        i18n_comment = I18N_NAMESPACE['comment']
+#        i18n_msg = I18N_NAMESPACE['msg']
         xml_lang = XML_NAMESPACE['lang']
 
         for kind, data, pos in stream:
-
             if skip:
                 if kind is START:
                     skip += 1
@@ -373,6 +841,7 @@ class Translator(DirectiveFactory):
                         if name in self.include_attrs:
                             text = value.strip()
                             if text:
+                                # XXX: Do we need to grab i18n:comment from ctxt ???
                                 yield pos[1], None, text, []
                     else:
                         for lineno, funcname, text, comments in self.extract(
@@ -382,20 +851,24 @@ class Translator(DirectiveFactory):
 
                 if msgbuf:
                     msgbuf.append(kind, data, pos)
-                else:
-                    msg_params = attrs.get(i18n_msg)
-                    if msg_params is not None:
-                        if type(msg_params) is list: # event tuple
-                            msg_params = msg_params[0][1]
-                        msgbuf = MessageBuffer(
-                            msg_params, attrs.get(i18n_comment), pos[1]
-                        )
+                # Un-comment bellow to extract messages without adding
+                # directives
+#                else:
+#                    msg_params = attrs.get(i18n_msg)
+#                    if msg_params is not None:
+#                        print kind, data, pos
+#                        if type(msg_params) is list: # event tuple
+#                            msg_params = msg_params[0][1]
+#                        msgbuf = MessageBuffer(
+#                            msg_params, attrs.get(i18n_comment), pos[1]
+#                        )
 
             elif not skip and search_text and kind is TEXT:
                 if not msgbuf:
                     text = data.strip()
                     if text and filter(None, [ch.isalpha() for ch in text]):
-                        yield pos[1], None, text, []
+                        yield pos[1], None, text, \
+                                    filter(None, [ctxt.get('_i18n.comment')])
                 else:
                     msgbuf.append(kind, data, pos)
 
@@ -403,7 +876,7 @@ class Translator(DirectiveFactory):
                 msgbuf.append(kind, data, pos)
                 if not msgbuf.depth:
                     yield msgbuf.lineno, None, msgbuf.format(), \
-                          filter(None, [msgbuf.comment])
+                                                  filter(None, [msgbuf.comment])
                     msgbuf = None
 
             elif kind is EXPR or kind is EXEC:
@@ -411,16 +884,47 @@ class Translator(DirectiveFactory):
                     msgbuf.append(kind, data, pos)
                 for funcname, strings in extract_from_code(data,
                                                            gettext_functions):
+                    # XXX: Do we need to grab i18n:comment from ctxt ???
                     yield pos[1], funcname, strings, []
 
             elif kind is SUB:
-                subkind, substream = data
-                messages = self.extract(substream, gettext_functions,
-                                        search_text=search_text and not skip,
-                                        msgbuf=msgbuf)
-                for lineno, funcname, text, comments in messages:
-                    yield lineno, funcname, text, comments
+                directives, substream = data
 
+                comment = None
+                for idx, directive in enumerate(directives):
+                    # Do a first loop to see if there's a comment directive
+                    # If there is update context and pop it from directives
+                    if isinstance(directive, CommentDirective):
+                        comment = directive.comment
+                        ctxt.push({'_i18n.comment': comment})
+                        if len(directives) == 1:
+                            # in case we're in the presence of something like:
+                            # <p i18n:comment="foo">Foo</p>
+                            messages = self.extract(
+                                substream, gettext_functions,
+                                search_text=search_text and not skip,
+                                msgbuf=msgbuf, ctxt=ctxt)
+                            for lineno, funcname, text, comments in messages:
+                                yield lineno, funcname, text, comments
+                        directives.pop(idx)
+                    elif isinstance(directive, StripDirective):
+                        # Previously we didn't evaluate py:strip directives
+                        # in extraction, let's continue not to
+                        directives.pop(idx)
+
+                for directive in directives:
+                    if isinstance(directive, DirectiveExtract):
+                        messages = directive.extract(substream, ctxt)
+                        for funcname, text, comments in messages:
+                            yield pos[1], funcname, text, comments
+                    else:
+                        messages = self.extract(
+                            substream, gettext_functions,
+                            search_text=search_text and not skip, msgbuf=msgbuf)
+                        for lineno, funcname, text, comments in messages:
+                            yield lineno, funcname, text, comments
+                if comment:
+                    ctxt.pop()
 
 class MessageBuffer(object):
     """Helper class for managing internationalized mixed content.
@@ -438,7 +942,9 @@ class MessageBuffer(object):
         """
         if isinstance(params, basestring):
             params = [name.strip() for name in params.split(',')]
-        self.params = params
+        # params list needs to be copied so that directives can be evaluated
+        # more than once
+        self.params = params[:]
         self.comment = comment
         self.lineno = lineno
         self.string = []
@@ -455,6 +961,10 @@ class MessageBuffer(object):
         :param data: the event data
         :param pos: the position of the event in the source
         """
+        if kind is SUB:
+            # py:attrs for example
+            for skind, sdata, spos in data[1]:
+                self.append(skind, sdata, spos)
         if kind is TEXT:
             self.string.append(data)
             self.events.setdefault(self.stack[-1], []).append(None)
@@ -511,19 +1021,19 @@ class MessageBuffer(object):
 def parse_msg(string, regex=re.compile(r'(?:\[(\d+)\:)|\]')):
     """Parse a translated message using Genshi mixed content message
     formatting.
-
+    
     >>> parse_msg("See [1:Help].")
     [(0, 'See '), (1, 'Help'), (0, '.')]
-
+    
     >>> parse_msg("See [1:our [2:Help] page] for details.")
     [(0, 'See '), (1, 'our '), (2, 'Help'), (1, ' page'), (0, ' for details.')]
-
+    
     >>> parse_msg("[2:Details] finden Sie in [1:Hilfe].")
     [(2, 'Details'), (0, ' finden Sie in '), (1, 'Hilfe'), (0, '.')]
-
+    
     >>> parse_msg("[1:] Bilder pro Seite anzeigen.")
     [(1, ''), (0, ' Bilder pro Seite anzeigen.')]
-
+    
     :param string: the translated message string
     :return: a list of ``(order, string)`` tuples
     :rtype: `list`
@@ -561,7 +1071,7 @@ def extract_from_code(code, gettext_functions):
     >>> expr = Expression('_("Hello")')
     >>> list(extract_from_code(expr, Translator.GETTEXT_FUNCTIONS))
     [('_', u'Hello')]
-
+    
     >>> expr = Expression('ngettext("You have %(num)s item", '
     ...                            '"You have %(num)s items", num)')
     >>> list(extract_from_code(expr, Translator.GETTEXT_FUNCTIONS))
@@ -631,6 +1141,20 @@ def extract(fileobj, keywords, comment_tags, options):
 
     tmpl = template_class(fileobj, filename=getattr(fileobj, 'name', None),
                           encoding=encoding)
+
     translator = Translator(None, ignore_tags, include_attrs, extract_text)
+    if hasattr(tmpl, 'add_directives'):
+        tmpl.add_directives(Translator.NAMESPACE, translator)
     for message in translator.extract(tmpl.stream, gettext_functions=keywords):
         yield message
+
+def setup_i18n(template, translator):
+    """Convinience function to setup both the i18n filter and the i18n
+    directives.
+    
+    :param template: an instance of a genshi template
+    :param translator: an instance of ``Translator``
+    """
+    template.filters.insert(0, translator)
+    if hasattr(template, 'add_directives'):
+        template.add_directives(Translator.NAMESPACE, translator)

@@ -513,7 +513,7 @@ class TranslatorTestCase(unittest.TestCase):
           <p>BarFoo</p>
         </html>""", tmpl.generate().render())
         
-    def test_translate_domain_call(self):
+    def test_translate_domain_call_without_msg_directives(self):
         tmpl = MarkupTemplate("""<html xmlns:py="http://genshi.edgewall.org/"
             xmlns:i18n="http://genshi.edgewall.org/i18n">
           <p i18n:msg="">Bar</p>
@@ -536,6 +536,28 @@ class TranslatorTestCase(unittest.TestCase):
             <p>PT_Foo</p>
             <p>PT_Foo</p>
           </div>
+          <p>Voh</p>
+        </html>""", tmpl.generate().render())
+        
+    def test_translate_domain_call_as_directive(self):
+        tmpl = MarkupTemplate("""<html xmlns:py="http://genshi.edgewall.org/"
+            xmlns:i18n="http://genshi.edgewall.org/i18n">
+        <i18n:domain name="foo">
+          <p i18n:msg="">FooBar</p>
+          <p i18n:msg="">Bar</p>
+          <p>Bar</p>
+        </i18n:domain>
+          <p>Bar</p>
+        </html>""")
+        translations = DummyTranslations({'Bar': 'Voh'})
+        translations.add_domain('foo', {'FooBar': 'BarFoo', 'Bar': 'PT_Foo'})
+        translator = Translator(translations)
+        tmpl.filters.insert(0, translator)
+        tmpl.add_directives(Translator.NAMESPACE, translator)
+        self.assertEqual("""<html>
+          <p>BarFoo</p>
+          <p>PT_Foo</p>
+          <p>PT_Foo</p>
           <p>Voh</p>
         </html>""", tmpl.generate().render())
 

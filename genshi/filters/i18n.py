@@ -52,6 +52,7 @@ class MsgDirective(Directive):
         self.params = [name.strip() for name in value.split(',')]
 
     def __call__(self, stream, directives, ctxt, **vars):
+        
         msgbuf = MessageBuffer(self.params)
 
         stream = iter(stream)
@@ -66,11 +67,12 @@ class MsgDirective(Directive):
         if ctxt.get('_i18n.domain'):
             assert callable(dgettext), "No domain gettext function passed"
             gettext = lambda msg: dgettext(ctxt.get('_i18n.domain'), msg)
-            
+
         for event in msgbuf.translate(gettext(msgbuf.format())):
             yield event
 
         yield previous # the outer end tag
+
 
 class DomainDirective(Directive):
 
@@ -80,9 +82,16 @@ class DomainDirective(Directive):
                  lineno=-1, offset=-1):
         Directive.__init__(self, None, template, namespaces, lineno, offset)
         self.domain = value
+        
+    @classmethod
+    def attach(cls, template, stream, value, namespaces, pos):
+        if type(value) is dict:
+            value = value.get('name')
+        return super(DomainDirective, cls).attach(template, stream, value,
+                                                  namespaces, pos)
 
-    def __call__(self, stream, directives, ctxt, **vars):
-        ctxt.push({'_i18n.domain': self.domain})
+    def __call__(self, stream, directives, ctxt, **vars):            
+        ctxt.push({'_i18n.domain': self.domain})        
         for event in stream:
             yield event
         ctxt.pop()
@@ -143,7 +152,7 @@ class Translator(DirectiveFactory):
     directives = [
         ('domain', DomainDirective),
         ('comment', CommentDirective),
-        ('msg', MsgDirective),
+        ('msg', MsgDirective)
     ]
 
     IGNORE_TAGS = frozenset([
@@ -213,7 +222,7 @@ class Translator(DirectiveFactory):
             search_text = False
 
         for kind, data, pos in stream:
-
+            
             # skip chunks that should not be localized
             if skip:
                 if kind is START:
@@ -253,13 +262,23 @@ class Translator(DirectiveFactory):
                 yield kind, (tag, attrs), pos
 
             elif search_text and kind is TEXT:
+                if ctxt and ctxt.get('_i18n.domain'):
+                    old_gettext = gettext
+                    gettext = lambda x: dgettext(ctxt.get('_i18n.domain'), x)
                 text = data.strip()
                 if text:
                     data = data.replace(text, unicode(gettext(text)))
                 yield kind, data, pos
+                if ctxt and ctxt.get('_i18n.domain'):
+                    gettext = old_gettext
 
             elif kind is SUB:
                 directives, substream = data
+                current_domain = [d.domain for d in directives if
+                                  isinstance(d, DomainDirective)]
+                if current_domain:
+                    ctxt.push({'_i18n.domain': current_domain[0]})
+
                 # If this is an i18n:msg directive, no need to translate text
                 # nodes here
                 is_msg = filter(None, [isinstance(d, MsgDirective)
@@ -267,7 +286,9 @@ class Translator(DirectiveFactory):
                 substream = list(self(substream, ctxt,
                                       search_text=not is_msg))
                 yield kind, (directives, substream), pos
-
+                
+                if current_domain:
+                    ctxt.pop()
             else:
                 yield kind, data, pos
 

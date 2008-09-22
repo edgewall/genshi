@@ -174,7 +174,9 @@ class TranslatorTestCase(unittest.TestCase):
           </p>
         </html>""")
         gettext = lambda s: u"Für Details siehe bitte [1:Hilfe]."
-        tmpl.filters.insert(0, Translator(gettext))
+        translator = Translator(gettext)
+        tmpl.filters.insert(0, translator)
+        tmpl.add_directives(Translator.NAMESPACE, translator)
         self.assertEqual("""<html>
           <p>Für Details siehe bitte <a href="help.html">Hilfe</a>.</p>
         </html>""", tmpl.generate().render())
@@ -200,7 +202,9 @@ class TranslatorTestCase(unittest.TestCase):
           </p>
         </html>""")
         gettext = lambda s: u"Für Details siehe bitte [1:[2:Hilfeseite]]."
-        tmpl.filters.insert(0, Translator(gettext))
+        translator = Translator(gettext)
+        tmpl.filters.insert(0, translator)
+        tmpl.add_directives(Translator.NAMESPACE, translator)
         self.assertEqual("""<html>
           <p>Für Details siehe bitte <a href="help.html"><em>Hilfeseite</em></a>.</p>
         </html>""", tmpl.generate().render())
@@ -225,7 +229,9 @@ class TranslatorTestCase(unittest.TestCase):
           </p>
         </html>""")
         gettext = lambda s: u"[1:] Einträge pro Seite anzeigen."
-        tmpl.filters.insert(0, Translator(gettext))
+        translator = Translator(gettext)
+        tmpl.filters.insert(0, translator)
+        tmpl.add_directives(Translator.NAMESPACE, translator)
         self.assertEqual("""<html>
           <p><input type="text" name="num"/> Einträge pro Seite anzeigen.</p>
         </html>""", tmpl.generate().render())
@@ -250,7 +256,9 @@ class TranslatorTestCase(unittest.TestCase):
           </p>
         </html>""")
         gettext = lambda s: u"Für [2:Details] siehe bitte [1:Hilfe]."
-        tmpl.filters.insert(0, Translator(gettext))
+        translator = Translator(gettext)
+        tmpl.filters.insert(0, translator)
+        tmpl.add_directives(Translator.NAMESPACE, translator)
         self.assertEqual("""<html>
           <p>Für <em>Details</em> siehe bitte <a href="help.html">Hilfe</a>.</p>
         </html>""", tmpl.generate().render())
@@ -276,7 +284,9 @@ class TranslatorTestCase(unittest.TestCase):
           </p>
         </html>""")
         gettext = lambda s: u"[1:] Einträge pro Seite, beginnend auf Seite [2:]."
-        tmpl.filters.insert(0, Translator(gettext))
+        translator = Translator(gettext)
+        tmpl.filters.insert(0, translator)
+        tmpl.add_directives(Translator.NAMESPACE, translator)
         self.assertEqual("""<html>
           <p><input type="text" name="num"/> Eintr\xc3\xa4ge pro Seite, beginnend auf Seite <input type="text" name="num"/>.</p>
         </html>""", tmpl.generate().render())
@@ -301,7 +311,9 @@ class TranslatorTestCase(unittest.TestCase):
           </p>
         </html>""")
         gettext = lambda s: u"Hallo, %(name)s!"
-        tmpl.filters.insert(0, Translator(gettext))
+        translator = Translator(gettext)
+        tmpl.filters.insert(0, translator)
+        tmpl.add_directives(Translator.NAMESPACE, translator)
         self.assertEqual("""<html>
           <p>Hallo, Jim!</p>
         </html>""", tmpl.generate(user=dict(name='Jim')).render())
@@ -314,7 +326,9 @@ class TranslatorTestCase(unittest.TestCase):
           </p>
         </html>""")
         gettext = lambda s: u"%(name)s, sei gegrüßt!"
-        tmpl.filters.insert(0, Translator(gettext))
+        translator = Translator(gettext)
+        tmpl.filters.insert(0, translator)
+        tmpl.add_directives(Translator.NAMESPACE, translator)
         self.assertEqual("""<html>
           <p>Jim, sei gegrüßt!</p>
         </html>""", tmpl.generate(user=dict(name='Jim')).render())
@@ -327,7 +341,9 @@ class TranslatorTestCase(unittest.TestCase):
           </p>
         </html>""")
         gettext = lambda s: u"Sei gegrüßt, [1:Alter]!"
-        tmpl.filters.insert(0, Translator(gettext))
+        translator = Translator(gettext)
+        tmpl.filters.insert(0, translator)
+        tmpl.add_directives(Translator.NAMESPACE, translator)
         self.assertEqual("""<html>
           <p>Sei gegrüßt, <a href="#42">Alter</a>!</p>
         </html>""", tmpl.generate(anchor='42').render())
@@ -352,7 +368,9 @@ class TranslatorTestCase(unittest.TestCase):
           </p>
         </html>""")
         gettext = lambda s: u"%(name)s schrieb dies um %(time)s"
-        tmpl.filters.insert(0, Translator(gettext))
+        translator = Translator(gettext)
+        tmpl.filters.insert(0, translator)
+        tmpl.add_directives(Translator.NAMESPACE, translator)
         entry = {
             'author': 'Jim',
             'time': datetime(2008, 4, 1, 14, 30)
@@ -403,9 +421,38 @@ class TranslatorTestCase(unittest.TestCase):
           <p i18n:msg="" i18n:comment="As in foo bar">Foo</p>
         </html>""")
         gettext = lambda s: u"Voh"
-        tmpl.filters.insert(0, Translator(gettext))
+        translator = Translator(gettext)
+        tmpl.filters.insert(0, translator)
+        tmpl.add_directives(Translator.NAMESPACE, translator)
         self.assertEqual("""<html>
           <p>Voh</p>
+        </html>""", tmpl.generate().render())
+
+    def test_extract_i18n_msg_with_attr(self):
+        tmpl = MarkupTemplate("""<html xmlns:py="http://genshi.edgewall.org/"
+            xmlns:i18n="http://genshi.edgewall.org/i18n">
+          <p i18n:msg="" title="Foo bar">Foo</p>
+        </html>""")
+        translator = Translator()
+        messages = list(translator.extract(tmpl.stream))
+        self.assertEqual(2, len(messages))
+        self.assertEqual((3, None, u'Foo bar', []), messages[0])
+        self.assertEqual((3, None, u'Foo', []), messages[1])
+
+    def test_translate_i18n_msg_with_attr(self):
+        tmpl = MarkupTemplate("""<html xmlns:py="http://genshi.edgewall.org/"
+            xmlns:i18n="http://genshi.edgewall.org/i18n">
+          <p i18n:msg="" title="Foo bar">Foo</p>
+        </html>""")
+        gettext = lambda s: u"Voh"
+        translator = Translator(DummyTranslations({
+            'Foo': u'Voh',
+            'Foo bar': u'Voh bär'
+        }))
+        tmpl.filters.insert(0, translator)
+        tmpl.add_directives(Translator.NAMESPACE, translator)
+        self.assertEqual("""<html>
+          <p title="Voh bär">Voh</p>
         </html>""", tmpl.generate().render())
 
     def test_translate_with_translations_object(self):
@@ -413,8 +460,9 @@ class TranslatorTestCase(unittest.TestCase):
             xmlns:i18n="http://genshi.edgewall.org/i18n">
           <p i18n:msg="" i18n:comment="As in foo bar">Foo</p>
         </html>""")
-        translations = DummyTranslations({'Foo': 'Voh'})
-        tmpl.filters.insert(0, Translator(translations))
+        translator = Translator(DummyTranslations({'Foo': 'Voh'}))
+        tmpl.filters.insert(0, translator)
+        tmpl.add_directives(Translator.NAMESPACE, translator)
         self.assertEqual("""<html>
           <p>Voh</p>
         </html>""", tmpl.generate().render())

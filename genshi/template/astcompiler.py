@@ -361,10 +361,11 @@ class CodeGenerator(object):
             self.visit(name)
     
     # ImportFrom(identifier module, alias* names, int? level)
-    # TODO: WTF is level?
     def visitImportFrom(self, node):
         self.new_line()
         self.write("from ")
+        if node.level:
+            self.write("." * node.level)
         self.write(node.module)
         self.write(" import ")
         self.visit(node.names[0])

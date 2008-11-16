@@ -1390,6 +1390,60 @@ class ExtractTestCase(unittest.TestCase):
             (25, None, u'Case changes',[]),
             (30, None, u'White space changes', []),
             (34, '_', u'Update', [])], messages)
+        
+    def test_extract_py_def_directive_with_py_strip(self):
+        # Failed extraction from Trac
+        tmpl = MarkupTemplate("""<html xmlns:py="http://genshi.edgewall.org/" py:strip="">
+    <py:def function="diff_options_fields(diff)">
+    <label for="style">View differences</label>
+    <select id="style" name="style">
+      <option selected="${diff.style == 'inline' or None}"
+              value="inline">inline</option>
+      <option selected="${diff.style == 'sidebyside' or None}"
+              value="sidebyside">side by side</option>
+    </select>
+    <div class="field">
+      Show <input type="text" name="contextlines" id="contextlines" size="2"
+                  maxlength="3" value="${diff.options.contextlines &lt; 0 and 'all' or diff.options.contextlines}" />
+      <label for="contextlines">lines around each change</label>
+    </div>
+    <fieldset id="ignore" py:with="options = diff.options">
+      <legend>Ignore:</legend>
+      <div class="field">
+        <input type="checkbox" id="ignoreblanklines" name="ignoreblanklines"
+               checked="${options.ignoreblanklines or None}" />
+        <label for="ignoreblanklines">Blank lines</label>
+      </div>
+      <div class="field">
+        <input type="checkbox" id="ignorecase" name="ignorecase"
+               checked="${options.ignorecase or None}" />
+        <label for="ignorecase">Case changes</label>
+      </div>
+      <div class="field">
+        <input type="checkbox" id="ignorewhitespace" name="ignorewhitespace"
+               checked="${options.ignorewhitespace or None}" />
+        <label for="ignorewhitespace">White space changes</label>
+      </div>
+    </fieldset>
+    <div class="buttons">
+      <input type="submit" name="update" value="${_('Update')}" />
+    </div>
+  </py:def></html>""")        
+        translator = Translator()
+        tmpl.add_directives(Translator.NAMESPACE, translator)
+        messages = list(translator.extract(tmpl.stream))
+        self.assertEqual(10, len(messages))
+        self.assertEqual([
+            (3, None, u'View differences', []),
+            (6, None, u'inline', []),
+            (8, None, u'side by side', []),
+            (10, None, u'Show', []),
+            (13, None, u'lines around each change', []),
+            (16, None, u'Ignore:', []),
+            (20, None, u'Blank lines', []),
+            (25, None, u'Case changes',[]),
+            (30, None, u'White space changes', []),
+            (34, '_', u'Update', [])], messages)
 
 
 def suite():

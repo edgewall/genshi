@@ -911,7 +911,7 @@ class Translator(DirectiveFactory):
                         # Previously we didn't evaluate py:strip directives
                         # in extraction, let's continue not to
                         directives.pop(idx)
-                        
+
                 if not directives and not comment:
                     # Extract content if there's no directives because
                     # strip was pop'ed and not because comment was pop'ed.
@@ -920,9 +920,8 @@ class Translator(DirectiveFactory):
                         substream, gettext_functions,
                         search_text=search_text and not skip, msgbuf=msgbuf)
                     for lineno, funcname, text, comments in messages:
-                        yield lineno, funcname, text, comments                    
-                    strip_directive_popped = False
-                        
+                        yield lineno, funcname, text, comments
+
                 for directive in directives:
                     if isinstance(directive, DirectiveExtract):
                         messages = directive.extract(substream, ctxt)

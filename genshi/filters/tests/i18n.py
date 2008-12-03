@@ -235,6 +235,34 @@ class TranslatorTestCase(unittest.TestCase):
         self.assertEqual("""<html>
           <p>Für Details siehe bitte <a href="help.html"><em>Hilfeseite</em></a>.</p>
         </html>""", tmpl.generate().render())
+        
+    def test_extract_i18n_msg_label_with_nested_input(self):
+        tmpl = MarkupTemplate("""<html xmlns:py="http://genshi.edgewall.org/"
+            xmlns:i18n="http://genshi.edgewall.org/i18n">
+          <div i18n:msg="">
+            <label><input type="text" size="3" name="daysback" value="30" /> days back</label>
+          </div>
+        </html>""")
+        translator = Translator()
+        tmpl.add_directives(Translator.NAMESPACE, translator)
+        messages = list(translator.extract(tmpl.stream))
+        self.assertEqual(1, len(messages))
+        self.assertEqual('[1:[2:] days back]',
+                         messages[0][2])
+
+    def test_translate_i18n_msg_label_with_nested_input(self):
+        tmpl = MarkupTemplate("""<html xmlns:py="http://genshi.edgewall.org/"
+            xmlns:i18n="http://genshi.edgewall.org/i18n">
+          <div i18n:msg="">
+            <label><input type="text" size="3" name="daysback" value="30" /> foo bar</label>
+          </div>
+        </html>""")
+        gettext = lambda s: "[1:[2:] foo bar]"
+        translator = Translator(gettext)
+        setup_i18n(tmpl, translator)
+        self.assertEqual("""<html>
+          <div><label><input type="text" size="3" name="daysback" value="30"/> foo bar</label></div>
+        </html>""", tmpl.generate().render())
 
     def test_extract_i18n_msg_empty(self):
         tmpl = MarkupTemplate("""<html xmlns:py="http://genshi.edgewall.org/"

@@ -1015,6 +1015,14 @@ class MessageBuffer(object):
             while events:
                 event = events.pop(0)
                 if event:
+                    if event[0] is END and string:
+                        for idx, part in enumerate(regex.split(string)):
+                            if idx % 2:
+                                yield self.values[part]
+                            elif part:
+                                yield TEXT, part, (None, -1, -1)
+                        # set string to None since we already handled it
+                        string = None
                     yield event
                 else:
                     if not string:
@@ -1024,9 +1032,10 @@ class MessageBuffer(object):
                             yield self.values[part]
                         elif part:
                             yield TEXT, part, (None, -1, -1)
+                    # set string to None since we already handled it
+                    string = None
                     if not self.events[order] or not self.events[order][0]:
                         break
-
 
 def parse_msg(string, regex=re.compile(r'(?:\[(\d+)\:)|\]')):
     """Parse a translated message using Genshi mixed content message

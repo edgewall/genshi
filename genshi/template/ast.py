@@ -12,47 +12,54 @@
 # history and logs, available at http://genshi.edgewall.org/log/.
 
 """Module checking for _ast and if that's not present uses emulation
-based on compiler.ast module"""
+based on compiler.ast module.
+"""
 
 __docformat__ = 'restructuredtext en'
 
 try:
     import _ast
-    _ast_emulated = False
+
+
+    def parse(source, mode):
+        return compile(source, '', mode, _ast.PyCF_ONLY_AST)
+
+
 except ImportError:
-    import aststructure as _ast
-    _ast_emulated = True
+    from genshi.template import _astpy24 as _ast
 
-def _new(cls, *args, **kwargs):
-    ret = cls()
-    if ret._fields:
-        for attr, value in zip(ret._fields, args):
-            if attr in kwargs:
-                raise ValueError, "Field set both in args and kwargs"
-            setattr(ret, attr, value)
-    for attr in kwargs:
-        if (getattr(ret, '_fields', None) and attr in ret._fields) \
-                or (getattr(ret, '_attributes', None) and 
-                        attr in ret._attributes):
-            setattr(ret, attr, kwargs[attr])
-    return ret
 
-if _ast_emulated:
+    def _new(cls, *args, **kwargs):
+        ret = cls()
+        if ret._fields:
+            for attr, value in zip(ret._fields, args):
+                if attr in kwargs:
+                    raise ValueError, "Field set both in args and kwargs"
+                setattr(ret, attr, value)
+        for attr in kwargs:
+            if (getattr(ret, '_fields', None) and attr in ret._fields) \
+                    or (getattr(ret, '_attributes', None) and 
+                            attr in ret._attributes):
+                setattr(ret, attr, kwargs[attr])
+        return ret
+
+
     import compiler
     import compiler.ast
+
 
     class ASTUpgrader(object):
         """Transformer changing structure of Python 2.4 ASTs to
         Python 2.5 ones.
 
-        Transforms compiler.ast Abstract Syntax Tree to builtin _ast.
+        Transforms ``compiler.ast`` Abstract Syntax Tree to builtin ``_ast``.
         It can use fake _ast classes and this way allow _ast emulation
         in Python 2.4"""
 
         def __init__(self):
             self.out_flags = None
             self.lines = [-1]
-        
+    
         def _new(self, *args, **kwargs):
             return _new(lineno = self.lines[-1], *args, **kwargs)
 
@@ -80,7 +87,7 @@ if _ast_emulated:
             if node.doc:
                 body = [self._new(_ast.Expr, self._new(_ast.Str, node.doc))] + body
             return self._new(_ast.Module, body)
-        
+    
         def visitExpression(self, node):
             return self._new(_ast.Expression, self.visit(node.node))
 
@@ -106,7 +113,7 @@ if _ast_emulated:
                     return self._new(_ast.Tuple, elts, _ast.Store())
                 else:
                     raise NotImplemented
-                    
+                
             args = []
             for arg in tab:
                 if isinstance(arg, str):
@@ -121,7 +128,7 @@ if _ast_emulated:
 
 
         def visitFunction(self, node):
-            if node.decorators:
+            if getattr(node, 'decorators', ()):
                 decorators = [self.visit(d) for d in node.decorators.nodes]
             else:
                 decorators = []
@@ -149,7 +156,7 @@ if _ast_emulated:
             targets = [self.visit(t) for t in node.nodes]
             #self.name_types.pop()
             return self._new(_ast.Assign, targets, self.visit(node.expr))
-        
+    
         aug_operators = {
                             '+=': _ast.Add,
                             '/=': _ast.Div,
@@ -234,7 +241,7 @@ if _ast_emulated:
 
         def visitFrom(self, node):
             names = [self._new(_ast.alias, n[0], n[1]) for n in node.names]
-            return self._new(_ast.ImportFrom, node.modname, names, node.level)
+            return self._new(_ast.ImportFrom, node.modname, names, 0)
 
         def visitExec(self, node):
             return self._new(_ast.Exec, self.visit(node.expr),
@@ -349,7 +356,7 @@ if _ast_emulated:
         def visitGenExprInner(self, node):
             generators = [self.visit(q) for q in node.quals]
             return self._new(_ast.GeneratorExp, self.visit(node.expr), generators)
-        
+    
         def visitGenExpr(self, node):
             return self.visit(node.code)
 
@@ -515,6 +522,3 @@ if _ast_emulated:
     def parse(source, mode):
         node = compiler.parse(source, mode)
         return ASTUpgrader().visit(node)
-else:
-    def parse(source, mode):
-        return compile(source, '', mode, _ast.PyCF_ONLY_AST)

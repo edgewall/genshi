@@ -13,14 +13,14 @@
 
 """Module generating Python code from AST tree and then compiling it"""
 
+from genshi.template.ast import _ast
+
 __docformat__ = 'restructuredtext en'
 
-from ast import _ast
-from sys import stderr
 
 class CodeGenerator(object):
     """General purpose base class for AST transformations.
-    
+
     Every visitor method can be overridden to return an AST node that has been
     altered or replaced in some way.
     """
@@ -33,19 +33,15 @@ class CodeGenerator(object):
         self.indent = 0
         self.blame_stack = []
         self.visit(tree)
-        #print self.code, self.line
         if self.line.strip() != "":
             self.code += self.line + "\n"
             self.lines_info.append(self.line_info)
-        #print >>stderr, '"""'
-        #print >>stderr, self.code,
-        #print >>stderr, '"""'
         self.line = None
         self.line_info = None
 
     def getCode(self):
         return compile(self.code, '', self.type)
-    
+
     def new_line(self):
         if self.line is not None:
             self.code += self.line + '\n'
@@ -94,7 +90,7 @@ class CodeGenerator(object):
         #print "Out", node
 
     def _visitDefault(self, node):
-        raise repr(node)
+        raise Exception('Unhandled node type %r with object %r' % (type(node), repr(node)))
     def visitModule(self, node):
         for n in node.body:
             self.visit(n)
@@ -105,7 +101,7 @@ class CodeGenerator(object):
         self.new_line()
         return self.visit(node.body)
 
-    # arguments = (expr* args, identifier? vararg, 
+    # arguments = (expr* args, identifier? vararg,
     #                 identifier? kwarg, expr* defaults)
     def visitarguments(self, node):
         first = True
@@ -131,10 +127,10 @@ class CodeGenerator(object):
                 first = False
             self.write('**' + node.kwarg)
 
-    # FunctionDef(identifier name, arguments args, 
+    # FunctionDef(identifier name, arguments args,
     #                           stmt* body, expr* decorators)
     def visitFunctionDef(self, node):
-        for decorator in node.decorators:
+        for decorator in getattr(node, 'decorators', ()):
             self.new_line()
             self.write('@')
             self.visit(decorator)
@@ -231,7 +227,7 @@ class CodeGenerator(object):
             for statement in node.orelse:
                 self.visit(statement)
             self.change_indent(-1)
-    
+
     # While(expr test, stmt* body, stmt* orelse)
     def visitWhile(self, node):
         self.new_line()
@@ -359,7 +355,7 @@ class CodeGenerator(object):
         for name in node.names[1:]:
             self.write(", ")
             self.visit(name)
-    
+
     # ImportFrom(identifier module, alias* names, int? level)
     def visitImportFrom(self, node):
         self.new_line()
@@ -436,19 +432,20 @@ class CodeGenerator(object):
             self.visit(value)
 
     binary_operators = {
-                            _ast.Add: '+',
-                            _ast.Sub: '-',
-                            _ast.Mult: '*',
-                            _ast.Div: '/',
-                            _ast.Mod: '%',
-                            _ast.Pow: '**',
-                            _ast.LShift: '<<',
-                            _ast.RShift: '>>',
-                            _ast.BitOr: '|',
-                            _ast.BitXor: '^',
-                            _ast.BitAnd: '&',
-                            _ast.FloorDiv: '//'
-                        }
+        _ast.Add: '+',
+        _ast.Sub: '-',
+        _ast.Mult: '*',
+        _ast.Div: '/',
+        _ast.Mod: '%',
+        _ast.Pow: '**',
+        _ast.LShift: '<<',
+        _ast.RShift: '>>',
+        _ast.BitOr: '|',
+        _ast.BitXor: '^',
+        _ast.BitAnd: '&',
+        _ast.FloorDiv: '//'
+    }
+
     # BinOp(expr left, operator op, expr right)
     @add_parenthesis
     def visitBinOp(self, node):
@@ -457,11 +454,11 @@ class CodeGenerator(object):
         self.visit(node.right)
 
     unary_operators = {
-                            _ast.Invert: '~',
-                            _ast.Not: 'not',
-                            _ast.UAdd: '+',
-                            _ast.USub: '-',
-                        }
+        _ast.Invert: '~',
+        _ast.Not: 'not',
+        _ast.UAdd: '+',
+        _ast.USub: '-',
+    }
 
     # UnaryOp(unaryop op, expr operand)
     def visitUnaryOp(self, node):
@@ -533,17 +530,17 @@ class CodeGenerator(object):
             self.visit(node.value)
 
     comparision_operators = {
-                                _ast.Eq: '==',
-                                _ast.NotEq: '!=',
-                                _ast.Lt: '<',
-                                _ast.LtE: '<=',
-                                _ast.Gt: '>',
-                                _ast.GtE: '>=',
-                                _ast.Is: 'is',
-                                _ast.IsNot: 'is not',
-                                _ast.In: 'in',
-                                _ast.NotIn: 'not in',
-                            }
+        _ast.Eq: '==',
+        _ast.NotEq: '!=',
+        _ast.Lt: '<',
+        _ast.LtE: '<=',
+        _ast.Gt: '>',
+        _ast.GtE: '>=',
+        _ast.Is: 'is',
+        _ast.IsNot: 'is not',
+        _ast.In: 'in',
+        _ast.NotIn: 'not in',
+    }
 
     # Compare(expr left, cmpop* ops, expr* comparators)
     @add_parenthesis
@@ -579,7 +576,7 @@ class CodeGenerator(object):
             first = False
             self.write('*')
             self.visit(node.starargs)
-        
+
         if getattr(node, 'kwargs', None):
             if not first:
                 self.write(', ')
@@ -607,7 +604,7 @@ class CodeGenerator(object):
         self.visit(node.value)
         self.write('.')
         self.write(node.attr)
-    
+
     # Subscript(expr value, slice slice, expr_context ctx)
     def visitSubscript(self, node):
         self.visit(node.value)
@@ -672,8 +669,10 @@ class CodeGenerator(object):
             self.visit(statement)
         self.change_indent(-1)
 
+
 class ModuleCodeGenerator(CodeGenerator):
     type = 'exec'
+
 
 class ExpressionCodeGenerator(CodeGenerator):
     type = 'eval'

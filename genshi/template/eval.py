@@ -16,7 +16,7 @@
 import __builtin__
 
 from astcompiler import ExpressionCodeGenerator, ModuleCodeGenerator
-from ast import _ast, parse, _new
+from ast import _ast, parse
 import new
 from textwrap import dedent
 from types import CodeType
@@ -29,26 +29,29 @@ __all__ = ['Code', 'Expression', 'Suite', 'LenientLookup', 'StrictLookup',
            'Undefined', 'UndefinedError']
 __docformat__ = 'restructuredtext en'
 
+
 # Check for a Python 2.4 bug in the eval loop
-has_star_import_bug = False                  
-try:                                         
-    class _FakeMapping(object):              
+has_star_import_bug = False
+try:
+    class _FakeMapping(object):
         __getitem__ = __setitem__ = lambda *a: None
-    exec 'from sys import *' in {}, _FakeMapping() 
-except SystemError:                                
-    has_star_import_bug = True                     
-del _FakeMapping                                   
+    exec 'from sys import *' in {}, _FakeMapping()
+except (SystemError, TypeError):
+    has_star_import_bug = True
+del _FakeMapping
+
 
 def _star_import_patch(mapping, modname):
     """This function is used as helper if a Python version with a broken
-    star-import opcode is in use.                                       
-    """                                                                 
-    module = __import__(modname, None, None, ['__all__'])               
-    if hasattr(module, '__all__'):                                      
-        members = module.__all__                                        
-    else:                                                               
-        members = [x for x in module.__dict__ if not x.startswith('_')] 
-    mapping.update([(name, getattr(module, name)) for name in members]) 
+    star-import opcode is in use.
+    """
+    module = __import__(modname, None, None, ['__all__'])
+    if hasattr(module, '__all__'):
+        members = module.__all__
+    else:
+        members = [x for x in module.__dict__ if not x.startswith('_')]
+    mapping.update([(name, getattr(module, name)) for name in members])
+
 
 def wrap_tree(source, mode):
     assert isinstance(source, _ast.AST), \
@@ -60,6 +63,7 @@ def wrap_tree(source, mode):
         node = _ast.Module()
         node.body = [source]
     return node
+
 
 class Code(object):
     """Abstract base class for the `Expression` and `Suite` classes."""
@@ -420,6 +424,7 @@ def _parse(source, mode='eval'):
         source = '\xef\xbb\xbf' + source.encode('utf-8')
     return parse(source, mode)
 
+
 def _compile(node, source=None, mode='eval', filename=None, lineno=-1,
              xform=None):
     if xform is None:
@@ -463,15 +468,17 @@ def _new(class_, *args, **kwargs):
     ret = class_()
     for attr, value in zip(ret._fields, args):
         if attr in kwargs:
-            raise ValueError, "Field set both in args and kwargs"
+            raise ValueError('Field set both in args and kwargs')
         setattr(ret, attr, value)
     for attr, value in kwargs:
         setattr(ret, attr, value)
     return ret
 
+
 BUILTINS = __builtin__.__dict__.copy()
 BUILTINS.update({'Markup': Markup, 'Undefined': Undefined})
 CONSTANTS = frozenset(['False', 'True', 'None', 'NotImplemented', 'Ellipsis'])
+
 
 class ASTTransformer(object):
     """General purpose base class for AST transformations.
@@ -591,6 +598,7 @@ class ASTTransformer(object):
     def _visitDefault(self, node):
         return node
 
+
 class TemplateASTTransformer(ASTTransformer):
     """Concrete AST transformer that implements the AST transformations needed
     for code embedded in templates.
@@ -663,6 +671,17 @@ class TemplateASTTransformer(ASTTransformer):
             return ASTTransformer.visitFor(self, node)
         finally:
             self.locals.pop()
+
+    def visitImportFrom(self, node):
+        if not has_star_import_bug or [a.name for a in node.names] != ['*']:
+            # This is a Python 2.4 bug. Only if we have a broken Python
+            # version we have to apply the hack
+            return node
+        return _new(_ast.Expr, _new(_ast.Call,
+            _new(_ast.Name, '_star_import_patch'), [
+                _new(_ast.Name, '__data__'),
+                _new(_ast.Str, node.module)
+            ], (), ()))
 
     def visitFunctionDef(self, node):
         if len(self.locals) > 1:

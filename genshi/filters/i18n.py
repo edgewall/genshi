@@ -947,11 +947,17 @@ class MessageBuffer(object):
             if self.params:
                 param = self.params.pop(0)
             else:
-                raise IndexError("'%s' parameters given to 'i18n:%s' but more "
-                                 "expressions used in '%s', line %s" % (
-                                 ', '.join(self.orig_params), 
-                                 self.directive.tagname,
-                                 os.path.basename(pos[0]), pos[1]))
+                params = ', '.join(['"%s"' % p for p in self.orig_params if p])
+                if params:
+                    params = "(%s)" % params
+                raise IndexError("%d parameters%s given to 'i18n:%s' but "
+                                 "%d or more expressions used in '%s', line %s"
+                                 % (len(self.orig_params), params, 
+                                    self.directive.tagname,
+                                    len(self.orig_params)+1,
+                                    os.path.basename(pos[0] or
+                                                     'In Memmory Template'),
+                                    pos[1]))
             self.string.append('%%(%s)s' % param)
             self.events.setdefault(self.stack[-1], []).append(None)
             self.values[param] = (kind, data, pos)

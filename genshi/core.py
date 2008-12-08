@@ -644,6 +644,9 @@ class Namespace(object):
         return QName(self.uri + u'}' + name)
     __getattr__ = __getitem__
 
+    def __hash__(self):
+        return hash(self.uri)
+
     def __repr__(self):
         return '<Namespace "%s">' % self.uri
 

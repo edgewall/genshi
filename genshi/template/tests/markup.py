@@ -86,8 +86,8 @@ class MarkupTemplateTestCase(unittest.TestCase):
     def test_directive_value_syntax_error(self):
         xml = """<p xmlns:py="http://genshi.edgewall.org/" py:if="bar'" />"""
         try:
-            tmpl = MarkupTemplate(xml, filename='test.html')
-            self.fail('Expected SyntaxError')
+            tmpl = MarkupTemplate(xml, filename='test.html').generate()
+            self.fail('Expected TemplateSyntaxError')
         except TemplateSyntaxError, e:
             self.assertEqual('test.html', e.filename)
             self.assertEqual(1, e.lineno)
@@ -98,7 +98,7 @@ class MarkupTemplateTestCase(unittest.TestCase):
         </p>"""
         try:
             tmpl = MarkupTemplate(xml, filename='test.html')
-            self.fail('Expected SyntaxError')
+            self.fail('Expected TemplateSyntaxError')
         except TemplateSyntaxError, e:
             self.assertEqual('test.html', e.filename)
             self.assertEqual(2, e.lineno)
@@ -111,7 +111,7 @@ class MarkupTemplateTestCase(unittest.TestCase):
         </p>"""
         try:
             tmpl = MarkupTemplate(xml, filename='test.html')
-            self.fail('Expected SyntaxError')
+            self.fail('Expected TemplateSyntaxError')
         except TemplateSyntaxError, e:
             self.assertEqual('test.html', e.filename)
             self.assertEqual(3, e.lineno)
@@ -130,7 +130,8 @@ class MarkupTemplateTestCase(unittest.TestCase):
 
     def test_text_noescape_quotes(self):
         """
-        Verify that outputting context data in text nodes doesn't escape quotes.
+        Verify that outputting context data in text nodes doesn't escape
+        quotes.
         """
         tmpl = MarkupTemplate("""<div xmlns:py="http://genshi.edgewall.org/">
           $myvar

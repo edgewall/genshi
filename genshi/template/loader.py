@@ -124,7 +124,7 @@ class TemplateLoader(object):
         self.default_class = default_class or MarkupTemplate
         self.variable_lookup = variable_lookup
         self.allow_exec = allow_exec
-        if callback is not None and not callable(callback):
+        if callback is not None and not hasattr(callback, '__call__'):
             raise TypeError('The "callback" parameter needs to be callable')
         self.callback = callback
         self._cache = LRUCache(max_cache_size)

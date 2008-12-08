@@ -44,7 +44,7 @@ def interpolate(text, filepath=None, lineno=-1, offset=0, lookup='strict'):
     string.
     
     >>> for kind, data, pos in interpolate("hey ${foo}bar"):
-    ...     print kind, `data`
+    ...     print kind, repr(data)
     TEXT u'hey '
     EXPR Expression('foo')
     TEXT u'bar'

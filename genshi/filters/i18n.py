@@ -156,7 +156,7 @@ class MsgDirective(Directive, DirectiveExtract):
             assert callable(dgettext), "No domain gettext function passed"
             gettext = lambda msg: dgettext(ctxt.get('_i18n.domain'), msg)
 
-        msgbuf = MessageBuffer(self.params)
+        msgbuf = MessageBuffer(self.params, MsgDirective)
 
         new_stream = []
         stream = iter(_apply_directives(stream, directives, ctxt))
@@ -171,24 +171,9 @@ class MsgDirective(Directive, DirectiveExtract):
                 for skind, sdata, spos in _apply_directives(substream,
                                                             subdirectives,
                                                             ctxt):
-                    try:
-                        msgbuf.append(*previous)
-                        previous = skind, sdata, spos
-                    except IndexError:
-                        raise IndexError("Not enough parameters passed to '%s' "
-                                         "on '%s', line number %s: %s" %
-                                         (type(self).__name__,
-                                          os.path.basename(spos[0]), spos[1],
-                                          self.params))
-            try:
-                msgbuf.append(*previous)
-            except IndexError:
-                raise IndexError("Not enough parameters passed to '%s' on '%s',"
-                                 " line number %s: %s" %
-                                 (type(self).__name__,
-                                  os.path.basename(previous[2][0]),
-                                  previous[2][1], self.params), previous[1])
-
+                    msgbuf.append(*previous)
+                    previous = skind, sdata, spos
+            msgbuf.append(*previous)
             previous = kind, data, pos
 
         for event in msgbuf.translate(gettext(msgbuf.format())):
@@ -199,20 +184,13 @@ class MsgDirective(Directive, DirectiveExtract):
         return new_stream
 
     def extract(self, stream, ctxt):
-        msgbuf = MessageBuffer(self.params)
+        msgbuf = MessageBuffer(self.params, MsgDirective)
 
         stream = iter(stream)
         stream.next() # the outer start tag
         previous = stream.next()
         for event in stream:
-            try:
-                msgbuf.append(*previous)
-            except IndexError:
-                raise IndexError("Not enough parameters passed to '%s' on '%s',"
-                                 " line number %s: %s" %
-                                 (type(self).__name__,
-                                  os.path.basename(previous[2][0]),
-                                  previous[2][1], self.params))
+            msgbuf.append(*previous)
             previous = event
 
         yield None, msgbuf.format(), filter(None, [ctxt.get('_i18n.comment')])
@@ -222,7 +200,8 @@ class InnerChooseDirective(Directive):
 
     def __call__(self, stream, directives, ctxt, **vars):
 
-        msgbuf = MessageBuffer(ctxt.get('_i18n.choose.params', [])[:])
+        msgbuf = MessageBuffer(ctxt.get('_i18n.choose.params', [])[:],
+                               InnerChooseDirective)
 
         stream = iter(_apply_directives(stream, directives, ctxt))
         yield stream.next() # the outer start tag
@@ -372,7 +351,7 @@ class ChooseDirective(Directive, DirectiveExtract):
                     singular_stream = list(_apply_directives(substream,
                                                              subdirectives,
                                                              ctxt))
-                    new_stream.append((MSGBUF, (), -1)) # msgbuf place holder
+                    new_stream.append((MSGBUF, (), ('', -1))) # msgbuf place holder
                     singular_msgbuf = ctxt.get('_i18n.choose.SingularDirective')
                 elif isinstance(subdirectives[0],
                                 PluralDirective) and not plural_stream:
@@ -412,8 +391,8 @@ class ChooseDirective(Directive, DirectiveExtract):
         if previous is START:
             stream.next()
 
-        singular_msgbuf = MessageBuffer(self.params[:])
-        plural_msgbuf = MessageBuffer(self.params[:])
+        singular_msgbuf = MessageBuffer(self.params, ChooseDirective)
+        plural_msgbuf = MessageBuffer(self.params, ChooseDirective)
 
         for kind, event, pos in stream:
             if kind is SUB:
@@ -426,26 +405,11 @@ class ChooseDirective(Directive, DirectiveExtract):
                         plural_msgbuf = subdirective.extract(substream, ctxt,
                                                              plural_msgbuf)
                     elif not isinstance(subdirective, StripDirective):
-                        try:
-                            singular_msgbuf.append(kind, event, pos)
-                            plural_msgbuf.append(kind, event, pos)
-                        except IndexError:
-                            raise IndexError("Not enough parameters passed to "
-                                             "'%s' on '%s', line number %s: "
-                                             "%s" % (type(self).__name__,
-                                                     os.path.basename(pos[0]),
-                                                     pos[1], self.params))
+                        singular_msgbuf.append(kind, event, pos)
+                        plural_msgbuf.append(kind, event, pos)
             else:
-                try:
-                    singular_msgbuf.append(kind, event, pos)
-                    plural_msgbuf.append(kind, event, pos)
-                except IndexError:
-                    raise IndexError("Not enough parameters passed to '%s' on "
-                                     "'%s', line number %s: %s" %
-                                     (type(self).__name__,
-                                      os.path.basename(pos[0]), pos[1],
-                                      self.params))
-
+                singular_msgbuf.append(kind, event, pos)
+                plural_msgbuf.append(kind, event, pos)
         yield 'ngettext', \
             (singular_msgbuf.format(), plural_msgbuf.format()), \
             filter(None, [ctxt.get('_i18n.comment')])
@@ -851,7 +815,7 @@ class Translator(DirectiveFactory):
 
                 if msgbuf:
                     msgbuf.append(kind, data, pos)
-                # Un-comment bellow to extract messages without adding
+                # Un-comment below to extract messages without adding
                 # directives
 #                else:
 #                    msg_params = attrs.get(i18n_msg)
@@ -859,6 +823,7 @@ class Translator(DirectiveFactory):
 #                        print kind, data, pos
 #                        if type(msg_params) is list: # event tuple
 #                            msg_params = msg_params[0][1]
+#                        # warning: MessageBuffer constructor has changed
 #                        msgbuf = MessageBuffer(
 #                            msg_params, attrs.get(i18n_comment), pos[1]
 #                        )
@@ -942,7 +907,7 @@ class MessageBuffer(object):
     :since: version 0.5
     """
 
-    def __init__(self, params=u'', comment=None, lineno=-1):
+    def __init__(self, params=u'', directive=None):
         """Initialize the message buffer.
         
         :param params: comma-separated list of parameter names
@@ -952,11 +917,11 @@ class MessageBuffer(object):
         """
         if isinstance(params, basestring):
             params = [name.strip() for name in params.split(',')]
+        self.orig_params = params
         # params list needs to be copied so that directives can be evaluated
         # more than once
         self.params = params[:]
-        self.comment = comment
-        self.lineno = lineno
+        self.directive = directive
         self.string = []
         self.events = {}
         self.values = {}
@@ -979,7 +944,14 @@ class MessageBuffer(object):
             self.string.append(data)
             self.events.setdefault(self.stack[-1], []).append(None)
         elif kind is EXPR:
-            param = self.params.pop(0)
+            if self.params:
+                param = self.params.pop(0)
+            else:
+                raise IndexError("'%s' parameters given to 'i18n:%s' but more "
+                                 "expressions used in '%s', line %s" % (
+                                 ', '.join(self.orig_params), 
+                                 self.directive.tagname,
+                                 os.path.basename(pos[0]), pos[1]))
             self.string.append('%%(%s)s' % param)
             self.events.setdefault(self.stack[-1], []).append(None)
             self.values[param] = (kind, data, pos)
@@ -1168,7 +1140,7 @@ def extract(fileobj, keywords, comment_tags, options):
         yield message
 
 def setup_i18n(template, translator):
-    """Convinience function to setup both the i18n filter and the i18n
+    """Convenience function to setup both the i18n filter and the i18n
     directives.
     
     :param template: an instance of a genshi template

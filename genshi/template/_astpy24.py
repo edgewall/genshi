@@ -1,31 +1,32 @@
 # Generated automatically, please do not edit
 # Generator can be found in Genshi SVN, scripts/ast-generator.py
 
-__version__ = 62047
+__version__ = 43614
 
 class AST(object):
+	_fields = None
 	__doc__ = None
 
 class operator(AST):
-	_attributes = ()
-	_fields = ()
+	_fields = None
 	__doc__ = None
+	_attributes = []
 class Add(operator):
-	_fields = ()
+	_fields = None
 	__doc__ = None
 
 class boolop(AST):
-	_attributes = ()
-	_fields = ()
+	_fields = None
 	__doc__ = None
+	_attributes = []
 class And(boolop):
-	_fields = ()
+	_fields = None
 	__doc__ = None
 
 class stmt(AST):
-	_attributes = ('lineno', 'col_offset')
-	_fields = ()
+	_fields = None
 	__doc__ = None
+	_attributes = ['lineno', 'col_offset']
 class Assert(stmt):
 	_fields = ('test', 'msg')
 	__doc__ = None
@@ -35,9 +36,9 @@ class Assign(stmt):
 	__doc__ = None
 
 class expr(AST):
-	_attributes = ('lineno', 'col_offset')
-	_fields = ()
+	_fields = None
 	__doc__ = None
+	_attributes = ['lineno', 'col_offset']
 class Attribute(expr):
 	_fields = ('value', 'attr', 'ctx')
 	__doc__ = None
@@ -47,15 +48,15 @@ class AugAssign(stmt):
 	__doc__ = None
 
 class expr_context(AST):
-	_attributes = ()
-	_fields = ()
+	_fields = None
 	__doc__ = None
+	_attributes = []
 class AugLoad(expr_context):
-	_fields = ()
+	_fields = None
 	__doc__ = None
 
 class AugStore(expr_context):
-	_fields = ()
+	_fields = None
 	__doc__ = None
 
 class BinOp(expr):
@@ -63,15 +64,15 @@ class BinOp(expr):
 	__doc__ = None
 
 class BitAnd(operator):
-	_fields = ()
+	_fields = None
 	__doc__ = None
 
 class BitOr(operator):
-	_fields = ()
+	_fields = None
 	__doc__ = None
 
 class BitXor(operator):
-	_fields = ()
+	_fields = None
 	__doc__ = None
 
 class BoolOp(expr):
@@ -79,7 +80,7 @@ class BoolOp(expr):
 	__doc__ = None
 
 class Break(stmt):
-	_fields = ()
+	_fields = None
 	__doc__ = None
 
 class Call(expr):
@@ -87,7 +88,7 @@ class Call(expr):
 	__doc__ = None
 
 class ClassDef(stmt):
-	_fields = ('name', 'bases', 'body', 'decorator_list')
+	_fields = ('name', 'bases', 'body')
 	__doc__ = None
 
 class Compare(expr):
@@ -95,11 +96,11 @@ class Compare(expr):
 	__doc__ = None
 
 class Continue(stmt):
-	_fields = ()
+	_fields = None
 	__doc__ = None
 
 class Del(expr_context):
-	_fields = ()
+	_fields = None
 	__doc__ = None
 
 class Delete(stmt):
@@ -111,31 +112,23 @@ class Dict(expr):
 	__doc__ = None
 
 class Div(operator):
-	_fields = ()
+	_fields = None
 	__doc__ = None
 
 class slice(AST):
-	_attributes = ()
-	_fields = ()
+	_fields = None
 	__doc__ = None
+	_attributes = []
 class Ellipsis(slice):
-	_fields = ()
+	_fields = None
 	__doc__ = None
 
 class cmpop(AST):
-	_attributes = ()
-	_fields = ()
+	_fields = None
 	__doc__ = None
+	_attributes = []
 class Eq(cmpop):
-	_fields = ()
-	__doc__ = None
-
-class excepthandler(AST):
-	_attributes = ('lineno', 'col_offset')
-	_fields = ()
-	__doc__ = None
-class ExceptHandler(excepthandler):
-	_fields = ('type', 'name', 'body')
+	_fields = None
 	__doc__ = None
 
 class Exec(stmt):
@@ -147,9 +140,9 @@ class Expr(stmt):
 	__doc__ = None
 
 class mod(AST):
-	_attributes = ()
-	_fields = ()
+	_fields = None
 	__doc__ = None
+	_attributes = []
 class Expression(mod):
 	_fields = ('body',)
 	__doc__ = None
@@ -159,7 +152,7 @@ class ExtSlice(slice):
 	__doc__ = None
 
 class FloorDiv(operator):
-	_fields = ()
+	_fields = None
 	__doc__ = None
 
 class For(stmt):
@@ -167,7 +160,7 @@ class For(stmt):
 	__doc__ = None
 
 class FunctionDef(stmt):
-	_fields = ('name', 'args', 'body', 'decorator_list')
+	_fields = ('name', 'args', 'body', 'decorators')
 	__doc__ = None
 
 class GeneratorExp(expr):
@@ -179,11 +172,11 @@ class Global(stmt):
 	__doc__ = None
 
 class Gt(cmpop):
-	_fields = ()
+	_fields = None
 	__doc__ = None
 
 class GtE(cmpop):
-	_fields = ()
+	_fields = None
 	__doc__ = None
 
 class If(stmt):
@@ -203,7 +196,7 @@ class ImportFrom(stmt):
 	__doc__ = None
 
 class In(cmpop):
-	_fields = ()
+	_fields = None
 	__doc__ = None
 
 class Index(slice):
@@ -215,23 +208,23 @@ class Interactive(mod):
 	__doc__ = None
 
 class unaryop(AST):
-	_attributes = ()
-	_fields = ()
+	_fields = None
 	__doc__ = None
+	_attributes = []
 class Invert(unaryop):
-	_fields = ()
+	_fields = None
 	__doc__ = None
 
 class Is(cmpop):
-	_fields = ()
+	_fields = None
 	__doc__ = None
 
 class IsNot(cmpop):
-	_fields = ()
+	_fields = None
 	__doc__ = None
 
 class LShift(operator):
-	_fields = ()
+	_fields = None
 	__doc__ = None
 
 class Lambda(expr):
@@ -247,19 +240,19 @@ class ListComp(expr):
 	__doc__ = None
 
 class Load(expr_context):
-	_fields = ()
+	_fields = None
 	__doc__ = None
 
 class Lt(cmpop):
-	_fields = ()
+	_fields = None
 	__doc__ = None
 
 class LtE(cmpop):
-	_fields = ()
+	_fields = None
 	__doc__ = None
 
 class Mod(operator):
-	_fields = ()
+	_fields = None
 	__doc__ = None
 
 class Module(mod):
@@ -267,7 +260,7 @@ class Module(mod):
 	__doc__ = None
 
 class Mult(operator):
-	_fields = ()
+	_fields = None
 	__doc__ = None
 
 class Name(expr):
@@ -275,15 +268,15 @@ class Name(expr):
 	__doc__ = None
 
 class Not(unaryop):
-	_fields = ()
+	_fields = None
 	__doc__ = None
 
 class NotEq(cmpop):
-	_fields = ()
+	_fields = None
 	__doc__ = None
 
 class NotIn(cmpop):
-	_fields = ()
+	_fields = None
 	__doc__ = None
 
 class Num(expr):
@@ -291,19 +284,19 @@ class Num(expr):
 	__doc__ = None
 
 class Or(boolop):
-	_fields = ()
+	_fields = None
 	__doc__ = None
 
 class Param(expr_context):
-	_fields = ()
+	_fields = None
 	__doc__ = None
 
 class Pass(stmt):
-	_fields = ()
+	_fields = None
 	__doc__ = None
 
 class Pow(operator):
-	_fields = ()
+	_fields = None
 	__doc__ = None
 
 class Print(stmt):
@@ -311,7 +304,7 @@ class Print(stmt):
 	__doc__ = None
 
 class RShift(operator):
-	_fields = ()
+	_fields = None
 	__doc__ = None
 
 class Raise(stmt):
@@ -331,7 +324,7 @@ class Slice(slice):
 	__doc__ = None
 
 class Store(expr_context):
-	_fields = ()
+	_fields = None
 	__doc__ = None
 
 class Str(expr):
@@ -339,7 +332,7 @@ class Str(expr):
 	__doc__ = None
 
 class Sub(operator):
-	_fields = ()
+	_fields = None
 	__doc__ = None
 
 class Subscript(expr):
@@ -363,11 +356,11 @@ class Tuple(expr):
 	__doc__ = None
 
 class UAdd(unaryop):
-	_fields = ()
+	_fields = None
 	__doc__ = None
 
 class USub(unaryop):
-	_fields = ()
+	_fields = None
 	__doc__ = None
 
 class UnaryOp(expr):
@@ -395,60 +388,59 @@ class arguments(AST):
 	__doc__ = None
 
 class boolop(AST):
-	_attributes = ()
-	_fields = ()
+	_fields = None
 	__doc__ = None
+	_attributes = []
 
 class cmpop(AST):
-	_attributes = ()
-	_fields = ()
+	_fields = None
 	__doc__ = None
+	_attributes = []
 
 class comprehension(AST):
 	_fields = ('target', 'iter', 'ifs')
 	__doc__ = None
 
 class excepthandler(AST):
-	_attributes = ('lineno', 'col_offset')
-	_fields = ()
+	_fields = ('type', 'name', 'body', 'lineno', 'col_offset')
 	__doc__ = None
 
 class expr(AST):
-	_attributes = ('lineno', 'col_offset')
-	_fields = ()
+	_fields = None
 	__doc__ = None
+	_attributes = ['lineno', 'col_offset']
 
 class expr_context(AST):
-	_attributes = ()
-	_fields = ()
+	_fields = None
 	__doc__ = None
+	_attributes = []
 
 class keyword(AST):
 	_fields = ('arg', 'value')
 	__doc__ = None
 
 class mod(AST):
-	_attributes = ()
-	_fields = ()
+	_fields = None
 	__doc__ = None
+	_attributes = []
 
 class operator(AST):
-	_attributes = ()
-	_fields = ()
+	_fields = None
 	__doc__ = None
+	_attributes = []
 
 class slice(AST):
-	_attributes = ()
-	_fields = ()
+	_fields = None
 	__doc__ = None
+	_attributes = []
 
 class stmt(AST):
-	_attributes = ('lineno', 'col_offset')
-	_fields = ()
+	_fields = None
 	__doc__ = None
+	_attributes = ['lineno', 'col_offset']
 
 class unaryop(AST):
-	_attributes = ()
-	_fields = ()
+	_fields = None
 	__doc__ = None
+	_attributes = []
 

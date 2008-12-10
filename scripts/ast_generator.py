@@ -1,6 +1,8 @@
-#!/usr/bin/env python
+#!/usr/bin/env python2.5
 
-"""Script to that automatically generates genshi/templates/_astpy24.py"""
+"""Script to that automatically generates genshi/templates/_astpy24.py.
+Be sure to run this with a Python 2.5 interpreter.
+"""
 
 import _ast
 

@@ -315,6 +315,23 @@ class CodeGenerator(object):
                 self.visit(statement)
             self.change_indent(-1)
 
+    # excepthandler = (expr? type, expr? name, stmt* body)
+    def visitExceptHandler(self, node):
+        self.new_line()
+        self.write("except")
+        if getattr(node, 'type', None):
+            self.write(' ')
+            self.visit(node.type)
+        if getattr(node, 'name', None):
+            self.write(', ')
+            self.visit(node.name)
+        self.write(":")
+        self.change_indent(1)
+        for statement in node.body:
+            self.visit(statement)
+        self.change_indent(-1)
+    visitexcepthandler = visitExceptHandler
+
     # TryFinally(stmt* body, stmt* finalbody)
     def visitTryFinally(self, node):
         self.new_line()
@@ -652,22 +669,6 @@ class CodeGenerator(object):
             self.visit(elt)
             self.write(", ")
         self.write(')')
-
-    # excepthandler = (expr? type, expr? name, stmt* body)
-    def visitexcepthandler(self, node):
-        self.new_line()
-        self.write("except")
-        if getattr(node, 'type', None):
-            self.write(' ')
-            self.visit(node.type)
-        if getattr(node, 'name', None):
-            self.write(', ')
-            self.visit(node.name)
-        self.write(":")
-        self.change_indent(1)
-        for statement in node.body:
-            self.visit(statement)
-        self.change_indent(-1)
 
 
 class ModuleCodeGenerator(CodeGenerator):

@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2006-2008 Edgewall Software
+# Copyright (C) 2008 Edgewall Software
 # All rights reserved.
 #
 # This software is licensed as described in the file COPYING, which
@@ -13,7 +13,10 @@
 
 """Module generating Python code from AST tree and then compiling it"""
 
-from genshi.template.ast import _ast
+try:
+    import _ast
+except ImportError:
+    from genshi.template.ast24 import _ast
 
 __docformat__ = 'restructuredtext en'
 

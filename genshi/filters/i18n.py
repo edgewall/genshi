@@ -16,13 +16,13 @@
 :since: version 0.4
 """
 
-from genshi.template.ast import _ast
 from gettext import NullTranslations
 import re
 from types import FunctionType
 
 from genshi.core import Attrs, Namespace, QName, START, END, TEXT, START_NS, \
                         END_NS, XML_NAMESPACE, _ensure
+from genshi.template.eval import _ast
 from genshi.template.base import DirectiveFactory, EXPR, SUB, _apply_directives
 from genshi.template.directives import Directive
 from genshi.template.markup import MarkupTemplate, EXEC

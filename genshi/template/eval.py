@@ -15,19 +15,27 @@
 
 import __builtin__
 
-from astcompiler import ExpressionCodeGenerator, ModuleCodeGenerator
-from ast import _ast, parse
 import new
 from textwrap import dedent
 from types import CodeType
 
 from genshi.core import Markup
+from genshi.template.astcompiler import ExpressionCodeGenerator, \
+                                        ModuleCodeGenerator
 from genshi.template.base import TemplateRuntimeError
 from genshi.util import flatten
 
 __all__ = ['Code', 'Expression', 'Suite', 'LenientLookup', 'StrictLookup',
            'Undefined', 'UndefinedError']
 __docformat__ = 'restructuredtext en'
+
+
+try:
+    import _ast
+    def parse(source, mode):
+        return compile(source, '', mode, _ast.PyCF_ONLY_AST)
+except ImportError:
+    from genshi.template.ast24 import _ast, parse
 
 
 # Check for a Python 2.4 bug in the eval loop

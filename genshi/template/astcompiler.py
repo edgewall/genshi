@@ -42,7 +42,7 @@ class CodeGenerator(object):
         self.line = None
         self.line_info = None
 
-    def getCode(self):
+    def get_code(self):
         return compile(self.code, '', self.type)
 
     def new_line(self):

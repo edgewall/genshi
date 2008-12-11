@@ -462,7 +462,7 @@ def _compile(node, source=None, mode='eval', filename=None, lineno=-1,
             extract += ' ...'
         name = '<Suite %r>' % (extract)
     gen.optimized = True
-    code = gen.getCode()
+    code = gen.get_code()
 
     # We'd like to just set co_firstlineno, but it's readonly. So we need to
     # clone the code object while adjusting the line number

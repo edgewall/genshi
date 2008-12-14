@@ -26,7 +26,7 @@ def _new(cls, *args, **kwargs):
     if ret._fields:
         for attr, value in zip(ret._fields, args):
             if attr in kwargs:
-                raise ValueError, "Field set both in args and kwargs"
+                raise ValueError, 'Field set both in args and kwargs'
             setattr(ret, attr, value)
     for attr in kwargs:
         if (getattr(ret, '_fields', None) and attr in ret._fields) \

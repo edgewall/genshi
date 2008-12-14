@@ -50,18 +50,6 @@ def _assignment(ast):
     return _assign
 
 
-def wrap_tree(source, mode):
-    assert isinstance(source, _ast.AST), \
-        'Expected string or AST node, but got %r' % source
-    if mode == 'eval':
-        node = _ast.Expression()
-        node.body = source
-    else:
-        node = _ast.Module()
-        node.body = [source]
-    return node
-
-
 class DirectiveMeta(type):
     """Meta class for template directives."""
 

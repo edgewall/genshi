@@ -11,9 +11,7 @@
 # individuals. For the exact contribution history, see the revision
 # history and logs, available at http://genshi.edgewall.org/log/.
 
-"""Module checking for _ast and if that's not present uses emulation
-based on compiler.ast module.
-"""
+"""Emulation of the proper abstract syntax tree API for Python 2.4."""
 
 __docformat__ = 'restructuredtext en'
 
@@ -43,8 +41,9 @@ class ASTUpgrader(object):
     Python 2.5 ones.
 
     Transforms ``compiler.ast`` Abstract Syntax Tree to builtin ``_ast``.
-    It can use fake _ast classes and this way allow _ast emulation
-    in Python 2.4"""
+    It can use fake`` _ast`` classes and this way allow ``_ast`` emulation
+    in Python 2.4.
+    """
 
     def __init__(self):
         self.out_flags = None
@@ -61,24 +60,22 @@ class ASTUpgrader(object):
         lno = getattr(node, 'lineno', None)
         if lno is not None:
             self.lines.append(lno)
-        visitor = getattr(self, 'visit%s' % node.__class__.__name__,
-                          self._visitDefault)
+        visitor = getattr(self, 'visit_%s' % node.__class__.__name__, None)
+        if visitor is None:
+            raise Exception('Unhandled node type %r' % type(node))
 
         retval = visitor(node)
         if lno is not None:
             self.lines.pop()
         return retval
 
-    def _visitDefault(self, node):
-        assert False, node
-
-    def visitModule(self, node):
+    def visit_Module(self, node):
         body = self.visit(node.node)
         if node.doc:
             body = [self._new(_ast.Expr, self._new(_ast.Str, node.doc))] + body
         return self._new(_ast.Module, body)
 
-    def visitExpression(self, node):
+    def visit_Expression(self, node):
         return self._new(_ast.Expression, self.visit(node.node))
 
     def _extract_args(self, node):
@@ -117,7 +114,7 @@ class ASTUpgrader(object):
         return self._new(_ast.arguments, args, vararg, kwarg, defaults)
 
 
-    def visitFunction(self, node):
+    def visit_Function(self, node):
         if getattr(node, 'decorators', ()):
             decorators = [self.visit(d) for d in node.decorators.nodes]
         else:
@@ -129,7 +126,7 @@ class ASTUpgrader(object):
             body = [self._new(_ast.Expr, self._new(_ast.Str, node.doc))] + body
         return self._new(_ast.FunctionDef, node.name, args, body, decorators)
 
-    def visitClass(self, node):
+    def visit_Class(self, node):
         #self.name_types.append(_ast.Load)
         bases = [self.visit(b) for b in node.bases]
         #self.name_types.pop()
@@ -138,10 +135,10 @@ class ASTUpgrader(object):
             body = [self._new(_ast.Expr, self._new(_ast.Str, node.doc))] + body
         return self._new(_ast.ClassDef, node.name, bases, body)
 
-    def visitReturn(self, node):
+    def visit_Return(self, node):
         return self._new(_ast.Return, self.visit(node.value))
 
-    def visitAssign(self, node):
+    def visit_Assign(self, node):
         #self.name_types.append(_ast.Store)
         targets = [self.visit(t) for t in node.nodes]
         #self.name_types.pop()
@@ -159,7 +156,7 @@ class ASTUpgrader(object):
         '-=': _ast.Sub,
     }
 
-    def visitAugAssign(self, node):
+    def visit_AugAssign(self, node):
         target = self.visit(node.node)
 
         # Because it's AugAssign target can't be list nor tuple
@@ -168,25 +165,25 @@ class ASTUpgrader(object):
         op = self.aug_operators[node.op]()
         return self._new(_ast.AugAssign, target, op, self.visit(node.expr))
 
-    def _visitPrint(nl):
+    def _visit_Print(nl):
         def _visit(self, node):
             values = [self.visit(v) for v in node.nodes]
             return self._new(_ast.Print, self.visit(node.dest), values, nl)
         return _visit
 
-    visitPrint = _visitPrint(False)
-    visitPrintnl = _visitPrint(True)
-    del _visitPrint
+    visit_Print = _visit_Print(False)
+    visit_Printnl = _visit_Print(True)
+    del _visit_Print
 
-    def visitFor(self, node):
+    def visit_For(self, node):
         return self._new(_ast.For, self.visit(node.assign), self.visit(node.list),
                         self.visit(node.body), self.visit(node.else_))
 
-    def visitWhile(self, node):
+    def visit_While(self, node):
         return self._new(_ast.While, self.visit(node.test), self.visit(node.body),
                         self.visit(node.else_))
 
-    def visitIf(self, node):
+    def visit_If(self, node):
         def _level(tests, else_):
             test = self.visit(tests[0][0])
             body = self.visit(tests[0][1])
@@ -197,15 +194,15 @@ class ASTUpgrader(object):
             return self._new(_ast.If, test, body, orelse)
         return _level(node.tests, node.else_)
 
-    def visitWith(self, node):
+    def visit_With(self, node):
         return self._new(_ast.With, self.visit(node.expr),
                             self.visit(node.vars), self.visit(node.body))
 
-    def visitRaise(self, node):
+    def visit_Raise(self, node):
         return self._new(_ast.Raise, self.visit(node.expr1),
                         self.visit(node.expr2), self.visit(node.expr3))
 
-    def visitTryExcept(self, node):
+    def visit_TryExcept(self, node):
         handlers = []
         for type, name, body in node.handlers:
             handlers.append(self._new(_ast.excepthandler, self.visit(type), 
@@ -213,29 +210,29 @@ class ASTUpgrader(object):
         return self._new(_ast.TryExcept, self.visit(node.body),
                         handlers, self.visit(node.else_))
 
-    def visitTryFinally(self, node):
+    def visit_TryFinally(self, node):
         return self._new(_ast.TryFinally, self.visit(node.body),
                         self.visit(node.final))
 
-    def visitAssert(self, node):
+    def visit_Assert(self, node):
         return self._new(_ast.Assert, self.visit(node.test), self.visit(node.fail))
 
-    def visitImport(self, node):
+    def visit_Import(self, node):
         names = [self._new(_ast.alias, n[0], n[1]) for n in node.names]
         return self._new(_ast.Import, names)
 
-    def visitFrom(self, node):
+    def visit_From(self, node):
         names = [self._new(_ast.alias, n[0], n[1]) for n in node.names]
         return self._new(_ast.ImportFrom, node.modname, names, 0)
 
-    def visitExec(self, node):
+    def visit_Exec(self, node):
         return self._new(_ast.Exec, self.visit(node.expr),
                         self.visit(node.locals), self.visit(node.globals))
 
-    def visitGlobal(self, node):
+    def visit_Global(self, node):
         return self._new(_ast.Global, node.names[:])
 
-    def visitDiscard(self, node):
+    def visit_Discard(self, node):
         return self._new(_ast.Expr, self.visit(node.expr))
 
     def _map_class(to):
@@ -243,27 +240,27 @@ class ASTUpgrader(object):
             return self._new(to)
         return _visit
 
-    visitPass = _map_class(_ast.Pass)
-    visitBreak = _map_class(_ast.Break)
-    visitContinue = _map_class(_ast.Continue)
+    visit_Pass = _map_class(_ast.Pass)
+    visit_Break = _map_class(_ast.Break)
+    visit_Continue = _map_class(_ast.Continue)
 
-    def _visitBinOperator(opcls):
+    def _visit_BinOperator(opcls):
         def _visit(self, node):
             return self._new(_ast.BinOp, self.visit(node.left), 
                             opcls(), self.visit(node.right)) 
         return _visit
-    visitAdd = _visitBinOperator(_ast.Add)
-    visitDiv = _visitBinOperator(_ast.Div)
-    visitFloorDiv = _visitBinOperator(_ast.FloorDiv)
-    visitLeftShift = _visitBinOperator(_ast.LShift)
-    visitMod = _visitBinOperator(_ast.Mod)
-    visitMul = _visitBinOperator(_ast.Mult)
-    visitPower = _visitBinOperator(_ast.Pow)
-    visitRightShift = _visitBinOperator(_ast.RShift)
-    visitSub = _visitBinOperator(_ast.Sub)
-    del _visitBinOperator
+    visit_Add = _visit_BinOperator(_ast.Add)
+    visit_Div = _visit_BinOperator(_ast.Div)
+    visit_FloorDiv = _visit_BinOperator(_ast.FloorDiv)
+    visit_LeftShift = _visit_BinOperator(_ast.LShift)
+    visit_Mod = _visit_BinOperator(_ast.Mod)
+    visit_Mul = _visit_BinOperator(_ast.Mult)
+    visit_Power = _visit_BinOperator(_ast.Pow)
+    visit_RightShift = _visit_BinOperator(_ast.RShift)
+    visit_Sub = _visit_BinOperator(_ast.Sub)
+    del _visit_BinOperator
 
-    def _visitBitOperator(opcls):
+    def _visit_BitOperator(opcls):
         def _visit(self, node):
             def _make(nodes):
                 if len(nodes) == 1:
@@ -273,30 +270,30 @@ class ASTUpgrader(object):
                 return self._new(_ast.BinOp, left, opcls(), right)
             return _make(node.nodes)
         return _visit
-    visitBitand = _visitBitOperator(_ast.BitAnd)
-    visitBitor = _visitBitOperator(_ast.BitOr)
-    visitBitxor = _visitBitOperator(_ast.BitXor)
-    del _visitBitOperator
+    visit_Bitand = _visit_BitOperator(_ast.BitAnd)
+    visit_Bitor = _visit_BitOperator(_ast.BitOr)
+    visit_Bitxor = _visit_BitOperator(_ast.BitXor)
+    del _visit_BitOperator
 
-    def _visitUnaryOperator(opcls):
+    def _visit_UnaryOperator(opcls):
         def _visit(self, node):
             return self._new(_ast.UnaryOp, opcls(), self.visit(node.expr))
         return _visit
 
-    visitInvert = _visitUnaryOperator(_ast.Invert)
-    visitNot = _visitUnaryOperator(_ast.Not)
-    visitUnaryAdd = _visitUnaryOperator(_ast.UAdd)
-    visitUnarySub = _visitUnaryOperator(_ast.USub)
-    del _visitUnaryOperator
+    visit_Invert = _visit_UnaryOperator(_ast.Invert)
+    visit_Not = _visit_UnaryOperator(_ast.Not)
+    visit_UnaryAdd = _visit_UnaryOperator(_ast.UAdd)
+    visit_UnarySub = _visit_UnaryOperator(_ast.USub)
+    del _visit_UnaryOperator
 
-    def _visitBoolOperator(opcls):
+    def _visit_BoolOperator(opcls):
         def _visit(self, node):
             values = [self.visit(n) for n in node.nodes]
             return self._new(_ast.BoolOp, opcls(), values)
         return _visit
-    visitAnd = _visitBoolOperator(_ast.And)
-    visitOr = _visitBoolOperator(_ast.Or)
-    del _visitBoolOperator
+    visit_And = _visit_BoolOperator(_ast.And)
+    visit_Or = _visit_BoolOperator(_ast.Or)
+    del _visit_BoolOperator
 
     cmp_operators = {
         '==': _ast.Eq,
@@ -311,7 +308,7 @@ class ASTUpgrader(object):
         'not in': _ast.NotIn,
     }
 
-    def visitCompare(self, node):
+    def visit_Compare(self, node):
         left = self.visit(node.expr)
         ops = []
         comparators = []
@@ -320,49 +317,49 @@ class ASTUpgrader(object):
             comparators.append(self.visit(expr))
         return self._new(_ast.Compare, left, ops, comparators)
 
-    def visitLambda(self, node):
+    def visit_Lambda(self, node):
         args = self._extract_args(node)
         body = self.visit(node.code)
         return self._new(_ast.Lambda, args, body)
 
-    def visitIfExp(self, node):
+    def visit_IfExp(self, node):
         return self._new(_ast.IfExp, self.visit(node.test), self.visit(node.then),
                         self.visit(node.else_))
 
-    def visitDict(self, node):
+    def visit_Dict(self, node):
         keys = [self.visit(x[0]) for x in node.items]
         values = [self.visit(x[1]) for x in node.items]
         return self._new(_ast.Dict, keys, values)
 
-    def visitListComp(self, node):
+    def visit_ListComp(self, node):
         generators = [self.visit(q) for q in node.quals]
         return self._new(_ast.ListComp, self.visit(node.expr), generators)
 
-    def visitGenExprInner(self, node):
+    def visit_GenExprInner(self, node):
         generators = [self.visit(q) for q in node.quals]
         return self._new(_ast.GeneratorExp, self.visit(node.expr), generators)
 
-    def visitGenExpr(self, node):
+    def visit_GenExpr(self, node):
         return self.visit(node.code)
 
-    def visitGenExprFor(self, node):
+    def visit_GenExprFor(self, node):
         ifs = [self.visit(i) for i in node.ifs]
         return self._new(_ast.comprehension, self.visit(node.assign),
                         self.visit(node.iter), ifs)
 
-    def visitListCompFor(self, node):
+    def visit_ListCompFor(self, node):
         ifs = [self.visit(i) for i in node.ifs]
         return self._new(_ast.comprehension, self.visit(node.assign),
                         self.visit(node.list), ifs)
 
-    def visitGenExprIf(self, node):
+    def visit_GenExprIf(self, node):
         return self.visit(node.test)
-    visitListCompIf = visitGenExprIf
+    visit_ListCompIf = visit_GenExprIf
 
-    def visitYield(self, node):
+    def visit_Yield(self, node):
         return self._new(_ast.Yield, self.visit(node.value))
 
-    def visitCallFunc(self, node):
+    def visit_CallFunc(self, node):
         args = []
         keywords = []
         for arg in node.args:
@@ -374,10 +371,10 @@ class ASTUpgrader(object):
         return self._new(_ast.Call, self.visit(node.node), args, keywords,
                     self.visit(node.star_args), self.visit(node.dstar_args))
 
-    def visitBackquote(self, node):
+    def visit_Backquote(self, node):
         return self._new(_ast.Repr, self.visit(node.expr))
 
-    def visitConst(self, node):
+    def visit_Const(self, node):
         if node.value is None: # appears in slices
             return None
         elif isinstance(node.value, (str, unicode,)):
@@ -385,18 +382,18 @@ class ASTUpgrader(object):
         else:
             return self._new(_ast.Num, node.value)
 
-    def visitName(self, node):
+    def visit_Name(self, node):
         return self._new(_ast.Name, node.name, _ast.Load())
 
-    def visitGetattr(self, node):
+    def visit_Getattr(self, node):
         return self._new(_ast.Attribute, self.visit(node.expr), node.attrname,
-                        _ast.Load())
+                         _ast.Load())
 
-    def visitTuple(self, node):
+    def visit_Tuple(self, node):
         nodes = [self.visit(n) for n in node.nodes]
         return self._new(_ast.Tuple, nodes, _ast.Load())
 
-    def visitList(self, node):
+    def visit_List(self, node):
         nodes = [self.visit(n) for n in node.nodes]
         return self._new(_ast.List, nodes, _ast.Load())
 
@@ -411,18 +408,18 @@ class ASTUpgrader(object):
             # FIXME Exception here
             assert False, repr(flags)
 
-    def visitAssName(self, node):
+    def visit_AssName(self, node):
         self.out_flags = node.flags
         ctx = self.get_ctx(node.flags)
         return self._new(_ast.Name, node.name, ctx)
 
-    def visitAssAttr(self, node):
+    def visit_AssAttr(self, node):
         self.out_flags = node.flags
         ctx = self.get_ctx(node.flags)
         return self._new(_ast.Attribute, self.visit(node.expr), 
                          node.attrname, ctx)
 
-    def _visitAssCollection(cls):
+    def _visit_AssCollection(cls):
         def _visit(self, node):
             flags = None
             elts = []
@@ -437,11 +434,11 @@ class ASTUpgrader(object):
             return self._new(cls, elts, ctx)
         return _visit
 
-    visitAssList = _visitAssCollection(_ast.List)
-    visitAssTuple = _visitAssCollection(_ast.Tuple)
-    del _visitAssCollection
+    visit_AssList = _visit_AssCollection(_ast.List)
+    visit_AssTuple = _visit_AssCollection(_ast.Tuple)
+    del _visit_AssCollection
 
-    def visitSlice(self, node):
+    def visit_Slice(self, node):
         lower = self.visit(node.lower)
         upper = self.visit(node.upper)
         ctx = self.get_ctx(node.flags)
@@ -449,7 +446,7 @@ class ASTUpgrader(object):
         return self._new(_ast.Subscript, self.visit(node.expr),
                     self._new(_ast.Slice, lower, upper, None), ctx)
 
-    def visitSubscript(self, node):
+    def visit_Subscript(self, node):
         ctx = self.get_ctx(node.flags)
         subs = [self.visit(s) for s in node.subs]
 
@@ -472,15 +469,15 @@ class ASTUpgrader(object):
         self.out_flags = node.flags
         return self._new(_ast.Subscript, self.visit(node.expr), slice, ctx)
 
-    def visitSliceobj(self, node):
+    def visit_Sliceobj(self, node):
         a = node.nodes + [None]*(3 - len(node.nodes))
         a = map(self.visit, a)
         return self._new(_ast.Slice, a[0], a[1], a[2])
 
-    def visitEllipsis(self, node):
+    def visit_Ellipsis(self, node):
         return self._new(_ast.Ellipsis)
 
-    def visitStmt(self, node):
+    def visit_Stmt(self, node):
         def _check_del(n):
             # del x is just AssName('x', 'OP_DELETE')
             # we want to transform it to Delete([Name('x', Del())])

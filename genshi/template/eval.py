@@ -19,7 +19,7 @@ from textwrap import dedent
 from types import CodeType
 
 from genshi.core import Markup
-from genshi.template.astcompiler import ASTTransformer, ASTCodeGenerator
+from genshi.template.astutil import ASTTransformer, ASTCodeGenerator
 from genshi.template.base import TemplateRuntimeError
 from genshi.util import flatten
 

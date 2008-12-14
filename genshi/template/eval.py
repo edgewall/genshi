@@ -15,13 +15,11 @@
 
 import __builtin__
 
-import new
 from textwrap import dedent
 from types import CodeType
 
 from genshi.core import Markup
-from genshi.template.astcompiler import ExpressionCodeGenerator, \
-                                        ModuleCodeGenerator
+from genshi.template.astcompiler import ASTTransformer, ASTCodeGenerator
 from genshi.template.base import TemplateRuntimeError
 from genshi.util import flatten
 
@@ -121,7 +119,7 @@ class Code(object):
     def __setstate__(self, state):
         self.source = state['source']
         self.ast = state['ast']
-        self.code = new.code(0, *state['code'])
+        self.code = CodeType(0, *state['code'])
         self._globals = state['lookup'].globals
 
     def __eq__(self, other):
@@ -435,24 +433,23 @@ def _parse(source, mode='eval'):
 
 def _compile(node, source=None, mode='eval', filename=None, lineno=-1,
              xform=None):
-    if xform is None:
-        xform = {'eval': ExpressionASTTransformer}.get(mode,
-                                                       TemplateASTTransformer)
-    tree = xform().visit(node)
     if isinstance(filename, unicode):
         # unicode file names not allowed for code objects
         filename = filename.encode('utf-8', 'replace')
     elif not filename:
         filename = '<string>'
-    tree.filename = filename
     if lineno <= 0:
         lineno = 1
 
+    if xform is None:
+        xform = {
+            'eval': ExpressionASTTransformer
+        }.get(mode, TemplateASTTransformer)
+    tree = xform().visit(node)
+
     if mode == 'eval':
-        gen = ExpressionCodeGenerator(tree)
         name = '<Expression %r>' % (source or '?')
     else:
-        gen = ModuleCodeGenerator(tree)
         lines = source.splitlines()
         if not lines:
             extract = ''
@@ -461,8 +458,8 @@ def _compile(node, source=None, mode='eval', filename=None, lineno=-1,
         if len(lines) > 1:
             extract += ' ...'
         name = '<Suite %r>' % (extract)
-    gen.optimized = True
-    code = gen.get_code()
+    new_source = ASTCodeGenerator(tree).code
+    code = compile(new_source, filename, mode)
 
     # We'd like to just set co_firstlineno, but it's readonly. So we need to
     # clone the code object while adjusting the line number
@@ -486,112 +483,6 @@ def _new(class_, *args, **kwargs):
 BUILTINS = __builtin__.__dict__.copy()
 BUILTINS.update({'Markup': Markup, 'Undefined': Undefined})
 CONSTANTS = frozenset(['False', 'True', 'None', 'NotImplemented', 'Ellipsis'])
-
-
-class ASTTransformer(object):
-    """General purpose base class for AST transformations.
-    
-    Every visitor method can be overridden to return an AST node that has been
-    altered or replaced in some way.
-    """
-
-    def visit(self, node):
-        if node is None:
-            return None
-        if type(node) is tuple:
-            return tuple([self.visit(n) for n in node])
-        visitor = getattr(self, 'visit%s' % node.__class__.__name__,
-                          self._visitDefault)
-        return visitor(node)
-
-    def _clonerVisit(self, node):
-        clone = node.__class__()
-        for name in getattr(clone, '_attributes', ()):
-            try:
-                setattr(clone, 'name', getattr(node, name))
-            except AttributeError:
-                pass
-        for name in clone._fields:
-            try:
-                value = getattr(node, name)
-            except AttributeError:
-                pass
-            else:
-                if value is None:
-                    pass
-                elif isinstance(value, list):
-                    value = [self.visit(x) for x in value]
-                elif isinstance(value, tuple):
-                    value = tuple(self.visit(x) for x in value)
-                else: 
-                    value = self.visit(value)
-                setattr(clone, name, value)
-        return clone
-
-    visitModule = _clonerVisit
-    visitInteractive = _clonerVisit
-    visitExpression = _clonerVisit
-    visitSuite = _clonerVisit
-
-    visitFunctionDef = _clonerVisit
-    visitClassDef = _clonerVisit
-    visitReturn = _clonerVisit
-    visitDelete = _clonerVisit
-    visitAssign = _clonerVisit
-    visitAugAssign = _clonerVisit
-    visitPrint = _clonerVisit
-    visitFor = _clonerVisit
-    visitWhile = _clonerVisit
-    visitIf = _clonerVisit
-    visitWith = _clonerVisit
-    visitRaise = _clonerVisit
-    visitTryExcept = _clonerVisit
-    visitTryFinally = _clonerVisit
-    visitAssert = _clonerVisit
-
-    visitImport = _clonerVisit
-    visitImportFrom = _clonerVisit
-    visitExec = _clonerVisit
-    visitGlobal = _clonerVisit
-    visitExpr = _clonerVisit
-    # Pass, Break, Continue don't need to be copied
-
-
-    visitBoolOp = _clonerVisit
-    visitBinOp = _clonerVisit
-    visitUnaryOp = _clonerVisit
-    visitLambda = _clonerVisit
-    visitIfExp = _clonerVisit
-    visitDict = _clonerVisit
-    visitListComp = _clonerVisit
-    visitGeneratorExp = _clonerVisit
-    visitYield = _clonerVisit
-    visitCompare = _clonerVisit
-    visitCall = _clonerVisit
-    visitRepr = _clonerVisit
-    # Num, Str don't need to be copied
-
-
-    visitAttribute = _clonerVisit
-    visitSubscript = _clonerVisit
-    visitName = _clonerVisit
-    visitList = _clonerVisit
-    visitTuple = _clonerVisit
-
-    visitcomprehension = _clonerVisit
-    visitexcepthandler = _clonerVisit
-    visitarguments = _clonerVisit
-    visitkeyword = _clonerVisit
-    visitalias = _clonerVisit
-
-    visitSlice = _clonerVisit
-    visitExtSlice = _clonerVisit
-    visitIndex = _clonerVisit
-
-    del _clonerVisit
-
-    def _visitDefault(self, node):
-        return node
 
 
 class TemplateASTTransformer(ASTTransformer):
@@ -618,7 +509,7 @@ class TemplateASTTransformer(ASTTransformer):
             arguments.add(node.args.kwargs)
         return arguments
 
-    def visitStr(self, node):
+    def visit_Str(self, node):
         if isinstance(node.s, str):
             try: # If the string is ASCII, return a `str` object
                 node.s.decode('ascii')
@@ -626,23 +517,23 @@ class TemplateASTTransformer(ASTTransformer):
                 return _new(_ast.Str, node.s.decode('utf-8'))
         return node
 
-    def visitClassDef(self, node):
+    def visit_ClassDef(self, node):
         if len(self.locals) > 1:
             self.locals[-1].add(node.name)
         self.locals.append(set())
         try:
-            return ASTTransformer.visitClassDef(self, node)
+            return ASTTransformer.visit_ClassDef(self, node)
         finally:
             self.locals.pop()
 
-    def visitFor(self, node):
+    def visit_For(self, node):
         self.locals.append(set())
         try:
-            return ASTTransformer.visitFor(self, node)
+            return ASTTransformer.visit_For(self, node)
         finally:
             self.locals.pop()
 
-    def visitImportFrom(self, node):
+    def visit_ImportFrom(self, node):
         if not has_star_import_bug or [a.name for a in node.names] != ['*']:
             # This is a Python 2.4 bug. Only if we have a broken Python
             # version we have to apply the hack
@@ -653,19 +544,18 @@ class TemplateASTTransformer(ASTTransformer):
                 _new(_ast.Str, node.module)
             ], (), ()))
 
-    def visitFunctionDef(self, node):
+    def visit_FunctionDef(self, node):
         if len(self.locals) > 1:
             self.locals[-1].add(node.name)
 
         self.locals.append(self._extract_names(node.args))
         try:
-            return ASTTransformer.visitFunctionDef(self, node)
+            return ASTTransformer.visit_FunctionDef(self, node)
         finally:
             self.locals.pop()
 
-
     # GeneratorExp(expr elt, comprehension* generators)
-    def visitGeneratorExp(self, node):
+    def visit_GeneratorExp(self, node):
         gens = []
         # need to visit them in inverse order
         for generator in node.generators[::-1]:
@@ -684,16 +574,16 @@ class TemplateASTTransformer(ASTTransformer):
         return ret
 
     # ListComp(expr elt, comprehension* generators)
-    visitListComp = visitGeneratorExp
+    visit_ListComp = visit_GeneratorExp
 
-    def visitLambda(self, node):
+    def visit_Lambda(self, node):
         self.locals.append(self._extract_names(node.args))
         try:
-            return ASTTransformer.visitLambda(self, node)
+            return ASTTransformer.visit_Lambda(self, node)
         finally:
             self.locals.pop()
 
-    def visitName(self, node):
+    def visit_Name(self, node):
         # If the name refers to a local inside a lambda, list comprehension, or
         # generator expression, leave it alone
         if isinstance(node.ctx, (_ast.Load, _ast.AugLoad,)) and \
@@ -715,19 +605,19 @@ class ExpressionASTTransformer(TemplateASTTransformer):
     for code embedded in templates.
     """
 
-    def visitAttribute(self, node):
+    def visit_Attribute(self, node):
         if node.ctx != _ast.Load and node.ctx == _ast.AugLoad:
-            return ASTTransformer.visitAttribute(self, node)
+            return ASTTransformer.visit_Attribute(self, node)
 
         func = _new(_ast.Name, '_lookup_attr', _ast.Load())
         args = [self.visit(node.value), _new(_ast.Str, node.attr)]
         call = _new(_ast.Call, func, args, [])
         return call
 
-    def visitSubscript(self, node):
+    def visit_Subscript(self, node):
         if node.ctx != _ast.Load and node.ctx == _ast.AugLoad \
                 or not isinstance(node.slice, _ast.Index):
-            return ASTTransformer.visitSubscript(self, node)
+            return ASTTransformer.visit_Subscript(self, node)
 
         if isinstance(node.slice, _ast.Index):
             inds = (self.visit(node.slice.value),)
@@ -735,7 +625,7 @@ class ExpressionASTTransformer(TemplateASTTransformer):
             inds = []
             for index in node.slice:
                 if not isinstance(index, _ast.Index):
-                    return ASTTransformer.visitSubscript(self, node)
+                    return ASTTransformer.visit_Subscript(self, node)
                 inds.append(self.visit(index.value))
             inds = tuple(inds)
 

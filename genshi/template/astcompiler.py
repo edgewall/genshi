@@ -36,7 +36,7 @@ class CodeGenerator(object):
         self.indent = 0
         self.blame_stack = []
         self.visit(tree)
-        if self.line.strip() != "":
+        if self.line.strip():
             self.code += self.line + "\n"
             self.lines_info.append(self.line_info)
         self.line = None
@@ -74,7 +74,6 @@ class CodeGenerator(object):
         self.indent += delta
 
     def visit(self, node):
-        #print "In", node
         if node is None:
             return None
         if type(node) is tuple:
@@ -90,10 +89,10 @@ class CodeGenerator(object):
         if info:
             self.blame_stack.pop()
         return ret
-        #print "Out", node
 
     def _visitDefault(self, node):
         raise Exception('Unhandled node type %r with object %r' % (type(node), repr(node)))
+
     def visitModule(self, node):
         for n in node.body:
             self.visit(n)
@@ -432,7 +431,6 @@ class CodeGenerator(object):
         self.new_line()
         self.write("continue")
 
-
     ### EXPRESSIONS
     def add_parenthesis(f):
         def _f(self, node):
@@ -441,7 +439,8 @@ class CodeGenerator(object):
             self.write(')')
         return _f
 
-    bool_operators = {_ast.And:'and', _ast.Or:'or'}
+    bool_operators = {_ast.And: 'and', _ast.Or: 'or'}
+
     # BoolOp(boolop op, expr* values)
     @add_parenthesis
     def visitBoolOp(self, node):

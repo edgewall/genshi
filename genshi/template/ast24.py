@@ -148,16 +148,16 @@ class ASTUpgrader(object):
         return self._new(_ast.Assign, targets, self.visit(node.expr))
 
     aug_operators = {
-                        '+=': _ast.Add,
-                        '/=': _ast.Div,
-                        '//=': _ast.FloorDiv,
-                        '<<=': _ast.LShift,
-                        '%=': _ast.Mod,
-                        '*=': _ast.Mult,
-                        '**=': _ast.Pow,
-                        '>>=': _ast.RShift,
-                        '-=': _ast.Sub,
-                    }
+        '+=': _ast.Add,
+        '/=': _ast.Div,
+        '//=': _ast.FloorDiv,
+        '<<=': _ast.LShift,
+        '%=': _ast.Mod,
+        '*=': _ast.Mult,
+        '**=': _ast.Pow,
+        '>>=': _ast.RShift,
+        '-=': _ast.Sub,
+    }
 
     def visitAugAssign(self, node):
         target = self.visit(node.node)
@@ -204,11 +204,6 @@ class ASTUpgrader(object):
     def visitRaise(self, node):
         return self._new(_ast.Raise, self.visit(node.expr1),
                         self.visit(node.expr2), self.visit(node.expr3))
-
-    def _process_handlers(self, handlers):
-        return ret
-
-
 
     def visitTryExcept(self, node):
         handlers = []
@@ -304,17 +299,17 @@ class ASTUpgrader(object):
     del _visitBoolOperator
 
     cmp_operators = {
-                            '==': _ast.Eq,
-                            '!=': _ast.NotEq,
-                            '<': _ast.Lt,
-                            '<=': _ast.LtE,
-                            '>': _ast.Gt,
-                            '>=': _ast.GtE,
-                            'is': _ast.Is,
-                            'is not': _ast.IsNot,
-                            'in': _ast.In,
-                            'not in': _ast.NotIn,
-                        }
+        '==': _ast.Eq,
+        '!=': _ast.NotEq,
+        '<': _ast.Lt,
+        '<=': _ast.LtE,
+        '>': _ast.Gt,
+        '>=': _ast.GtE,
+        'is': _ast.Is,
+        'is not': _ast.IsNot,
+        'in': _ast.In,
+        'not in': _ast.NotIn,
+    }
 
     def visitCompare(self, node):
         left = self.visit(node.expr)
@@ -355,7 +350,6 @@ class ASTUpgrader(object):
         return self._new(_ast.comprehension, self.visit(node.assign),
                         self.visit(node.iter), ifs)
 
-    # whan an idiot designed it, node.iter there, node.list here, WTF?
     def visitListCompFor(self, node):
         ifs = [self.visit(i) for i in node.ifs]
         return self._new(_ast.comprehension, self.visit(node.assign),
@@ -384,8 +378,7 @@ class ASTUpgrader(object):
         return self._new(_ast.Repr, self.visit(node.expr))
 
     def visitConst(self, node):
-        if node.value is None:
-            # appears in slices
+        if node.value is None: # appears in slices
             return None
         elif isinstance(node.value, (str, unicode,)):
             return self._new(_ast.Str, node.value)
@@ -427,7 +420,7 @@ class ASTUpgrader(object):
         self.out_flags = node.flags
         ctx = self.get_ctx(node.flags)
         return self._new(_ast.Attribute, self.visit(node.expr), 
-                            node.attrname, ctx)
+                         node.attrname, ctx)
 
     def _visitAssCollection(cls):
         def _visit(self, node):
@@ -508,6 +501,7 @@ class ASTUpgrader(object):
                 return True
         statements = [_check_del(self.visit(n)) for n in node.nodes]
         return filter(_keep, statements)
+
 
 def parse(source, mode):
     node = compiler.parse(source, mode)

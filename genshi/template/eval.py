@@ -496,20 +496,15 @@ class ASTTransformer(object):
     """
 
     def visit(self, node):
-        #print "In", node
         if node is None:
             return None
         if type(node) is tuple:
             return tuple([self.visit(n) for n in node])
         visitor = getattr(self, 'visit%s' % node.__class__.__name__,
                           self._visitDefault)
-        xxx = visitor(node)
-        #print "Out", xxx
-        return xxx
-        #return visitor(node)
+        return visitor(node)
 
     def _clonerVisit(self, node):
-        #print "Cloning", node.__class__
         clone = node.__class__()
         for name in getattr(clone, '_attributes', ()):
             try:
@@ -519,11 +514,9 @@ class ASTTransformer(object):
         for name in clone._fields:
             try:
                 value = getattr(node, name)
-                #print value
             except AttributeError:
                 pass
             else:
-                #print "Jawohl", value,
                 if value is None:
                     pass
                 elif isinstance(value, list):
@@ -532,19 +525,13 @@ class ASTTransformer(object):
                     value = tuple(self.visit(x) for x in value)
                 else: 
                     value = self.visit(value)
-                #print value
                 setattr(clone, name, value)
-        #if isinstance(node, (ast.Class, ast.Function, ast.Lambda,
-        #                     ast.GenExpr)):
-        #    node.filename = '<string>' # workaround for bug in pycodegen
-        #print "Returning", clone
         return clone
 
     visitModule = _clonerVisit
     visitInteractive = _clonerVisit
     visitExpression = _clonerVisit
     visitSuite = _clonerVisit
-
 
     visitFunctionDef = _clonerVisit
     visitClassDef = _clonerVisit
@@ -638,31 +625,6 @@ class TemplateASTTransformer(ASTTransformer):
             except ValueError: # Otherwise return a `unicode` object
                 return _new(_ast.Str, node.s.decode('utf-8'))
         return node
-
-    #def visitAssign(self, node):
-    #    if len(self.locals) > 1:
-    #        self.locals[-1].update(name.id for name in node.targets)
-    #    return ASTTransformer.visitAssign(self, node)
-
-    #def visitAugAssign(self, node):
-    #    if len(self.locals) > 1:
-    #        self.locals[-1].add(node.target.id)
-    #    return ASTTransformer.visitAugAssign(self, node)
-    #    if isinstance(node.target, ast.Name) \
-    #            and node.target.id not in flatten(self.locals):
-    #        name = node.target.id
-    #        #TODO
-    #        node.target = ast.Subscript(ast.Name('__data__'), 'OP_APPLY',
-    #                                  [ast.Str(name)])
-    #        node.expr = self.visit(node.expr)
-    #        return ast.If([
-    #            (ast.Compare(ast.Const(name), [('in', ast.Name('__data__'))]),
-    #             ast.Stmt([node]))],
-    #            ast.Stmt([ast.Raise(ast.CallFunc(ast.Name('UndefinedError'),
-    #                                             [ast.Const(name)]),
-    #                                None, None)]))
-    #    else:
-    #        return ASTTransformer.visitAugAssign(self, node)
 
     def visitClassDef(self, node):
         if len(self.locals) > 1:

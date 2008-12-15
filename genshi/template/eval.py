@@ -19,21 +19,14 @@ from textwrap import dedent
 from types import CodeType
 
 from genshi.core import Markup
-from genshi.template.astutil import ASTTransformer, ASTCodeGenerator
+from genshi.template.astutil import ASTTransformer, ASTCodeGenerator, \
+                                    _ast, parse
 from genshi.template.base import TemplateRuntimeError
 from genshi.util import flatten
 
 __all__ = ['Code', 'Expression', 'Suite', 'LenientLookup', 'StrictLookup',
            'Undefined', 'UndefinedError']
 __docformat__ = 'restructuredtext en'
-
-
-try:
-    import _ast
-    def parse(source, mode):
-        return compile(source, '', mode, _ast.PyCF_ONLY_AST)
-except ImportError:
-    from genshi.template.ast24 import _ast, parse
 
 
 # Check for a Python 2.4 bug in the eval loop
@@ -461,12 +454,15 @@ def _compile(node, source=None, mode='eval', filename=None, lineno=-1,
     new_source = ASTCodeGenerator(tree).code
     code = compile(new_source, filename, mode)
 
-    # We'd like to just set co_firstlineno, but it's readonly. So we need to
-    # clone the code object while adjusting the line number
-    return CodeType(0, code.co_nlocals, code.co_stacksize,
-                    code.co_flags | 0x0040, code.co_code, code.co_consts,
-                    code.co_names, code.co_varnames, filename, name, lineno,
-                    code.co_lnotab, (), ())
+    try:
+        # We'd like to just set co_firstlineno, but it's readonly. So we need
+        # to clone the code object while adjusting the line number
+        return CodeType(0, code.co_nlocals, code.co_stacksize,
+                        code.co_flags | 0x0040, code.co_code, code.co_consts,
+                        code.co_names, code.co_varnames, filename, name,
+                        lineno, code.co_lnotab, (), ())
+    except RuntimeError:
+        return code
 
 
 def _new(class_, *args, **kwargs):
@@ -586,14 +582,14 @@ class TemplateASTTransformer(ASTTransformer):
     def visit_Name(self, node):
         # If the name refers to a local inside a lambda, list comprehension, or
         # generator expression, leave it alone
-        if isinstance(node.ctx, (_ast.Load, _ast.AugLoad,)) and \
+        if isinstance(node.ctx, _ast.Load) and \
                 node.id not in flatten(self.locals):
             # Otherwise, translate the name ref into a context lookup
             name = _new(_ast.Name, '_lookup_name', _ast.Load())
             namearg = _new(_ast.Name, '__data__', _ast.Load())
             strarg = _new(_ast.Str, node.id)
             node = _new(_ast.Call, name, [namearg, strarg], [])
-        elif isinstance(node.ctx, (_ast.Store, _ast.AugStore,)):
+        elif isinstance(node.ctx, _ast.Store):
             if len(self.locals) > 1:
                 self.locals[-1].add(node.id)
 
@@ -606,30 +602,21 @@ class ExpressionASTTransformer(TemplateASTTransformer):
     """
 
     def visit_Attribute(self, node):
-        if node.ctx != _ast.Load and node.ctx == _ast.AugLoad:
+        if not isinstance(node.ctx, _ast.Load):
             return ASTTransformer.visit_Attribute(self, node)
 
         func = _new(_ast.Name, '_lookup_attr', _ast.Load())
         args = [self.visit(node.value), _new(_ast.Str, node.attr)]
-        call = _new(_ast.Call, func, args, [])
-        return call
+        return _new(_ast.Call, func, args, [])
 
     def visit_Subscript(self, node):
-        if node.ctx != _ast.Load and node.ctx == _ast.AugLoad \
-                or not isinstance(node.slice, _ast.Index):
+        if not isinstance(node.ctx, _ast.Load) or \
+                not isinstance(node.slice, _ast.Index):
             return ASTTransformer.visit_Subscript(self, node)
 
-        if isinstance(node.slice, _ast.Index):
-            inds = (self.visit(node.slice.value),)
-        if isinstance(node.slice, _ast.ExtSlice):
-            inds = []
-            for index in node.slice:
-                if not isinstance(index, _ast.Index):
-                    return ASTTransformer.visit_Subscript(self, node)
-                inds.append(self.visit(index.value))
-            inds = tuple(inds)
-
         func = _new(_ast.Name, '_lookup_item', _ast.Load())
-        args = [self.visit(node.value), _new(_ast.Tuple, inds, _ast.Load())]
-        call = _new(_ast.Call, func, args, [])
-        return call
+        args = [
+            self.visit(node.value),
+            _new(_ast.Tuple, (self.visit(node.slice.value),), _ast.Load())
+        ]
+        return _new(_ast.Call, func, args, [])

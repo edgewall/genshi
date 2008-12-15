@@ -13,17 +13,13 @@
 
 """Implementation of the various template directives."""
 
-try:
-    import _ast
-except ImportError:
-    from genshi.template.ast24 import _ast
-
 from genshi.core import QName, Stream
 from genshi.path import Path
 from genshi.template.base import TemplateRuntimeError, TemplateSyntaxError, \
                                  EXPR, _apply_directives, _eval_expr, \
                                  _exec_suite
-from genshi.template.eval import Expression, ExpressionASTTransformer, _parse
+from genshi.template.eval import Expression, ExpressionASTTransformer, \
+                                 _ast, _parse
 
 __all__ = ['AttrsDirective', 'ChooseDirective', 'ContentDirective',
            'DefDirective', 'ForDirective', 'IfDirective', 'MatchDirective',

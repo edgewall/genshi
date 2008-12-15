@@ -13,12 +13,13 @@
 
 """Emulation of the proper abstract syntax tree API for Python 2.4."""
 
-__docformat__ = 'restructuredtext en'
-
 import compiler
 import compiler.ast
 
 from genshi.template import _ast24 as _ast
+
+__all__ = ['_ast', 'parse']
+__docformat__ = 'restructuredtext en'
 
 
 def _new(cls, *args, **kwargs):

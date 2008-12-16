@@ -195,8 +195,9 @@ class ExpressionTestCase(unittest.TestCase):
     def test_compare_ne(self):
         self.assertEqual(False, Expression("1 != 1").evaluate({}))
         self.assertEqual(False, Expression("x != y").evaluate({'x': 1, 'y': 1}))
-        self.assertEqual(False, Expression("1 <> 1").evaluate({}))
-        self.assertEqual(False, Expression("x <> y").evaluate({'x': 1, 'y': 1}))
+        if sys.version < '3':
+            self.assertEqual(False, Expression("1 <> 1").evaluate({}))
+            self.assertEqual(False, Expression("x <> y").evaluate({'x': 1, 'y': 1}))
 
     def test_compare_lt(self):
         self.assertEqual(True, Expression("1 < 2").evaluate({}))
@@ -241,11 +242,9 @@ class ExpressionTestCase(unittest.TestCase):
         self.assertEqual(42, expr.evaluate({'foo': foo, 'bar': {"x": 42}}))
 
     def test_lambda(self):
-        data = {'items': [{'name': 'b', 'value': 0}, {'name': 'a', 'value': 1}],
-                'sorted': sorted}
-        expr = Expression("sorted(items, lambda a, b: cmp(a.name, b.name))")
-        self.assertEqual([{'name': 'a', 'value': 1}, {'name': 'b', 'value': 0}],
-                         expr.evaluate(data))
+        data = {'items': range(5)}
+        expr = Expression("filter(lambda x: x > 2, items)")
+        self.assertEqual([3, 4], expr.evaluate(data))
 
     def test_list_comprehension(self):
         expr = Expression("[n for n in numbers if n < 2]")
@@ -695,7 +694,7 @@ assert f() == 42
     def test_delitem(self):
         d = {'k': 'foo'}
         Suite("del d['k']").execute({'d': d})
-        self.failIf('k' in d, `d`)
+        self.failIf('k' in d, repr(d))
 
 
 def suite():

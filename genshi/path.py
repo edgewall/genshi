@@ -38,6 +38,10 @@ Because the XPath engine operates on markup streams (as opposed to tree
 structures), it only implements a subset of the full XPath 1.0 language.
 """
 
+try:
+    from functools import reduce
+except ImportError:
+    pass # builtin in Python <= 2.5
 from math import ceil, floor
 import operator
 import re

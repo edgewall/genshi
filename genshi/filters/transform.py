@@ -1037,7 +1037,7 @@ class InjectorTransformation(object):
 
     def _inject(self):
         content = self.content
-        if callable(content):
+        if hasattr(content, '__call__'):
             content = content()
         for event in _ensure(content):
             yield None, event
@@ -1170,7 +1170,7 @@ class AttrTransformation(object):
 
         :param stream: The marked event stream to filter
         """
-        callable_value = callable(self.value)
+        callable_value = hasattr(self.value, '__call__')
         for mark, (kind, data, pos) in stream:
             if mark is ENTER:
                 if callable_value:

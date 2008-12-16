@@ -13,6 +13,10 @@
 
 """Core classes for markup processing."""
 
+try:
+    from functools import reduce
+except ImportError:
+    pass # builtin in Python <= 2.5
 from itertools import chain
 import operator
 
@@ -639,6 +643,9 @@ class Namespace(object):
     def __getitem__(self, name):
         return QName(self.uri + u'}' + name)
     __getattr__ = __getitem__
+
+    def __hash__(self):
+        return hash(self.uri)
 
     def __repr__(self):
         return '<Namespace "%s">' % self.uri

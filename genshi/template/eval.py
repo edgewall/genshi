@@ -14,19 +14,20 @@
 """Support for "safe" evaluation of Python expressions."""
 
 import __builtin__
-from compiler import ast, parse
-from compiler.pycodegen import ExpressionCodeGenerator, ModuleCodeGenerator
-import new
+
 from textwrap import dedent
 from types import CodeType
 
 from genshi.core import Markup
+from genshi.template.astutil import ASTTransformer, ASTCodeGenerator, \
+                                    _ast, parse
 from genshi.template.base import TemplateRuntimeError
 from genshi.util import flatten
 
 __all__ = ['Code', 'Expression', 'Suite', 'LenientLookup', 'StrictLookup',
            'Undefined', 'UndefinedError']
 __docformat__ = 'restructuredtext en'
+
 
 # Check for a Python 2.4 bug in the eval loop
 has_star_import_bug = False
@@ -37,6 +38,7 @@ try:
 except SystemError:
     has_star_import_bug = True
 del _FakeMapping
+
 
 def _star_import_patch(mapping, modname):
     """This function is used as helper if a Python version with a broken
@@ -74,13 +76,15 @@ class Code(object):
             self.source = source
             node = _parse(source, mode=self.mode)
         else:
-            assert isinstance(source, ast.Node), \
+            assert isinstance(source, _ast.AST), \
                 'Expected string or AST node, but got %r' % source
             self.source = '?'
             if self.mode == 'eval':
-                node = ast.Expression(source)
+                node = _ast.Expression()
+                node.body = source
             else:
-                node = ast.Module(None, source)
+                node = _ast.Module()
+                node.body = [source]
 
         self.ast = node
         self.code = _compile(node, self.source, mode=self.mode,
@@ -103,7 +107,7 @@ class Code(object):
     def __setstate__(self, state):
         self.source = state['source']
         self.ast = state['ast']
-        self.code = new.code(0, *state['code'])
+        self.code = CodeType(0, *state['code'])
         self._globals = state['lookup'].globals
 
     def __eq__(self, other):
@@ -414,26 +418,26 @@ def _parse(source, mode='eval'):
         source = '\xef\xbb\xbf' + source.encode('utf-8')
     return parse(source, mode)
 
+
 def _compile(node, source=None, mode='eval', filename=None, lineno=-1,
              xform=None):
-    if xform is None:
-        xform = {'eval': ExpressionASTTransformer}.get(mode,
-                                                       TemplateASTTransformer)
-    tree = xform().visit(node)
     if isinstance(filename, unicode):
         # unicode file names not allowed for code objects
         filename = filename.encode('utf-8', 'replace')
     elif not filename:
         filename = '<string>'
-    tree.filename = filename
     if lineno <= 0:
         lineno = 1
 
+    if xform is None:
+        xform = {
+            'eval': ExpressionASTTransformer
+        }.get(mode, TemplateASTTransformer)
+    tree = xform().visit(node)
+
     if mode == 'eval':
-        gen = ExpressionCodeGenerator(tree)
         name = '<Expression %r>' % (source or '?')
     else:
-        gen = ModuleCodeGenerator(tree)
         lines = source.splitlines()
         if not lines:
             extract = ''
@@ -442,265 +446,34 @@ def _compile(node, source=None, mode='eval', filename=None, lineno=-1,
         if len(lines) > 1:
             extract += ' ...'
         name = '<Suite %r>' % (extract)
-    gen.optimized = True
-    code = gen.getCode()
+    new_source = ASTCodeGenerator(tree).code
+    code = compile(new_source, filename, mode)
 
-    # We'd like to just set co_firstlineno, but it's readonly. So we need to
-    # clone the code object while adjusting the line number
-    return CodeType(0, code.co_nlocals, code.co_stacksize,
-                    code.co_flags | 0x0040, code.co_code, code.co_consts,
-                    code.co_names, code.co_varnames, filename, name, lineno,
-                    code.co_lnotab, (), ())
+    try:
+        # We'd like to just set co_firstlineno, but it's readonly. So we need
+        # to clone the code object while adjusting the line number
+        return CodeType(0, code.co_nlocals, code.co_stacksize,
+                        code.co_flags | 0x0040, code.co_code, code.co_consts,
+                        code.co_names, code.co_varnames, filename, name,
+                        lineno, code.co_lnotab, (), ())
+    except RuntimeError:
+        return code
+
+
+def _new(class_, *args, **kwargs):
+    ret = class_()
+    for attr, value in zip(ret._fields, args):
+        if attr in kwargs:
+            raise ValueError('Field set both in args and kwargs')
+        setattr(ret, attr, value)
+    for attr, value in kwargs:
+        setattr(ret, attr, value)
+    return ret
+
 
 BUILTINS = __builtin__.__dict__.copy()
 BUILTINS.update({'Markup': Markup, 'Undefined': Undefined})
 CONSTANTS = frozenset(['False', 'True', 'None', 'NotImplemented', 'Ellipsis'])
-
-
-class ASTTransformer(object):
-    """General purpose base class for AST transformations.
-    
-    Every visitor method can be overridden to return an AST node that has been
-    altered or replaced in some way.
-    """
-
-    def visit(self, node):
-        if node is None:
-            return None
-        if type(node) is tuple:
-            return tuple([self.visit(n) for n in node])
-        visitor = getattr(self, 'visit%s' % node.__class__.__name__,
-                          self._visitDefault)
-        return visitor(node)
-
-    def _clone(self, node, *args):
-        lineno = getattr(node, 'lineno', None)
-        node = node.__class__(*args)
-        if lineno is not None:
-            node.lineno = lineno
-        if isinstance(node, (ast.Class, ast.Function, ast.Lambda,
-                             ast.GenExpr)):
-            node.filename = '<string>' # workaround for bug in pycodegen
-        return node
-
-    def _visitDefault(self, node):
-        return node
-
-    def visitExpression(self, node):
-        return self._clone(node, self.visit(node.node))
-
-    def visitModule(self, node):
-        return self._clone(node, node.doc, self.visit(node.node))
-
-    def visitStmt(self, node):
-        return self._clone(node, [self.visit(x) for x in node.nodes])
-
-    # Classes, Functions & Accessors
-
-    def visitCallFunc(self, node):
-        return self._clone(node, self.visit(node.node),
-            [self.visit(x) for x in node.args],
-            node.star_args and self.visit(node.star_args) or None,
-            node.dstar_args and self.visit(node.dstar_args) or None
-        )
-
-    def visitClass(self, node):
-        return self._clone(node, node.name, [self.visit(x) for x in node.bases],
-            node.doc, self.visit(node.code)
-        )
-
-    def visitFrom(self, node):
-        if not has_star_import_bug or node.names != [('*', None)]:
-            # This is a Python 2.4 bug. Only if we have a broken Python
-            # version we have to apply the hack
-            return node
-        return ast.Discard(ast.CallFunc(
-            ast.Name('_star_import_patch'),
-            [ast.Name('__data__'), ast.Const(node.modname)], None, None
-        ), lineno=node.lineno)
-
-    def visitFunction(self, node):
-        args = []
-        if hasattr(node, 'decorators'):
-            args.append(self.visit(node.decorators))
-        return self._clone(node, *args + [
-            node.name,
-            node.argnames,
-            [self.visit(x) for x in node.defaults],
-            node.flags,
-            node.doc,
-            self.visit(node.code)
-        ])
-
-    def visitGetattr(self, node):
-        return self._clone(node, self.visit(node.expr), node.attrname)
-
-    def visitLambda(self, node):
-        node = self._clone(node, node.argnames,
-            [self.visit(x) for x in node.defaults], node.flags,
-            self.visit(node.code)
-        )
-        return node
-
-    def visitSubscript(self, node):
-        return self._clone(node, self.visit(node.expr), node.flags,
-            [self.visit(x) for x in node.subs]
-        )
-
-    # Statements
-
-    def visitAssert(self, node):
-        return self._clone(node, self.visit(node.test), self.visit(node.fail))
-
-    def visitAssign(self, node):
-        return self._clone(node, [self.visit(x) for x in node.nodes],
-            self.visit(node.expr)
-        )
-
-    def visitAssAttr(self, node):
-        return self._clone(node, self.visit(node.expr), node.attrname,
-            node.flags
-        )
-
-    def visitAugAssign(self, node):
-        return self._clone(node, self.visit(node.node), node.op,
-            self.visit(node.expr)
-        )
-
-    def visitDecorators(self, node):
-        return self._clone(node, [self.visit(x) for x in node.nodes])
-
-    def visitExec(self, node):
-        return self._clone(node, self.visit(node.expr), self.visit(node.locals),
-            self.visit(node.globals)
-        )
-
-    def visitFor(self, node):
-        return self._clone(node, self.visit(node.assign), self.visit(node.list),
-            self.visit(node.body), self.visit(node.else_)
-        )
-
-    def visitIf(self, node):
-        return self._clone(node, [self.visit(x) for x in node.tests],
-            self.visit(node.else_)
-        )
-
-    def _visitPrint(self, node):
-        return self._clone(node, [self.visit(x) for x in node.nodes],
-            self.visit(node.dest)
-        )
-    visitPrint = visitPrintnl = _visitPrint
-
-    def visitRaise(self, node):
-        return self._clone(node, self.visit(node.expr1), self.visit(node.expr2),
-            self.visit(node.expr3)
-        )
-
-    def visitReturn(self, node):
-        return self._clone(node, self.visit(node.value))
-
-    def visitTryExcept(self, node):
-        return self._clone(node, self.visit(node.body), self.visit(node.handlers),
-            self.visit(node.else_)
-        )
-
-    def visitTryFinally(self, node):
-        return self._clone(node, self.visit(node.body), self.visit(node.final))
-
-    def visitWhile(self, node):
-        return self._clone(node, self.visit(node.test), self.visit(node.body),
-            self.visit(node.else_)
-        )
-
-    def visitWith(self, node):
-        return self._clone(node, self.visit(node.expr),
-            [self.visit(x) for x in node.vars], self.visit(node.body)
-        )
-
-    def visitYield(self, node):
-        return self._clone(node, self.visit(node.value))
-
-    # Operators
-
-    def _visitBoolOp(self, node):
-        return self._clone(node, [self.visit(x) for x in node.nodes])
-    visitAnd = visitOr = visitBitand = visitBitor = visitBitxor = _visitBoolOp
-    visitAssTuple = visitAssList = _visitBoolOp
-
-    def _visitBinOp(self, node):
-        return self._clone(node,
-            (self.visit(node.left), self.visit(node.right))
-        )
-    visitAdd = visitSub = _visitBinOp
-    visitDiv = visitFloorDiv = visitMod = visitMul = visitPower = _visitBinOp
-    visitLeftShift = visitRightShift = _visitBinOp
-
-    def visitCompare(self, node):
-        return self._clone(node, self.visit(node.expr),
-            [(op, self.visit(n)) for op, n in  node.ops]
-        )
-
-    def _visitUnaryOp(self, node):
-        return self._clone(node, self.visit(node.expr))
-    visitUnaryAdd = visitUnarySub = visitNot = visitInvert = _visitUnaryOp
-    visitBackquote = visitDiscard = _visitUnaryOp
-
-    def visitIfExp(self, node):
-        return self._clone(node, self.visit(node.test), self.visit(node.then),
-            self.visit(node.else_)
-        )
-
-    # Identifiers, Literals and Comprehensions
-
-    def visitDict(self, node):
-        return self._clone(node, 
-            [(self.visit(k), self.visit(v)) for k, v in node.items]
-        )
-
-    def visitGenExpr(self, node):
-        return self._clone(node, self.visit(node.code))
-
-    def visitGenExprFor(self, node):
-        return self._clone(node, self.visit(node.assign), self.visit(node.iter),
-            [self.visit(x) for x in node.ifs]
-        )
-
-    def visitGenExprIf(self, node):
-        return self._clone(node, self.visit(node.test))
-
-    def visitGenExprInner(self, node):
-        quals = [self.visit(x) for x in node.quals]
-        return self._clone(node, self.visit(node.expr), quals)
-
-    def visitKeyword(self, node):
-        return self._clone(node, node.name, self.visit(node.expr))
-
-    def visitList(self, node):
-        return self._clone(node, [self.visit(n) for n in node.nodes])
-
-    def visitListComp(self, node):
-        quals = [self.visit(x) for x in node.quals]
-        return self._clone(node, self.visit(node.expr), quals)
-
-    def visitListCompFor(self, node):
-        return self._clone(node, self.visit(node.assign), self.visit(node.list),
-            [self.visit(x) for x in node.ifs]
-        )
-
-    def visitListCompIf(self, node):
-        return self._clone(node, self.visit(node.test))
-
-    def visitSlice(self, node):
-        return self._clone(node, self.visit(node.expr), node.flags,
-            node.lower and self.visit(node.lower) or None,
-            node.upper and self.visit(node.upper) or None
-        )
-
-    def visitSliceobj(self, node):
-        return self._clone(node, [self.visit(x) for x in node.nodes])
-
-    def visitTuple(self, node):
-        return self._clone(node, [self.visit(n) for n in node.nodes])
 
 
 class TemplateASTTransformer(ASTTransformer):
@@ -711,88 +484,110 @@ class TemplateASTTransformer(ASTTransformer):
     def __init__(self):
         self.locals = [CONSTANTS]
 
-    def visitConst(self, node):
-        if isinstance(node.value, str):
+    def _extract_names(self, node):
+        arguments = set()
+        def _process(node):
+            if isinstance(node, _ast.Name):
+                arguments.add(node.id)
+            elif isinstance(node, _ast.Tuple):
+                for elt in node.elts:
+                    _process(node)
+        for arg in node.args:
+            _process(arg)
+        if getattr(node, 'varargs', None):
+            arguments.add(node.args.varargs)
+        if getattr(node, 'kwargs', None):
+            arguments.add(node.args.kwargs)
+        return arguments
+
+    def visit_Str(self, node):
+        if isinstance(node.s, str):
             try: # If the string is ASCII, return a `str` object
-                node.value.decode('ascii')
+                node.s.decode('ascii')
             except ValueError: # Otherwise return a `unicode` object
-                return ast.Const(node.value.decode('utf-8'))
+                return _new(_ast.Str, node.s.decode('utf-8'))
         return node
 
-    def visitAssName(self, node):
-        if len(self.locals) > 1:
-            self.locals[-1].add(node.name)
-        return node
-
-    def visitAugAssign(self, node):
-        if isinstance(node.node, ast.Name) \
-                and node.node.name not in flatten(self.locals):
-            name = node.node.name
-            node.node = ast.Subscript(ast.Name('__data__'), 'OP_APPLY',
-                                      [ast.Const(name)])
-            node.expr = self.visit(node.expr)
-            return ast.If([
-                (ast.Compare(ast.Const(name), [('in', ast.Name('__data__'))]),
-                 ast.Stmt([node]))],
-                ast.Stmt([ast.Raise(ast.CallFunc(ast.Name('UndefinedError'),
-                                                 [ast.Const(name)]),
-                                    None, None)]))
-        else:
-            return ASTTransformer.visitAugAssign(self, node)
-
-    def visitClass(self, node):
+    def visit_ClassDef(self, node):
         if len(self.locals) > 1:
             self.locals[-1].add(node.name)
         self.locals.append(set())
         try:
-            return ASTTransformer.visitClass(self, node)
+            return ASTTransformer.visit_ClassDef(self, node)
         finally:
             self.locals.pop()
 
-    def visitFor(self, node):
+    def visit_For(self, node):
         self.locals.append(set())
         try:
-            return ASTTransformer.visitFor(self, node)
+            return ASTTransformer.visit_For(self, node)
         finally:
             self.locals.pop()
 
-    def visitFunction(self, node):
+    def visit_ImportFrom(self, node):
+        if not has_star_import_bug or [a.name for a in node.names] != ['*']:
+            # This is a Python 2.4 bug. Only if we have a broken Python
+            # version we have to apply the hack
+            return node
+        return _new(_ast.Expr, _new(_ast.Call,
+            _new(_ast.Name, '_star_import_patch'), [
+                _new(_ast.Name, '__data__'),
+                _new(_ast.Str, node.module)
+            ], (), ()))
+
+    def visit_FunctionDef(self, node):
         if len(self.locals) > 1:
             self.locals[-1].add(node.name)
-        self.locals.append(set(node.argnames))
+
+        self.locals.append(self._extract_names(node.args))
         try:
-            return ASTTransformer.visitFunction(self, node)
+            return ASTTransformer.visit_FunctionDef(self, node)
         finally:
             self.locals.pop()
 
-    def visitGenExpr(self, node):
-        self.locals.append(set())
+    # GeneratorExp(expr elt, comprehension* generators)
+    def visit_GeneratorExp(self, node):
+        gens = []
+        # need to visit them in inverse order
+        for generator in node.generators[::-1]:
+            # comprehension = (expr target, expr iter, expr* ifs)
+            self.locals.append(set())
+            gen = _new(_ast.comprehension, self.visit(generator.target),
+                            self.visit(generator.iter),
+                            [self.visit(if_) for if_ in generator.ifs])
+            gens.append(gen)
+        gens.reverse()
+
+        # use node.__class__ to make it reusable as ListComp
+        ret = _new(node.__class__, self.visit(node.elt), gens)
+        #delete inserted locals
+        del self.locals[-len(node.generators):]
+        return ret
+
+    # ListComp(expr elt, comprehension* generators)
+    visit_ListComp = visit_GeneratorExp
+
+    def visit_Lambda(self, node):
+        self.locals.append(self._extract_names(node.args))
         try:
-            return ASTTransformer.visitGenExpr(self, node)
+            return ASTTransformer.visit_Lambda(self, node)
         finally:
             self.locals.pop()
 
-    def visitLambda(self, node):
-        self.locals.append(set(flatten(node.argnames)))
-        try:
-            return ASTTransformer.visitLambda(self, node)
-        finally:
-            self.locals.pop()
-
-    def visitListComp(self, node):
-        self.locals.append(set())
-        try:
-            return ASTTransformer.visitListComp(self, node)
-        finally:
-            self.locals.pop()
-
-    def visitName(self, node):
+    def visit_Name(self, node):
         # If the name refers to a local inside a lambda, list comprehension, or
         # generator expression, leave it alone
-        if node.name not in flatten(self.locals):
+        if isinstance(node.ctx, _ast.Load) and \
+                node.id not in flatten(self.locals):
             # Otherwise, translate the name ref into a context lookup
-            func_args = [ast.Name('__data__'), ast.Const(node.name)]
-            node = ast.CallFunc(ast.Name('_lookup_name'), func_args)
+            name = _new(_ast.Name, '_lookup_name', _ast.Load())
+            namearg = _new(_ast.Name, '__data__', _ast.Load())
+            strarg = _new(_ast.Str, node.id)
+            node = _new(_ast.Call, name, [namearg, strarg], [])
+        elif isinstance(node.ctx, _ast.Store):
+            if len(self.locals) > 1:
+                self.locals[-1].add(node.id)
+
         return node
 
 
@@ -801,14 +596,22 @@ class ExpressionASTTransformer(TemplateASTTransformer):
     for code embedded in templates.
     """
 
-    def visitGetattr(self, node):
-        return ast.CallFunc(ast.Name('_lookup_attr'), [
-            self.visit(node.expr),
-            ast.Const(node.attrname)
-        ])
+    def visit_Attribute(self, node):
+        if not isinstance(node.ctx, _ast.Load):
+            return ASTTransformer.visit_Attribute(self, node)
 
-    def visitSubscript(self, node):
-        return ast.CallFunc(ast.Name('_lookup_item'), [
-            self.visit(node.expr),
-            ast.Tuple([self.visit(sub) for sub in node.subs])
-        ])
+        func = _new(_ast.Name, '_lookup_attr', _ast.Load())
+        args = [self.visit(node.value), _new(_ast.Str, node.attr)]
+        return _new(_ast.Call, func, args, [])
+
+    def visit_Subscript(self, node):
+        if not isinstance(node.ctx, _ast.Load) or \
+                not isinstance(node.slice, _ast.Index):
+            return ASTTransformer.visit_Subscript(self, node)
+
+        func = _new(_ast.Name, '_lookup_item', _ast.Load())
+        args = [
+            self.visit(node.value),
+            _new(_ast.Tuple, (self.visit(node.slice.value),), _ast.Load())
+        ]
+        return _new(_ast.Call, func, args, [])

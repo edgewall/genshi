@@ -35,7 +35,7 @@ try:
     class _FakeMapping(object):
         __getitem__ = __setitem__ = lambda *a: None
     exec 'from sys import *' in {}, _FakeMapping()
-except (SystemError, TypeError):
+except SystemError:
     has_star_import_bug = True
 del _FakeMapping
 
@@ -50,18 +50,6 @@ def _star_import_patch(mapping, modname):
     else:
         members = [x for x in module.__dict__ if not x.startswith('_')]
     mapping.update([(name, getattr(module, name)) for name in members])
-
-
-def wrap_tree(source, mode):
-    assert isinstance(source, _ast.AST), \
-        'Expected string or AST node, but got %r' % source
-    if mode == 'eval':
-        node = _ast.Expression()
-        node.body = source
-    else:
-        node = _ast.Module()
-        node.body = [source]
-    return node
 
 
 class Code(object):
@@ -88,8 +76,15 @@ class Code(object):
             self.source = source
             node = _parse(source, mode=self.mode)
         else:
+            assert isinstance(source, _ast.AST), \
+                'Expected string or AST node, but got %r' % source
             self.source = '?'
-            node = wrap_tree(source, self.mode)
+            if self.mode == 'eval':
+                node = _ast.Expression()
+                node.body = source
+            else:
+                node = _ast.Module()
+                node.body = [source]
 
         self.ast = node
         self.code = _compile(node, self.source, mode=self.mode,

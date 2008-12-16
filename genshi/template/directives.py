@@ -258,10 +258,8 @@ class DefDirective(Directive):
     """
     __slots__ = ['name', 'args', 'star_args', 'dstar_args', 'defaults']
 
-    def __init__(self, args, template, namespaces=None,
-                        lineno=-1, offset=-1):
-        Directive.__init__(self, None, template, namespaces,
-                             lineno, offset)
+    def __init__(self, args, template, namespaces=None, lineno=-1, offset=-1):
+        Directive.__init__(self, None, template, namespaces, lineno, offset)
         ast = _parse(args).body
         self.args = []
         self.star_args = None
@@ -342,11 +340,9 @@ class ForDirective(Directive):
     """
     __slots__ = ['assign', 'filename']
 
-    def __init__(self, value, template, namespaces=None, lineno=-1,
-                    offset=-1):
+    def __init__(self, value, template, namespaces=None, lineno=-1, offset=-1):
         if ' in ' not in value:
-            raise TemplateSyntaxError('"in" keyword missing in '
-                                        '"for" directive',
+            raise TemplateSyntaxError('"in" keyword missing in "for" directive',
                                       template.filepath, lineno, offset)
         assign, value = value.split(' in ', 1)
         ast = _parse(assign, 'exec')
@@ -697,26 +693,24 @@ class WithDirective(Directive):
     """
     __slots__ = ['vars']
 
-    def __init__(self, value, template, namespaces=None,
-                    lineno=-1, offset=-1):
+    def __init__(self, value, template, namespaces=None, lineno=-1, offset=-1):
         Directive.__init__(self, None, template, namespaces, lineno, offset)
-        self.vars = [] 
-        value = value.strip() 
+        self.vars = []
+        value = value.strip()
         try:
             ast = _parse(value, 'exec')
-            for node in ast.body: 
-                if not isinstance(node, _ast.Assign): 
+            for node in ast.body:
+                if not isinstance(node, _ast.Assign):
                     msg = 'only assignment allowed in value of' \
                             ' the "with" directive'
                     raise TemplateSyntaxError(msg, template.filepath,
-                                                lineno, offset) 
-                self.vars.append(([_assignment(n) for n in node.targets], 
+                                                lineno, offset)
+                self.vars.append(([_assignment(n) for n in node.targets],
                                   Expression(node.value, template.filepath,
-                                             lineno, 
-                                             lookup=template.lookup))) 
+                                             lineno, lookup=template.lookup)))
         except SyntaxError, err:
-            msg = ' in expression "%s" of "%s" directive'
-            err.msg += msg % (value, self.tagname)
+            err.msg += ' in expression "%s" of "%s" directive' % (value,
+                                                                  self.tagname)
             raise TemplateSyntaxError(err, template.filepath, lineno,
                                       offset + (err.offset or 0))
 
@@ -730,7 +724,7 @@ class WithDirective(Directive):
     def __call__(self, stream, directives, ctxt, **vars):
         frame = {}
         ctxt.push(frame)
-        for targets, expr in self.vars: 
+        for targets, expr in self.vars:
             value = _eval_expr(expr, ctxt, **vars)
             for assign in targets:
                 assign(frame, value)
@@ -740,5 +734,3 @@ class WithDirective(Directive):
 
     def __repr__(self):
         return '<%s>' % (self.__class__.__name__)
-
-

@@ -13,14 +13,13 @@
 
 """Implementation of the various template directives."""
 
-import compiler
-
 from genshi.core import QName, Stream
 from genshi.path import Path
 from genshi.template.base import TemplateRuntimeError, TemplateSyntaxError, \
                                  EXPR, _apply_directives, _eval_expr, \
                                  _exec_suite
-from genshi.template.eval import Expression, ExpressionASTTransformer, _parse
+from genshi.template.eval import Expression, ExpressionASTTransformer, \
+                                 _ast, _parse
 
 __all__ = ['AttrsDirective', 'ChooseDirective', 'ContentDirective',
            'DefDirective', 'ForDirective', 'IfDirective', 'MatchDirective',
@@ -118,14 +117,14 @@ class Directive(object):
 
 
 def _assignment(ast):
-    """Takes the AST representation of an assignment, and returns a function
-    that applies the assignment of a given value to a dictionary.
+    """Takes the AST representation of an assignment, and returns a
+    function that applies the assignment of a given value to a dictionary.
     """
     def _names(node):
-        if isinstance(node, (compiler.ast.AssTuple, compiler.ast.Tuple)):
-            return tuple([_names(child) for child in node.nodes])
-        elif isinstance(node, (compiler.ast.AssName, compiler.ast.Name)):
-            return node.name
+        if isinstance(node, _ast.Tuple):
+            return tuple([_names(child) for child in node.elts])
+        elif isinstance(node, _ast.Name):
+            return node.id
     def _assign(data, value, names=_names(ast)):
         if type(names) is tuple:
             for idx in range(len(names)):
@@ -259,28 +258,27 @@ class DefDirective(Directive):
 
     def __init__(self, args, template, namespaces=None, lineno=-1, offset=-1):
         Directive.__init__(self, None, template, namespaces, lineno, offset)
-        ast = _parse(args).node
+        ast = _parse(args).body
         self.args = []
         self.star_args = None
         self.dstar_args = None
         self.defaults = {}
-        if isinstance(ast, compiler.ast.CallFunc):
-            self.name = ast.node.name
+        if isinstance(ast, _ast.Call):
+            self.name = ast.func.id
             for arg in ast.args:
-                if isinstance(arg, compiler.ast.Keyword):
-                    self.args.append(arg.name)
-                    self.defaults[arg.name] = Expression(arg.expr,
-                                                         template.filepath,
-                                                         lineno,
-                                                         lookup=template.lookup)
-                else:
-                    self.args.append(arg.name)
-            if ast.star_args:
-                self.star_args = ast.star_args.name
-            if ast.dstar_args:
-                self.dstar_args = ast.dstar_args.name
+                # only names
+                self.args.append(arg.id)
+            for kwd in ast.keywords:
+                self.args.append(kwd.arg)
+                exp = Expression(kwd.value, template.filepath,
+                                 lineno, lookup=template.lookup)
+                self.defaults[kwd.arg] = exp
+            if getattr(ast, 'starargs', None):
+                self.star_args = ast.starargs.id
+            if getattr(ast, 'kwargs', None):
+                self.dstar_args = ast.kwargs.id
         else:
-            self.name = ast.name
+            self.name = ast.id
 
     def attach(cls, template, stream, value, namespaces, pos):
         if type(value) is dict:
@@ -347,7 +345,7 @@ class ForDirective(Directive):
         assign, value = value.split(' in ', 1)
         ast = _parse(assign, 'exec')
         value = 'iter(%s)' % value.strip()
-        self.assign = _assignment(ast.node.nodes[0].expr)
+        self.assign = _assignment(ast.body[0].value)
         self.filename = template.filepath
         Directive.__init__(self, value, template, namespaces, lineno, offset)
 
@@ -695,20 +693,18 @@ class WithDirective(Directive):
 
     def __init__(self, value, template, namespaces=None, lineno=-1, offset=-1):
         Directive.__init__(self, None, template, namespaces, lineno, offset)
-        self.vars = [] 
-        value = value.strip() 
+        self.vars = []
+        value = value.strip()
         try:
-            ast = _parse(value, 'exec').node 
-            for node in ast.nodes: 
-                if isinstance(node, compiler.ast.Discard): 
-                    continue 
-                elif not isinstance(node, compiler.ast.Assign): 
-                    raise TemplateSyntaxError('only assignment allowed in ' 
-                                              'value of the "with" directive', 
-                                              template.filepath, lineno, offset) 
-                self.vars.append(([_assignment(n) for n in node.nodes], 
-                                  Expression(node.expr, template.filepath, 
-                                             lineno, lookup=template.lookup))) 
+            ast = _parse(value, 'exec')
+            for node in ast.body:
+                if not isinstance(node, _ast.Assign):
+                    raise TemplateSyntaxError('only assignment allowed in '
+                                              'value of the "with" directive',
+                                              template.filepath, lineno, offset)
+                self.vars.append(([_assignment(n) for n in node.targets],
+                                  Expression(node.value, template.filepath,
+                                             lineno, lookup=template.lookup)))
         except SyntaxError, err:
             err.msg += ' in expression "%s" of "%s" directive' % (value,
                                                                   self.tagname)
@@ -725,7 +721,7 @@ class WithDirective(Directive):
     def __call__(self, stream, directives, ctxt, **vars):
         frame = {}
         ctxt.push(frame)
-        for targets, expr in self.vars: 
+        for targets, expr in self.vars:
             value = _eval_expr(expr, ctxt, **vars)
             for assign in targets:
                 assign(frame, value)

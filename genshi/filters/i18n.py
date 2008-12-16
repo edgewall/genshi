@@ -16,13 +16,13 @@
 :since: version 0.4
 """
 
-from compiler import ast
 from gettext import NullTranslations
 import re
 from types import FunctionType
 
 from genshi.core import Attrs, Namespace, QName, START, END, TEXT, START_NS, \
                         END_NS, XML_NAMESPACE, _ensure
+from genshi.template.eval import _ast
 from genshi.template.base import DirectiveFactory, EXPR, SUB, _apply_directives
 from genshi.template.directives import Directive
 from genshi.template.markup import MarkupTemplate, EXEC
@@ -526,25 +526,32 @@ def extract_from_code(code, gettext_functions):
     :since: version 0.5
     """
     def _walk(node):
-        if isinstance(node, ast.CallFunc) and isinstance(node.node, ast.Name) \
-                and node.node.name in gettext_functions:
+        if isinstance(node, _ast.Call) and isinstance(node.func, _ast.Name) \
+                and node.func.id in gettext_functions:
             strings = []
             def _add(arg):
-                if isinstance(arg, ast.Const) \
-                        and isinstance(arg.value, basestring):
-                    strings.append(unicode(arg.value, 'utf-8'))
-                elif arg and not isinstance(arg, ast.Keyword):
+                if isinstance(arg, _ast.Str) and isinstance(arg.s, basestring):
+                    strings.append(unicode(arg.s, 'utf-8'))
+                elif arg:
                     strings.append(None)
             [_add(arg) for arg in node.args]
-            _add(node.star_args)
-            _add(node.dstar_args)
+            _add(node.starargs)
+            _add(node.kwargs)
             if len(strings) == 1:
                 strings = strings[0]
             else:
                 strings = tuple(strings)
-            yield node.node.name, strings
-        else:
-            for child in node.getChildNodes():
+            yield node.func.id, strings
+        elif node._fields:
+            children = []
+            for field in node._fields:
+                child = getattr(node, field, None)
+                if isinstance(child, list):
+                    for elem in child:
+                        children.append(elem)
+                elif isinstance(child, _ast.AST):
+                    children.append(child)
+            for child in children:
                 for funcname, strings in _walk(child):
                     yield funcname, strings
     return _walk(code.ast)

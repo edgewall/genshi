@@ -57,7 +57,7 @@ class AbstractTemplateEnginePlugin(object):
                                      options.get('genshi.max_cache_size'))
 
         loader_callback = options.get('genshi.loader_callback', None)
-        if loader_callback and not callable(loader_callback):
+        if loader_callback and not hasattr(loader_callback, '__call__'):
             raise ConfigurationError('loader callback must be a function')
 
         lookup_errors = options.get('genshi.lookup_errors', 'strict')

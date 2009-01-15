@@ -23,6 +23,7 @@ except NameError:
     from sets import ImmutableSet as frozenset
     from sets import Set as set
 from textwrap import dedent
+from types import CodeType
 
 from genshi.core import Markup
 from genshi.template.base import TemplateRuntimeError
@@ -453,7 +454,7 @@ def _compile(node, source=None, mode='eval', filename=None, lineno=-1,
 
     # We'd like to just set co_firstlineno, but it's readonly. So we need to
     # clone the code object while adjusting the line number
-    return new.code(0, code.co_nlocals, code.co_stacksize,
+    return CodeType(0, code.co_nlocals, code.co_stacksize,
                     code.co_flags | 0x0040, code.co_code, code.co_consts,
                     code.co_names, code.co_varnames, filename, name, lineno,
                     code.co_lnotab, (), ())

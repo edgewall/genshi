@@ -522,6 +522,15 @@ class FilterTest(unittest.TestCase):
             self._filter('.', 'foo'),
             [[(None, TEXT, u'foo')]])
 
+    def test_filter_after_outside(self):
+        stream = _transform(
+            '<root>x</root>', Transformer('//root/text()').filter(lambda x: x))
+        self.assertEqual(
+            list(stream),
+            [(None, START, u'root'),
+             (OUTSIDE, TEXT, u'x'),
+             (None, END, u'root')])
+
 
 class MapTest(unittest.TestCase):
     def _map(self, select, kind=None):

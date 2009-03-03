@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2007 Edgewall Software
+# Copyright (C) 2007-2008 Edgewall Software
 # All rights reserved.
 #
 # This software is licensed as described in the file COPYING, which
@@ -14,7 +14,7 @@
 """Implementation of a number of stream filters."""
 
 from genshi.filters.html import HTMLFormFiller, HTMLSanitizer
-from genshi.filters.i18n import Translator, setup_i18n
+from genshi.filters.i18n import Translator
 from genshi.filters.transform import Transformer
 
 __docformat__ = 'restructuredtext en'

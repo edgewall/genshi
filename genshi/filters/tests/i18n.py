@@ -19,7 +19,7 @@ import unittest
 
 from genshi.core import Attrs
 from genshi.template import MarkupTemplate
-from genshi.filters.i18n import Translator, extract, setup_i18n
+from genshi.filters.i18n import Translator, extract
 from genshi.input import HTML
 
 
@@ -203,7 +203,7 @@ class TranslatorTestCase(unittest.TestCase):
         </html>""")
         gettext = lambda s: u"Für Details siehe bitte [1:Hilfe]."
         translator = Translator(gettext)
-        setup_i18n(tmpl, translator)
+        translator.setup(tmpl)
         self.assertEqual("""<html>
           <p>Für Details siehe bitte <a href="help.html">Hilfe</a>.</p>
         </html>""", tmpl.generate().render())
@@ -231,7 +231,7 @@ class TranslatorTestCase(unittest.TestCase):
         </html>""")
         gettext = lambda s: u"Für Details siehe bitte [1:[2:Hilfeseite]]."
         translator = Translator(gettext)
-        setup_i18n(tmpl, translator)
+        translator.setup(tmpl)
         self.assertEqual("""<html>
           <p>Für Details siehe bitte <a href="help.html"><em>Hilfeseite</em></a>.</p>
         </html>""", tmpl.generate().render())
@@ -259,7 +259,7 @@ class TranslatorTestCase(unittest.TestCase):
         </html>""")
         gettext = lambda s: "[1:[2:] foo bar]"
         translator = Translator(gettext)
-        setup_i18n(tmpl, translator)
+        translator.setup(tmpl)
         self.assertEqual("""<html>
           <div><label><input type="text" size="3" name="daysback" value="30"/> foo bar</label></div>
         </html>""", tmpl.generate().render())
@@ -286,7 +286,7 @@ class TranslatorTestCase(unittest.TestCase):
         </html>""")
         gettext = lambda s: u"[1:] Einträge pro Seite anzeigen."
         translator = Translator(gettext)
-        setup_i18n(tmpl, translator)
+        translator.setup(tmpl)
         self.assertEqual("""<html>
           <p><input type="text" name="num"/> Einträge pro Seite anzeigen.</p>
         </html>""", tmpl.generate().render())
@@ -313,7 +313,7 @@ class TranslatorTestCase(unittest.TestCase):
         </html>""")
         gettext = lambda s: u"Für [2:Details] siehe bitte [1:Hilfe]."
         translator = Translator(gettext)
-        setup_i18n(tmpl, translator)
+        translator.setup(tmpl)
         self.assertEqual("""<html>
           <p>Für <em>Details</em> siehe bitte <a href="help.html">Hilfe</a>.</p>
         </html>""", tmpl.generate().render())
@@ -341,7 +341,7 @@ class TranslatorTestCase(unittest.TestCase):
         </html>""")
         gettext = lambda s: u"[1:] Einträge pro Seite, beginnend auf Seite [2:]."
         translator = Translator(gettext)
-        setup_i18n(tmpl, translator)
+        translator.setup(tmpl)
         self.assertEqual("""<html>
           <p><input type="text" name="num"/> Eintr\xc3\xa4ge pro Seite, beginnend auf Seite <input type="text" name="num"/>.</p>
         </html>""", tmpl.generate().render())
@@ -368,7 +368,7 @@ class TranslatorTestCase(unittest.TestCase):
         </html>""")
         gettext = lambda s: u"Hallo, %(name)s!"
         translator = Translator(gettext)
-        setup_i18n(tmpl, translator)
+        translator.setup(tmpl)
         self.assertEqual("""<html>
           <p>Hallo, Jim!</p>
         </html>""", tmpl.generate(user=dict(name='Jim')).render())
@@ -382,7 +382,7 @@ class TranslatorTestCase(unittest.TestCase):
         </html>""")
         gettext = lambda s: u"%(name)s, sei gegrüßt!"
         translator = Translator(gettext)
-        setup_i18n(tmpl, translator)
+        translator.setup(tmpl)
         self.assertEqual("""<html>
           <p>Jim, sei gegrüßt!</p>
         </html>""", tmpl.generate(user=dict(name='Jim')).render())
@@ -396,7 +396,7 @@ class TranslatorTestCase(unittest.TestCase):
         </html>""")
         gettext = lambda s: u"Sei gegrüßt, [1:Alter]!"
         translator = Translator(gettext)
-        setup_i18n(tmpl, translator)
+        translator.setup(tmpl)
         self.assertEqual("""<html>
           <p>Sei gegrüßt, <a href="#42">Alter</a>!</p>
         </html>""", tmpl.generate(anchor='42').render())
@@ -423,7 +423,7 @@ class TranslatorTestCase(unittest.TestCase):
         </html>""")
         gettext = lambda s: u"%(name)s schrieb dies um %(time)s"
         translator = Translator(gettext)
-        setup_i18n(tmpl, translator)
+        translator.setup(tmpl)
         entry = {
             'author': 'Jim',
             'time': datetime(2008, 4, 1, 14, 30)
@@ -454,7 +454,7 @@ class TranslatorTestCase(unittest.TestCase):
         </html>""")
         gettext = lambda s: u"[1:] Einträge pro Seite anzeigen."
         translator = Translator(gettext)
-        setup_i18n(tmpl, translator)
+        translator.setup(tmpl)
         self.assertEqual("""<html>
           <p><input type="text" name="num" value="x"/> Einträge pro Seite anzeigen.</p>
         </html>""", tmpl.generate().render())
@@ -486,7 +486,7 @@ class TranslatorTestCase(unittest.TestCase):
         </html>""")
         gettext = lambda s: u"Voh"
         translator = Translator(gettext)
-        setup_i18n(tmpl, translator)
+        translator.setup(tmpl)
         self.assertEqual("""<html>
           <p>Voh</p>
         </html>""", tmpl.generate().render())
@@ -524,7 +524,7 @@ class TranslatorTestCase(unittest.TestCase):
           <p i18n:msg="" i18n:comment="As in foo bar">Foo</p>
         </html>""")
         translator = Translator(DummyTranslations({'Foo': 'Voh'}))
-        setup_i18n(tmpl, translator)
+        translator.setup(tmpl)
         self.assertEqual("""<html>
           <p>Voh</p>
         </html>""", tmpl.generate().render())
@@ -536,7 +536,7 @@ class TranslatorTestCase(unittest.TestCase):
           <p py:strip="" i18n:msg="" i18n:comment="As in foo bar">Foo</p>
         </html>""")
         translator = Translator(DummyTranslations({'Foo': 'Voh'}))
-        setup_i18n(tmpl, translator)
+        translator.setup(tmpl)
         self.assertEqual("""<html>
           Voh
           Voh
@@ -555,7 +555,7 @@ class TranslatorTestCase(unittest.TestCase):
         translations = DummyTranslations({'Bar': 'Voh'})
         translations.add_domain('foo', {'FooBar': 'BarFoo', 'Bar': 'PT_Foo'})
         translator = Translator(translations)
-        setup_i18n(tmpl, translator)
+        translator.setup(tmpl)
         self.assertEqual("""<html>
           <div>
             <p>BarFoo</p>
@@ -572,7 +572,7 @@ class TranslatorTestCase(unittest.TestCase):
         translations = DummyTranslations({'Bar': 'Voh'})
         translations.add_domain('foo', {'FooBar': 'BarFoo'})
         translator = Translator(translations)
-        setup_i18n(tmpl, translator)
+        translator.setup(tmpl)
         self.assertEqual("""<html>
           <p>BarFoo</p>
         </html>""", tmpl.generate().render())
@@ -593,7 +593,7 @@ class TranslatorTestCase(unittest.TestCase):
         translations = DummyTranslations({'Bar': 'Voh'})
         translations.add_domain('foo', {'FooBar': 'BarFoo', 'Bar': 'PT_Foo'})
         translator = Translator(translations)
-        setup_i18n(tmpl, translator)
+        translator.setup(tmpl)
         self.assertEqual("""<html>
           <p>Voh</p>
           <div>
@@ -619,7 +619,7 @@ class TranslatorTestCase(unittest.TestCase):
         translations = DummyTranslations({'Bar': 'Voh'})
         translations.add_domain('foo', {'FooBar': 'BarFoo', 'Bar': 'PT_Foo'})
         translator = Translator(translations)
-        setup_i18n(tmpl, translator)
+        translator.setup(tmpl)
         self.assertEqual("""<html>
           <p>BarFoo</p>
           <p>PT_Foo</p>
@@ -644,7 +644,7 @@ class TranslatorTestCase(unittest.TestCase):
         translations.add_domain('foo', {'FooBar': 'BarFoo', 'Bar': 'foo_Bar'})
         translations.add_domain('bar', {'Bar': 'bar_Bar'})
         translator = Translator(translations)
-        setup_i18n(tmpl, translator)
+        translator.setup(tmpl)
         self.assertEqual("""<html>
           <p>Voh</p>
           <div>
@@ -672,7 +672,7 @@ class TranslatorTestCase(unittest.TestCase):
         translations.add_domain('foo', {'FooBar': 'BarFoo', 'Bar': 'foo_Bar'})
         translations.add_domain('bar', {'Bar': 'bar_Bar'})
         translator = Translator(translations)
-        setup_i18n(tmpl, translator)
+        translator.setup(tmpl)
         self.assertEqual("""<html>
           <p>Voh</p>
           <div>
@@ -697,7 +697,7 @@ class TranslatorTestCase(unittest.TestCase):
         </html>""")
         translations = DummyTranslations()
         translator = Translator(translations)
-        setup_i18n(tmpl, translator)
+        translator.setup(tmpl)
         self.assertEqual("""<html>
           <div>
             <p>FooBar</p>
@@ -721,7 +721,7 @@ class TranslatorTestCase(unittest.TestCase):
         </html>""")
         translations = DummyTranslations()
         translator = Translator(translations)
-        setup_i18n(tmpl, translator)
+        translator.setup(tmpl)
         self.assertEqual("""<html>
           <p>FooBars</p>
           <p>FooBar</p>
@@ -742,7 +742,7 @@ class TranslatorTestCase(unittest.TestCase):
                 'Foos %(fname)s %(lname)s': 'Vohs %(fname)s %(lname)s',
         })
         translator = Translator(translations)
-        setup_i18n(tmpl, translator)
+        translator.setup(tmpl)
         self.assertEqual("""<html>
           <div>
             <p>Vohs John Doe</p>
@@ -766,7 +766,7 @@ class TranslatorTestCase(unittest.TestCase):
                 'Foos %(fname)s %(lname)s': 'Vohs %(fname)s %(lname)s',
         })
         translator = Translator(translations)
-        setup_i18n(tmpl, translator)
+        translator.setup(tmpl)
         self.assertEqual("""<html>
           <div>
             <p>Vohs John Doe</p>
@@ -792,7 +792,7 @@ class TranslatorTestCase(unittest.TestCase):
                 'Foos %(fname)s %(lname)s': 'Vohs %(fname)s %(lname)s',
         })
         translator = Translator(translations)
-        setup_i18n(tmpl, translator)
+        translator.setup(tmpl)
         self.assertEqual("""<html>
           <p>Vohs John Doe</p>
           <p>Voh John Doe</p>
@@ -821,7 +821,7 @@ class TranslatorTestCase(unittest.TestCase):
                 'Foos %(fname)s %(lname)s': 'Vohs %(fname)s %(lname)s',
         })
         translator = Translator(translations)
-        setup_i18n(tmpl, translator)
+        translator.setup(tmpl)
         self.assertEqual("""<html>
           <p>Vohs John Doe</p>
           <p>Foo John Doe</p>
@@ -1020,7 +1020,7 @@ class TranslatorTestCase(unittest.TestCase):
                 translations.add_domain('foo', {'Bar %(idx)s': 'foo_Bar %(idx)s'})
                 translations.add_domain('bar', {'Bar': 'bar_Bar'})
                 translator = Translator(translations)
-                setup_i18n(template, translator)
+                translator.setup(template)
             loader = TemplateLoader([dirname], callback=callback)
             tmpl = loader.load('tmpl10.html')
             
@@ -1106,7 +1106,7 @@ class TranslatorTestCase(unittest.TestCase):
             translator = Translator(translations)
             
             def callback(template):                
-                setup_i18n(template, translator)
+                translator.setup(template)
             loader = TemplateLoader([dirname], callback=callback)
             tmpl = loader.load('tmpl10.html')
             
@@ -1147,7 +1147,7 @@ class TranslatorTestCase(unittest.TestCase):
           <p py:strip="" i18n:msg="" i18n:comment="As in foo bar">Foo</p>
         </html>""")
         translator = Translator(DummyTranslations({'Foo': 'Voh'}))
-        setup_i18n(tmpl, translator)
+        translator.setup(tmpl)
         self.assertEqual("""<html>
           Voh
           Voh
@@ -1168,7 +1168,7 @@ class TranslatorTestCase(unittest.TestCase):
                 'Foos %(fname)s %(lname)s': 'Vohs %(fname)s %(lname)s',
         })
         translator = Translator(translations)
-        setup_i18n(tmpl, translator)
+        translator.setup(tmpl)
         self.assertEqual("""<html>
           <div>
             <p>Vohs John Doe</p>
@@ -1192,7 +1192,7 @@ class TranslatorTestCase(unittest.TestCase):
                 'Foos %(fname)s %(lname)s': 'Vohs %(fname)s %(lname)s',
         })
         translator = Translator(translations)
-        setup_i18n(tmpl, translator)
+        translator.setup(tmpl)
         self.assertEqual("""<html>
           <div>
             <p>Vohs John Doe</p>
@@ -1249,7 +1249,7 @@ class TranslatorTestCase(unittest.TestCase):
         translations = DummyTranslations({'Bar': 'Voh'})
         translations.add_domain('foo', {'FooBar': 'BarFoo'})
         translator = Translator(translations)
-        setup_i18n(tmpl, translator)
+        translator.setup(tmpl)
         self.assertEqual("""<html>
           <p>BarFoo</p>
         </html>""", tmpl.generate().render())
@@ -1263,7 +1263,7 @@ class TranslatorTestCase(unittest.TestCase):
         translations = DummyTranslations({'Bar': 'Voh'})
         translations.add_domain('foo', {'FooBar': 'BarFoo'})
         translator = Translator(translations)
-        setup_i18n(tmpl, translator)
+        translator.setup(tmpl)
         self.assertEqual("""
           <p>BarFoo</p>
         """, tmpl.generate().render())

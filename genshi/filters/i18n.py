@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2007 Edgewall Software
+# Copyright (C) 2007-2008 Edgewall Software
 # All rights reserved.
 #
 # This software is licensed as described in the file COPYING, which
@@ -34,9 +34,11 @@ from genshi.template.markup import MarkupTemplate, EXEC
 __all__ = ['Translator', 'extract']
 __docformat__ = 'restructuredtext en'
 
+
 I18N_NAMESPACE = Namespace('http://genshi.edgewall.org/i18n')
 
 MSGBUF = StreamEventKind('MSGBUF')
+
 
 class DirectiveExtract(object):
     """Simple interface for directives to support messages extraction"""
@@ -44,20 +46,19 @@ class DirectiveExtract(object):
     def extract(self, stream, ctxt):
         raise NotImplementedError
 
+
 class CommentDirective(Directive):
     """Implementation of the ``i18n:comment`` template directive which adds
     translation comments.
     
-    >>> from genshi.filters.i18n import Translator, setup_i18n
     >>> from genshi.template import MarkupTemplate
-    >>>
-    >>> translator = Translator()
     >>>
     >>> tmpl = MarkupTemplate('''<html xmlns:i18n="http://genshi.edgewall.org/i18n">
     ...   <p i18n:comment="As in Foo Bar">Foo</p>
     ... </html>''')
     >>>
-    >>> setup_i18n(tmpl, translator)
+    >>> translator = Translator()
+    >>> translator.setup(tmpl)
     >>> list(translator.extract(tmpl.stream))
     [(2, None, u'Foo', [u'As in Foo Bar'])]
     >>>
@@ -73,15 +74,12 @@ class CommentDirective(Directive):
     def __call__(self, stream, directives, ctxt, **vars):
         return stream
 
+
 class MsgDirective(Directive, DirectiveExtract):
     r"""Implementation of the ``i18n:msg`` directive which marks inner content
     as translatable. Consider the following examples:
     
-    >>> from genshi.filters.i18n import Translator, setup_i18n
     >>> from genshi.template import MarkupTemplate
-    >>>
-    >>> translator = Translator()
-    >>>
     >>> tmpl = MarkupTemplate('''<html xmlns:i18n="http://genshi.edgewall.org/i18n">
     ...   <div i18n:msg="">
     ...     <p>Foo</p>
@@ -89,9 +87,9 @@ class MsgDirective(Directive, DirectiveExtract):
     ...   </div>
     ...   <p i18n:msg="">Foo <em>bar</em>!</p>
     ... </html>''')
-    >>>
-    >>> setup_i18n(tmpl, translator)
-    >>>
+    
+    >>> translator = Translator()
+    >>> translator.setup(tmpl)
     >>> list(translator.extract(tmpl.stream))
     [(2, None, u'[1:Foo]\n    [2:Bar]', []), (6, None, u'Foo [1:bar]!', [])]
     >>> print tmpl.generate().render()
@@ -100,7 +98,7 @@ class MsgDirective(Directive, DirectiveExtract):
         <p>Bar</p></div>
       <p>Foo <em>bar</em>!</p>
     </html>
-    >>>
+
     >>> tmpl = MarkupTemplate('''<html xmlns:i18n="http://genshi.edgewall.org/i18n">
     ...   <div i18n:msg="fname, lname">
     ...     <p>First Name: ${fname}</p>
@@ -108,7 +106,7 @@ class MsgDirective(Directive, DirectiveExtract):
     ...   </div>
     ...   <p i18n:msg="">Foo <em>bar</em>!</p>
     ... </html>''')
-    >>> setup_i18n(tmpl, translator)
+    >>> translator.setup(tmpl)
     >>> list(translator.extract(tmpl.stream)) #doctest: +NORMALIZE_WHITESPACE
     [(2, None, u'[1:First Name: %(fname)s]\n    [2:Last Name: %(lname)s]', []),
     (6, None, u'Foo [1:bar]!', [])]
@@ -120,7 +118,7 @@ class MsgDirective(Directive, DirectiveExtract):
     ...   </div>
     ...   <p i18n:msg="">Foo <em>bar</em>!</p>
     ... </html>''')
-    >>> setup_i18n(tmpl, translator)
+    >>> translator.setup(tmpl)
     >>> print tmpl.generate(fname='John', lname='Doe').render()
     <html>
       <div><p>First Name: John
@@ -206,14 +204,9 @@ class InnerChooseDirective(Directive):
         stream = iter(_apply_directives(stream, directives, ctxt))
         yield stream.next() # the outer start tag
         previous = stream.next()
-#        if previous[0] is TEXT and not previous[1].strip():
-#            yield previous  # white space and newlines
         for kind, data, pos in stream:
-
             msgbuf.append(*previous)
             previous = kind, data, pos
-#            if event[0] is TEXT and not event[1].strip():
-#                yield event # white space and newlines
         yield MSGBUF, (), -1 # the place holder for msgbuf output
         yield previous # the outer end tag
         ctxt['_i18n.choose.%s' % type(self).__name__] = msgbuf
@@ -250,7 +243,6 @@ class ChooseDirective(Directive, DirectiveExtract):
     also need to pass a name for those parameters. Consider the following
     examples:
     
-    >>> from genshi.filters.i18n import Translator, setup_i18n
     >>> from genshi.template import MarkupTemplate
     >>>
     >>> translator = Translator()
@@ -262,7 +254,7 @@ class ChooseDirective(Directive, DirectiveExtract):
     ...     <p i18n:plural="">There are $num coins</p>
     ...   </div>
     ... </html>''')
-    >>> setup_i18n(tmpl, translator)
+    >>> translator.setup(tmpl)
     >>> list(translator.extract(tmpl.stream)) #doctest: +NORMALIZE_WHITESPACE
     [(2, 'ngettext', (u'There is %(num)s coin',
                       u'There are %(num)s coins'), [])]
@@ -274,7 +266,7 @@ class ChooseDirective(Directive, DirectiveExtract):
     ...     <p i18n:plural="">There are $num coins</p>
     ...   </div>
     ... </html>''')
-    >>> setup_i18n(tmpl, translator)
+    >>> translator.setup(tmpl)
     >>> print tmpl.generate(num=1).render()
     <html>
       <div>
@@ -297,7 +289,7 @@ class ChooseDirective(Directive, DirectiveExtract):
     ...     <p i18n:plural="">There are $num coins</p>
     ...   </i18n:choose>
     ... </html>''')
-    >>> setup_i18n(tmpl, translator)
+    >>> translator.setup(tmpl)
     >>> list(translator.extract(tmpl.stream)) #doctest: +NORMALIZE_WHITESPACE
     [(2, 'ngettext', (u'There is %(num)s coin',
                       u'There are %(num)s coins'), [])]
@@ -414,14 +406,13 @@ class ChooseDirective(Directive, DirectiveExtract):
             (singular_msgbuf.format(), plural_msgbuf.format()), \
             filter(None, [ctxt.get('_i18n.comment')])
 
+
 class DomainDirective(Directive):
     """Implementation of the ``i18n:domain`` directive which allows choosing
     another i18n domain(catalog) to translate from.
     
-    >>> from gettext import NullTranslations
-    >>> from genshi.filters.i18n import Translator, setup_i18n
     >>> from genshi.template.markup import MarkupTemplate
-    >>>
+
     >>> class DummyTranslations(NullTranslations):
     ...     _domains = {}
     ...     def __init__(self, catalog):
@@ -462,7 +453,7 @@ class DomainDirective(Directive):
     >>> translations.add_domain('foo', {'FooBar': 'BarFoo', 'Bar': 'foo_Bar'})
     >>> translations.add_domain('bar', {'Bar': 'bar_Bar'})
     >>> translator = Translator(translations)
-    >>> setup_i18n(tmpl, translator)
+    >>> translator.setup(tmpl)
     >>>
     >>> print tmpl.generate().render()
     <html>
@@ -781,8 +772,6 @@ class Translator(DirectiveFactory):
         skip = 0
 
         # Un-comment bellow to extract messages without adding directives
-#        i18n_comment = I18N_NAMESPACE['comment']
-#        i18n_msg = I18N_NAMESPACE['msg']
         xml_lang = XML_NAMESPACE['lang']
 
         for kind, data, pos in stream:
@@ -815,18 +804,6 @@ class Translator(DirectiveFactory):
 
                 if msgbuf:
                     msgbuf.append(kind, data, pos)
-                # Un-comment below to extract messages without adding
-                # directives
-#                else:
-#                    msg_params = attrs.get(i18n_msg)
-#                    if msg_params is not None:
-#                        print kind, data, pos
-#                        if type(msg_params) is list: # event tuple
-#                            msg_params = msg_params[0][1]
-#                        # warning: MessageBuffer constructor has changed
-#                        msgbuf = MessageBuffer(
-#                            msg_params, attrs.get(i18n_comment), pos[1]
-#                        )
 
             elif not skip and search_text and kind is TEXT:
                 if not msgbuf:
@@ -900,6 +877,17 @@ class Translator(DirectiveFactory):
                             yield lineno, funcname, text, comments
                 if comment:
                     ctxt.pop()
+
+    def setup(self, template):
+        """Convenience function to register the `Translator` filter and the
+        related directives with the given template.
+        
+        :param template: a `Template` instance
+        """
+        template.filters.insert(0, self)
+        if hasattr(template, 'add_directives'):
+            template.add_directives(Translator.NAMESPACE, self)
+
 
 class MessageBuffer(object):
     """Helper class for managing internationalized mixed content.
@@ -1152,13 +1140,9 @@ def extract(fileobj, keywords, comment_tags, options):
     for message in translator.extract(tmpl.stream, gettext_functions=keywords):
         yield message
 
-def setup_i18n(template, translator):
-    """Convenience function to setup both the i18n filter and the i18n
-    directives.
-    
-    :param template: an instance of a genshi template
-    :param translator: an instance of ``Translator``
-    """
-    template.filters.insert(0, translator)
-    if hasattr(template, 'add_directives'):
-        template.add_directives(Translator.NAMESPACE, translator)
+
+def setup_i18n(tmpl, translator):
+    import warnings
+    warnings.warn('setup_i18n() is deprecated, use Translator.setup() instead',
+                  DeprecationWarning)
+    return translator.setup(tmpl)

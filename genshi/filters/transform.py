@@ -912,7 +912,7 @@ class FilterTransformation(object):
                 for queue_event in flush(queue):
                     yield queue_event
             elif mark is OUTSIDE:
-                stopped = True
+                stopped = False
                 queue.append(event)
                 for mark, event in stream:
                     if mark is not OUTSIDE:
@@ -923,7 +923,7 @@ class FilterTransformation(object):
                 for queue_event in flush(queue):
                     yield queue_event
                 if not stopped:
-                    yield None, event
+                    yield mark, event
             else:
                 yield mark, event
         for queue_event in flush(queue):

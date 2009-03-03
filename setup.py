@@ -40,23 +40,24 @@ class optional_build_ext(build_ext):
     def run(self):
         try:
             build_ext.run(self)
-        except DistutilsPlatformError:
-            self._unavailable()
+        except DistutilsPlatformError, e:
+            self._unavailable(e)
 
     def build_extension(self, ext):
         try:
             build_ext.build_extension(self, ext)
             global _speedup_available
             _speedup_available = True
-        except CCompilerError, x:
-            self._unavailable()
+        except CCompilerError, e:
+            self._unavailable(e)
 
-    def _unavailable(self):
+    def _unavailable(self, exc):
         print '*' * 70
         print """WARNING:
 An optional C extension could not be compiled, speedups will not be
 available."""
         print '*' * 70
+        print exc
 
 
 if Feature:
@@ -82,6 +83,7 @@ cmdclass = {'build_doc': build_doc, 'test_doc': test_doc,
             'build_ext': optional_build_ext}
 if bdist_egg:
     cmdclass['bdist_egg'] = my_bdist_egg
+
 
 setup(
     name = 'Genshi',

@@ -759,13 +759,6 @@ class TemplateASTTransformer(ASTTransformer):
         finally:
             self.locals.pop()
 
-    def visitFor(self, node):
-        self.locals.append(set())
-        try:
-            return ASTTransformer.visitFor(self, node)
-        finally:
-            self.locals.pop()
-
     def visitFunction(self, node):
         if len(self.locals) > 1:
             self.locals[-1].add(node.name)

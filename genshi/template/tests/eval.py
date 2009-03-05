@@ -505,6 +505,55 @@ add('bar')
         suite.execute(data)
         self.assertEqual(['foo', 'bar'], data['values'])
 
+    def test_def_some_defaults(self):
+        suite = Suite("""
+def difference(v1, v2=10):
+    return v1 - v2
+x = difference(20, 19)
+y = difference(20)
+""")
+        data = {}
+        suite.execute(data)
+        self.assertEqual(1, data['x'])
+        self.assertEqual(10, data['y'])
+
+    def test_def_all_defaults(self):
+        suite = Suite("""
+def difference(v1=100, v2=10):
+    return v1 - v2
+x = difference(20, 19)
+y = difference(20)
+z = difference()
+""")
+        data = {}
+        suite.execute(data)
+        self.assertEqual(1, data['x'])
+        self.assertEqual(10, data['y'])
+        self.assertEqual(90, data['z'])
+
+    def test_def_vararg(self):
+        suite = Suite("""
+def mysum(*others):
+    rv = 0
+    for n in others:
+        rv = rv + n
+    return rv
+x = mysum(1, 2, 3)
+""")
+        data = {}
+        suite.execute(data)
+        self.assertEqual(6, data['x'])
+
+    def test_def_kwargs(self):
+        suite = Suite("""
+def smash(**kw):
+    return [''.join(i) for i in kw.items()]
+x = smash(foo='abc', bar='def')
+""")
+        data = {}
+        suite.execute(data)
+        self.assertEqual(['fooabc', 'bardef'], data['x'])
+
     def test_def_nested(self):
         suite = Suite("""
 def doit():

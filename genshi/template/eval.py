@@ -494,10 +494,10 @@ class TemplateASTTransformer(ASTTransformer):
                     _process(node)
         for arg in node.args:
             _process(arg)
-        if getattr(node, 'varargs', None):
-            arguments.add(node.args.varargs)
-        if getattr(node, 'kwargs', None):
-            arguments.add(node.args.kwargs)
+        if hasattr(node, 'vararg'):
+            arguments.add(node.vararg)
+        if hasattr(node, 'kwarg'):
+            arguments.add(node.kwarg)
         return arguments
 
     def visit_Str(self, node):

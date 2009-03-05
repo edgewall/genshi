@@ -517,13 +517,6 @@ class TemplateASTTransformer(ASTTransformer):
         finally:
             self.locals.pop()
 
-    def visit_For(self, node):
-        self.locals.append(set())
-        try:
-            return ASTTransformer.visit_For(self, node)
-        finally:
-            self.locals.pop()
-
     def visit_ImportFrom(self, node):
         if not has_star_import_bug or [a.name for a in node.names] != ['*']:
             # This is a Python 2.4 bug. Only if we have a broken Python

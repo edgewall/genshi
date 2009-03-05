@@ -13,6 +13,9 @@ http://svn.edgewall.org/repos/genshi/tags/0.5.2/
    attribute values when inside an `i18n:msg` block (ticket #250).
  * Fix problem with the transformation filter dropping events after the
    selection (ticket #290).
+ * `for` loops in template code blocks no longer establish their own locals
+   scope, meaning you can now access variables assigned in the loop outside
+   of the loop, just as you can in regular Python code (ticket #259).
 
 
 Version 0.5.1

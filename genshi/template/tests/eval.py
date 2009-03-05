@@ -627,6 +627,18 @@ for i in range(3):
         suite.execute(data)
         self.assertEqual([0, 1, 4], data['x'])
 
+    def test_for_in_def(self):
+        suite = Suite("""def loop():
+    for i in range(10):
+        if i == 5:
+            break
+    return i
+""")
+        data = {}
+        suite.execute(data)
+        assert 'loop' in data
+        self.assertEqual(5, data['loop']())
+
     def test_if(self):
         suite = Suite("""if foo == 42:
     x = True

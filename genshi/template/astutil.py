@@ -206,6 +206,8 @@ class ASTCodeGenerator(object):
             self.visit(node.dest)
             if getattr(node, 'values', None):
                 self._write(', ')
+        else:
+            self._write(' ')
         if getattr(node, 'values', None):
             self.visit(node.values[0])
             for value in node.values[1:]:

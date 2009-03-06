@@ -485,20 +485,26 @@ class TemplateASTTransformer(ASTTransformer):
         self.locals = [CONSTANTS]
 
     def _extract_names(self, node):
-        arguments = set()
+        names = set()
         def _process(node):
             if isinstance(node, _ast.Name):
-                arguments.add(node.id)
+                names.add(node.id)
+            elif isinstance(node, _ast.alias):
+                names.add(node.asname or node.name)
             elif isinstance(node, _ast.Tuple):
                 for elt in node.elts:
                     _process(node)
-        for arg in node.args:
-            _process(arg)
-        if hasattr(node, 'vararg'):
-            arguments.add(node.vararg)
-        if hasattr(node, 'kwarg'):
-            arguments.add(node.kwarg)
-        return arguments
+        if hasattr(node, 'args'):
+            for arg in node.args:
+                _process(arg)
+            if hasattr(node, 'vararg'):
+                names.add(node.vararg)
+            if hasattr(node, 'kwarg'):
+                names.add(node.kwarg)
+        elif hasattr(node, 'names'):
+            for elt in node.names:
+                _process(elt)
+        return names
 
     def visit_Str(self, node):
         if isinstance(node.s, str):
@@ -517,16 +523,25 @@ class TemplateASTTransformer(ASTTransformer):
         finally:
             self.locals.pop()
 
+    def visit_Import(self, node):
+        if len(self.locals) > 1:
+            self.locals[-1].update(self._extract_names(node))
+        return ASTTransformer.visit_Import(self, node)
+
     def visit_ImportFrom(self, node):
-        if not has_star_import_bug or [a.name for a in node.names] != ['*']:
-            # This is a Python 2.4 bug. Only if we have a broken Python
-            # version we have to apply the hack
+        if [a.name for a in node.names] == ['*']:
+            if has_star_import_bug:
+                # This is a Python 2.4 bug. Only if we have a broken Python
+                # version do we need to apply this hack
+                node = _new(_ast.Expr, _new(_ast.Call,
+                    _new(_ast.Name, '_star_import_patch'), [
+                        _new(_ast.Name, '__data__'),
+                        _new(_ast.Str, node.module)
+                    ], (), ()))
             return node
-        return _new(_ast.Expr, _new(_ast.Call,
-            _new(_ast.Name, '_star_import_patch'), [
-                _new(_ast.Name, '__data__'),
-                _new(_ast.Str, node.module)
-            ], (), ()))
+        if len(self.locals) > 1:
+            self.locals[-1].update(self._extract_names(node))
+        return ASTTransformer.visit_ImportFrom(self, node)
 
     def visit_FunctionDef(self, node):
         if len(self.locals) > 1:

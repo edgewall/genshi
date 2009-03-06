@@ -572,6 +572,16 @@ x = create()
         suite.execute(_ctxt2dict(data))
         assert 'ifilter' in data
 
+    def test_import_in_def(self):
+        suite = Suite("""def fun():
+    from itertools import ifilter
+    return ifilter(None, xrange(3))
+""")
+        data = Context()
+        suite.execute(data)
+        assert 'ifilter' not in data
+        self.assertEqual([1, 2], list(data['fun']()))
+
     def test_for(self):
         suite = Suite("""x = []
 for i in range(3):

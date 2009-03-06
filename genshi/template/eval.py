@@ -595,6 +595,9 @@ class ASTTransformer(object):
             self.visit(node.else_)
         )
 
+    def visitImport(self, node):
+        return self._clone(node, node.names)
+
     def _visitPrint(self, node):
         return self._clone(node, [self.visit(x) for x in node.nodes],
             self.visit(node.dest)
@@ -759,6 +762,12 @@ class TemplateASTTransformer(ASTTransformer):
         finally:
             self.locals.pop()
 
+    def visitFrom(self, node):
+        if node.names != [('*', None)]:
+            if len(self.locals) > 1:
+                self.locals[-1].update([n[1] or n[0] for n in node.names])
+        return ASTTransformer.visitFrom(self, node)
+
     def visitFunction(self, node):
         if len(self.locals) > 1:
             self.locals[-1].add(node.name)
@@ -774,6 +783,11 @@ class TemplateASTTransformer(ASTTransformer):
             return ASTTransformer.visitGenExpr(self, node)
         finally:
             self.locals.pop()
+
+    def visitImport(self, node):
+        if len(self.locals) > 1:
+            self.locals[-1].update([n.asname or n.name for n in node.names])
+        return ASTTransformer.visitImport(self, node)
 
     def visitLambda(self, node):
         self.locals.append(set(flatten(node.argnames)))

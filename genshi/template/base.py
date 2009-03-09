@@ -531,9 +531,7 @@ class Template(DirectiveFactory):
                 tag, attrs = data
                 new_attrs = []
                 for name, substream in attrs:
-                    if isinstance(substream, basestring):
-                        value = substream
-                    else:
+                    if type(substream) is list:
                         values = []
                         for event in self._flatten(substream, ctxt, **vars):
                             if event[0] is TEXT:
@@ -541,6 +539,8 @@ class Template(DirectiveFactory):
                         value = [x for x in values if x is not None]
                         if not value:
                             continue
+                    else:
+                        value = substream
                     new_attrs.append((name, u''.join(value)))
                 yield kind, (tag, Attrs(new_attrs)), pos
 

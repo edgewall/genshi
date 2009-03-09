@@ -418,7 +418,7 @@ class Template(DirectiveFactory):
         return '<%s "%s">' % (self.__class__.__name__, self.filename)
 
     def _init_filters(self):
-        self.filters = [self._flatten, self._eval, self._exec]
+        self.filters = [self._flatten]
         if self.loader:
             self.filters.append(self._include)
 
@@ -520,11 +520,7 @@ class Template(DirectiveFactory):
             stream = filter_(iter(stream), ctxt, **vars)
         return Stream(stream, self.serializer)
 
-    def _eval(self, stream, ctxt, **vars):
-        """Internal stream filter that evaluates any expressions in `START` and
-        `TEXT` events.
-        """
-        filters = (self._flatten, self._eval)
+    def _flatten(self, stream, ctxt, **vars):
         number_conv = self._number_conv
 
         for kind, data, pos in stream:
@@ -539,11 +535,9 @@ class Template(DirectiveFactory):
                         value = substream
                     else:
                         values = []
-                        for subkind, subdata, subpos in self._eval(substream,
-                                                                   ctxt,
-                                                                   **vars):
-                            if subkind is TEXT:
-                                values.append(subdata)
+                        for event in self._flatten(substream, ctxt, **vars):
+                            if event[0] is TEXT:
+                                values.append(event[1])
                         value = [x for x in values if x is not None]
                         if not value:
                             continue
@@ -561,38 +555,24 @@ class Template(DirectiveFactory):
                     elif isinstance(result, (int, float, long)):
                         yield TEXT, number_conv(result), pos
                     elif hasattr(result, '__iter__'):
-                        substream = _ensure(result)
-                        for filter_ in filters:
-                            substream = filter_(substream, ctxt, **vars)
-                        for event in substream:
+                        for event in self._flatten(_ensure(result), ctxt,
+                                                   **vars):
                             yield event
                     else:
                         yield TEXT, unicode(result), pos
 
-            else:
-                yield kind, data, pos
+            elif kind is EXEC:
+                _exec_suite(data, ctxt, **vars)
 
-    def _exec(self, stream, ctxt, **vars):
-        """Internal stream filter that executes Python code blocks."""
-        for event in stream:
-            if event[0] is EXEC:
-                _exec_suite(event[1], ctxt, **vars)
-            else:
-                yield event
-
-    def _flatten(self, stream, ctxt, **vars):
-        """Internal stream filter that expands `SUB` events in the stream."""
-        for event in stream:
-            if event[0] is SUB:
+            elif kind is SUB:
                 # This event is a list of directives and a list of nested
                 # events to which those directives should be applied
-                directives, substream = event[1]
-                substream = _apply_directives(substream, directives, ctxt,
-                                              **vars)
+                substream = _apply_directives(data[1], data[0], ctxt, **vars)
                 for event in self._flatten(substream, ctxt, **vars):
                     yield event
+
             else:
-                yield event
+                yield kind, data, pos
 
     def _include(self, stream, ctxt, **vars):
         """Internal stream filter that performs inclusion of external
@@ -605,8 +585,8 @@ class Template(DirectiveFactory):
                 href, cls, fallback = event[1]
                 if not isinstance(href, basestring):
                     parts = []
-                    for subkind, subdata, subpos in self._eval(href, ctxt,
-                                                               **vars):
+                    for subkind, subdata, subpos in self._flatten(href, ctxt,
+                                                                  **vars):
                         if subkind is TEXT:
                             parts.append(subdata)
                     href = u''.join([x for x in parts if x is not None])

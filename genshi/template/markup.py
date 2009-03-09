@@ -374,13 +374,9 @@ class MarkupTemplate(Template):
                     # Recursively process the output
                     template = _apply_directives(template, directives, ctxt,
                                                  **vars)
-                    for event in self._match(
-                            self._exec(
-                                self._eval(
-                                    self._flatten(template, ctxt, **vars),
-                                    ctxt, **vars),
-                                ctxt, **vars),
-                            ctxt, start=idx + 1, **vars):
+                    for event in self._match(self._flatten(template, ctxt,
+                                                           **vars),
+                                             ctxt, start=idx + 1, **vars):
                         yield event
 
                     # If the match template did not actually call select to

@@ -280,8 +280,6 @@ class MarkupTemplate(Template):
                                                  pos[2], lookup=self.lookup))
                         if len(value) == 1 and value[0][0] is TEXT:
                             value = value[0][1]
-                    else:
-                        value = [(TEXT, u'', pos)]
                     new_attrs.append((name, value))
                 data = tag, Attrs(new_attrs)
 

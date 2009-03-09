@@ -219,12 +219,15 @@ if __name__ == '__main__':
     which = [arg for arg in sys.argv[1:] if arg[0] != '-']
 
     if '-p' in sys.argv:
-        import hotshot, hotshot.stats
-        prof = hotshot.Profile("template.prof")
-        benchtime = prof.runcall(run, which, number=1)
-        stats = hotshot.stats.load("template.prof")
+        import cProfile, pstats
+        prof = cProfile.Profile()
+        prof.run('run(%r, number=1)' % which)
+        stats = pstats.Stats(prof)
         stats.strip_dirs()
         stats.sort_stats('time', 'calls')
-        stats.print_stats()
+        stats.print_stats(25)
+        if '-v' in sys.argv:
+            stats.print_callees()
+            stats.print_callers()
     else:
         run(which)

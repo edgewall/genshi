@@ -190,12 +190,15 @@ if __name__ == '__main__':
     verbose = '-v' in sys.argv
 
     if '-p' in sys.argv:
-        import hotshot, hotshot.stats
-        prof = hotshot.Profile("template.prof")
-        benchtime = prof.runcall(run, engines, number=100, verbose=verbose)
-        stats = hotshot.stats.load("template.prof")
+        import cProfile, pstats
+        prof = cProfile.Profile()
+        prof.run('run(%r, number=200, verbose=%r)' % (engines, verbose))
+        stats = pstats.Stats(prof)
         stats.strip_dirs()
-        stats.sort_stats('time', 'calls')
-        stats.print_stats(.05)
+        stats.sort_stats('calls')
+        stats.print_stats(25)
+        if verbose:
+            stats.print_callees()
+            stats.print_callers()
     else:
         run(engines, verbose=verbose)

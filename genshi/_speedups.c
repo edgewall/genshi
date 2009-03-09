@@ -43,7 +43,7 @@ init_constants(void)
 
 /* Markup class */
 
-PyAPI_DATA(PyTypeObject) MarkupType;
+PyTypeObject MarkupType; /* declared later */
 
 PyDoc_STRVAR(Markup__doc__,
 "Marks a string as being safe for inclusion in HTML/XML output without\n\
@@ -232,7 +232,8 @@ Markup_join(PyObject *self, PyObject *args, PyObject *kwds)
     static char *kwlist[] = {"seq", "escape_quotes", 0};
     PyObject *seq = NULL, *seq2, *tmp, *tmp2;
     char quotes = 1;
-    int n, i;
+    Py_ssize_t n;
+    int i;
 
     if (!PyArg_ParseTupleAndKeywords(args, kwds, "O|b", kwlist, &seq, &quotes)) {
         return NULL;
@@ -310,7 +311,8 @@ static PyObject *
 Markup_mod(PyObject *self, PyObject *args)
 {
     PyObject *tmp, *tmp2, *ret, *args2;
-    int i, nargs = 0;
+    int i;
+    Py_ssize_t nargs = 0;
     PyObject *kwds = NULL;
 
     if (PyDict_Check(args)) {

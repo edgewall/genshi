@@ -126,14 +126,13 @@ class GenericStrategy(object):
             retval = None
 
             # Manage the stack that tells us "where we are" in the stream
-            if kind is END:
-                stack.pop()
-                return None
-            elif kind is START:
-                pass
-            elif kind is START_NS or kind is END_NS \
+            if kind is START_NS or kind is END_NS \
                     or kind is START_CDATA or kind is END_CDATA:
                 # should we make namespaces work?
+                return None
+            if kind is END:
+                if stack:
+                    stack.pop()
                 return None
 
             # FIXME: Need to find out when we can do this
@@ -434,12 +433,13 @@ class SimplePathStrategy(object):
 
             kind, data, pos = event[:3]
 
-            # skip unimportant events
+            # skip events we don't care about
             if kind is START_NS or kind is END_NS \
                     or kind is START_CDATA or kind is END_CDATA:
                 return None
-            elif kind is END:
-                stack.pop()
+            if kind is END:
+                if stack:
+                    stack.pop()
                 return None
 
             if len(stack) == 0:

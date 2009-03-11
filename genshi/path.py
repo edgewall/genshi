@@ -261,14 +261,10 @@ class SingleStepStrategy(object):
         self.path = path
 
     def test(self, ignore_context):
-        p = self.path
-        if p[0][0] is ATTRIBUTE:
-            steps = [_DOTSLASH] + self.path
-        else:
-            steps = p
-
-        if ignore_context and steps[0][0] is not DESCENDANT:
-            steps = [(DESCENDANT_OR_SELF, p[0][1], p[0][2])] + p[1:]
+        steps = self.path
+        if steps[0][0] is ATTRIBUTE:
+            steps = [_DOTSLASH] + steps
+        select_attr = steps[-1][0] is ATTRIBUTE and steps[-1][1] or None
 
         # for every position in expression stores counters' list
         # it is used for position based predicates
@@ -278,46 +274,37 @@ class SingleStepStrategy(object):
         def _test(event, namespaces, variables, updateonly=False):
             kind, data, pos = event[:3]
 
-            retval = None
             # Manage the stack that tells us "where we are" in the stream
             if kind is END:
-                depth[0] -= 1
+                if not ignore_context:
+                    depth[0] -= 1
                 return None
             elif kind is START_NS or kind is END_NS \
                     or kind is START_CDATA or kind is END_CDATA:
                 # should we make namespaces work?
                 return None
 
-            depth[0] += 1
-            bad_depth = False
-
-            if (steps[0][0] is SELF and depth[0] != 1) \
-                    or (steps[0][0] is CHILD and depth[0] != 2) \
-                    or (steps[0][0] is DESCENDANT and depth[0] < 2):
-                bad_depth = True
-
-            if kind is not START:
-                depth[0] -= 1
-
-            if bad_depth:
-                return None
+            if not ignore_context:
+                outside = (steps[0][0] is SELF and depth[0] != 0) \
+                       or (steps[0][0] is CHILD and depth[0] != 1) \
+                       or (steps[0][0] is DESCENDANT and depth[0] < 1)
+                if kind is START:
+                    depth[0] += 1
+                if outside:
+                    return None
 
             axis, nodetest, predicates = steps[0]
-
-            # nodetest first
             if not nodetest(kind, data, pos, namespaces, variables):
                 return None
 
-            # TODO: or maybe add nodetest here 
-            # (chain((nodetest,), predicates))?
-            cnum = 0
             if predicates:
+                cnum = 0
                 for predicate in predicates:
                     pretval = predicate(kind, data, pos, namespaces, variables)
                     if type(pretval) is float: # FIXME <- need to check this
                                                # for other types that can be
                                                # coerced to float
-                        if len(counters) < cnum+1:
+                        if len(counters) < cnum + 1:
                             counters.append(0)
                         counters[cnum] += 1 
                         if counters[cnum] != int(pretval):
@@ -326,9 +313,8 @@ class SingleStepStrategy(object):
                     if not pretval:
                          return None
 
-            axis, nodetest, predicates = steps[-1]
-            if axis is ATTRIBUTE:
-                return nodetest(kind, data, pos, namespaces, variables)
+            if select_attr:
+                return select_attr(kind, data, pos, namespaces, variables)
 
             return True
 
@@ -568,7 +554,6 @@ class Path(object):
                     break
             else:
                 raise NotImplemented, "This path is not implemented"
-                    
 
     def __repr__(self):
         paths = []

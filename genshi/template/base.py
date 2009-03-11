@@ -525,18 +525,17 @@ class Template(DirectiveFactory):
                 # this point, so do some evaluation
                 tag, attrs = data
                 new_attrs = []
-                for name, substream in attrs:
-                    if type(substream) is list:
+                for name, value in attrs:
+                    if type(value) is list: # this is an interpolated string
                         values = []
-                        for event in self._flatten(substream, ctxt, **vars):
+                        for event in self._flatten(value, ctxt, **vars):
                             if event[0] is TEXT:
                                 values.append(event[1])
                         value = [x for x in values if x is not None]
                         if not value:
                             continue
-                    else:
-                        value = substream
-                    new_attrs.append((name, u''.join(value)))
+                        value = u''.join(value)
+                    new_attrs.append((name, value))
                 yield kind, (tag, Attrs(new_attrs)), pos
 
             elif kind is EXPR:

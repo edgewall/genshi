@@ -38,6 +38,7 @@ Because the XPath engine operates on markup streams (as opposed to tree
 structures), it only implements a subset of the full XPath 1.0 language.
 """
 
+from collections import deque
 try:
     from functools import reduce
 except ImportError:
@@ -45,7 +46,6 @@ except ImportError:
 from math import ceil, floor
 import operator
 import re
-from collections import deque
 from itertools import chain
 
 from genshi.core import Stream, Attrs, Namespace, QName
@@ -110,58 +110,43 @@ class GenericStrategy(object):
         # for example <a><a><b/></a></a> should match both //a//b[1]
         # and //a//b[2]
         # positions always form increasing sequence (invariant)
-        firstpos = [(0, [[]])]
-        stack = [firstpos]
-
-        # for every position in expression stores counters' list
-        # it is used for position based predicates
-        #counters = [[] for _ in xrange(len(steps))]
-
-        # indexes where expression has descendant(-or-self) axis
-        descendant_axes = [idx for idx, (axis, _, _) in enumerate(steps)
-                           if axis is DESCENDANT or axis is DESCENDANT_OR_SELF]
+        stack = [[(0, [[]])]]
 
         def _test(event, namespaces, variables, updateonly=False):
             kind, data, pos = event[:3]
             retval = None
 
             # Manage the stack that tells us "where we are" in the stream
-            if kind is START_NS or kind is END_NS \
-                    or kind is START_CDATA or kind is END_CDATA:
-                # should we make namespaces work?
-                return None
             if kind is END:
                 if stack:
                     stack.pop()
                 return None
+            if kind is START_NS or kind is END_NS \
+                    or kind is START_CDATA or kind is END_CDATA:
+                # should we make namespaces work?
+                return None
 
-            # FIXME: Need to find out when we can do this
-            #if updateonly:
-            #    continue
-
-            positions_queue = deque((pos, cou, []) for pos, cou in stack[-1])
-            next_positions = []
+            posqueue = deque([(pos, cou, []) for pos, cou in stack[-1]])
+            nextpos = []
 
             # length of real part of path - we omit attribute axis
             real_len = len(steps) - ((steps[-1][0] == ATTRIBUTE) or 1 and 0)
             last_checked = -1
-            
+
             # places where we have to check for match, are these
             # provided by parent
-            while len(positions_queue) > 0:
-                x, pcou, mcou = positions_queue.popleft()
+            while posqueue:
+                x, pcou, mcou = posqueue.popleft()
 
                 axis, nodetest, predicates = steps[x]
 
                 # we need to push descendant-like positions from parent
                 # further
-                if (axis is DESCENDANT or axis is DESCENDANT_OR_SELF) \
-                        and len(pcou) > 0:
-                    if len(next_positions) > 0 \
-                            and next_positions[-1][0] == x:
-                        next_positions[-1][1].extend(pcou)
+                if (axis is DESCENDANT or axis is DESCENDANT_OR_SELF) and pcou:
+                    if nextpos and nextpos[-1][0] == x:
+                        nextpos[-1][1].extend(pcou)
                     else:
-                        next_positions.append((x, pcou))
+                        nextpos.append((x, pcou))
 
                 # nodetest first
                 if not nodetest(kind, data, pos, namespaces, variables):
@@ -183,11 +168,9 @@ class GenericStrategy(object):
                         pretval = predicate(kind, data, pos,
                                             namespaces,
                                             variables)
-                        if type(pretval) is float: # FIXME <- need to
-                                                   # check this for
-                                                   # other types that
-                                                   # can be coerced to
-                                                   # float
+                        if type(pretval) is float: # FIXME <- need to check
+                                                   # this for other types that
+                                                   # can be coerced to float
 
                             # each counter pack needs to be checked
                             for i, cou in enumerate(chain(pcou, mcou)):
@@ -195,7 +178,7 @@ class GenericStrategy(object):
                                 if i in missed:
                                     continue
 
-                                if len(cou) < cnum+1:
+                                if len(cou) < cnum + 1:
                                     cou.append(0)
                                 cou[cnum] += 1 
 
@@ -207,6 +190,7 @@ class GenericStrategy(object):
                             if len(missed) == counters_len:
                                 pretval = False
                             cnum += 1
+
                         if not pretval:
                              matched = False
                              break
@@ -223,8 +207,8 @@ class GenericStrategy(object):
                     matched = True
                     axis, nodetest, predicates = steps[-1]
                     if axis is ATTRIBUTE:
-                        matched = nodetest(kind, data, pos, \
-                                namespaces, variables)
+                        matched = nodetest(kind, data, pos, namespaces,
+                                           variables)
                     if matched:
                         retval = matched
                 else:
@@ -233,90 +217,19 @@ class GenericStrategy(object):
                     # if next axis allows matching self we have
                     # to add next position to our queue
                     if naxis is DESCENDANT_OR_SELF or naxis is SELF:
-                        if len(positions_queue) == 0 \
-                                or positions_queue[0][0] > x + 1:
-                            positions_queue.appendleft(
-                                            (x + 1, [], [child_counter]))
+                        if not posqueue or posqueue[0][0] > x + 1:
+                            posqueue.appendleft((x + 1, [], [child_counter]))
                         else:
-                            positions_queue[0][2].append(child_counter)
+                            posqueue[0][2].append(child_counter)
 
                     # if axis is not self we have to add it to child's list
                     if naxis is not SELF:
-                        next_positions.append((x+1, [child_counter]))
+                        nextpos.append((x+1, [child_counter]))
 
             if kind is START:
-                stack.append(next_positions)
+                stack.append(nextpos)
 
             return retval
-        return _test
-
-
-class SingleStepStrategy(object):
-
-    @classmethod
-    def supports(cls, path):
-        return len(path) == 1
-
-    def __init__(self, path):
-        self.path = path
-
-    def test(self, ignore_context):
-        steps = self.path
-        if steps[0][0] is ATTRIBUTE:
-            steps = [_DOTSLASH] + steps
-        select_attr = steps[-1][0] is ATTRIBUTE and steps[-1][1] or None
-
-        # for every position in expression stores counters' list
-        # it is used for position based predicates
-        counters = []
-        depth = [0]
-
-        def _test(event, namespaces, variables, updateonly=False):
-            kind, data, pos = event[:3]
-
-            # Manage the stack that tells us "where we are" in the stream
-            if kind is END:
-                if not ignore_context:
-                    depth[0] -= 1
-                return None
-            elif kind is START_NS or kind is END_NS \
-                    or kind is START_CDATA or kind is END_CDATA:
-                # should we make namespaces work?
-                return None
-
-            if not ignore_context:
-                outside = (steps[0][0] is SELF and depth[0] != 0) \
-                       or (steps[0][0] is CHILD and depth[0] != 1) \
-                       or (steps[0][0] is DESCENDANT and depth[0] < 1)
-                if kind is START:
-                    depth[0] += 1
-                if outside:
-                    return None
-
-            axis, nodetest, predicates = steps[0]
-            if not nodetest(kind, data, pos, namespaces, variables):
-                return None
-
-            if predicates:
-                cnum = 0
-                for predicate in predicates:
-                    pretval = predicate(kind, data, pos, namespaces, variables)
-                    if type(pretval) is float: # FIXME <- need to check this
-                                               # for other types that can be
-                                               # coerced to float
-                        if len(counters) < cnum + 1:
-                            counters.append(0)
-                        counters[cnum] += 1 
-                        if counters[cnum] != int(pretval):
-                            pretval = False
-                        cnum += 1
-                    if not pretval:
-                         return None
-
-            if select_attr:
-                return select_attr(kind, data, pos, namespaces, variables)
-
-            return True
 
         return _test
 
@@ -410,7 +323,10 @@ class SimplePathStrategy(object):
         # p is position in this fragment
         # ic is if we ignore context in this fragment
         stack = []
+        stack_push = stack.append
+        stack_pop = stack.pop
         frags = self.fragments
+        frags_len = len(frags)
 
         def _test(event, namespaces, variables, updateonly=False):
             # expression found impossible during init
@@ -420,19 +336,19 @@ class SimplePathStrategy(object):
             kind, data, pos = event[:3]
 
             # skip events we don't care about
+            if kind is END:
+                if stack:
+                    stack_pop()
+                return None
             if kind is START_NS or kind is END_NS \
                     or kind is START_CDATA or kind is END_CDATA:
                 return None
-            if kind is END:
-                if stack:
-                    stack.pop()
-                return None
 
-            if len(stack) == 0:
+            if not stack:
                 # root node, nothing on stack, special case
                 fid = 0
                 # skip empty fragments (there can be actually only one)
-                while len(frags[fid][0]) == 0:
+                while not frags[fid][0]:
                     fid += 1
                 p = 0
                 # empty fragment means descendant node at beginning
@@ -443,7 +359,7 @@ class SimplePathStrategy(object):
                 # axis is not descendant::
                 if not frags[fid][3] and (not ignore_context or fid > 0):
                     # axis is not self-beggining, we have to skip this node
-                    stack.append((fid, p, ic))
+                    stack_push((fid, p, ic))
                     return None
             else:
                 # take position of parent
@@ -452,8 +368,9 @@ class SimplePathStrategy(object):
             if fid is not None and not ic:
                 # fragment not ignoring context - we can't jump back
                 frag, pi, attrib, _ = frags[fid]
+                frag_len = len(frag)
 
-                if p == len(frag):
+                if p == frag_len:
                     # that probably means empty first fragment
                     pass
                 elif frag[p](kind, data, pos, namespaces, variables):
@@ -463,7 +380,7 @@ class SimplePathStrategy(object):
                     # not matched, so there will be no match in subtree
                     fid, p = None, None
 
-                if p == len(frag) and fid + 1 != len(frags):
+                if p == frag_len and fid + 1 != frags_len:
                     # we made it to end of fragment, we can go to following
                     fid += 1
                     p = 0
@@ -472,24 +389,25 @@ class SimplePathStrategy(object):
             if fid is None:
                 # there was no match in fragment not ignoring context
                 if kind is START:
-                    stack.append((fid, p, ic))
+                    stack_push((fid, p, ic))
                 return None
 
             if ic:
                 # we are in fragment ignoring context
                 while True:
                     frag, pi, attrib, _ = frags[fid]
+                    frag_len = len(frag)
 
                     # KMP new "character"
-                    while p > 0 and (p >= len(frag) or not \
+                    while p > 0 and (p >= frag_len or not \
                             frag[p](kind, data, pos, namespaces, variables)):
                         p = pi[p-1]
                     if frag[p](kind, data, pos, namespaces, variables):
                         p += 1
 
-                    if p == len(frag):
+                    if p == frag_len:
                         # end of fragment reached
-                        if fid + 1 == len(frags):
+                        if fid + 1 == frags_len:
                             # that was last fragment
                             break
                         else:
@@ -505,22 +423,90 @@ class SimplePathStrategy(object):
             if kind is START:
                 # we have to put new position on stack, for children
 
-                if not ic and fid + 1 == len(frags) and p == len(frag):
+                if not ic and fid + 1 == frags_len and p == frag_len:
                     # it is end of the only, not context ignoring fragment
                     # so there will be no matches in subtree
-                    stack.append((None, None, ic))
+                    stack_push((None, None, ic))
                 else:
-                    stack.append((fid, p, ic))
+                    stack_push((fid, p, ic))
 
-            if fid + 1 == len(frags) and p == len(frag):
-                # end of last fragment reached
-                if attrib:
-                    # attribute ended path
+            # have we reached the end of the last fragment?
+            if fid + 1 == frags_len and p == frag_len:
+                if attrib: # attribute ended path, return value
                     return attrib(kind, data, pos, namespaces, variables)
-                else:
-                    return True
-            else:
+                return True
+
+            return None
+
+        return _test
+
+
+class SingleStepStrategy(object):
+
+    @classmethod
+    def supports(cls, path):
+        return len(path) == 1
+
+    def __init__(self, path):
+        self.path = path
+
+    def test(self, ignore_context):
+        steps = self.path
+        if steps[0][0] is ATTRIBUTE:
+            steps = [_DOTSLASH] + steps
+        select_attr = steps[-1][0] is ATTRIBUTE and steps[-1][1] or None
+
+        # for every position in expression stores counters' list
+        # it is used for position based predicates
+        counters = []
+        depth = [0]
+
+        def _test(event, namespaces, variables, updateonly=False):
+            kind, data, pos = event[:3]
+
+            # Manage the stack that tells us "where we are" in the stream
+            if kind is END:
+                if not ignore_context:
+                    depth[0] -= 1
                 return None
+            elif kind is START_NS or kind is END_NS \
+                    or kind is START_CDATA or kind is END_CDATA:
+                # should we make namespaces work?
+                return None
+
+            if not ignore_context:
+                outside = (steps[0][0] is SELF and depth[0] != 0) \
+                       or (steps[0][0] is CHILD and depth[0] != 1) \
+                       or (steps[0][0] is DESCENDANT and depth[0] < 1)
+                if kind is START:
+                    depth[0] += 1
+                if outside:
+                    return None
+
+            axis, nodetest, predicates = steps[0]
+            if not nodetest(kind, data, pos, namespaces, variables):
+                return None
+
+            if predicates:
+                cnum = 0
+                for predicate in predicates:
+                    pretval = predicate(kind, data, pos, namespaces, variables)
+                    if type(pretval) is float: # FIXME <- need to check this
+                                               # for other types that can be
+                                               # coerced to float
+                        if len(counters) < cnum + 1:
+                            counters.append(0)
+                        counters[cnum] += 1 
+                        if counters[cnum] != int(pretval):
+                            pretval = False
+                        cnum += 1
+                    if not pretval:
+                         return None
+
+            if select_attr:
+                return select_attr(kind, data, pos, namespaces, variables)
+
+            return True
 
         return _test
 
@@ -528,13 +514,12 @@ class SimplePathStrategy(object):
 class Path(object):
     """Implements basic XPath support on streams.
     
-    Instances of this class represent a "compiled" XPath expression, and provide
-    methods for testing the path against a stream, as well as extracting a
-    substream matching that path.
+    Instances of this class represent a "compiled" XPath expression, and
+    provide methods for testing the path against a stream, as well as
+    extracting a substream matching that path.
     """
 
-    available_strategies = [SingleStepStrategy, SimplePathStrategy,
-                            GenericStrategy]
+    STRATEGIES = (SingleStepStrategy, SimplePathStrategy, GenericStrategy)
 
     def __init__(self, text, filename=None, lineno=-1):
         """Create the path object from a string.
@@ -548,7 +533,7 @@ class Path(object):
         self.paths = PathParser(text, filename, lineno).parse()
         self.strategies = []
         for path in self.paths:
-            for strategy_class in self.available_strategies:
+            for strategy_class in self.STRATEGIES:
                 if strategy_class.supports(path):
                     self.strategies.append(strategy_class(path))
                     break
@@ -591,23 +576,23 @@ class Path(object):
         if variables is None:
             variables = {}
         stream = iter(stream)
-        def _generate():
+        def _generate(stream=stream, ns=namespaces, vs=variables):
+            next = stream.next
             test = self.test()
             for event in stream:
-                result = test(event, namespaces, variables)
+                result = test(event, ns, vs)
                 if result is True:
                     yield event
                     if event[0] is START:
                         depth = 1
                         while depth > 0:
-                            subevent = stream.next()
+                            subevent = next()
                             if subevent[0] is START:
                                 depth += 1
                             elif subevent[0] is END:
                                 depth -= 1
                             yield subevent
-                            test(subevent, namespaces, variables,
-                                 updateonly=True)
+                            test(subevent, ns, vs, updateonly=True)
                 elif result:
                     yield result
         return Stream(_generate(),

@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2007 Edgewall Software
+# Copyright (C) 2007-2008 Edgewall Software
 # All rights reserved.
 #
 # This software is licensed as described in the file COPYING, which
@@ -59,6 +59,12 @@ class InterpolateTestCase(unittest.TestCase):
         self.assertEqual(1, len(parts))
         self.assertEqual(TEXT, parts[0][0])
         self.assertEqual('$bla', parts[0][1])
+
+    def test_interpolate_short_escaped_2(self):
+        parts = list(interpolate('my $$bla = 2'))
+        self.assertEqual(1, len(parts))
+        self.assertEqual(TEXT, parts[0][0])
+        self.assertEqual('my $bla = 2', parts[0][1])
 
     def test_interpolate_short_doubleescaped(self):
         parts = list(interpolate('$$$bla'))
@@ -179,6 +185,11 @@ class InterpolateTestCase(unittest.TestCase):
         self.assertEqual('bar', parts[1][1].source)
         self.assertEqual(TEXT, parts[2][0])
         self.assertEqual(' baz', parts[2][1])
+
+    def test_interpolate_triplequoted(self):
+        parts = list(interpolate('${"""foo\nbar"""}'))
+        self.assertEqual(1, len(parts))
+        self.assertEqual('"""foo\nbar"""', parts[0][1].source)
 
 
 def suite():

@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2006 Edgewall Software
+# Copyright (C) 2006-2008 Edgewall Software
 # All rights reserved.
 #
 # This software is licensed as described in the file COPYING, which
@@ -13,76 +13,82 @@
 # history and logs, available at http://genshi.edgewall.org/log/.
 
 from distutils.cmd import Command
+from distutils.command.build_ext import build_ext
+from distutils.errors import CCompilerError, DistutilsPlatformError
 import doctest
 from glob import glob
 import os
 try:
-    from setuptools import setup
+    from setuptools import setup, Extension, Feature
+    from setuptools.command.bdist_egg import bdist_egg
 except ImportError:
-    from distutils.core import setup
+    from distutils.core import setup, Extension
+    Feature = None
+    bdist_egg = None
 import sys
 
+sys.path.append(os.path.join('doc', 'common'))
+try:
+    from doctools import build_doc, test_doc
+except ImportError:
+    build_doc = test_doc = None
 
-class build_doc(Command):
-    description = 'Builds the documentation'
-    user_options = []
+_speedup_available = False
 
-    def initialize_options(self):
-        pass
-
-    def finalize_options(self):
-        pass
-
+class optional_build_ext(build_ext):
+    # This class allows C extension building to fail.
     def run(self):
-        from docutils.core import publish_cmdline
-        docutils_conf = os.path.join('doc', 'docutils.conf')
-        epydoc_conf = os.path.join('doc', 'epydoc.conf')
-
-        for source in glob('doc/*.txt'):
-            dest = os.path.splitext(source)[0] + '.html'
-            if not os.path.exists(dest) or \
-                   os.path.getmtime(dest) < os.path.getmtime(source):
-                print 'building documentation file %s' % dest
-                publish_cmdline(writer_name='html',
-                                argv=['--config=%s' % docutils_conf, source,
-                                      dest])
-
         try:
-            from epydoc import cli
-            old_argv = sys.argv[1:]
-            sys.argv[1:] = [
-                '--config=%s' % epydoc_conf,
-                '--no-private', # epydoc bug, not read from config
-                '--simple-term',
-                '--verbose'
-            ]
-            cli.cli()
-            sys.argv[1:] = old_argv
+            build_ext.run(self)
+        except DistutilsPlatformError, e:
+            self._unavailable(e)
 
-        except ImportError:
-            print 'epydoc not installed, skipping API documentation.'
+    def build_extension(self, ext):
+        try:
+            build_ext.build_extension(self, ext)
+            global _speedup_available
+            _speedup_available = True
+        except CCompilerError, e:
+            self._unavailable(e)
+
+    def _unavailable(self, exc):
+        print '*' * 70
+        print """WARNING:
+An optional C extension could not be compiled, speedups will not be
+available."""
+        print '*' * 70
+        print exc
 
 
-class test_doc(Command):
-    description = 'Tests the code examples in the documentation'
-    user_options = []
+if Feature:
+    speedups = Feature(
+        "optionial C speed-enhancements",
+        standard = True,
+        ext_modules = [
+            Extension('genshi._speedups', ['genshi/_speedups.c']),
+        ],
+    )
+else:
+    speedups = None
 
-    def initialize_options(self):
-        pass
 
-    def finalize_options(self):
-        pass
+# Setuptools need some help figuring out if the egg is "zip_safe" or not
+if bdist_egg:
+    class my_bdist_egg(bdist_egg):
+        def zip_safe(self):
+            return not _speedup_available and bdist_egg.zip_safe(self)
 
-    def run(self):
-        for filename in glob('doc/*.txt'):
-            print 'testing documentation file %s' % filename
-            doctest.testfile(filename, False, optionflags=doctest.ELLIPSIS)
+
+cmdclass = {'build_doc': build_doc, 'test_doc': test_doc,
+            'build_ext': optional_build_ext}
+if bdist_egg:
+    cmdclass['bdist_egg'] = my_bdist_egg
 
 
 setup(
     name = 'Genshi',
-    version = '0.5',
-    description = 'A toolkit for stream-based generation of output for the web',
+    version = '0.6',
+    description = 'A toolkit for generation of output for the web',
     long_description = \
 """Genshi is a Python library that provides an integrated set of
 components for parsing, generating, and processing HTML, XML or
@@ -93,7 +99,6 @@ feature is a template language, which is heavily inspired by Kid.""",
     license = 'BSD',
     url = 'http://genshi.edgewall.org/',
     download_url = 'http://genshi.edgewall.org/wiki/Download',
-    zip_safe = True,
 
     classifiers = [
         'Development Status :: 4 - Beta',
@@ -111,13 +116,20 @@ feature is a template language, which is heavily inspired by Kid.""",
     packages = ['genshi', 'genshi.filters', 'genshi.template'],
     test_suite = 'genshi.tests.suite',
 
-    extras_require = {'plugin': ['setuptools>=0.6a2']},
+    extras_require = {
+        'i18n': ['Babel>=0.8'],
+        'plugin': ['setuptools>=0.6a2']
+    },
     entry_points = """
+    [babel.extractors]
+    genshi = genshi.filters.i18n:extract[i18n]
+    
     [python.templating.engines]
     genshi = genshi.template.plugin:MarkupTemplateEnginePlugin[plugin]
     genshi-markup = genshi.template.plugin:MarkupTemplateEnginePlugin[plugin]
     genshi-text = genshi.template.plugin:TextTemplateEnginePlugin[plugin]
     """,
 
-    cmdclass = {'build_doc': build_doc, 'test_doc': test_doc}
+    features = {'speedups': speedups},
+    cmdclass = cmdclass
 )

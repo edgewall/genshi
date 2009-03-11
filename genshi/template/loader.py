@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2006-2007 Edgewall Software
+# Copyright (C) 2006-2008 Edgewall Software
 # All rights reserved.
 #
 # This software is licensed as described in the file COPYING, which
@@ -22,7 +22,8 @@ except ImportError:
 from genshi.template.base import TemplateError
 from genshi.util import LRUCache
 
-__all__ = ['TemplateLoader', 'TemplateNotFound']
+__all__ = ['TemplateLoader', 'TemplateNotFound', 'directory', 'package',
+           'prefixed']
 __docformat__ = 'restructuredtext en'
 
 
@@ -69,16 +70,23 @@ class TemplateLoader(object):
     >>> loader.load(os.path.basename(path)) is template
     True
     
+    The `auto_reload` option can be used to control whether a template should
+    be automatically reloaded when the file it was loaded from has been
+    changed. Disable this automatic reloading to improve performance.
+    
     >>> os.remove(path)
     """
     def __init__(self, search_path=None, auto_reload=False,
                  default_encoding=None, max_cache_size=25, default_class=None,
-                 variable_lookup='lenient', callback=None):
+                 variable_lookup='strict', allow_exec=True, callback=None):
         """Create the template laoder.
         
         :param search_path: a list of absolute path names that should be
                             searched for template files, or a string containing
-                            a single absolute path
+                            a single absolute path; alternatively, any item on
+                            the list may be a ''load function'' that is passed
+                            a filename and returns a file-like object and some
+                            metadata
         :param auto_reload: whether to check the last modification time of
                             template files, and reload them if they have changed
         :param default_encoding: the default encoding to assume when loading
@@ -87,40 +95,48 @@ class TemplateLoader(object):
                                cache
         :param default_class: the default `Template` subclass to use when
                               instantiating templates
-        :param variable_lookup: the variable lookup mechanism; either "lenient"
-                                (the default), "strict", or a custom lookup
+        :param variable_lookup: the variable lookup mechanism; either "strict"
+                                (the default), "lenient", or a custom lookup
                                 class
+        :param allow_exec: whether to allow Python code blocks in templates
         :param callback: (optional) a callback function that is invoked after a
                          template was initialized by this loader; the function
                          is passed the template object as only argument. This
                          callback can be used for example to add any desired
                          filters to the template
         :see: `LenientLookup`, `StrictLookup`
+        
+        :note: Changed in 0.5: Added the `allow_exec` argument
         """
         from genshi.template.markup import MarkupTemplate
 
         self.search_path = search_path
         if self.search_path is None:
             self.search_path = []
-        elif isinstance(self.search_path, basestring):
+        elif not isinstance(self.search_path, (list, tuple)):
             self.search_path = [self.search_path]
+
         self.auto_reload = auto_reload
+        """Whether templates should be reloaded when the underlying file is
+        changed"""
+
         self.default_encoding = default_encoding
         self.default_class = default_class or MarkupTemplate
         self.variable_lookup = variable_lookup
-        if callback is not None and not callable(callback):
+        self.allow_exec = allow_exec
+        if callback is not None and not hasattr(callback, '__call__'):
             raise TypeError('The "callback" parameter needs to be callable')
         self.callback = callback
         self._cache = LRUCache(max_cache_size)
-        self._mtime = {}
-        self._lock = threading.Lock()
+        self._uptodate = {}
+        self._lock = threading.RLock()
 
     def load(self, filename, relative_to=None, cls=None, encoding=None):
         """Load the template with the given name.
         
-        If the `filename` parameter is relative, this method searches the search
-        path trying to locate a template matching the given name. If the file
-        name is an absolute path, the search path is ignored.
+        If the `filename` parameter is relative, this method searches the
+        search path trying to locate a template matching the given name. If the
+        file name is an absolute path, the search path is ignored.
         
         If the requested template is not found, a `TemplateNotFound` exception
         is raised. Otherwise, a `Template` object is returned that represents
@@ -143,29 +159,35 @@ class TemplateLoader(object):
         :param encoding: the encoding of the template to load; defaults to the
                          ``default_encoding`` of the loader instance
         :return: the loaded `Template` instance
-        :raises TemplateNotFound: if a template with the given name could not be
-                                  found
+        :raises TemplateNotFound: if a template with the given name could not
+                                  be found
         """
         if cls is None:
             cls = self.default_class
-        if encoding is None:
-            encoding = self.default_encoding
-        if relative_to and not os.path.isabs(relative_to):
+        search_path = self.search_path
+
+        # Make the filename relative to the template file its being loaded
+        # from, but only if that file is specified as a relative path, or no
+        # search path has been set up
+        if relative_to and (not search_path or not os.path.isabs(relative_to)):
             filename = os.path.join(os.path.dirname(relative_to), filename)
+
         filename = os.path.normpath(filename)
+        cachekey = filename
 
         self._lock.acquire()
         try:
             # First check the cache to avoid reparsing the same file
             try:
-                tmpl = self._cache[filename]
-                if not self.auto_reload or \
-                        os.path.getmtime(tmpl.filepath) == self._mtime[filename]:
+                tmpl = self._cache[cachekey]
+                if not self.auto_reload:
                     return tmpl
-            except KeyError:
+                uptodate = self._uptodate[cachekey]
+                if uptodate is not None and uptodate():
+                    return tmpl
+            except (KeyError, OSError):
                 pass
 
-            search_path = self.search_path
             isabs = False
 
             if os.path.isabs(filename):
@@ -178,40 +200,135 @@ class TemplateLoader(object):
                 # template is on the search path
                 dirname = os.path.dirname(relative_to)
                 if dirname not in search_path:
-                    search_path = search_path + [dirname]
+                    search_path = list(search_path) + [dirname]
                 isabs = True
 
             elif not search_path:
                 # Uh oh, don't know where to look for the template
                 raise TemplateError('Search path for templates not configured')
 
-            for dirname in search_path:
-                filepath = os.path.join(dirname, filename)
+            for loadfunc in search_path:
+                if isinstance(loadfunc, basestring):
+                    loadfunc = directory(loadfunc)
                 try:
-                    fileobj = open(filepath, 'U')
+                    filepath, filename, fileobj, uptodate = loadfunc(filename)
+                except IOError:
+                    continue
+                else:
                     try:
                         if isabs:
                             # If the filename of either the included or the 
                             # including template is absolute, make sure the
                             # included template gets an absolute path, too,
-                            # so that nested include work properly without a
+                            # so that nested includes work properly without a
                             # search path
-                            filename = os.path.join(dirname, filename)
-                            dirname = ''
-                        tmpl = cls(fileobj, basedir=dirname, filename=filename,
-                                   loader=self, lookup=self.variable_lookup,
-                                   encoding=encoding)
+                            filename = filepath
+                        tmpl = self._instantiate(cls, fileobj, filepath,
+                                                 filename, encoding=encoding)
                         if self.callback:
                             self.callback(tmpl)
-                        self._cache[filename] = tmpl
-                        self._mtime[filename] = os.path.getmtime(filepath)
+                        self._cache[cachekey] = tmpl
+                        self._uptodate[cachekey] = uptodate
                     finally:
-                        fileobj.close()
+                        if hasattr(fileobj, 'close'):
+                            fileobj.close()
                     return tmpl
-                except IOError:
-                    continue
 
             raise TemplateNotFound(filename, search_path)
 
         finally:
             self._lock.release()
+
+    def _instantiate(self, cls, fileobj, filepath, filename, encoding=None):
+        """Instantiate and return the `Template` object based on the given
+        class and parameters.
+        
+        This function is intended for subclasses to override if they need to
+        implement special template instantiation logic. Code that just uses
+        the `TemplateLoader` should use the `load` method instead.
+        
+        :param cls: the class of the template object to instantiate
+        :param fileobj: a readable file-like object containing the template
+                        source
+        :param filepath: the absolute path to the template file
+        :param filename: the path to the template file relative to the search
+                         path
+        :param encoding: the encoding of the template to load; defaults to the
+                         ``default_encoding`` of the loader instance
+        :return: the loaded `Template` instance
+        :rtype: `Template`
+        """
+        if encoding is None:
+            encoding = self.default_encoding
+        return cls(fileobj, filepath=filepath, filename=filename, loader=self,
+                   encoding=encoding, lookup=self.variable_lookup,
+                   allow_exec=self.allow_exec)
+
+    def directory(path):
+        """Loader factory for loading templates from a local directory.
+        
+        :param path: the path to the local directory containing the templates
+        :return: the loader function to load templates from the given directory
+        :rtype: ``function``
+        """
+        def _load_from_directory(filename):
+            filepath = os.path.join(path, filename)
+            fileobj = open(filepath, 'U')
+            mtime = os.path.getmtime(filepath)
+            def _uptodate():
+                return mtime == os.path.getmtime(filepath)
+            return filepath, filename, fileobj, _uptodate
+        return _load_from_directory
+    directory = staticmethod(directory)
+
+    def package(name, path):
+        """Loader factory for loading templates from egg package data.
+        
+        :param name: the name of the package containing the resources
+        :param path: the path inside the package data
+        :return: the loader function to load templates from the given package
+        :rtype: ``function``
+        """
+        from pkg_resources import resource_stream
+        def _load_from_package(filename):
+            filepath = os.path.join(path, filename)
+            return filepath, filename, resource_stream(name, filepath), None
+        return _load_from_package
+    package = staticmethod(package)
+
+    def prefixed(**delegates):
+        """Factory for a load function that delegates to other loaders
+        depending on the prefix of the requested template path.
+        
+        The prefix is stripped from the filename when passing on the load
+        request to the delegate.
+        
+        >>> load = prefixed(
+        ...     app1 = lambda filename: ('app1', filename, None, None),
+        ...     app2 = lambda filename: ('app2', filename, None, None)
+        ... )
+        >>> print load('app1/foo.html')
+        ('app1', 'app1/foo.html', None, None)
+        >>> print load('app2/bar.html')
+        ('app2', 'app2/bar.html', None, None)
+        
+        :param delegates: mapping of path prefixes to loader functions
+        :return: the loader function
+        :rtype: ``function``
+        """
+        def _dispatch_by_prefix(filename):
+            for prefix, delegate in delegates.items():
+                if filename.startswith(prefix):
+                    if isinstance(delegate, basestring):
+                        delegate = directory(delegate)
+                    filepath, _, fileobj, uptodate = delegate(
+                        filename[len(prefix):].lstrip('/\\')
+                    )
+                    return filepath, filename, fileobj, uptodate
+            raise TemplateNotFound(filename, delegates.keys())
+        return _dispatch_by_prefix
+    prefixed = staticmethod(prefixed)
+
+directory = TemplateLoader.directory
+package = TemplateLoader.package
+prefixed = TemplateLoader.prefixed

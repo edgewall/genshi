@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2006 Edgewall Software
+# Copyright (C) 2006-2008 Edgewall Software
 # All rights reserved.
 #
 # This software is licensed as described in the file COPYING, which
@@ -16,7 +16,7 @@ import unittest
 
 from genshi.input import HTML, ParseError
 from genshi.filters.html import HTMLFormFiller, HTMLSanitizer
-
+from genshi.template import MarkupTemplate
 
 class HTMLFormFillerTestCase(unittest.TestCase):
 
@@ -270,6 +270,42 @@ class HTMLFormFillerTestCase(unittest.TestCase):
           </select>
         </p></form>""", unicode(html))
 
+    def test_fill_option_segmented_text(self):
+        html = MarkupTemplate("""<form>
+          <select name="foo">
+            <option value="1">foo $x</option>
+          </select>
+        </form>""").generate(x=1) | HTMLFormFiller(data={'foo': '1'})
+        self.assertEquals("""<form>
+          <select name="foo">
+            <option value="1" selected="selected">foo 1</option>
+          </select>
+        </form>""", unicode(html))
+
+    def test_fill_option_segmented_text_no_value(self):
+        html = MarkupTemplate("""<form>
+          <select name="foo">
+            <option>foo $x bar</option>
+          </select>
+        </form>""").generate(x=1) | HTMLFormFiller(data={'foo': 'foo 1 bar'})
+        self.assertEquals("""<form>
+          <select name="foo">
+            <option selected="selected">foo 1 bar</option>
+          </select>
+        </form>""", unicode(html))
+
+    def test_fill_option_unicode_value(self):
+        html = HTML(u"""<form>
+          <select name="foo">
+            <option value="&ouml;">foo</option>
+          </select>
+        </form>""") | HTMLFormFiller(data={'foo': u'ö'})
+        self.assertEquals(u"""<form>
+          <select name="foo">
+            <option value="ö" selected="selected">foo</option>
+          </select>
+        </form>""", unicode(html))
+
 
 class HTMLSanitizerTestCase(unittest.TestCase):
 
@@ -318,6 +354,10 @@ class HTMLSanitizerTestCase(unittest.TestCase):
         html = HTML('<div onclick=\'alert("foo")\' />')
         self.assertEquals(u'<div/>', unicode(html | HTMLSanitizer()))
 
+    def test_sanitize_remove_comments(self):
+        html = HTML('''<div><!-- conditional comment crap --></div>''')
+        self.assertEquals(u'<div/>', unicode(html | HTMLSanitizer()))
+
     def test_sanitize_remove_style_scripts(self):
         sanitizer = HTMLSanitizer(safe_attrs=HTMLSanitizer.SAFE_ATTRS | set(['style']))
         # Inline style with url() using javascript: scheme
@@ -331,6 +371,8 @@ class HTMLSanitizerTestCase(unittest.TestCase):
         self.assertEquals(u'<div/>', unicode(html | sanitizer))
         # IE expressions in CSS not allowed
         html = HTML('<DIV STYLE=\'width: expression(alert("foo"));\'>')
+        self.assertEquals(u'<div/>', unicode(html | sanitizer))
+        html = HTML('<DIV STYLE=\'width: e/**/xpression(alert("foo"));\'>')
         self.assertEquals(u'<div/>', unicode(html | sanitizer))
         html = HTML('<DIV STYLE=\'background: url(javascript:alert("foo"));'
                                  'color: #fff\'>')

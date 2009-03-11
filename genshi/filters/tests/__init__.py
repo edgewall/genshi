@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2007 Edgewall Software
+# Copyright (C) 2007-2008 Edgewall Software
 # All rights reserved.
 #
 # This software is licensed as described in the file COPYING, which
@@ -15,10 +15,12 @@ import doctest
 import unittest
 
 def suite():
-    from genshi.filters.tests import html, i18n
+    from genshi.filters.tests import html, i18n, transform
     suite = unittest.TestSuite()
     suite.addTest(html.suite())
     suite.addTest(i18n.suite())
+    if hasattr(doctest, 'NORMALIZE_WHITESPACE'):
+        suite.addTest(transform.suite())
     return suite
 
 if __name__ == '__main__':

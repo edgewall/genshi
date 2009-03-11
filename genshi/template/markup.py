@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2006-2007 Edgewall Software
+# Copyright (C) 2006-2008 Edgewall Software
 # All rights reserved.
 #
 # This software is licensed as described in the file COPYING, which
@@ -14,23 +14,17 @@
 """Markup templating engine."""
 
 from itertools import chain
-import sys
-from textwrap import dedent
 
-from genshi.core import Attrs, Namespace, Stream, StreamEventKind
+from genshi.core import Attrs, Markup, Namespace, Stream, StreamEventKind
 from genshi.core import START, END, START_NS, END_NS, TEXT, PI, COMMENT
 from genshi.input import XMLParser
 from genshi.template.base import BadDirectiveError, Template, \
                                  TemplateSyntaxError, _apply_directives, \
-                                 INCLUDE, SUB
+                                 EXEC, INCLUDE, SUB
 from genshi.template.eval import Suite
 from genshi.template.interpolation import interpolate
 from genshi.template.directives import *
-
-if sys.version_info < (2, 4):
-    _ctxt2dict = lambda ctxt: ctxt.frames[0]
-else:
-    _ctxt2dict = lambda ctxt: ctxt
+from genshi.template.text import NewTextTemplate
 
 __all__ = ['MarkupTemplate']
 __docformat__ = 'restructuredtext en'
@@ -47,11 +41,9 @@ class MarkupTemplate(Template):
       <li>1</li><li>2</li><li>3</li>
     </ul>
     """
-    EXEC = StreamEventKind('EXEC')
-    """Stream event kind representing a Python code suite to execute."""
 
-    DIRECTIVE_NAMESPACE = Namespace('http://genshi.edgewall.org/')
-    XINCLUDE_NAMESPACE = Namespace('http://www.w3.org/2001/XInclude')
+    DIRECTIVE_NAMESPACE = 'http://genshi.edgewall.org/'
+    XINCLUDE_NAMESPACE = 'http://www.w3.org/2001/XInclude'
 
     directives = [('def', DefDirective),
                   ('match', MatchDirective),
@@ -65,152 +57,50 @@ class MarkupTemplate(Template):
                   ('content', ContentDirective),
                   ('attrs', AttrsDirective),
                   ('strip', StripDirective)]
+    serializer = 'xml'
+    _number_conv = Markup
 
-    def __init__(self, source, basedir=None, filename=None, loader=None,
-                 encoding=None, lookup='lenient'):
-        Template.__init__(self, source, basedir=basedir, filename=filename,
-                          loader=loader, encoding=encoding, lookup=lookup)
+    def __init__(self, source, filepath=None, filename=None, loader=None,
+                 encoding=None, lookup='strict', allow_exec=True):
+        Template.__init__(self, source, filepath=filepath, filename=filename,
+                          loader=loader, encoding=encoding, lookup=lookup,
+                          allow_exec=allow_exec)
+        self.add_directives(self.DIRECTIVE_NAMESPACE, self)
+
+    def _init_filters(self):
+        Template._init_filters(self)
         # Make sure the include filter comes after the match filter
-        if loader:
+        if self.loader:
             self.filters.remove(self._include)
-        self.filters += [self._exec, self._match]
-        if loader:
+        self.filters += [self._match]
+        if self.loader:
             self.filters.append(self._include)
 
     def _parse(self, source, encoding):
-        streams = [[]] # stacked lists of events of the "compiled" template
-        dirmap = {} # temporary mapping of directives to elements
-        ns_prefix = {}
-        depth = 0
-        in_fallback = 0
-        include_href = None
-
         if not isinstance(source, Stream):
             source = XMLParser(source, filename=self.filename,
                                encoding=encoding)
+        stream = []
 
         for kind, data, pos in source:
-            stream = streams[-1]
 
-            if kind is START_NS:
-                # Strip out the namespace declaration for template directives
-                prefix, uri = data
-                ns_prefix[prefix] = uri
-                if uri not in (self.DIRECTIVE_NAMESPACE,
-                               self.XINCLUDE_NAMESPACE):
+            if kind is TEXT:
+                for kind, data, pos in interpolate(data, self.filepath, pos[1],
+                                                   pos[2], lookup=self.lookup):
                     stream.append((kind, data, pos))
-
-            elif kind is END_NS:
-                uri = ns_prefix.pop(data, None)
-                if uri and uri not in (self.DIRECTIVE_NAMESPACE,
-                                       self.XINCLUDE_NAMESPACE):
-                    stream.append((kind, data, pos))
-
-            elif kind is START:
-                # Record any directive attributes in start tags
-                tag, attrs = data
-                directives = []
-                strip = False
-
-                if tag in self.DIRECTIVE_NAMESPACE:
-                    cls = self._dir_by_name.get(tag.localname)
-                    if cls is None:
-                        raise BadDirectiveError(tag.localname, self.filepath,
-                                                pos[1])
-                    value = attrs.get(getattr(cls, 'ATTRIBUTE', None), '')
-                    directives.append((cls, value, ns_prefix.copy(), pos))
-                    strip = True
-
-                new_attrs = []
-                for name, value in attrs:
-                    if name in self.DIRECTIVE_NAMESPACE:
-                        cls = self._dir_by_name.get(name.localname)
-                        if cls is None:
-                            raise BadDirectiveError(name.localname,
-                                                    self.filepath, pos[1])
-                        directives.append((cls, value, ns_prefix.copy(), pos))
-                    else:
-                        if value:
-                            value = list(interpolate(value, self.basedir,
-                                                     pos[0], pos[1], pos[2],
-                                                     lookup=self.lookup))
-                            if len(value) == 1 and value[0][0] is TEXT:
-                                value = value[0][1]
-                        else:
-                            value = [(TEXT, u'', pos)]
-                        new_attrs.append((name, value))
-                new_attrs = Attrs(new_attrs)
-
-                if directives:
-                    index = self._dir_order.index
-                    directives.sort(lambda a, b: cmp(index(a[0]), index(b[0])))
-                    dirmap[(depth, tag)] = (directives, len(stream), strip)
-
-                if tag in self.XINCLUDE_NAMESPACE:
-                    if tag.localname == 'include':
-                        include_href = new_attrs.get('href')
-                        if not include_href:
-                            raise TemplateSyntaxError('Include misses required '
-                                                      'attribute "href"',
-                                                      self.filepath, *pos[1:])
-                        streams.append([])
-                    elif tag.localname == 'fallback':
-                        in_fallback += 1
-
-                else:
-                    stream.append((kind, (tag, new_attrs), pos))
-
-                depth += 1
-
-            elif kind is END:
-                depth -= 1
-
-                if in_fallback and data == self.XINCLUDE_NAMESPACE['fallback']:
-                    in_fallback -= 1
-                elif data == self.XINCLUDE_NAMESPACE['include']:
-                    fallback = streams.pop()
-                    stream = streams[-1]
-                    stream.append((INCLUDE, (include_href, fallback), pos))
-                else:
-                    stream.append((kind, data, pos))
-
-                # If there have have directive attributes with the corresponding
-                # start tag, move the events inbetween into a "subprogram"
-                if (depth, data) in dirmap:
-                    directives, start_offset, strip = dirmap.pop((depth, data))
-                    substream = stream[start_offset:]
-                    if strip:
-                        substream = substream[1:-1]
-                    stream[start_offset:] = [(SUB, (directives, substream),
-                                              pos)]
 
             elif kind is PI and data[0] == 'python':
+                if not self.allow_exec:
+                    raise TemplateSyntaxError('Python code blocks not allowed',
+                                              self.filepath, *pos[1:])
                 try:
-                    # As Expat doesn't report whitespace between the PI target
-                    # and the data, we have to jump through some hoops here to
-                    # get correctly indented Python code
-                    # Unfortunately, we'll still probably not get the line
-                    # number quite right
-                    lines = [line.expandtabs() for line in data[1].splitlines()]
-                    first = lines[0]
-                    rest = dedent('\n'.join(lines[1:]))
-                    if first.rstrip().endswith(':') and not rest[0].isspace():
-                        rest = '\n'.join(['    ' + line for line
-                                          in rest.splitlines()])
-                    source = '\n'.join([first, rest])
-                    suite = Suite(source, self.filepath, pos[1],
+                    suite = Suite(data[1], self.filepath, pos[1],
                                   lookup=self.lookup)
                 except SyntaxError, err:
                     raise TemplateSyntaxError(err, self.filepath,
                                               pos[1] + (err.lineno or 1) - 1,
                                               pos[2] + (err.offset or 0))
                 stream.append((EXEC, suite, pos))
-
-            elif kind is TEXT:
-                for kind, data, pos in interpolate(data, self.basedir, pos[0],
-                                                   pos[1], pos[2],
-                                                   lookup=self.lookup):
-                    stream.append((kind, data, pos))
 
             elif kind is COMMENT:
                 if not data.lstrip().startswith('!'):
@@ -219,25 +109,206 @@ class MarkupTemplate(Template):
             else:
                 stream.append((kind, data, pos))
 
+        return stream
+
+    def _extract_directives(self, stream, namespace, factory):
+        depth = 0
+        dirmap = {} # temporary mapping of directives to elements
+        new_stream = []
+        ns_prefix = {} # namespace prefixes in use
+
+        for kind, data, pos in stream:
+
+            if kind is START:
+                tag, attrs = data
+                directives = []
+                strip = False
+
+                if tag.namespace == namespace:
+                    cls = factory.get_directive(tag.localname)
+                    if cls is None:
+                        raise BadDirectiveError(tag.localname,
+                                                self.filepath, pos[1])
+                    args = dict([(name.localname, value) for name, value
+                                 in attrs if not name.namespace])
+                    directives.append((cls, args, ns_prefix.copy(), pos))
+                    strip = True
+
+                new_attrs = []
+                for name, value in attrs:
+                    if name.namespace == namespace:
+                        cls = factory.get_directive(name.localname)
+                        if cls is None:
+                            raise BadDirectiveError(name.localname,
+                                                    self.filepath, pos[1])
+                        if type(value) is list and len(value) == 1:
+                            value = value[0][1]
+                        directives.append((cls, value, ns_prefix.copy(),
+                                           pos))
+                    else:
+                        new_attrs.append((name, value))
+                new_attrs = Attrs(new_attrs)
+
+                if directives:
+                    directives.sort(self.compare_directives())
+                    dirmap[(depth, tag)] = (directives, len(new_stream),
+                                            strip)
+
+                new_stream.append((kind, (tag, new_attrs), pos))
+                depth += 1
+
+            elif kind is END:
+                depth -= 1
+                new_stream.append((kind, data, pos))
+
+                # If there have have directive attributes with the
+                # corresponding start tag, move the events inbetween into
+                # a "subprogram"
+                if (depth, data) in dirmap:
+                    directives, offset, strip = dirmap.pop((depth, data))
+                    substream = new_stream[offset:]
+                    if strip:
+                        substream = substream[1:-1]
+                    new_stream[offset:] = [
+                        (SUB, (directives, substream), pos)
+                    ]
+
+            elif kind is SUB:
+                directives, substream = data
+                substream = self._extract_directives(substream, namespace,
+                                                     factory)
+
+                if len(substream) == 1 and substream[0][0] is SUB:
+                    added_directives, substream = substream[0][1]
+                    directives += added_directives
+
+                new_stream.append((kind, (directives, substream), pos))
+
+            elif kind is START_NS:
+                # Strip out the namespace declaration for template
+                # directives
+                prefix, uri = data
+                ns_prefix[prefix] = uri
+                if uri != namespace:
+                    new_stream.append((kind, data, pos))
+
+            elif kind is END_NS:
+                uri = ns_prefix.pop(data, None)
+                if uri and uri != namespace:
+                    new_stream.append((kind, data, pos))
+
+            else:
+                new_stream.append((kind, data, pos))
+
+        return new_stream
+
+    def _extract_includes(self, stream):
+        streams = [[]] # stacked lists of events of the "compiled" template
+        prefixes = {}
+        fallbacks = []
+        includes = []
+        xinclude_ns = Namespace(self.XINCLUDE_NAMESPACE)
+
+        for kind, data, pos in stream:
+            stream = streams[-1]
+
+            if kind is START:
+                # Record any directive attributes in start tags
+                tag, attrs = data
+                if tag in xinclude_ns:
+                    if tag.localname == 'include':
+                        include_href = attrs.get('href')
+                        if not include_href:
+                            raise TemplateSyntaxError('Include misses required '
+                                                      'attribute "href"',
+                                                      self.filepath, *pos[1:])
+                        includes.append((include_href, attrs.get('parse')))
+                        streams.append([])
+                    elif tag.localname == 'fallback':
+                        streams.append([])
+                        fallbacks.append(streams[-1])
+                else:
+                    stream.append((kind, (tag, attrs), pos))
+
+            elif kind is END:
+                if fallbacks and data == xinclude_ns['fallback']:
+                    assert streams.pop() is fallbacks[-1]
+                elif data == xinclude_ns['include']:
+                    fallback = None
+                    if len(fallbacks) == len(includes):
+                        fallback = fallbacks.pop()
+                    streams.pop() # discard anything between the include tags
+                                  # and the fallback element
+                    stream = streams[-1]
+                    href, parse = includes.pop()
+                    try:
+                        cls = {
+                            'xml': MarkupTemplate,
+                            'text': NewTextTemplate
+                        }[parse or 'xml']
+                    except KeyError:
+                        raise TemplateSyntaxError('Invalid value for "parse" '
+                                                  'attribute of include',
+                                                  self.filepath, *pos[1:])
+                    stream.append((INCLUDE, (href, cls, fallback), pos))
+                else:
+                    stream.append((kind, data, pos))
+
+            elif kind is START_NS and data[1] == xinclude_ns:
+                # Strip out the XInclude namespace
+                prefixes[data[0]] = data[1]
+
+            elif kind is END_NS and data in prefixes:
+                prefixes.pop(data)
+
+            else:
+                stream.append((kind, data, pos))
+
         assert len(streams) == 1
         return streams[0]
 
-    def _exec(self, stream, ctxt):
-        """Internal stream filter that executes code in ``<?python ?>``
-        processing instructions.
-        """
-        for event in stream:
-            if event[0] is EXEC:
-                event[1].execute(_ctxt2dict(ctxt))
-            else:
-                yield event
+    def _interpolate_attrs(self, stream):
+        for kind, data, pos in stream:
 
-    def _match(self, stream, ctxt, match_templates=None):
+            if kind is START:
+                # Record any directive attributes in start tags
+                tag, attrs = data
+                new_attrs = []
+                for name, value in attrs:
+                    if value:
+                        value = list(interpolate(value, self.filepath, pos[1],
+                                                 pos[2], lookup=self.lookup))
+                        if len(value) == 1 and value[0][0] is TEXT:
+                            value = value[0][1]
+                    new_attrs.append((name, value))
+                data = tag, Attrs(new_attrs)
+
+            yield kind, data, pos
+
+    def _prepare(self, stream):
+        return Template._prepare(self,
+            self._extract_includes(self._interpolate_attrs(stream))
+        )
+
+    def add_directives(self, namespace, factory):
+        """Register a custom `DirectiveFactory` for a given namespace.
+        
+        :param namespace: the namespace URI
+        :type namespace: `basestring`
+        :param factory: the directive factory to register
+        :type factory: `DirectiveFactory`
+        :since: version 0.6
+        """
+        assert not self._prepared, 'Too late for adding directives, ' \
+                                   'template already prepared'
+        self._stream = self._extract_directives(self._stream, namespace,
+                                                factory)
+
+    def _match(self, stream, ctxt, start=0, end=None, **vars):
         """Internal stream filter that applies any defined match templates
         to the stream.
         """
-        if match_templates is None:
-            match_templates = ctxt._match_templates
+        match_templates = ctxt._match_templates
 
         tail = []
         def _strip(stream):
@@ -263,10 +334,15 @@ class MarkupTemplate(Template):
                 yield event
                 continue
 
-            for idx, (test, path, template, namespaces, directives) in \
-                    enumerate(match_templates):
+            for idx, (test, path, template, hints, namespaces, directives) \
+                    in enumerate(match_templates):
+                if idx < start or end is not None and idx >= end:
+                    continue
 
                 if test(event, namespaces, ctxt) is True:
+                    if 'match_once' in hints:
+                        del match_templates[idx]
+                        idx -= 1
 
                     # Let the remaining match templates know about the event so
                     # they get a chance to update their internal state
@@ -275,35 +351,46 @@ class MarkupTemplate(Template):
 
                     # Consume and store all events until an end event
                     # corresponding to this start event is encountered
-                    content = chain([event],
-                                    self._match(_strip(stream), ctxt,
-                                                [match_templates[idx]]),
-                                    tail)
-                    content = list(self._include(content, ctxt))
-
-                    for test in [mt[0] for mt in match_templates]:
-                        test(tail[0], namespaces, ctxt, updateonly=True)
+                    pre_end = idx + 1
+                    if 'match_once' not in hints and 'not_recursive' in hints:
+                        pre_end -= 1
+                    inner = _strip(stream)
+                    if pre_end > 0:
+                        inner = self._match(inner, ctxt, end=pre_end)
+                    content = self._include(chain([event], inner, tail), ctxt)
+                    if 'not_buffered' not in hints:
+                        content = list(content)
 
                     # Make the select() function available in the body of the
                     # match template
+                    selected = [False]
                     def select(path):
+                        selected[0] = True
                         return Stream(content).select(path, namespaces, ctxt)
-                    ctxt.push(dict(select=select))
+                    vars = dict(select=select)
 
                     # Recursively process the output
-                    template = _apply_directives(template, ctxt, directives)
-                    for event in self._match(self._eval(self._flatten(template,
-                                                                      ctxt),
-                                                        ctxt), ctxt,
-                                             match_templates[:idx] +
-                                             match_templates[idx + 1:]):
+                    template = _apply_directives(template, directives, ctxt,
+                                                 **vars)
+                    for event in self._match(self._flatten(template, ctxt,
+                                                           **vars),
+                                             ctxt, start=idx + 1, **vars):
                         yield event
 
-                    ctxt.pop()
+                    # If the match template did not actually call select to
+                    # consume the matched stream, the original events need to
+                    # be consumed here or they'll get appended to the output
+                    if not selected[0]:
+                        for event in content:
+                            pass
+
+                    # Let the remaining match templates know about the last
+                    # event in the matched content, so they can update their
+                    # internal state accordingly
+                    for test in [mt[0] for mt in match_templates]:
+                        test(tail[0], namespaces, ctxt, updateonly=True)
+
                     break
 
             else: # no matches
                 yield event
-
-
-EXEC = MarkupTemplate.EXEC

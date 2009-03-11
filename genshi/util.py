@@ -152,7 +152,7 @@ def flatten(items):
     """
     retval = []
     for item in items:
-        if isinstance(item, (list, tuple)):
+        if isinstance(item, (frozenset, list, set, tuple)):
             retval += flatten(item)
         else:
             retval.append(item)
@@ -198,7 +198,7 @@ def stripentities(text, keepxmlentities=False):
     
     If the `keepxmlentities` parameter is provided and is a truth value, the
     core XML entities (&amp;, &apos;, &gt;, &lt; and &quot;) are left intact.
-
+    
     >>> stripentities('1 &lt; 2 &hellip;', keepxmlentities=True)
     u'1 &lt; 2 \u2026'
     """
@@ -223,7 +223,7 @@ def stripentities(text, keepxmlentities=False):
                     return ref
     return _STRIPENTITIES_RE.sub(_replace_entity, text)
 
-_STRIPTAGS_RE = re.compile(r'<[^>]*?>')
+_STRIPTAGS_RE = re.compile(r'(<!--.*?-->|<[^>]*>)')
 def striptags(text):
     """Return a copy of the text with any XML/HTML tags removed.
     
@@ -233,6 +233,11 @@ def striptags(text):
     'Foo'
     >>> striptags('Foo<br />')
     'Foo'
+    
+    HTML/XML comments are stripped, too:
+    
+    >>> striptags('<!-- <blub>hehe</blah> -->test')
+    'test'
     
     :param text: the string to remove tags from
     :return: the text with tags removed

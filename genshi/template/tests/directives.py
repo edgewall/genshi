@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2006 Edgewall Software
+# Copyright (C) 2006-2008 Edgewall Software
 # All rights reserved.
 #
 # This software is licensed as described in the file COPYING, which
@@ -382,6 +382,7 @@ class DefDirectiveTestCase(unittest.TestCase):
         """)
         self.assertEqual("""
                       Hi, you!
+
         """, str(tmpl.generate()))
 
     def test_function_with_star_args(self):
@@ -482,9 +483,35 @@ class ForDirectiveTestCase(unittest.TestCase):
         try:
             list(tmpl.generate(foo=12))
             self.fail('Expected TemplateRuntimeError')
-        except TemplateRuntimeError, e:
+        except TypeError, e:
+            assert (str(e) == "iteration over non-sequence" or
+                    str(e) == "'int' object is not iterable")
+            exc_type, exc_value, exc_traceback = sys.exc_info()
+            frame = exc_traceback.tb_next
+            frames = []
+            while frame.tb_next:
+                frame = frame.tb_next
+                frames.append(frame)
+            self.assertEqual("<Expression u'iter(foo)'>",
+                             frames[-1].tb_frame.f_code.co_name)
+            self.assertEqual('test.html',
+                             frames[-1].tb_frame.f_code.co_filename)
+            self.assertEqual(2, frames[-1].tb_lineno)
+
+    def test_for_with_empty_value(self):
+        """
+        Verify an empty 'for' value is an error
+        """
+        try:
+            MarkupTemplate("""<doc xmlns:py="http://genshi.edgewall.org/">
+              <py:for each="">
+                empty
+              </py:for>
+            </doc>""", filename='test.html').generate()
+            self.fail('ExpectedTemplateSyntaxError')
+        except TemplateSyntaxError, e:
             self.assertEqual('test.html', e.filename)
-            if sys.version_info[:2] >= (2, 4):
+            if sys.version_info[:2] > (2,4):
                 self.assertEqual(2, e.lineno)
 
 
@@ -619,6 +646,32 @@ class MatchDirectiveTestCase(unittest.TestCase):
             <div id="footer"/>
           </body>
         </html>""", str(tmpl.generate()))
+
+    def test_recursive_match_3(self):
+        tmpl = MarkupTemplate("""<test xmlns:py="http://genshi.edgewall.org/">
+          <py:match path="b[@type='bullet']">
+            <bullet>${select('*|text()')}</bullet>
+          </py:match>
+          <py:match path="group[@type='bullet']">
+            <ul>${select('*')}</ul>
+          </py:match>
+          <py:match path="b">
+            <generic>${select('*|text()')}</generic>
+          </py:match>
+
+          <b>
+            <group type="bullet">
+              <b type="bullet">1</b>
+              <b type="bullet">2</b>
+            </group>
+          </b>
+        </test>
+        """)
+        self.assertEqual("""<test>
+            <generic>
+            <ul><bullet>1</bullet><bullet>2</bullet></ul>
+          </generic>
+        </test>""", str(tmpl.generate()))
 
     def test_not_match_self(self):
         """
@@ -842,6 +895,54 @@ class MatchDirectiveTestCase(unittest.TestCase):
           </body>
         </html>""", str(tmpl.generate()))
 
+    def test_match_with_once_attribute(self):
+        tmpl = MarkupTemplate("""<html xmlns:py="http://genshi.edgewall.org/">
+          <py:match path="body" once="true"><body>
+            <div id="wrap">
+              ${select("*")}
+            </div>
+          </body></py:match>
+          <body>
+            <p>Foo</p>
+          </body>
+          <body>
+            <p>Bar</p>
+          </body>
+        </html>""")
+        self.assertEqual("""<html>
+          <body>
+            <div id="wrap">
+              <p>Foo</p>
+            </div>
+          </body>
+          <body>
+            <p>Bar</p>
+          </body>
+        </html>""", str(tmpl.generate()))
+
+    def test_match_with_recursive_attribute(self):
+        tmpl = MarkupTemplate("""<doc xmlns:py="http://genshi.edgewall.org/">
+          <py:match path="elem" recursive="false"><elem>
+            <div class="elem">
+              ${select('*')}
+            </div>
+          </elem></py:match>
+          <elem>
+            <subelem>
+              <elem/>
+            </subelem>
+          </elem>
+        </doc>""")
+        self.assertEqual("""<doc>
+          <elem>
+            <div class="elem">
+              <subelem>
+              <elem/>
+            </subelem>
+            </div>
+          </elem>
+        </doc>""", str(tmpl.generate()))
+
     # FIXME
     #def test_match_after_step(self):
     #    tmpl = MarkupTemplate("""<div xmlns:py="http://genshi.edgewall.org/">
@@ -857,6 +958,20 @@ class MatchDirectiveTestCase(unittest.TestCase):
     #    </div>""", str(tmpl.generate()))
 
 
+class ContentDirectiveTestCase(unittest.TestCase):
+    """Tests for the `py:content` template directive."""
+
+    def test_as_element(self):
+        try:
+            MarkupTemplate("""<doc xmlns:py="http://genshi.edgewall.org/">
+              <py:content foo="">Foo</py:content>
+            </doc>""", filename='test.html').generate()
+            self.fail('Expected TemplateSyntaxError')
+        except TemplateSyntaxError, e:
+            self.assertEqual('test.html', e.filename)
+            self.assertEqual(2, e.lineno)
+
+
 class ReplaceDirectiveTestCase(unittest.TestCase):
     """Tests for the `py:replace` template directive."""
 
@@ -866,14 +981,21 @@ class ReplaceDirectiveTestCase(unittest.TestCase):
         expression is supplied.
         """
         try:
-            tmpl = MarkupTemplate("""<doc xmlns:py="http://genshi.edgewall.org/">
+            MarkupTemplate("""<doc xmlns:py="http://genshi.edgewall.org/">
               <elem py:replace="">Foo</elem>
-            </doc>""", filename='test.html')
+            </doc>""", filename='test.html').generate()
             self.fail('Expected TemplateSyntaxError')
         except TemplateSyntaxError, e:
             self.assertEqual('test.html', e.filename)
-            if sys.version_info[:2] >= (2, 4):
-                self.assertEqual(2, e.lineno)
+            self.assertEqual(2, e.lineno)
+
+    def test_as_element(self):
+        tmpl = MarkupTemplate("""<div xmlns:py="http://genshi.edgewall.org/">
+          <py:replace value="title" />
+        </div>""", filename='test.html')
+        self.assertEqual("""<div>
+          Test
+        </div>""", str(tmpl.generate(title='Test')))
 
 
 class StripDirectiveTestCase(unittest.TestCase):
@@ -968,6 +1090,22 @@ class WithDirectiveTestCase(unittest.TestCase):
             here are two semicolons: ;;
         </div>""", str(tmpl.generate()))
 
+    def test_ast_transformation(self):
+        """
+        Verify that the usual template expression AST transformations are
+        applied despite the code being compiled to a `Suite` object.
+        """
+        tmpl = MarkupTemplate("""<div xmlns:py="http://genshi.edgewall.org/">
+          <span py:with="bar=foo.bar">
+            $bar
+          </span>
+        </div>""")
+        self.assertEqual("""<div>
+          <span>
+            42
+          </span>
+        </div>""", str(tmpl.generate(foo={'bar': 42})))
+
     def test_unicode_expr(self):
         tmpl = MarkupTemplate("""<div xmlns:py="http://genshi.edgewall.org/">
           <span py:with="weeks=(u'一', u'二', u'三', u'四', u'五', u'六', u'日')">
@@ -979,6 +1117,16 @@ class WithDirectiveTestCase(unittest.TestCase):
             一二三四五六日
           </span>
         </div>""", str(tmpl.generate()))
+        
+    def test_with_empty_value(self):
+        """
+        Verify that an empty py:with works (useless, but legal)
+        """
+        tmpl = MarkupTemplate("""<div xmlns:py="http://genshi.edgewall.org/">
+          <span py:with="">Text</span></div>""")
+
+        self.assertEqual("""<div>
+          <span>Text</span></div>""", str(tmpl.generate()))
 
 
 def suite():
@@ -990,6 +1138,7 @@ def suite():
     suite.addTest(unittest.makeSuite(ForDirectiveTestCase, 'test'))
     suite.addTest(unittest.makeSuite(IfDirectiveTestCase, 'test'))
     suite.addTest(unittest.makeSuite(MatchDirectiveTestCase, 'test'))
+    suite.addTest(unittest.makeSuite(ContentDirectiveTestCase, 'test'))
     suite.addTest(unittest.makeSuite(ReplaceDirectiveTestCase, 'test'))
     suite.addTest(unittest.makeSuite(StripDirectiveTestCase, 'test'))
     suite.addTest(unittest.makeSuite(WithDirectiveTestCase, 'test'))

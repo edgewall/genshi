@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2006-2007 Edgewall Software
+# Copyright (C) 2006-2008 Edgewall Software
 # All rights reserved.
 #
 # This software is licensed as described in the file COPYING, which
@@ -13,6 +13,11 @@
 
 """Core classes for markup processing."""
 
+try:
+    from functools import reduce
+except ImportError:
+    pass # builtin in Python <= 2.5
+from itertools import chain
 import operator
 
 from genshi.util import plaintext, stripentities, striptags
@@ -51,7 +56,7 @@ class Stream(object):
     returns the complete generated text at once. Both accept various parameters
     that impact the way the stream is serialized.
     """
-    __slots__ = ['events']
+    __slots__ = ['events', 'serializer']
 
     START = StreamEventKind('START') #: a start tag
     END = StreamEventKind('END') #: an end tag
@@ -65,12 +70,17 @@ class Stream(object):
     PI = StreamEventKind('PI') #: processing instruction
     COMMENT = StreamEventKind('COMMENT') #: comment
 
-    def __init__(self, events):
+    def __init__(self, events, serializer=None):
         """Initialize the stream with a sequence of markup events.
         
         :param events: a sequence or iterable providing the events
+        :param serializer: the default serialization method to use for this
+                           stream
+
+        :note: Changed in 0.5: added the `serializer` argument
         """
         self.events = events #: The underlying iterable producing the events
+        self.serializer = serializer #: The default serializion method
 
     def __iter__(self):
         return iter(self.events)
@@ -119,7 +129,7 @@ class Stream(object):
         :return: the filtered stream
         :rtype: `Stream`
         """
-        return Stream(_ensure(function(self)))
+        return Stream(_ensure(function(self)), serializer=self.serializer)
 
     def filter(self, *filters):
         """Apply filters to the stream.
@@ -143,7 +153,7 @@ class Stream(object):
         """
         return reduce(operator.or_, (self,) + filters)
 
-    def render(self, method='xml', encoding='utf-8', **kwargs):
+    def render(self, method=None, encoding='utf-8', out=None, **kwargs):
         """Return a string representation of the stream.
         
         Any additional keyword arguments are passed to the serializer, and thus
@@ -151,20 +161,51 @@ class Stream(object):
         
         :param method: determines how the stream is serialized; can be either
                        "xml", "xhtml", "html", "text", or a custom serializer
-                       class
+                       class; if `None`, the default serialization method of
+                       the stream is used
         :param encoding: how the output string should be encoded; if set to
                          `None`, this method returns a `unicode` object
-        :return: a `str` or `unicode` object
+        :param out: a file-like object that the output should be written to
+                    instead of being returned as one big string; note that if
+                    this is a file or socket (or similar), the `encoding` must
+                    not be `None` (that is, the output must be encoded)
+        :return: a `str` or `unicode` object (depending on the `encoding`
+                 parameter), or `None` if the `out` parameter is provided
         :rtype: `basestring`
+        
         :see: XMLSerializer, XHTMLSerializer, HTMLSerializer, TextSerializer
+        :note: Changed in 0.5: added the `out` parameter
         """
         from genshi.output import encode
+        if method is None:
+            method = self.serializer or 'xml'
         generator = self.serialize(method=method, **kwargs)
-        return encode(generator, method=method, encoding=encoding)
+        return encode(generator, method=method, encoding=encoding, out=out)
 
     def select(self, path, namespaces=None, variables=None):
         """Return a new stream that contains the events matching the given
         XPath expression.
+        
+        >>> from genshi import HTML
+        >>> stream = HTML('<doc><elem>foo</elem><elem>bar</elem></doc>')
+        >>> print stream.select('elem')
+        <elem>foo</elem><elem>bar</elem>
+        >>> print stream.select('elem/text()')
+        foobar
+        
+        Note that the outermost element of the stream becomes the *context
+        node* for the XPath test. That means that the expression "doc" would
+        not match anything in the example above, because it only tests against
+        child elements of the outermost element:
+        
+        >>> print stream.select('doc')
+        <BLANKLINE>
+        
+        You can use the "." expression to match the context node itself
+        (although that usually makes little sense):
+        
+        >>> print stream.select('.')
+        <doc><elem>foo</elem><elem>bar</elem></doc>
         
         :param path: a string containing the XPath expression
         :param namespaces: mapping of namespace prefixes used in the path
@@ -190,13 +231,16 @@ class Stream(object):
         
         :param method: determines how the stream is serialized; can be either
                        "xml", "xhtml", "html", "text", or a custom serializer
-                       class
+                       class; if `None`, the default serialization method of
+                       the stream is used
         :return: an iterator over the serialization results (`Markup` or
                  `unicode` objects, depending on the serialization method)
         :rtype: ``iterator``
         :see: XMLSerializer, XHTMLSerializer, HTMLSerializer, TextSerializer
         """
         from genshi.output import get_serializer
+        if method is None:
+            method = self.serializer or 'xml'
         return get_serializer(method, **kwargs)(_ensure(self))
 
     def __str__(self):
@@ -204,6 +248,9 @@ class Stream(object):
 
     def __unicode__(self):
         return self.render(encoding=None)
+
+    def __html__(self):
+        return self
 
 
 START = Stream.START
@@ -220,12 +267,24 @@ COMMENT = Stream.COMMENT
 
 def _ensure(stream):
     """Ensure that every item on the stream is actually a markup event."""
-    for event in stream:
-        if type(event) is not tuple:
+    stream = iter(stream)
+    event = stream.next()
+
+    # Check whether the iterable is a real markup event stream by examining the
+    # first item it yields; if it's not we'll need to do some conversion
+    if type(event) is not tuple or len(event) != 3:
+        for event in chain([event], stream):
             if hasattr(event, 'totuple'):
                 event = event.totuple()
             else:
                 event = TEXT, unicode(event), (None, -1, -1)
+            yield event
+        return
+
+    # This looks like a markup event stream, so we'll just pass it through
+    # unchanged
+    yield event
+    for event in stream:
         yield event
 
 
@@ -295,6 +354,12 @@ class Attrs(tuple):
                 return True
 
     def __getslice__(self, i, j):
+        """Return a slice of the attributes list.
+        
+        >>> attrs = Attrs([('href', '#'), ('title', 'Foo')])
+        >>> attrs[1:]
+        Attrs([('title', 'Foo')])
+        """
         return Attrs(tuple.__getslice__(self, i, j))
 
     def __or__(self, attrs):
@@ -361,11 +426,6 @@ class Markup(unicode):
     """
     __slots__ = []
 
-    def __new__(cls, text='', *args):
-        if args:
-            text %= tuple(map(escape, args))
-        return unicode.__new__(cls, text)
-
     def __add__(self, other):
         return Markup(unicode(self) + unicode(escape(other)))
 
@@ -373,9 +433,13 @@ class Markup(unicode):
         return Markup(unicode(escape(other)) + unicode(self))
 
     def __mod__(self, args):
-        if not isinstance(args, (list, tuple)):
-            args = [args]
-        return Markup(unicode.__mod__(self, tuple(map(escape, args))))
+        if isinstance(args, dict):
+            args = dict(zip(args.keys(), map(escape, args.values())))
+        elif isinstance(args, (list, tuple)):
+            args = tuple(map(escape, args))
+        else:
+            args = escape(args)
+        return Markup(unicode.__mod__(self, args))
 
     def __mul__(self, num):
         return Markup(unicode(self) * num)
@@ -428,6 +492,9 @@ class Markup(unicode):
             return cls()
         if type(text) is cls:
             return text
+        if hasattr(text, '__html__'):
+            return Markup(text.__html__())
+
         text = unicode(text).replace('&', '&amp;') \
                             .replace('<', '&lt;') \
                             .replace('>', '&gt;')
@@ -476,6 +543,11 @@ class Markup(unicode):
         """
         return Markup(striptags(self))
 
+
+try:
+    from genshi._speedups import Markup
+except ImportError:
+    pass # just use the Python implementation
 
 escape = Markup.escape
 
@@ -543,7 +615,7 @@ class Namespace(object):
     def __new__(cls, uri):
         if type(uri) is cls:
             return uri
-        return object.__new__(cls, uri)
+        return object.__new__(cls)
 
     def __getnewargs__(self):
         return (self.uri,)
@@ -572,6 +644,9 @@ class Namespace(object):
         return QName(self.uri + u'}' + name)
     __getattr__ = __getitem__
 
+    def __hash__(self):
+        return hash(self.uri)
+
     def __repr__(self):
         return '<Namespace "%s">' % self.uri
 
@@ -590,9 +665,9 @@ class QName(unicode):
     """A qualified element or attribute name.
     
     The unicode value of instances of this class contains the qualified name of
-    the element or attribute, in the form ``{namespace}localname``. The namespace
-    URI can be obtained through the additional `namespace` attribute, while the
-    local name can be accessed through the `localname` attribute.
+    the element or attribute, in the form ``{namespace-uri}local-name``. The
+    namespace URI can be obtained through the additional `namespace` attribute,
+    while the local name can be accessed through the `localname` attribute.
     
     >>> qname = QName('foo')
     >>> qname
@@ -612,10 +687,16 @@ class QName(unicode):
     __slots__ = ['namespace', 'localname']
 
     def __new__(cls, qname):
+        """Create the `QName` instance.
+        
+        :param qname: the qualified name as a string of the form
+                      ``{namespace-uri}local-name``, where the leading curly
+                      brace is optional
+        """
         if type(qname) is cls:
             return qname
 
-        parts = qname.split(u'}', 1)
+        parts = qname.lstrip(u'{').split(u'}', 1)
         if len(parts) > 1:
             self = unicode.__new__(cls, u'{%s' % qname)
             self.namespace, self.localname = map(unicode, parts)

@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2006-2007 Edgewall Software
+# Copyright (C) 2006-2008 Edgewall Software
 # Copyright (C) 2006 Matthew Good
 # All rights reserved.
 #
@@ -16,14 +16,12 @@
 CherryPy/Buffet.
 """
 
-from pkg_resources import resource_filename
-
 from genshi.input import ET, HTML, XML
 from genshi.output import DocType
 from genshi.template.base import Template
 from genshi.template.loader import TemplateLoader
 from genshi.template.markup import MarkupTemplate
-from genshi.template.text import TextTemplate
+from genshi.template.text import TextTemplate, NewTextTemplate
 
 __all__ = ['ConfigurationError', 'AbstractTemplateEnginePlugin',
            'MarkupTemplateEnginePlugin', 'TextTemplateEnginePlugin']
@@ -58,16 +56,28 @@ class AbstractTemplateEnginePlugin(object):
             raise ConfigurationError('Invalid value for max_cache_size: "%s"' %
                                      options.get('genshi.max_cache_size'))
 
-        lookup_errors = options.get('genshi.lookup_errors', 'lenient')
+        loader_callback = options.get('genshi.loader_callback', None)
+        if loader_callback and not hasattr(loader_callback, '__call__'):
+            raise ConfigurationError('loader callback must be a function')
+
+        lookup_errors = options.get('genshi.lookup_errors', 'strict')
         if lookup_errors not in ('lenient', 'strict'):
             raise ConfigurationError('Unknown lookup errors mode "%s"' %
                                      lookup_errors)
+
+        try:
+            allow_exec = bool(options.get('genshi.allow_exec', True))
+        except ValueError:
+            raise ConfigurationError('Invalid value for allow_exec "%s"' %
+                                     options.get('genshi.allow_exec'))
 
         self.loader = TemplateLoader(filter(None, search_path),
                                      auto_reload=auto_reload,
                                      max_cache_size=max_cache_size,
                                      default_class=self.template_class,
-                                     variable_lookup=lookup_errors)
+                                     variable_lookup=lookup_errors,
+                                     allow_exec=allow_exec,
+                                     callback=loader_callback)
 
     def load_template(self, templatename, template_string=None):
         """Find a template specified in python 'dot' notation, or load one from
@@ -79,13 +89,14 @@ class AbstractTemplateEnginePlugin(object):
         if self.use_package_naming:
             divider = templatename.rfind('.')
             if divider >= 0:
+                from pkg_resources import resource_filename
                 package = templatename[:divider]
                 basename = templatename[divider + 1:] + self.extension
                 templatename = resource_filename(package, basename)
 
         return self.loader.load(templatename)
 
-    def _get_render_options(self, format=None):
+    def _get_render_options(self, format=None, fragment=False):
         if format is None:
             format = self.default_format
         kwargs = {'method': format}
@@ -95,7 +106,7 @@ class AbstractTemplateEnginePlugin(object):
 
     def render(self, info, format=None, fragment=False, template=None):
         """Render the template to a string using the provided info."""
-        kwargs = self._get_render_options(format=format)
+        kwargs = self._get_render_options(format=format, fragment=fragment)
         return self.transform(info, template).render(**kwargs)
 
     def transform(self, info, template):
@@ -128,10 +139,10 @@ class MarkupTemplateEnginePlugin(AbstractTemplateEnginePlugin):
             raise ConfigurationError('Unknown output format %r' % format)
         self.default_format = format
 
-    def _get_render_options(self, format=None):
+    def _get_render_options(self, format=None, fragment=False):
         kwargs = super(MarkupTemplateEnginePlugin,
-                       self)._get_render_options(format)
-        if self.default_doctype:
+                       self)._get_render_options(format, fragment)
+        if self.default_doctype and not fragment:
             kwargs['doctype'] = self.default_doctype
         return kwargs
 
@@ -150,3 +161,15 @@ class TextTemplateEnginePlugin(AbstractTemplateEnginePlugin):
     template_class = TextTemplate
     extension = '.txt'
     default_format = 'text'
+
+    def __init__(self, extra_vars_func=None, options=None):
+        if options is None:
+            options = {}
+
+        new_syntax = options.get('genshi.new_text_syntax')
+        if isinstance(new_syntax, basestring):
+            new_syntax = new_syntax.lower() in ('1', 'on', 'yes', 'true')
+        if new_syntax:
+            self.template_class = NewTextTemplate
+
+        AbstractTemplateEnginePlugin.__init__(self, extra_vars_func, options)

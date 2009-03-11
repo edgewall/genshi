@@ -15,7 +15,7 @@ import compiler
 import imp
 
 from genshi.core import Attrs, Stream, _ensure, START, END, TEXT
-from genshi.template.core import EXPR, SUB
+from genshi.template.base import EXPR, SUB
 from genshi.template.directives import *
 
 

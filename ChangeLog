@@ -1,18 +1,189 @@
+Version 0.6
+http://svn.edgewall.org/repos/genshi/tags/0.6.0/
+(???, from branches/stable/0.6.x)
+
+ * Support for Python 2.3 has been dropped.
+
+
+Version 0.5.2
+http://svn.edgewall.org/repos/genshi/tags/0.5.2/
+(???, from branches/stable/0.5.x)
+
+ * Fix problem with I18n filter that would get confused by expressions in
+   attribute values when inside an `i18n:msg` block (ticket #250).
+ * Fix problem with the transformation filter dropping events after the
+   selection (ticket #290).
+ * `for` loops in template code blocks no longer establish their own locals
+   scope, meaning you can now access variables assigned in the loop outside
+   of the loop, just as you can in regular Python code (ticket #259).
+ * Import statements inside function definitions in template code blocks no 
+   longer result in an UndefinedError when the imported name is accessed 
+   (ticket #276).
+
+
+Version 0.5.1
+http://svn.edgewall.org/repos/genshi/tags/0.5.1/
+(Jul 9 2008, from branches/stable/0.5.x)
+
+ * Fix problem with nested match templates not being applied when buffering
+   on the outer `py:match` is disabled. Thanks to Erik Bray for reporting the
+   problem and providing a test case!
+ * Fix problem in `Translator` filter that would cause the translation of
+   text nodes to fail if the translation function returned an object that was
+   not directly a string, but rather something like an instance of the
+   `LazyProxy` class in Babel (ticket #145).
+ * Fix problem with match templates incorrectly being applied multiple times.
+ * Includes from templates loaded via an absolute path now include the correct
+   file in nested directories as long if no search path has been configured
+   (ticket #240).
+ * Unbuffered match templates could result in parts of the matched content
+   being included in the output if the match template didn't actually consume
+   it via one or more calls to the `select()` function (ticket #243).
+
+
 Version 0.5
 http://svn.edgewall.org/repos/genshi/tags/0.5.0/
-(?, from branches/stable/0.5.x)
+(Jun 9 2008, from branches/stable/0.5.x)
 
  * Added #include directive for text templates (ticket #115).
+ * Added new markup transformation filter contributed by Alec Thomas. This
+   provides gorgeous jQuery-inspired stream transformation capabilities based
+   on XPath expressions.
+ * When using HTML or XHTML serialization, the `xml:lang` attribute is
+   automatically translated to the `lang` attribute which HTML user agents
+   understand.
+ * Added support for the XPath 2 `matches()` function in XPath expressions,
+   which allow matching against regular expressions.
+ * Support for Python code blocks in templates can now be disabled
+   (ticket #123).
+ * Includes are now processed when the template is parsed if possible, but
+   only if the template loader is not set to do automatic reloading. Included
+   templates are basically inlined into the including template, which can
+   speed up rendering of that template a bit.
+ * Added new syntax for text templates, which is more powerful and flexible
+   with respect to white-space and line breaks. It also supports Python code
+   blocks. The old syntax is still available and the default for now, but in a
+   future release the new syntax will become the default, and some time after
+   that the old syntax will be removed.
+ * Added support for passing optimization hints to `<py:match>` directives,
+   which can speed up match templates in many cases, for example when a match
+   template should only be applied once to a stream, or when it should not be
+   applied recursively.
+ * Text templates now default to rendering as plain text; it is no longer
+   necessary to explicitly specify the "text" method to the `render()` or
+   `serialize()` method of the generated markup stream.
+ * XInclude elements in markup templates now support the `parse` attribute;
+   when set to "xml" (the default), the include is processed as before, but
+   when set to "text", the included template is parsed as a text template using
+   the new syntax (ticket #101).
+ * Python code blocks inside match templates are now executed (ticket #155).
+ * The template engine plugin no longer adds the `default_doctype` when the
+   `fragment` parameter is `True`.
+ * The `striptags` function now also removes HTML/XML-style comments (ticket
+   #150).
+ * The `py:replace` directive can now also be used as an element, with an
+   attribute named `value` (ticket #144).
+ * The `TextSerializer` class no longer strips all markup in text by default,
+   so that it is still possible to use the Genshi `escape` function even with
+   text templates. The old behavior is available via the `strip_markup` option
+   of the serializer (ticket #146).
+ * Assigning to a variable named `data` in a Python code block no longer
+   breaks context lookup.
+ * The `Stream.render` now accepts an optional `out` parameter that can be
+   used to pass in a writable file-like object to use for assembling the
+   output, instead of building a big string and returning it.
+ * The XHTML serializer now strips `xml:space` attributes as they are only
+   allowed on very few tags.
+ * Match templates are now applied in a more controlled fashion: in the order
+   they are declared in the template source, all match templates up to (and
+   including) the matching template itself are applied to the matched content,
+   whereas the match templates declared after the matching template are only
+   applied to the generated content (ticket #186).
+ * The `TemplateLoader` class now provides an `_instantiate()` method that can
+   be overridden by subclasses to implement advanced template instantiation
+   logic (ticket #204).
+ * The search path of the `TemplateLoader` class can now contain ''load
+   functions'' in addition to path strings. A load function is passed the
+   name of the requested template file, and should return a file-like object
+   and some metadata. New load functions are supplied for loading from egg
+   package data, and loading from different loaders depending on the path
+   prefix of the requested filename (ticket #182).
+ * Match templates can now be processed without keeping the complete matched
+   content in memory, which could cause excessive memory use on long pages.
+   The buffering can be disabled using the new `buffer` optimization hint on
+   the `<py:match>` directive.
+ * Improve error reporting when accessing an attribute in a Python expression
+   raises an `AttributeError` (ticket #191).
+ * The `Markup` class now supports mappings for right hand of the `%` (modulo)
+   operator in the same way the Python string classes do, except that the
+   substituted values are escape. Also, the special constructor which took
+   positional arguments that would be substituted was removed. Thus the
+   `Markup` class now supports the same arguments as that of its `unicode`
+   base class (ticket #211).
+ * The `Template` class and its subclasses, as well as the interpolation API,
+   now take an `filepath` parameter instead of `basedir` (ticket #207).
+ * The `XHTMLSerializer` now has a `drop_xml_decl` option that defaults to
+   `True`. Setting it to `False` will cause any XML decl in the serialized
+   stream to be included in the output as it would for XML serialization.
+ * Add support for a protocol that would allow interoperability of different
+   Python packages that generate and/or consume markup, based on the special
+   `__html__()` method (ticket #202).
+
+
+Version 0.4.4
+http://svn.edgewall.org/repos/genshi/tags/0.4.4/
+(Aug 14, 2007, from branches/stable/0.4.x)
+
+ * Fixed augmented assignment to local variables in Python code blocks.
+ * Fixed handling of nested function and class definitions in Python code
+   blocks.
+ * Includes were not raising `TemplateNotFound` exceptions even when no
+   fallback has been specified. That has been corrected.
+ * The template loader now raises a `TemplateNotFound` error when a previously
+   cached template is removed or renamed, where it previously was passing up
+   an `OSError`.
+ * The Genshi I18n filter can be configured to only extract messages found in
+   `gettext` function calls, ignoring any text nodes and attribute values
+   (ticket #138).
+
+
+Version 0.4.3
+http://svn.edgewall.org/repos/genshi/tags/0.4.3/
+(Jul 17 2007, from branches/stable/0.4.x)
+
+ * The I18n filter no longer extracts or translates literal strings in
+   attribute values that also contain expressions.
+ * Added `loader_callback` option to plugin interface, which allows specifying
+   a callback function that the template loader should invoke whenever a new
+   template is loaded (ticket #130). Note that the value for this option can
+   not be specified as a string, only as an actual function object, which means
+   it is not available for use through configuration files.
+ * The I18n filter now extracts messages from gettext functions even inside
+   ignored tags (ticket #132).
+ * The HTML sanitizer now strips any CSS comments in style attributes, which
+   could previously be used to hide malicious property values.
+ * The HTML sanitizer now also removes any HTML comments encountered, as those
+   may be used to hide malicious payloads targetting a certain "innovative"
+   browser that goes and interprets the content of specially prepared comments.
+ * Attribute access in template expressions no longer silently ignores
+   exceptions other than `AttributeError` raised in the attribute accessor.
 
 
 Version 0.4.2
 http://svn.edgewall.org/repos/genshi/tags/0.4.2/
-(?, from branches/stable/0.4.x)
+(Jun 20 2007, from branches/stable/0.4.x)
 
  * The `doctype` parameter of the markup serializers now also accepts the "name"
    of the doctype as string, in addition to the `(name, pubid, sysid)` tuple.
  * The I18n filter was not replacing the original attributes with the
    translation, but instead adding a second attribute with the same name.
+ * `TextTemplate` can now handle unicode source (ticket #125).
+ * A `<?python ?>` processing instruction containing trailing whitespace no
+   longer causes a syntax error (ticket #127).
+ * The I18n filter now skips the content of elements that have an `xml:lang`
+   attribute with a fixed string value. Basically, `xml:lang` can now be used
+   as a flag to mark specific sections as not needing localization.
+ * Added plugin for message extraction via Babel (http://babel.edgewall.org/).
 
 
 Version 0.4.1

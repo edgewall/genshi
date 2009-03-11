@@ -9,7 +9,8 @@ from StringIO import StringIO
 import sys
 import timeit
 
-__all__ = ['clearsilver', 'myghty', 'django', 'kid', 'genshi', 'cheetah']
+__all__ = ['clearsilver', 'mako', 'django', 'kid', 'genshi', 'genshi_text',
+           'simpletal']
 
 def genshi(dirname, verbose=False):
     from genshi.template import TemplateLoader
@@ -24,19 +25,28 @@ def genshi(dirname, verbose=False):
         print render()
     return render
 
-def myghty(dirname, verbose=False):
-    try:
-        from myghty import interp
-    except ImportError:
-        print>>sys.stderr, 'Mighty not installed, skipping'
-        return lambda: None
-    interpreter = interp.Interpreter(component_root=dirname)
+def genshi_text(dirname, verbose=False):
+    from genshi.core import escape
+    from genshi.template import TemplateLoader, NewTextTemplate
+    loader = TemplateLoader([dirname], auto_reload=False)
+    template = loader.load('template.txt', cls=NewTextTemplate)
+    def render():
+        data = dict(escape=escape, title='Just a test', user='joe',
+                    items=['Number %d' % num for num in range(1, 15)])
+        return template.generate(**data).render('text')
+
+    if verbose:
+        print render()
+    return render
+
+def mako(dirname, verbose=False):
+    from mako.lookup import TemplateLookup
+    lookup = TemplateLookup(directories=[dirname], filesystem_checks=False)
+    template = lookup.get_template('template.html')
     def render():
         data = dict(title='Just a test', user='joe',
-                    items=['Number %d' % num for num in range(1, 15)])
-        buffer = StringIO()
-        interpreter.execute("template.myt", request_args=data, out_buffer=buffer)
-        return buffer.getvalue()
+                    list_items=['Number %d' % num for num in range(1, 15)])
+        return template.render(**data)
     if verbose:
         print render()
     return render
@@ -112,7 +122,7 @@ def kid(dirname, verbose=False):
     try:
         import kid
     except ImportError:
-        print>>sys.stderr, "SimpleTAL not installed, skipping"
+        print>>sys.stderr, "Kid not installed, skipping"
         return lambda: None
     kid.path = kid.TemplatePath([dirname])
     template = kid.load_template('template.kid').Template
@@ -180,12 +190,15 @@ if __name__ == '__main__':
     verbose = '-v' in sys.argv
 
     if '-p' in sys.argv:
-        import hotshot, hotshot.stats
-        prof = hotshot.Profile("template.prof")
-        benchtime = prof.runcall(run, engines, number=100, verbose=verbose)
-        stats = hotshot.stats.load("template.prof")
+        import cProfile, pstats
+        prof = cProfile.Profile()
+        prof.run('run(%r, number=200, verbose=%r)' % (engines, verbose))
+        stats = pstats.Stats(prof)
         stats.strip_dirs()
-        stats.sort_stats('time', 'calls')
-        stats.print_stats()
+        stats.sort_stats('calls')
+        stats.print_stats(25)
+        if verbose:
+            stats.print_callees()
+            stats.print_callers()
     else:
         run(engines, verbose=verbose)

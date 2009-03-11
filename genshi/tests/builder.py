@@ -16,7 +16,7 @@ from HTMLParser import HTMLParseError
 import unittest
 
 from genshi.builder import Element, tag
-from genshi.core import Attrs, Stream
+from genshi.core import Attrs, Markup, Stream
 from genshi.input import XML
 
 
@@ -42,6 +42,15 @@ class ElementFactoryTestCase(unittest.TestCase):
                           (None, -1, -1)),
                          event)
 
+    def test_duplicate_attributes(self):
+        link = tag.a(href='#1', href_='#2')('Bar')
+        bits = iter(link.generate())
+        self.assertEqual((Stream.START,
+                          ('a', Attrs([('href', "#1")])),
+                          (None, -1, -1)), bits.next())
+        self.assertEqual((Stream.TEXT, u'Bar', (None, -1, -1)), bits.next())
+        self.assertEqual((Stream.END, 'a', (None, -1, -1)), bits.next())
+
     def test_stream_as_child(self):
         xml = list(tag.span(XML('<b>Foo</b>')).generate())
         self.assertEqual(5, len(xml))
@@ -51,6 +60,12 @@ class ElementFactoryTestCase(unittest.TestCase):
         self.assertEqual((Stream.END, 'b'), xml[3][:2])
         self.assertEqual((Stream.END, 'span'), xml[4][:2])
 
+    def test_markup_escape(self):
+        from genshi.core import Markup
+        m = Markup('See %s') % tag.a('genshi',
+                                     href='http://genshi.edgwall.org')
+        self.assertEqual(m, Markup('See <a href="http://genshi.edgwall.org">'
+                                   'genshi</a>'))
 
 def suite():
     suite = unittest.TestSuite()

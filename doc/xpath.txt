@@ -52,8 +52,8 @@ supported:
 * ``sum()``
 
 The mathematical operators (``+``, ``-``, ``*``, ``div``, and ``mod``) are not
-yet supported, whereas the various comparison and logical operators should work
-as expected.
+yet supported, whereas sub-expressions and the various comparison and logical
+operators should work as expected.
 
 You can also use XPath variable references (``$var``) inside predicates.
 
@@ -62,25 +62,34 @@ You can also use XPath variable references (``$var``) inside predicates.
 Querying Streams
 ----------------
 
-::
+The ``Stream`` class provides a ``select(path)`` function that can be used to
+retrieve subsets of the stream:
 
-  from genshi.input import XML
+.. code-block:: pycon
 
-  doc = XML('''<doc>
-   <items count="2">
-        <item status="new">
-          <summary>Foo</summary>
-        </item>
-        <item status="closed">
-          <summary>Bar</summary>
-        </item>
-    </items>
-  </doc>''')
-  print doc.select('items/item[@status="closed"]/summary/text()')
+  >>> from genshi.input import XML
 
-This would result in the following output::
+  >>> doc = XML('''<doc>
+  ...  <items count="4">
+  ...       <item status="new">
+  ...         <summary>Foo</summary>
+  ...       </item>
+  ...       <item status="closed">
+  ...         <summary>Bar</summary>
+  ...       </item>
+  ...       <item status="closed" resolution="invalid">
+  ...         <summary>Baz</summary>
+  ...       </item>
+  ...       <item status="closed" resolution="fixed">
+  ...         <summary>Waz</summary>
+  ...       </item>
+  ...   </items>
+  ... </doc>''')
 
-  Bar
+  >>> print doc.select('items/item[@status="closed" and '
+  ...     '(@resolution="invalid" or not(@resolution))]/summary/text()')
+  BarBaz
+
 
 
 ---------------------

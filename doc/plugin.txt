@@ -22,12 +22,11 @@ API is sitting between your code and Genshi).
 Introduction
 ============
 
-Most Python web frameworks (with the notable exception of Django_) support
-a variety of different templating engines through the `Template Engine Plugin
-API`_, which was first developed by the Buffet_ and TurboGears_ projects.
+Some Python web frameworks support a variety of different templating engines
+through the `Template Engine Plugin API`_, which was first developed by the
+Buffet_ and TurboGears_ projects.
 
 .. _`Template Engine Plugin API`: http://docs.turbogears.org/1.0/TemplatePlugins
-.. _`Django`: http://www.djangoproject.com/
 .. _`Buffet`: http://projects.dowski.com/projects/buffet
 .. _`TurboGears`: http://www.turbogears.org/
 
@@ -72,8 +71,31 @@ method when you want to use a text template. Or you'd specify "xml" for the
 format when you want to produce an Atom feed or other XML content.
 
 
+Template Paths
+--------------
+
+How you specify template paths depends on whether you have a `search path`_ set
+up or not. The search path is a list of directories that Genshi should load
+templates from. Now when you request a template using a relative path such as
+``mytmpl.html`` or ``foo/mytmpl.html``, Genshi will look for that file in the
+directories on the search path.
+
+For mostly historical reasons, the Genshi template engine plugin uses a
+different approach when you **haven't** configured the template search path:
+you now load templates using *dotted notation*, for example ``mytmpl`` or
+``foo.mytmpl``.  Note how you've lost the ability to explicitly specify the
+file extension: you now have to use ``.html`` for markup templates, and
+``.txt`` for text templates.
+
+Using the search path is recommended for a number of reasons: First, it's
+the native Genshi model and is thus more robust and better supported.
+Second, a search path gives you much more flexibility for organizing your
+application templates. And as noted above, you aren't forced to use hardcoded
+filename extensions for your template files.
+
+
 Extra Implicit Objects
-======================
+----------------------
 
 The "genshi-markup" template engine plugin adds some extra functions that are
 made available to all templates implicitly, namely:
@@ -101,16 +123,24 @@ The following is a list of configuration options that Genshi supports. These may
 or may not be made available by your framework. TurboGears 1.0, for example,
 only passes a fixed set of options to all plugins.
 
+``genshi.allow_exec``
+--------------------------
+Whether the Python code blocks should be permitted in templates. Specify "yes"
+to allow code blocks (which is the default), or "no" otherwise. Please note
+that disallowing code blocks in templates does not turn Genshi into a
+sandboxable template engine; there are sufficient ways to do harm even using
+plain expressions.
+
 ``genshi.auto_reload``
 ----------------------
 Whether the template loader should check the last modification time of template 
 files, and automatically reload them if they have been changed. Specify "yes"
 to enable this reloading (which is the default), or "no" to turn it off.
 
-.. note:: You may want to disable reloading in a production environment to gain
-          a slight (and possible even negligible) improvement in loading
-          performance, but then you'll have to manually restart the server
-          process anytime the templates are updated.
+You probably want to disable reloading in a production environment to improve
+performance of both templating loading and the processing of includes. But
+remember that you'll then have to manually restart the server process anytime
+the templates are updated.
 
 ``genshi.default_doctype``
 --------------------------
@@ -190,6 +220,16 @@ well-formed XML, you should probably use the **html** option for your web sites.
 
 .. _`Understanding HTML, XML and XHTML`: http://webkit.org/blog/?p=68
 
+``genshi.loader_callback``
+--------------------------
+The callback function that should be invoked whenever the template loader loads
+a new template.
+
+.. note:: Unlike the other options, this option can **not** be passed as
+          a string value, but rather must be a reference to the actual function.
+          That effectively means it can not be set from (non-Python)
+          configuration files.
+
 ``genshi.lookup_errors``
 ------------------------
 The error handling style to use in template expressions. Can be either
@@ -203,6 +243,16 @@ detailled information on the differences between these two modes.
 The maximum number of templates that the template loader will cache in memory.
 The default value is **25**. You may want to choose a higher value if your web
 site uses a larger number of templates, and you have enough memory to spare.
+
+``genshi.new_text_syntax``
+--------------------------
+Whether the new syntax for text templates should be used. Specify "yes" to
+enable the new syntax, or "no" to use the old syntax.
+
+In the version of Genshi, the default is to use the old syntax for
+backwards-compatibility, but that will change in a future release.
+
+.. _`search path`:
 
 ``genshi.search_path``
 ----------------------

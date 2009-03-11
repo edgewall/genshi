@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2007 Edgewall Software
+# Copyright (C) 2007-2008 Edgewall Software
 # All rights reserved.
 #
 # This software is licensed as described in the file COPYING, which
@@ -17,7 +17,8 @@ parts that are literal strings, and others that are Python expressions.
 
 from itertools import chain
 import os
-from tokenize import tokenprog
+import re
+from tokenize import PseudoToken
 
 from genshi.core import TEXT
 from genshi.template.base import TemplateSyntaxError, EXPR
@@ -30,8 +31,12 @@ NAMESTART = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_'
 NAMECHARS = NAMESTART + '.0123456789'
 PREFIX = '$'
 
-def interpolate(text, basedir=None, filename=None, lineno=-1, offset=0,
-                lookup='lenient'):
+token_re = re.compile('%s|%s(?s)' % (
+    r'[uU]?[rR]?("""|\'\'\')((?<!\\)\\\1|.)*?\1',
+    PseudoToken
+))
+
+def interpolate(text, filepath=None, lineno=-1, offset=0, lookup='strict'):
     """Parse the given string and extract expressions.
     
     This function is a generator that yields `TEXT` events for literal strings,
@@ -39,15 +44,14 @@ def interpolate(text, basedir=None, filename=None, lineno=-1, offset=0,
     string.
     
     >>> for kind, data, pos in interpolate("hey ${foo}bar"):
-    ...     print kind, `data`
+    ...     print kind, repr(data)
     TEXT u'hey '
     EXPR Expression('foo')
     TEXT u'bar'
     
     :param text: the text to parse
-    :param basedir: base directory of the file in which the text was found
-                    (optional)
-    :param filename: basename of the file in which the text was found (optional)
+    :param filepath: absolute path to the file in which the text was found
+                     (optional)
     :param lineno: the line number at which the text was found (optional)
     :param offset: the column number at which the text starts in the source
                    (optional)
@@ -57,9 +61,6 @@ def interpolate(text, basedir=None, filename=None, lineno=-1, offset=0,
     :raise TemplateSyntaxError: when a syntax error in an expression is
                                 encountered
     """
-    filepath = filename
-    if filepath and basedir:
-        filepath = os.path.join(basedir, filepath)
     pos = [filepath, lineno, offset]
 
     textbuf = []
@@ -73,7 +74,7 @@ def interpolate(text, basedir=None, filename=None, lineno=-1, offset=0,
             if chunk:
                 try:
                     expr = Expression(chunk.strip(), pos[0], pos[1],
-                                     lookup=lookup)
+                                      lookup=lookup)
                     yield EXPR, expr, tuple(pos)
                 except SyntaxError, err:
                     raise TemplateSyntaxError(err, filepath, pos[1],
@@ -111,7 +112,7 @@ def lex(text, textpos, filepath):
             pos = offset + 2
             level = 1
             while level:
-                match = tokenprog.match(text, pos)
+                match = token_re.match(text, pos)
                 if match is None:
                     raise TemplateSyntaxError('invalid syntax',  filepath,
                                               *textpos[1:])
@@ -137,6 +138,8 @@ def lex(text, textpos, filepath):
             yield True, text[offset + 1:pos].strip()
 
         elif not escaped and next == PREFIX:
+            if offset > pos:
+                yield False, text[pos:offset]
             escaped = True
             pos = offset + 1
 

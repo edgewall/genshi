@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2006-2007 Edgewall Software
+# Copyright (C) 2006-2008 Edgewall Software
 # All rights reserved.
 #
 # This software is licensed as described in the file COPYING, which
@@ -12,10 +12,13 @@
 # history and logs, available at http://genshi.edgewall.org/log/.
 
 import doctest
+import pickle
+from StringIO import StringIO
 import sys
 import unittest
 
 from genshi.core import Markup
+from genshi.template.base import Context
 from genshi.template.eval import Expression, Suite, Undefined, UndefinedError, \
                                  UNDEFINED
 
@@ -31,6 +34,14 @@ class ExpressionTestCase(unittest.TestCase):
         expr = Expression('x,y')
         self.assertEqual(hash(expr), hash(Expression('x,y')))
         self.assertNotEqual(hash(expr), hash(Expression('y, x')))
+
+    def test_pickle(self):
+        expr = Expression('1 < 2')
+        buf = StringIO()
+        pickle.dump(expr, buf, 2)
+        buf.seek(0)
+        unpickled = pickle.load(buf)
+        assert unpickled.evaluate({}) is True
 
     def test_name_lookup(self):
         self.assertEqual('bar', Expression('foo').evaluate({'foo': 'bar'}))
@@ -184,8 +195,9 @@ class ExpressionTestCase(unittest.TestCase):
     def test_compare_ne(self):
         self.assertEqual(False, Expression("1 != 1").evaluate({}))
         self.assertEqual(False, Expression("x != y").evaluate({'x': 1, 'y': 1}))
-        self.assertEqual(False, Expression("1 <> 1").evaluate({}))
-        self.assertEqual(False, Expression("x <> y").evaluate({'x': 1, 'y': 1}))
+        if sys.version < '3':
+            self.assertEqual(False, Expression("1 <> 1").evaluate({}))
+            self.assertEqual(False, Expression("x <> y").evaluate({'x': 1, 'y': 1}))
 
     def test_compare_lt(self):
         self.assertEqual(True, Expression("1 < 2").evaluate({}))
@@ -230,16 +242,9 @@ class ExpressionTestCase(unittest.TestCase):
         self.assertEqual(42, expr.evaluate({'foo': foo, 'bar': {"x": 42}}))
 
     def test_lambda(self):
-        # Define a custom `sorted` function cause the builtin isn't available
-        # on Python 2.3
-        def sorted(items, compfunc):
-            items.sort(compfunc)
-            return items
-        data = {'items': [{'name': 'b', 'value': 0}, {'name': 'a', 'value': 1}],
-                'sorted': sorted}
-        expr = Expression("sorted(items, lambda a, b: cmp(a.name, b.name))")
-        self.assertEqual([{'name': 'a', 'value': 1}, {'name': 'b', 'value': 0}],
-                         expr.evaluate(data))
+        data = {'items': range(5)}
+        expr = Expression("filter(lambda x: x > 2, items)")
+        self.assertEqual([3, 4], expr.evaluate(data))
 
     def test_list_comprehension(self):
         expr = Expression("[n for n in numbers if n < 2]")
@@ -263,30 +268,27 @@ class ExpressionTestCase(unittest.TestCase):
         expr = Expression("[i['name'] for i in items if i['value'] > 1]")
         self.assertEqual(['b'], expr.evaluate({'items': items}))
 
-    if sys.version_info >= (2, 4):
-        # Generator expressions only supported in Python 2.4 and up
+    def test_generator_expression(self):
+        expr = Expression("list(n for n in numbers if n < 2)")
+        self.assertEqual([0, 1], expr.evaluate({'numbers': range(5)}))
 
-        def test_generator_expression(self):
-            expr = Expression("list(n for n in numbers if n < 2)")
-            self.assertEqual([0, 1], expr.evaluate({'numbers': range(5)}))
+        expr = Expression("list((i, n + 1) for i, n in enumerate(numbers))")
+        self.assertEqual([(0, 1), (1, 2), (2, 3), (3, 4), (4, 5)],
+                         expr.evaluate({'numbers': range(5)}))
 
-            expr = Expression("list((i, n + 1) for i, n in enumerate(numbers))")
-            self.assertEqual([(0, 1), (1, 2), (2, 3), (3, 4), (4, 5)],
-                             expr.evaluate({'numbers': range(5)}))
+        expr = Expression("list(offset + n for n in numbers)")
+        self.assertEqual([2, 3, 4, 5, 6],
+                         expr.evaluate({'numbers': range(5), 'offset': 2}))
 
-            expr = Expression("list(offset + n for n in numbers)")
-            self.assertEqual([2, 3, 4, 5, 6],
-                             expr.evaluate({'numbers': range(5), 'offset': 2}))
+    def test_generator_expression_with_getattr(self):
+        items = [{'name': 'a', 'value': 1}, {'name': 'b', 'value': 2}]
+        expr = Expression("list(i.name for i in items if i.value > 1)")
+        self.assertEqual(['b'], expr.evaluate({'items': items}))
 
-        def test_generator_expression_with_getattr(self):
-            items = [{'name': 'a', 'value': 1}, {'name': 'b', 'value': 2}]
-            expr = Expression("list(i.name for i in items if i.value > 1)")
-            self.assertEqual(['b'], expr.evaluate({'items': items}))
-
-        def test_generator_expression_with_getitem(self):
-            items = [{'name': 'a', 'value': 1}, {'name': 'b', 'value': 2}]
-            expr = Expression("list(i['name'] for i in items if i['value'] > 1)")
-            self.assertEqual(['b'], expr.evaluate({'items': items}))
+    def test_generator_expression_with_getitem(self):
+        items = [{'name': 'a', 'value': 1}, {'name': 'b', 'value': 2}]
+        expr = Expression("list(i['name'] for i in items if i['value'] > 1)")
+        self.assertEqual(['b'], expr.evaluate({'items': items}))
 
     if sys.version_info >= (2, 5):
         def test_conditional_expression(self):
@@ -321,7 +323,8 @@ class ExpressionTestCase(unittest.TestCase):
         self.assertEqual([0, 1, 2, 3], expr.evaluate({'numbers': range(5)}))
 
     def test_access_undefined(self):
-        expr = Expression("nothing", filename='index.html', lineno=50)
+        expr = Expression("nothing", filename='index.html', lineno=50,
+                          lookup='lenient')
         retval = expr.evaluate({})
         assert isinstance(retval, Undefined)
         self.assertEqual('nothing', retval._name)
@@ -332,22 +335,44 @@ class ExpressionTestCase(unittest.TestCase):
             def __repr__(self):
                 return '<Something>'
         something = Something()
-        expr = Expression('something.nil', filename='index.html', lineno=50)
+        expr = Expression('something.nil', filename='index.html', lineno=50,
+                          lookup='lenient')
         retval = expr.evaluate({'something': something})
         assert isinstance(retval, Undefined)
         self.assertEqual('nil', retval._name)
         assert retval._owner is something
+
+    def test_getattr_exception(self):
+        class Something(object):
+            def prop_a(self):
+                raise NotImplementedError
+            prop_a = property(prop_a)
+            def prop_b(self):
+                raise AttributeError
+            prop_b = property(prop_b)
+        self.assertRaises(NotImplementedError,
+                          Expression('s.prop_a').evaluate, {'s': Something()})
+        self.assertRaises(AttributeError,
+                          Expression('s.prop_b').evaluate, {'s': Something()})
 
     def test_getitem_undefined_string(self):
         class Something(object):
             def __repr__(self):
                 return '<Something>'
         something = Something()
-        expr = Expression('something["nil"]', filename='index.html', lineno=50)
+        expr = Expression('something["nil"]', filename='index.html', lineno=50,
+                          lookup='lenient')
         retval = expr.evaluate({'something': something})
         assert isinstance(retval, Undefined)
         self.assertEqual('nil', retval._name)
         assert retval._owner is something
+
+    def test_getitem_exception(self):
+        class Something(object):
+            def __getitem__(self, key):
+                raise NotImplementedError
+        self.assertRaises(NotImplementedError,
+                          Expression('s["foo"]').evaluate, {'s': Something()})
 
     def test_error_access_undefined(self):
         expr = Expression("nothing", filename='index.html', lineno=50,
@@ -420,6 +445,29 @@ class ExpressionTestCase(unittest.TestCase):
 
 class SuiteTestCase(unittest.TestCase):
 
+    def test_pickle(self):
+        suite = Suite('foo = 42')
+        buf = StringIO()
+        pickle.dump(suite, buf, 2)
+        buf.seek(0)
+        unpickled = pickle.load(buf)
+        data = {}
+        unpickled.execute(data)
+        self.assertEqual(42, data['foo'])
+
+    def test_internal_shadowing(self):
+        # The context itself is stored in the global execution scope of a suite
+        # It used to get stored under the name 'data', which meant the
+        # following test would fail, as the user defined 'data' variable
+        # shadowed the Genshi one. We now use the name '__data__' to avoid
+        # conflicts
+        suite = Suite("""data = []
+bar = foo
+""")
+        data = {'foo': 42}
+        suite.execute(data)
+        self.assertEqual(42, data['bar'])
+
     def test_assign(self):
         suite = Suite("foo = 42")
         data = {}
@@ -434,7 +482,8 @@ class SuiteTestCase(unittest.TestCase):
         self.assertEqual(None, data['donothing']())
 
     def test_def_with_multiple_statements(self):
-        suite = Suite("""def donothing():
+        suite = Suite("""
+def donothing():
     if True:
         return foo
 """)
@@ -442,6 +491,84 @@ class SuiteTestCase(unittest.TestCase):
         suite.execute(data)
         assert 'donothing' in data
         self.assertEqual('bar', data['donothing']())
+
+    def test_def_using_nonlocal(self):
+        suite = Suite("""
+values = []
+def add(value):
+    if value not in values:
+        values.append(value)
+add('foo')
+add('bar')
+""")
+        data = {}
+        suite.execute(data)
+        self.assertEqual(['foo', 'bar'], data['values'])
+
+    def test_def_some_defaults(self):
+        suite = Suite("""
+def difference(v1, v2=10):
+    return v1 - v2
+x = difference(20, 19)
+y = difference(20)
+""")
+        data = {}
+        suite.execute(data)
+        self.assertEqual(1, data['x'])
+        self.assertEqual(10, data['y'])
+
+    def test_def_all_defaults(self):
+        suite = Suite("""
+def difference(v1=100, v2=10):
+    return v1 - v2
+x = difference(20, 19)
+y = difference(20)
+z = difference()
+""")
+        data = {}
+        suite.execute(data)
+        self.assertEqual(1, data['x'])
+        self.assertEqual(10, data['y'])
+        self.assertEqual(90, data['z'])
+
+    def test_def_vararg(self):
+        suite = Suite("""
+def mysum(*others):
+    rv = 0
+    for n in others:
+        rv = rv + n
+    return rv
+x = mysum(1, 2, 3)
+""")
+        data = {}
+        suite.execute(data)
+        self.assertEqual(6, data['x'])
+
+    def test_def_kwargs(self):
+        suite = Suite("""
+def smash(**kw):
+    return [''.join(i) for i in kw.items()]
+x = smash(foo='abc', bar='def')
+""")
+        data = {}
+        suite.execute(data)
+        self.assertEqual(['fooabc', 'bardef'], data['x'])
+
+    def test_def_nested(self):
+        suite = Suite("""
+def doit():
+    values = []
+    def add(value):
+        if value not in values:
+            values.append(value)
+    add('foo')
+    add('bar')
+    return values
+x = doit()
+""")
+        data = {}
+        suite.execute(data)
+        self.assertEqual(['foo', 'bar'], data['x'])
 
     def test_delete(self):
         suite = Suite("""foo = 42
@@ -457,11 +584,49 @@ del foo
         suite.execute(data)
         assert 'plain' in data
 
+    def test_class_in_def(self):
+        suite = Suite("""
+def create():
+    class Foobar(object):
+        def __str__(self):
+            return 'foobar'
+    return Foobar()
+x = create()
+""")
+        data = {}
+        suite.execute(data)
+        self.assertEqual('foobar', str(data['x']))
+
+    def test_class_with_methods(self):
+        suite = Suite("""class plain(object):
+    def donothing():
+        pass
+""")
+        data = {}
+        suite.execute(data)
+        assert 'plain' in data
+
     def test_import(self):
         suite = Suite("from itertools import ifilter")
         data = {}
         suite.execute(data)
         assert 'ifilter' in data
+
+    def test_import_star(self):
+        suite = Suite("from itertools import *")
+        data = Context()
+        suite.execute(data)
+        assert 'ifilter' in data
+
+    def test_import_in_def(self):
+        suite = Suite("""def fun():
+    from itertools import ifilter
+    return ifilter(None, xrange(3))
+""")
+        data = Context()
+        suite.execute(data)
+        assert 'ifilter' not in data
+        self.assertEqual([1, 2], list(data['fun']()))
 
     def test_for(self):
         suite = Suite("""x = []
@@ -471,6 +636,18 @@ for i in range(3):
         data = {}
         suite.execute(data)
         self.assertEqual([0, 1, 4], data['x'])
+
+    def test_for_in_def(self):
+        suite = Suite("""def loop():
+    for i in range(10):
+        if i == 5:
+            break
+    return i
+""")
+        data = {}
+        suite.execute(data)
+        assert 'loop' in data
+        self.assertEqual(5, data['loop']())
 
     def test_if(self):
         suite = Suite("""if foo == 42:
@@ -525,6 +702,25 @@ while x < 5:
     def test_local_augmented_assign(self):
         Suite("x = 1; x += 42; assert x == 43").execute({})
 
+    def test_augmented_assign_in_def(self):
+        d = {}
+        Suite("""def foo():
+    i = 1
+    i += 1
+    return i
+x = foo()""").execute(d)
+        self.assertEqual(2, d['x'])
+
+    def test_augmented_assign_in_loop_in_def(self):
+        d = {}
+        Suite("""def foo():
+    i = 0
+    for n in range(5):
+        i += n
+    return i
+x = foo()""").execute(d)
+        self.assertEqual(10, d['x'])
+
     def test_assign_in_list(self):
         suite = Suite("[d['k']] = 'foo',; assert d['k'] == 'foo'")
         d = {"k": "bar"}
@@ -569,7 +765,7 @@ assert f() == 42
     def test_delitem(self):
         d = {'k': 'foo'}
         Suite("del d['k']").execute({'d': d})
-        self.failIf('k' in d, `d`)
+        self.failIf('k' in d, repr(d))
 
 
 def suite():

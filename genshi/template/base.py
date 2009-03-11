@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2006-2007 Edgewall Software
+# Copyright (C) 2006-2008 Edgewall Software
 # All rights reserved.
 #
 # This software is licensed as described in the file COPYING, which
@@ -21,19 +21,20 @@ except ImportError:
         def popleft(self): return self.pop(0)
 import os
 from StringIO import StringIO
+import sys
 
 from genshi.core import Attrs, Stream, StreamEventKind, START, TEXT, _ensure
 from genshi.input import ParseError
 
-__all__ = ['Context', 'Template', 'TemplateError', 'TemplateRuntimeError',
-           'TemplateSyntaxError', 'BadDirectiveError']
+__all__ = ['Context', 'DirectiveFactory', 'Template', 'TemplateError',
+           'TemplateRuntimeError', 'TemplateSyntaxError', 'BadDirectiveError']
 __docformat__ = 'restructuredtext en'
 
 
 class TemplateError(Exception):
     """Base exception class for errors related to template processing."""
 
-    def __init__(self, message, filename='<string>', lineno=-1, offset=-1):
+    def __init__(self, message, filename=None, lineno=-1, offset=-1):
         """Create the exception.
         
         :param message: the error message
@@ -42,6 +43,8 @@ class TemplateError(Exception):
                        occurred
         :param offset: the column number at which the error occurred
         """
+        if filename is None:
+            filename = '<string>'
         self.msg = message #: the error message string
         if filename != '<string>' or lineno >= 0:
             message = '%s (%s, line %d)' % (self.msg, filename, lineno)
@@ -56,7 +59,7 @@ class TemplateSyntaxError(TemplateError):
     error, or the template is not well-formed.
     """
 
-    def __init__(self, message, filename='<string>', lineno=-1, offset=-1):
+    def __init__(self, message, filename=None, lineno=-1, offset=-1):
         """Create the exception
         
         :param message: the error message
@@ -78,7 +81,7 @@ class BadDirectiveError(TemplateSyntaxError):
     with a local name that doesn't match any registered directive.
     """
 
-    def __init__(self, name, filename='<string>', lineno=-1):
+    def __init__(self, name, filename=None, lineno=-1):
         """Create the exception
         
         :param name: the name of the directive
@@ -129,6 +132,7 @@ class Context(object):
         self.pop = self.frames.popleft
         self.push = self.frames.appendleft
         self._match_templates = []
+        self._choice_stack = []
 
         # Helper functions for use in expressions
         def defined(name):
@@ -151,6 +155,7 @@ class Context(object):
         :param key: the name of the variable
         """
         return self._find(key)[1] is not None
+    has_key = __contains__
 
     def __delitem__(self, key):
         """Remove a variable from all scopes.
@@ -234,6 +239,10 @@ class Context(object):
         """
         return [(key, self.get(key)) for key in self.keys()]
 
+    def update(self, mapping):
+        """Update the context from the mapping provided."""
+        self.frames[0].update(mapping)
+
     def push(self, data):
         """Push a new scope on the stack.
         
@@ -244,21 +253,56 @@ class Context(object):
         """Pop the top-most scope from the stack."""
 
 
-def _apply_directives(stream, ctxt, directives):
+def _apply_directives(stream, directives, ctxt, **vars):
     """Apply the given directives to the stream.
     
     :param stream: the stream the directives should be applied to
-    :param ctxt: the `Context`
     :param directives: the list of directives to apply
+    :param ctxt: the `Context`
+    :param vars: additional variables that should be available when Python
+                 code is executed
     :return: the stream with the given directives applied
     """
     if directives:
-        stream = directives[0](iter(stream), ctxt, directives[1:])
+        stream = directives[0](iter(stream), directives[1:], ctxt, **vars)
     return stream
 
+def _eval_expr(expr, ctxt, **vars):
+    """Evaluate the given `Expression` object.
+    
+    :param expr: the expression to evaluate
+    :param ctxt: the `Context`
+    :param vars: additional variables that should be available to the
+                 expression
+    :return: the result of the evaluation
+    """
+    if vars:
+        ctxt.push(vars)
+    retval = expr.evaluate(ctxt)
+    if vars:
+        ctxt.pop()
+    return retval
 
-class TemplateMeta(type):
-    """Meta class for templates."""
+def _exec_suite(suite, ctxt, **vars):
+    """Execute the given `Suite` object.
+    
+    :param suite: the code suite to execute
+    :param ctxt: the `Context`
+    :param vars: additional variables that should be available to the
+                 code
+    """
+    if vars:
+        ctxt.push(vars)
+        ctxt.push({})
+    suite.execute(ctxt)
+    if vars:
+        top = ctxt.pop()
+        ctxt.pop()
+        ctxt.frames[0].update(top)
+
+
+class DirectiveFactoryMeta(type):
+    """Meta class for directive factories."""
 
     def __new__(cls, name, bases, d):
         if 'directives' in d:
@@ -268,13 +312,47 @@ class TemplateMeta(type):
         return type.__new__(cls, name, bases, d)
 
 
-class Template(object):
+class DirectiveFactory(object):
+    """Base for classes that provide a set of template directives.
+    
+    :since: version 0.6
+    """
+    __metaclass__ = DirectiveFactoryMeta
+
+    directives = []
+    """A list of `(name, cls)` tuples that define the set of directives
+    provided by this factory.
+    """
+
+    def compare_directives(self):
+        """Return a function that takes two directive classes and compares
+        them to determine their relative ordering.
+        """
+        def _get_index(cls):
+            if cls in self._dir_order:
+                return self._dir_order.index(cls)
+            return 0
+        return lambda a, b: cmp(_get_index(a[0]), _get_index(b[0]))
+
+    def get_directive(self, name):
+        """Return the directive class for the given name.
+        
+        :param name: the directive name as used in the template
+        :return: the directive class
+        :see: `Directive`
+        """
+        return self._dir_by_name.get(name)
+
+
+class Template(DirectiveFactory):
     """Abstract template base class.
     
     This class implements most of the template processing model, but does not
     specify the syntax of templates.
     """
-    __metaclass__ = TemplateMeta
+
+    EXEC = StreamEventKind('EXEC')
+    """Stream event kind representing a Python code suite to execute."""
 
     EXPR = StreamEventKind('EXPR')
     """Stream event kind representing a Python expression."""
@@ -287,48 +365,69 @@ class Template(object):
     directives should be applied.
     """
 
-    def __init__(self, source, basedir=None, filename=None, loader=None,
-                 encoding=None, lookup='lenient'):
+    serializer = None
+    _number_conv = unicode # function used to convert numbers to event data
+
+    def __init__(self, source, filepath=None, filename=None, loader=None,
+                 encoding=None, lookup='strict', allow_exec=True):
         """Initialize a template from either a string, a file-like object, or
         an already parsed markup stream.
         
         :param source: a string, file-like object, or markup stream to read the
                        template from
-        :param basedir: the base directory containing the template file; when
-                        loaded from a `TemplateLoader`, this will be the
-                        directory on the template search path in which the
-                        template was found
-        :param filename: the name of the template file, relative to the given
-                         base directory
+        :param filepath: the absolute path to the template file
+        :param filename: the path to the template file relative to the search
+                         path
         :param loader: the `TemplateLoader` to use for loading included
                        templates
         :param encoding: the encoding of the `source`
-        :param lookup: the variable lookup mechanism; either "lenient" (the
-                       default), "strict", or a custom lookup class
+        :param lookup: the variable lookup mechanism; either "strict" (the
+                       default), "lenient", or a custom lookup class
+        :param allow_exec: whether Python code blocks in templates should be
+                           allowed
+        
+        :note: Changed in 0.5: Added the `allow_exec` argument
         """
-        self.basedir = basedir
+        self.filepath = filepath or filename
         self.filename = filename
-        if basedir and filename:
-            self.filepath = os.path.join(basedir, filename)
-        else:
-            self.filepath = filename
         self.loader = loader
         self.lookup = lookup
+        self.allow_exec = allow_exec
+        self._init_filters()
+        self._prepared = False
 
         if isinstance(source, basestring):
             source = StringIO(source)
         else:
             source = source
         try:
-            self.stream = list(self._prepare(self._parse(source, encoding)))
+            self._stream = self._parse(source, encoding)
         except ParseError, e:
             raise TemplateSyntaxError(e.msg, self.filepath, e.lineno, e.offset)
-        self.filters = [self._flatten, self._eval]
-        if loader:
-            self.filters.append(self._include)
+
+    def __getstate__(self):
+        state = self.__dict__.copy()
+        state['filters'] = []
+        return state
+
+    def __setstate__(self, state):
+        self.__dict__ = state
+        self._init_filters()
 
     def __repr__(self):
         return '<%s "%s">' % (self.__class__.__name__, self.filename)
+
+    def _init_filters(self):
+        self.filters = [self._flatten]
+        if self.loader:
+            self.filters.append(self._include)
+
+    def _get_stream(self):
+        if not self._prepared:
+            self._stream = list(self._prepare(self._stream))
+            self._prepared = True
+        return self._stream
+    stream = property(_get_stream)
 
     def _parse(self, source, encoding):
         """Parse the template.
@@ -349,6 +448,8 @@ class Template(object):
         
         :param stream: the event stream of the template
         """
+        from genshi.template.loader import TemplateNotFound
+
         for kind, data, pos in stream:
             if kind is SUB:
                 directives = []
@@ -366,8 +467,42 @@ class Template(object):
                         yield event
             else:
                 if kind is INCLUDE:
-                    data = data[0], list(self._prepare(data[1]))
+                    href, cls, fallback = data
+                    if isinstance(href, basestring) and \
+                            not getattr(self.loader, 'auto_reload', True):
+                        # If the path to the included template is static, and
+                        # auto-reloading is disabled on the template loader,
+                        # the template is inlined into the stream
+                        try:
+                            tmpl = self.loader.load(href, relative_to=pos[0],
+                                                    cls=cls or self.__class__)
+                            for event in tmpl.stream:
+                                yield event
+                        except TemplateNotFound:
+                            if fallback is None:
+                                raise
+                            for event in self._prepare(fallback):
+                                yield event
+                        continue
+                    elif fallback:
+                        # Otherwise the include is performed at run time
+                        data = href, cls, list(self._prepare(fallback))
+
                 yield kind, data, pos
+
+    def compile(self):
+        """Compile the template to a Python module, and return the module
+        object.
+        """
+        from imp import new_module
+        from genshi.template.inline import inline
+
+        name = (self.filename or '_some_ident').replace('.', '_')
+        module = new_module(name)
+        source = u'\n'.join(list(inline(self)))
+        code = compile(source, self.filepath or '<string>', 'exec')
+        exec code in module.__dict__, module.__dict__
+        return module
 
     def generate(self, *args, **kwargs):
         """Apply the template to the given context data.
@@ -382,25 +517,25 @@ class Template(object):
         :return: a markup event stream representing the result of applying
                  the template to the context data.
         """
+        vars = {}
         if args:
             assert len(args) == 1
             ctxt = args[0]
             if ctxt is None:
                 ctxt = Context(**kwargs)
+            else:
+                vars = kwargs
             assert isinstance(ctxt, Context)
         else:
             ctxt = Context(**kwargs)
 
         stream = self.stream
         for filter_ in self.filters:
-            stream = filter_(iter(stream), ctxt)
-        return Stream(stream)
+            stream = filter_(iter(stream), ctxt, **vars)
+        return Stream(stream, self.serializer)
 
-    def _eval(self, stream, ctxt):
-        """Internal stream filter that evaluates any expressions in `START` and
-        `TEXT` events.
-        """
-        filters = (self._flatten, self._eval)
+    def _flatten(self, stream, ctxt, **vars):
+        number_conv = self._number_conv
 
         for kind, data, pos in stream:
 
@@ -410,54 +545,50 @@ class Template(object):
                 tag, attrs = data
                 new_attrs = []
                 for name, substream in attrs:
-                    if isinstance(substream, basestring):
-                        value = substream
-                    else:
+                    if type(substream) is list:
                         values = []
-                        for subkind, subdata, subpos in self._eval(substream,
-                                                                   ctxt):
-                            if subkind is TEXT:
-                                values.append(subdata)
+                        for event in self._flatten(substream, ctxt, **vars):
+                            if event[0] is TEXT:
+                                values.append(event[1])
                         value = [x for x in values if x is not None]
                         if not value:
                             continue
+                    else:
+                        value = substream
                     new_attrs.append((name, u''.join(value)))
                 yield kind, (tag, Attrs(new_attrs)), pos
 
             elif kind is EXPR:
-                result = data.evaluate(ctxt)
+                result = _eval_expr(data, ctxt, **vars)
                 if result is not None:
-                    # First check for a string, otherwise the iterable test below
-                    # succeeds, and the string will be chopped up into individual
-                    # characters
+                    # First check for a string, otherwise the iterable test
+                    # below succeeds, and the string will be chopped up into
+                    # individual characters
                     if isinstance(result, basestring):
                         yield TEXT, result, pos
+                    elif isinstance(result, (int, float, long)):
+                        yield TEXT, number_conv(result), pos
                     elif hasattr(result, '__iter__'):
-                        substream = _ensure(result)
-                        for filter_ in filters:
-                            substream = filter_(substream, ctxt)
-                        for event in substream:
+                        for event in self._flatten(_ensure(result), ctxt,
+                                                   **vars):
                             yield event
                     else:
                         yield TEXT, unicode(result), pos
 
+            elif kind is EXEC:
+                _exec_suite(data, ctxt, **vars)
+
+            elif kind is SUB:
+                # This event is a list of directives and a list of nested
+                # events to which those directives should be applied
+                substream = _apply_directives(data[1], data[0], ctxt, **vars)
+                for event in self._flatten(substream, ctxt, **vars):
+                    yield event
+
             else:
                 yield kind, data, pos
 
-    def _flatten(self, stream, ctxt):
-        """Internal stream filter that expands `SUB` events in the stream."""
-        for event in stream:
-            if event[0] is SUB:
-                # This event is a list of directives and a list of nested
-                # events to which those directives should be applied
-                directives, substream = event[1]
-                substream = _apply_directives(substream, ctxt, directives)
-                for event in self._flatten(substream, ctxt):
-                    yield event
-            else:
-                yield event
-
-    def _include(self, stream, ctxt):
+    def _include(self, stream, ctxt, **vars):
         """Internal stream filter that performs inclusion of external
         template files.
         """
@@ -465,29 +596,31 @@ class Template(object):
 
         for event in stream:
             if event[0] is INCLUDE:
-                href, fallback = event[1]
+                href, cls, fallback = event[1]
                 if not isinstance(href, basestring):
                     parts = []
-                    for subkind, subdata, subpos in self._eval(href, ctxt):
+                    for subkind, subdata, subpos in self._flatten(href, ctxt,
+                                                                  **vars):
                         if subkind is TEXT:
                             parts.append(subdata)
                     href = u''.join([x for x in parts if x is not None])
                 try:
                     tmpl = self.loader.load(href, relative_to=event[2][0],
-                                            cls=self.__class__)
-                    for event in tmpl.generate(ctxt):
+                                            cls=cls or self.__class__)
+                    for event in tmpl.generate(ctxt, **vars):
                         yield event
                 except TemplateNotFound:
                     if fallback is None:
                         raise
                     for filter_ in self.filters:
-                        fallback = filter_(iter(fallback), ctxt)
+                        fallback = filter_(iter(fallback), ctxt, **vars)
                     for event in fallback:
                         yield event
             else:
                 yield event
 
 
+EXEC = Template.EXEC
 EXPR = Template.EXPR
 INCLUDE = Template.INCLUDE
 SUB = Template.SUB

@@ -17,10 +17,6 @@ sources.
 
 from itertools import chain
 from xml.parsers import expat
-try:
-    frozenset
-except NameError:
-    from sets import ImmutableSet as frozenset
 import HTMLParser as html
 import htmlentitydefs
 from StringIO import StringIO
@@ -132,10 +128,6 @@ class XMLParser(object):
         parser.SetParamEntityParsing(expat.XML_PARAM_ENTITY_PARSING_ALWAYS)
         parser.UseForeignDTD()
         parser.ExternalEntityRefHandler = self._build_foreign
-
-        # Location reporting is only support in Python >= 2.4
-        if not hasattr(parser, 'CurrentLineNumber'):
-            self._getpos = self._getpos_unknown
 
         self.expat = parser
         self._queue = []

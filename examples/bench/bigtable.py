@@ -10,7 +10,7 @@ import sys
 import timeit
 from StringIO import StringIO
 from genshi.builder import tag
-from genshi.template import MarkupTemplate
+from genshi.template import MarkupTemplate, NewTextTemplate
 
 try:
     from elementtree import ElementTree as et
@@ -41,9 +41,9 @@ except ImportError:
     DjangoContext = DjangoTemplate = None
 
 try:
-    from myghty.interp import Interpreter as MyghtyInterpreter
+    from mako.template import Template as MakoTemplate
 except ImportError:
-    MyghtyInterpreter = None
+    MakoTemplate = None
 
 table = [dict(a=1,b=2,c=3,d=4,e=5,f=6,g=7,h=8,i=9,j=10)
           for x in range(1000)]
@@ -60,6 +60,14 @@ genshi_tmpl2 = MarkupTemplate("""
 <table xmlns:py="http://genshi.edgewall.org/">$table</table>
 """)
 
+genshi_text_tmpl = NewTextTemplate("""
+<table>
+{% for row in table %}<tr>
+{% for c in row.values() %}<td>$c</td>{% end %}
+</tr>{% end %}
+</table>
+""")
+
 if DjangoTemplate:
     django_tmpl = DjangoTemplate("""
     <table>
@@ -74,28 +82,31 @@ if DjangoTemplate:
         context = DjangoContext({'table': table})
         django_tmpl.render(context)
 
-if MyghtyInterpreter:
-    interpreter = MyghtyInterpreter()
-    component = interpreter.make_component("""
+if MakoTemplate:
+    mako_tmpl = MakoTemplate("""
 <table>
-% for row in ARGS['table']:
-   <tr>
-%    for col in row.values():
-     <td><% col %></td>
-%
-%
-   </tr>
+  % for row in table:
+    <tr>
+      % for col in row.values():
+        <td>${ col | h  }</td>
+      % endfor
+    </tr>
+  % endfor
 </table>
 """)
-    def test_myghty():
-        """Myghty Template"""
-        buf = StringIO()
-        interpreter.execute(component, request_args={'table':table}, out_buffer=buf)
+    def test_mako():
+        """Mako Template"""
+        mako_tmpl.render(table=table)
 
 def test_genshi():
     """Genshi template"""
     stream = genshi_tmpl.generate(table=table)
     stream.render('html', strip_whitespace=False)
+
+def test_genshi_text():
+    """Genshi text template"""
+    stream = genshi_text_tmpl.generate(table=table)
+    stream.render('text')
 
 def test_genshi_builder():
     """Genshi template + tag builder"""
@@ -185,9 +196,9 @@ if neo_cgi:
 
 
 def run(which=None, number=10):
-    tests = ['test_builder', 'test_genshi', 'test_genshi_builder',
-             'test_myghty', 'test_kid', 'test_kid_et', 'test_et', 'test_cet',
-             'test_clearsilver', 'test_django']
+    tests = ['test_builder', 'test_genshi', 'test_genshi_text',
+             'test_genshi_builder', 'test_mako', 'test_kid', 'test_kid_et',
+             'test_et', 'test_cet', 'test_clearsilver', 'test_django']
 
     if which:
         tests = filter(lambda n: n[5:] in which, tests)
@@ -208,12 +219,15 @@ if __name__ == '__main__':
     which = [arg for arg in sys.argv[1:] if arg[0] != '-']
 
     if '-p' in sys.argv:
-        import hotshot, hotshot.stats
-        prof = hotshot.Profile("template.prof")
-        benchtime = prof.runcall(run, which, number=1)
-        stats = hotshot.stats.load("template.prof")
+        import cProfile, pstats
+        prof = cProfile.Profile()
+        prof.run('run(%r, number=1)' % which)
+        stats = pstats.Stats(prof)
         stats.strip_dirs()
         stats.sort_stats('time', 'calls')
-        stats.print_stats()
+        stats.print_stats(25)
+        if '-v' in sys.argv:
+            stats.print_callees()
+            stats.print_callers()
     else:
         run(which)

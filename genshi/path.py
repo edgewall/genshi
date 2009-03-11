@@ -126,8 +126,8 @@ class GenericStrategy(object):
                 # should we make namespaces work?
                 return None
 
-            posqueue = deque([(pos, cou, []) for pos, cou in stack[-1]])
-            nextpos = []
+            pos_queue = deque([(pos, cou, []) for pos, cou in stack[-1]])
+            next_pos = []
 
             # length of real part of path - we omit attribute axis
             real_len = len(steps) - ((steps[-1][0] == ATTRIBUTE) or 1 and 0)
@@ -135,18 +135,17 @@ class GenericStrategy(object):
 
             # places where we have to check for match, are these
             # provided by parent
-            while posqueue:
-                x, pcou, mcou = posqueue.popleft()
-
+            while pos_queue:
+                x, pcou, mcou = pos_queue.popleft()
                 axis, nodetest, predicates = steps[x]
 
                 # we need to push descendant-like positions from parent
                 # further
                 if (axis is DESCENDANT or axis is DESCENDANT_OR_SELF) and pcou:
-                    if nextpos and nextpos[-1][0] == x:
-                        nextpos[-1][1].extend(pcou)
+                    if next_pos and next_pos[-1][0] == x:
+                        next_pos[-1][1].extend(pcou)
                     else:
-                        nextpos.append((x, pcou))
+                        next_pos.append((x, pcou))
 
                 # nodetest first
                 if not nodetest(kind, data, pos, namespaces, variables):
@@ -212,22 +211,22 @@ class GenericStrategy(object):
                     if matched:
                         retval = matched
                 else:
-                    naxis = steps[x + 1][0]
+                    next_axis = steps[x + 1][0]
 
                     # if next axis allows matching self we have
                     # to add next position to our queue
-                    if naxis is DESCENDANT_OR_SELF or naxis is SELF:
-                        if not posqueue or posqueue[0][0] > x + 1:
-                            posqueue.appendleft((x + 1, [], [child_counter]))
+                    if next_axis is DESCENDANT_OR_SELF or next_axis is SELF:
+                        if not pos_queue or pos_queue[0][0] > x + 1:
+                            pos_queue.appendleft((x + 1, [], [child_counter]))
                         else:
-                            posqueue[0][2].append(child_counter)
+                            pos_queue[0][2].append(child_counter)
 
                     # if axis is not self we have to add it to child's list
-                    if naxis is not SELF:
-                        nextpos.append((x+1, [child_counter]))
+                    if next_axis is not SELF:
+                        next_pos.append((x + 1, [child_counter]))
 
             if kind is START:
-                stack.append(nextpos)
+                stack.append(next_pos)
 
             return retval
 
@@ -616,8 +615,9 @@ class Path(object):
         >>> from genshi.input import XML
         >>> xml = XML('<root><elem><child id="1"/></elem><child id="2"/></root>')
         >>> test = Path('child').test()
+        >>> namespaces, variables = {}, {}
         >>> for event in xml:
-        ...     if test(event, {}, {}):
+        ...     if test(event, namespaces, variables):
         ...         print event[0], repr(event[1])
         START (QName(u'child'), Attrs([(QName(u'id'), u'2')]))
         
@@ -628,24 +628,18 @@ class Path(object):
                  stream against the path
         :rtype: ``function``
         """
-        if len(self.strategies) == 1:                             
-            return self.strategies[0].test(ignore_context)   
+        tests = [s.test(ignore_context) for s in self.strategies]
+        if len(tests) == 1:
+            return tests[0]
 
-        # test for every subpath
-        tests = []
-        for s in self.strategies:
-            tests.append(s.test(ignore_context))
-
-        def _test(event, namespaces, variables, updateonly=False):
+        def _multi(event, namespaces, variables, updateonly=False):
             retval = None
             for test in tests:
-                val = test(event, namespaces, variables, updateonly)
-                # TODO SOC: collect attributes
+                val = test(event, namespaces, variables, updateonly=updateonly)
                 if retval is None:
                     retval = val
             return retval
-
-        return _test
+        return _multi
 
 
 class PathSyntaxError(Exception):

@@ -505,6 +505,55 @@ add('bar')
         suite.execute(data)
         self.assertEqual(['foo', 'bar'], data['values'])
 
+    def test_def_some_defaults(self):
+        suite = Suite("""
+def difference(v1, v2=10):
+    return v1 - v2
+x = difference(20, 19)
+y = difference(20)
+""")
+        data = {}
+        suite.execute(data)
+        self.assertEqual(1, data['x'])
+        self.assertEqual(10, data['y'])
+
+    def test_def_all_defaults(self):
+        suite = Suite("""
+def difference(v1=100, v2=10):
+    return v1 - v2
+x = difference(20, 19)
+y = difference(20)
+z = difference()
+""")
+        data = {}
+        suite.execute(data)
+        self.assertEqual(1, data['x'])
+        self.assertEqual(10, data['y'])
+        self.assertEqual(90, data['z'])
+
+    def test_def_vararg(self):
+        suite = Suite("""
+def mysum(*others):
+    rv = 0
+    for n in others:
+        rv = rv + n
+    return rv
+x = mysum(1, 2, 3)
+""")
+        data = {}
+        suite.execute(data)
+        self.assertEqual(6, data['x'])
+
+    def test_def_kwargs(self):
+        suite = Suite("""
+def smash(**kw):
+    return [''.join(i) for i in kw.items()]
+x = smash(foo='abc', bar='def')
+""")
+        data = {}
+        suite.execute(data)
+        self.assertEqual(['fooabc', 'bardef'], data['x'])
+
     def test_def_nested(self):
         suite = Suite("""
 def doit():
@@ -569,6 +618,16 @@ x = create()
         suite.execute(data)
         assert 'ifilter' in data
 
+    def test_import_in_def(self):
+        suite = Suite("""def fun():
+    from itertools import ifilter
+    return ifilter(None, xrange(3))
+""")
+        data = Context()
+        suite.execute(data)
+        assert 'ifilter' not in data
+        self.assertEqual([1, 2], list(data['fun']()))
+
     def test_for(self):
         suite = Suite("""x = []
 for i in range(3):
@@ -577,6 +636,18 @@ for i in range(3):
         data = {}
         suite.execute(data)
         self.assertEqual([0, 1, 4], data['x'])
+
+    def test_for_in_def(self):
+        suite = Suite("""def loop():
+    for i in range(10):
+        if i == 5:
+            break
+    return i
+""")
+        data = {}
+        suite.execute(data)
+        assert 'loop' in data
+        self.assertEqual(5, data['loop']())
 
     def test_if(self):
         suite = Suite("""if foo == 42:

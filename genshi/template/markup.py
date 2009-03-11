@@ -280,8 +280,6 @@ class MarkupTemplate(Template):
                                                  pos[2], lookup=self.lookup))
                         if len(value) == 1 and value[0][0] is TEXT:
                             value = value[0][1]
-                    else:
-                        value = [(TEXT, u'', pos)]
                     new_attrs.append((name, value))
                 data = tag, Attrs(new_attrs)
 
@@ -329,9 +327,10 @@ class MarkupTemplate(Template):
 
         for event in stream:
 
-            # We (currently) only care about start events for matching
+            # We (currently) only care about start and end events for matching
             # We might care about namespace events in the future, though
-            if not match_templates or event[0] is not START:
+            if not match_templates or (event[0] is not START and
+                                       event[0] is not END):
                 yield event
                 continue
 
@@ -373,13 +372,9 @@ class MarkupTemplate(Template):
                     # Recursively process the output
                     template = _apply_directives(template, directives, ctxt,
                                                  **vars)
-                    for event in self._match(
-                            self._exec(
-                                self._eval(
-                                    self._flatten(template, ctxt, **vars),
-                                    ctxt, **vars),
-                                ctxt, **vars),
-                            ctxt, start=idx + 1, **vars):
+                    for event in self._match(self._flatten(template, ctxt,
+                                                           **vars),
+                                             ctxt, start=idx + 1, **vars):
                         yield event
 
                     # If the match template did not actually call select to

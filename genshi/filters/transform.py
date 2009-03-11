@@ -710,11 +710,12 @@ class SelectTransformation(object):
         variables = {}
         test = self.path.test()
         stream = iter(stream)
+        next = stream.next
         for mark, event in stream:
             if mark is None:
                 yield mark, event
                 continue
-            result = test(event, {}, {})
+            result = test(event, namespaces, variables)
             # XXX This is effectively genshi.core._ensure() for transform
             # streams.
             if result is True:
@@ -722,7 +723,7 @@ class SelectTransformation(object):
                     yield ENTER, event
                     depth = 1
                     while depth > 0:
-                        mark, subevent = stream.next()
+                        mark, subevent = next()
                         if subevent[0] is START:
                             depth += 1
                         elif subevent[0] is END:
@@ -731,7 +732,7 @@ class SelectTransformation(object):
                             yield EXIT, subevent
                         else:
                             yield INSIDE, subevent
-                        test(subevent, {}, {}, updateonly=True)
+                        test(subevent, namespaces, variables, updateonly=True)
                 else:
                     yield OUTSIDE, event
             elif isinstance(result, Attrs):

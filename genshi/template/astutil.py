@@ -106,18 +106,19 @@ class ASTCodeGenerator(object):
         return self.visit(node.body)
 
     # arguments = (expr* args, identifier? vararg,
-    #                 identifier? kwarg, expr* defaults)
+    #              identifier? kwarg, expr* defaults)
     def visit_arguments(self, node):
         first = True
+        no_default_count = len(node.args) - len(node.defaults)
         for i, arg in enumerate(node.args):
             if not first:
                 self._write(', ')
             else:
                 first = False
             self.visit(arg)
-            if i < len(node.defaults):
+            if i >= no_default_count:
                 self._write('=')
-                self.visit(node.defaults[i])
+                self.visit(node.defaults[i - no_default_count])
         if getattr(node, 'vararg', None):
             if not first:
                 self._write(', ')
@@ -205,6 +206,8 @@ class ASTCodeGenerator(object):
             self.visit(node.dest)
             if getattr(node, 'values', None):
                 self._write(', ')
+        else:
+            self._write(' ')
         if getattr(node, 'values', None):
             self.visit(node.values[0])
             for value in node.values[1:]:

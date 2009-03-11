@@ -11,10 +11,10 @@
 # individuals. For the exact contribution history, see the revision
 # history and logs, available at http://genshi.edgewall.org/log/.
 
-import compiler
 import imp
 
 from genshi.core import Attrs, Stream, _ensure, START, END, TEXT
+from genshi.template.astutil import _ast
 from genshi.template.base import EXPR, SUB
 from genshi.template.directives import *
 
@@ -64,11 +64,11 @@ def _expand_text(obj):
 def _assign(ast):
     buf = []
     def _build(node, indices):
-        if isinstance(node, (compiler.ast.AssTuple, compiler.ast.Tuple)):
-            for idx, child in enumerate(node.nodes):
-                _build(child, indices + (idx,))
-        elif isinstance(node, (compiler.ast.AssName, compiler.ast.Name)):
-            buf.append('%r: v%s' % (node.name, ''.join(['[%s]' % i for i in indices])))
+        if isinstance(node, _ast.Tuple):
+            for idx, elt in enumerate(node.elts):
+                _build(elt, indices + (idx,))
+        elif isinstance(node, _ast.Name):
+            buf.append('%r: v%s' % (node.id, ''.join(['[%s]' % i for i in indices])))
     _build(ast, ())
     return '{%s}' % ', '.join(buf)
 

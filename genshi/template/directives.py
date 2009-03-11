@@ -344,8 +344,8 @@ class ForDirective(Directive):
             raise TemplateSyntaxError('"in" keyword missing in "for" directive',
                                       template.filepath, lineno, offset)
         assign, value = value.split(' in ', 1)
-        self.target = _parse(assign, 'exec')
-        self.assign = _assignment(self.target.body[0].value)
+        self.target = _parse(assign, 'exec').body[0].value
+        self.assign = _assignment(self.target)
         value = 'iter(%s)' % value.strip()
         self.filename = template.filepath
         Directive.__init__(self, value, template, namespaces, lineno, offset)

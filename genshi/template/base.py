@@ -13,12 +13,7 @@
 
 """Basic templating functionality."""
 
-try:
-    from collections import deque
-except ImportError:
-    class deque(list):
-        def appendleft(self, x): self.insert(0, x)
-        def popleft(self): return self.pop(0)
+from collections import deque
 import os
 from StringIO import StringIO
 import sys
@@ -422,12 +417,12 @@ class Template(DirectiveFactory):
         if self.loader:
             self.filters.append(self._include)
 
-    def _get_stream(self):
+    @property
+    def stream(self):
         if not self._prepared:
             self._stream = list(self._prepare(self._stream))
             self._prepared = True
         return self._stream
-    stream = property(_get_stream)
 
     def _parse(self, source, encoding):
         """Parse the template.

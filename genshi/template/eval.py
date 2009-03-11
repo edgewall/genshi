@@ -281,6 +281,7 @@ class Undefined(object):
 class LookupBase(object):
     """Abstract base class for variable lookup implementations."""
 
+    @classmethod
     def globals(cls, data):
         """Construct the globals dictionary to use as the execution context for
         the expression or suite.
@@ -293,8 +294,8 @@ class LookupBase(object):
             '_star_import_patch': _star_import_patch,
             'UndefinedError': UndefinedError,
         }
-    globals = classmethod(globals)
 
+    @classmethod
     def lookup_name(cls, data, name):
         __traceback_hide__ = True
         val = data.get(name, UNDEFINED)
@@ -303,8 +304,8 @@ class LookupBase(object):
             if val is UNDEFINED:
                 val = cls.undefined(name)
         return val
-    lookup_name = classmethod(lookup_name)
 
+    @classmethod
     def lookup_attr(cls, obj, key):
         __traceback_hide__ = True
         try:
@@ -318,8 +319,8 @@ class LookupBase(object):
                 except (KeyError, TypeError):
                     val = cls.undefined(key, owner=obj)
         return val
-    lookup_attr = classmethod(lookup_attr)
 
+    @classmethod
     def lookup_item(cls, obj, key):
         __traceback_hide__ = True
         if len(key) == 1:
@@ -333,8 +334,8 @@ class LookupBase(object):
                     val = cls.undefined(key, owner=obj)
                 return val
             raise
-    lookup_item = classmethod(lookup_item)
 
+    @classmethod
     def undefined(cls, key, owner=UNDEFINED):
         """Can be overridden by subclasses to specify behavior when undefined
         variables are accessed.
@@ -343,7 +344,6 @@ class LookupBase(object):
         :param owner: the owning object, if the variable is accessed as a member
         """
         raise NotImplementedError
-    undefined = classmethod(undefined)
 
 
 class LenientLookup(LookupBase):
@@ -369,11 +369,12 @@ class LenientLookup(LookupBase):
     
     :see: `StrictLookup`
     """
+
+    @classmethod
     def undefined(cls, key, owner=UNDEFINED):
         """Return an ``Undefined`` object."""
         __traceback_hide__ = True
         return Undefined(key, owner=owner)
-    undefined = classmethod(undefined)
 
 
 class StrictLookup(LookupBase):
@@ -397,11 +398,12 @@ class StrictLookup(LookupBase):
         ...
     UndefinedError: {} has no member named "nil"
     """
+
+    @classmethod
     def undefined(cls, key, owner=UNDEFINED):
         """Raise an ``UndefinedError`` immediately."""
         __traceback_hide__ = True
         raise UndefinedError(key, owner=owner)
-    undefined = classmethod(undefined)
 
 
 def _parse(source, mode='eval'):

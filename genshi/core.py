@@ -468,6 +468,7 @@ class Markup(unicode):
         return Markup(unicode(self).join([escape(item, quotes=escape_quotes)
                                           for item in seq]))
 
+    @classmethod
     def escape(cls, text, quotes=True):
         """Create a Markup instance from a string and escape special characters
         it may contain (<, >, & and \").
@@ -501,7 +502,6 @@ class Markup(unicode):
         if quotes:
             text = text.replace('"', '&#34;')
         return cls(text)
-    escape = classmethod(escape)
 
     def unescape(self):
         """Reverse-escapes &, <, >, and \" and returns a `unicode` object.

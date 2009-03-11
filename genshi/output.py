@@ -129,6 +129,7 @@ class DocType(object):
     )
     SVG = SVG_FULL
 
+    @classmethod
     def get(cls, name):
         """Return the ``(name, pubid, sysid)`` tuple of the ``DOCTYPE``
         declaration for the specified name.
@@ -164,7 +165,6 @@ class DocType(object):
             'svg-basic': cls.SVG_BASIC,
             'svg-tiny': cls.SVG_TINY
         }.get(name.lower())
-    get = classmethod(get)
 
 
 class XMLSerializer(object):

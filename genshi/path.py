@@ -38,6 +38,7 @@ Because the XPath engine operates on markup streams (as opposed to tree
 structures), it only implements a subset of the full XPath 1.0 language.
 """
 
+from collections import deque
 try:
     from functools import reduce
 except ImportError:
@@ -45,6 +46,7 @@ except ImportError:
 from math import ceil, floor
 import operator
 import re
+from itertools import chain
 
 from genshi.core import Stream, Attrs, Namespace, QName
 from genshi.core import START, END, TEXT, START_NS, END_NS, COMMENT, PI, \
@@ -78,13 +80,445 @@ DESCENDANT_OR_SELF = Axis.DESCENDANT_OR_SELF
 SELF = Axis.SELF
 
 
+class GenericStrategy(object):
+
+    @classmethod
+    def supports(cls, path):
+        return True
+
+    def __init__(self, path):
+        self.path = path
+
+    def test(self, ignore_context):
+        p = self.path
+        if ignore_context:
+            if p[0][0] is ATTRIBUTE:
+                steps = [_DOTSLASHSLASH] + p
+            else:
+                steps = [(DESCENDANT_OR_SELF, p[0][1], p[0][2])] + p[1:]
+        elif p[0][0] is CHILD or p[0][0] is ATTRIBUTE \
+                or p[0][0] is DESCENDANT:
+            steps = [_DOTSLASH] + p
+        else:
+            steps = p
+
+        # for node it contains all positions of xpath expression
+        # where its child should start checking for matches
+        # with list of corresponding context counters
+        # there can be many of them, because position that is from
+        # descendant-like axis can be achieved from different nodes
+        # for example <a><a><b/></a></a> should match both //a//b[1]
+        # and //a//b[2]
+        # positions always form increasing sequence (invariant)
+        stack = [[(0, [[]])]]
+
+        def _test(event, namespaces, variables, updateonly=False):
+            kind, data, pos = event[:3]
+            retval = None
+
+            # Manage the stack that tells us "where we are" in the stream
+            if kind is END:
+                if stack:
+                    stack.pop()
+                return None
+            if kind is START_NS or kind is END_NS \
+                    or kind is START_CDATA or kind is END_CDATA:
+                # should we make namespaces work?
+                return None
+
+            pos_queue = deque([(pos, cou, []) for pos, cou in stack[-1]])
+            next_pos = []
+
+            # length of real part of path - we omit attribute axis
+            real_len = len(steps) - ((steps[-1][0] == ATTRIBUTE) or 1 and 0)
+            last_checked = -1
+
+            # places where we have to check for match, are these
+            # provided by parent
+            while pos_queue:
+                x, pcou, mcou = pos_queue.popleft()
+                axis, nodetest, predicates = steps[x]
+
+                # we need to push descendant-like positions from parent
+                # further
+                if (axis is DESCENDANT or axis is DESCENDANT_OR_SELF) and pcou:
+                    if next_pos and next_pos[-1][0] == x:
+                        next_pos[-1][1].extend(pcou)
+                    else:
+                        next_pos.append((x, pcou))
+
+                # nodetest first
+                if not nodetest(kind, data, pos, namespaces, variables):
+                    continue
+
+                # counters packs that were already bad
+                missed = set()
+                counters_len = len(pcou) + len(mcou)
+
+                # number of counters - we have to create one
+                # for every context position based predicate
+                cnum = 0
+
+                # tells if we have match with position x
+                matched = True
+
+                if predicates:
+                    for predicate in predicates:
+                        pretval = predicate(kind, data, pos,
+                                            namespaces,
+                                            variables)
+                        if type(pretval) is float: # FIXME <- need to check
+                                                   # this for other types that
+                                                   # can be coerced to float
+
+                            # each counter pack needs to be checked
+                            for i, cou in enumerate(chain(pcou, mcou)):
+                                # it was bad before
+                                if i in missed:
+                                    continue
+
+                                if len(cou) < cnum + 1:
+                                    cou.append(0)
+                                cou[cnum] += 1 
+
+                                # it is bad now
+                                if cou[cnum] != int(pretval):
+                                    missed.add(i)
+
+                            # none of counters pack was good
+                            if len(missed) == counters_len:
+                                pretval = False
+                            cnum += 1
+
+                        if not pretval:
+                             matched = False
+                             break
+
+                if not matched:
+                    continue
+
+                # counter for next position with current node as context node
+                child_counter = []
+
+                if x + 1 == real_len:
+                    # we reached end of expression, because x + 1
+                    # is equal to the length of expression
+                    matched = True
+                    axis, nodetest, predicates = steps[-1]
+                    if axis is ATTRIBUTE:
+                        matched = nodetest(kind, data, pos, namespaces,
+                                           variables)
+                    if matched:
+                        retval = matched
+                else:
+                    next_axis = steps[x + 1][0]
+
+                    # if next axis allows matching self we have
+                    # to add next position to our queue
+                    if next_axis is DESCENDANT_OR_SELF or next_axis is SELF:
+                        if not pos_queue or pos_queue[0][0] > x + 1:
+                            pos_queue.appendleft((x + 1, [], [child_counter]))
+                        else:
+                            pos_queue[0][2].append(child_counter)
+
+                    # if axis is not self we have to add it to child's list
+                    if next_axis is not SELF:
+                        next_pos.append((x + 1, [child_counter]))
+
+            if kind is START:
+                stack.append(next_pos)
+
+            return retval
+
+        return _test
+
+
+class SimplePathStrategy(object):
+    """Strategy for path with only local names, attributes and text nodes."""
+
+    @classmethod
+    def supports(cls, path):
+        if path[0][0] is ATTRIBUTE:
+            return False
+        allowed_tests = (LocalNameTest, CommentNodeTest, TextNodeTest)
+        for _, nodetest, predicates in path:
+            if predicates:
+                return False
+            if not isinstance(nodetest, allowed_tests):
+                return False
+        return True
+
+    def __init__(self, path):
+        # fragments is list of tuples (fragment, pi, attr, self_beginning)
+        # fragment is list of nodetests for fragment of path with only
+        # child:: axes between
+        # pi is KMP partial match table for this fragment
+        # attr is attribute nodetest if fragment ends with @ and None otherwise
+        # self_beginning is True if axis for first fragment element
+        # was self (first fragment) or descendant-or-self (farther fragment)
+        self.fragments = []
+
+        self_beginning = False
+        fragment = []
+
+        def nodes_equal(node1, node2):
+            """Tests if two node tests are equal"""
+            if node1.__class__ is not node2.__class__:
+                return False
+            if node1.__class__ == LocalNameTest:
+                return node1.name == node2.name
+            return True
+
+        def calculate_pi(f):
+            """KMP prefix calculation for table"""
+            # the indexes in prefix table are shifted by one
+            # in comparision with common implementations
+            # pi[i] = NORMAL_PI[i + 1]
+            if len(f) == 0:
+                return []
+            pi = [0]
+            s = 0
+            for i in xrange(1, len(f)):
+                while s > 0 and not nodes_equal(f[s], f[i]):
+                    s = pi[s-1]
+                if nodes_equal(f[s], f[i]):
+                    s += 1
+                pi.append(s)
+            return pi
+
+        for axis in path:
+            if axis[0] is SELF:
+                if len(fragment) != 0:
+                    # if element is not first in fragment it has to be
+                    # the same as previous one
+                    # for example child::a/self::b is always wrong
+                    if axis[1] != fragment[-1][1]:
+                        self.fragments = None
+                        return
+                else:
+                    self_beginning = True
+                    fragment.append(axis[1])
+            elif axis[0] is CHILD:
+                fragment.append(axis[1])
+            elif axis[0] is ATTRIBUTE:
+                pi = calculate_pi(fragment)
+                self.fragments.append((fragment, pi, axis[1], self_beginning))
+                # attribute has always to be at the end, so we can jump out
+                return
+            else:
+                pi = calculate_pi(fragment)
+                self.fragments.append((fragment, pi, None, self_beginning))
+                fragment = [axis[1]]
+                if axis[0] is DESCENDANT:
+                    self_beginning = False
+                else: # DESCENDANT_OR_SELF
+                    self_beginning = True
+        pi = calculate_pi(fragment)
+        self.fragments.append((fragment, pi, None, self_beginning))
+
+    def test(self, ignore_context):
+        # stack of triples (fid, p, ic)
+        # fid is index of current fragment
+        # p is position in this fragment
+        # ic is if we ignore context in this fragment
+        stack = []
+        stack_push = stack.append
+        stack_pop = stack.pop
+        frags = self.fragments
+        frags_len = len(frags)
+
+        def _test(event, namespaces, variables, updateonly=False):
+            # expression found impossible during init
+            if frags is None:
+                return None
+
+            kind, data, pos = event[:3]
+
+            # skip events we don't care about
+            if kind is END:
+                if stack:
+                    stack_pop()
+                return None
+            if kind is START_NS or kind is END_NS \
+                    or kind is START_CDATA or kind is END_CDATA:
+                return None
+
+            if not stack:
+                # root node, nothing on stack, special case
+                fid = 0
+                # skip empty fragments (there can be actually only one)
+                while not frags[fid][0]:
+                    fid += 1
+                p = 0
+                # empty fragment means descendant node at beginning
+                ic = ignore_context or (fid > 0)
+
+                # expression can match first node, if first axis is self::,
+                # descendant-or-self:: or if ignore_context is True and
+                # axis is not descendant::
+                if not frags[fid][3] and (not ignore_context or fid > 0):
+                    # axis is not self-beggining, we have to skip this node
+                    stack_push((fid, p, ic))
+                    return None
+            else:
+                # take position of parent
+                fid, p, ic = stack[-1]
+
+            if fid is not None and not ic:
+                # fragment not ignoring context - we can't jump back
+                frag, pi, attrib, _ = frags[fid]
+                frag_len = len(frag)
+
+                if p == frag_len:
+                    # that probably means empty first fragment
+                    pass
+                elif frag[p](kind, data, pos, namespaces, variables):
+                    # match, so we can go further
+                    p += 1
+                else:
+                    # not matched, so there will be no match in subtree
+                    fid, p = None, None
+
+                if p == frag_len and fid + 1 != frags_len:
+                    # we made it to end of fragment, we can go to following
+                    fid += 1
+                    p = 0
+                    ic = True
+
+            if fid is None:
+                # there was no match in fragment not ignoring context
+                if kind is START:
+                    stack_push((fid, p, ic))
+                return None
+
+            if ic:
+                # we are in fragment ignoring context
+                while True:
+                    frag, pi, attrib, _ = frags[fid]
+                    frag_len = len(frag)
+
+                    # KMP new "character"
+                    while p > 0 and (p >= frag_len or not \
+                            frag[p](kind, data, pos, namespaces, variables)):
+                        p = pi[p-1]
+                    if frag[p](kind, data, pos, namespaces, variables):
+                        p += 1
+
+                    if p == frag_len:
+                        # end of fragment reached
+                        if fid + 1 == frags_len:
+                            # that was last fragment
+                            break
+                        else:
+                            fid += 1
+                            p = 0
+                            ic = True
+                            if not frags[fid][3]:
+                                # next fragment not self-beginning
+                                break
+                    else:
+                        break
+
+            if kind is START:
+                # we have to put new position on stack, for children
+
+                if not ic and fid + 1 == frags_len and p == frag_len:
+                    # it is end of the only, not context ignoring fragment
+                    # so there will be no matches in subtree
+                    stack_push((None, None, ic))
+                else:
+                    stack_push((fid, p, ic))
+
+            # have we reached the end of the last fragment?
+            if fid + 1 == frags_len and p == frag_len:
+                if attrib: # attribute ended path, return value
+                    return attrib(kind, data, pos, namespaces, variables)
+                return True
+
+            return None
+
+        return _test
+
+
+class SingleStepStrategy(object):
+
+    @classmethod
+    def supports(cls, path):
+        return len(path) == 1
+
+    def __init__(self, path):
+        self.path = path
+
+    def test(self, ignore_context):
+        steps = self.path
+        if steps[0][0] is ATTRIBUTE:
+            steps = [_DOTSLASH] + steps
+        select_attr = steps[-1][0] is ATTRIBUTE and steps[-1][1] or None
+
+        # for every position in expression stores counters' list
+        # it is used for position based predicates
+        counters = []
+        depth = [0]
+
+        def _test(event, namespaces, variables, updateonly=False):
+            kind, data, pos = event[:3]
+
+            # Manage the stack that tells us "where we are" in the stream
+            if kind is END:
+                if not ignore_context:
+                    depth[0] -= 1
+                return None
+            elif kind is START_NS or kind is END_NS \
+                    or kind is START_CDATA or kind is END_CDATA:
+                # should we make namespaces work?
+                return None
+
+            if not ignore_context:
+                outside = (steps[0][0] is SELF and depth[0] != 0) \
+                       or (steps[0][0] is CHILD and depth[0] != 1) \
+                       or (steps[0][0] is DESCENDANT and depth[0] < 1)
+                if kind is START:
+                    depth[0] += 1
+                if outside:
+                    return None
+
+            axis, nodetest, predicates = steps[0]
+            if not nodetest(kind, data, pos, namespaces, variables):
+                return None
+
+            if predicates:
+                cnum = 0
+                for predicate in predicates:
+                    pretval = predicate(kind, data, pos, namespaces, variables)
+                    if type(pretval) is float: # FIXME <- need to check this
+                                               # for other types that can be
+                                               # coerced to float
+                        if len(counters) < cnum + 1:
+                            counters.append(0)
+                        counters[cnum] += 1 
+                        if counters[cnum] != int(pretval):
+                            pretval = False
+                        cnum += 1
+                    if not pretval:
+                         return None
+
+            if select_attr:
+                return select_attr(kind, data, pos, namespaces, variables)
+
+            return True
+
+        return _test
+
+
 class Path(object):
     """Implements basic XPath support on streams.
     
-    Instances of this class represent a "compiled" XPath expression, and provide
-    methods for testing the path against a stream, as well as extracting a
-    substream matching that path.
+    Instances of this class represent a "compiled" XPath expression, and
+    provide methods for testing the path against a stream, as well as
+    extracting a substream matching that path.
     """
+
+    STRATEGIES = (SingleStepStrategy, SimplePathStrategy, GenericStrategy)
 
     def __init__(self, text, filename=None, lineno=-1):
         """Create the path object from a string.
@@ -96,6 +530,14 @@ class Path(object):
         """
         self.source = text
         self.paths = PathParser(text, filename, lineno).parse()
+        self.strategies = []
+        for path in self.paths:
+            for strategy_class in self.STRATEGIES:
+                if strategy_class.supports(path):
+                    self.strategies.append(strategy_class(path))
+                    break
+            else:
+                raise NotImplemented, "This path is not implemented"
 
     def __repr__(self):
         paths = []
@@ -133,23 +575,23 @@ class Path(object):
         if variables is None:
             variables = {}
         stream = iter(stream)
-        def _generate():
+        def _generate(stream=stream, ns=namespaces, vs=variables):
+            next = stream.next
             test = self.test()
             for event in stream:
-                result = test(event, namespaces, variables)
+                result = test(event, ns, vs)
                 if result is True:
                     yield event
                     if event[0] is START:
                         depth = 1
                         while depth > 0:
-                            subevent = stream.next()
+                            subevent = next()
                             if subevent[0] is START:
                                 depth += 1
                             elif subevent[0] is END:
                                 depth -= 1
                             yield subevent
-                            test(subevent, namespaces, variables,
-                                 updateonly=True)
+                            test(subevent, ns, vs, updateonly=True)
                 elif result:
                     yield result
         return Stream(_generate(),
@@ -173,8 +615,9 @@ class Path(object):
         >>> from genshi.input import XML
         >>> xml = XML('<root><elem><child id="1"/></elem><child id="2"/></root>')
         >>> test = Path('child').test()
+        >>> namespaces, variables = {}, {}
         >>> for event in xml:
-        ...     if test(event, {}, {}):
+        ...     if test(event, namespaces, variables):
         ...         print event[0], repr(event[1])
         START (QName(u'child'), Attrs([(QName(u'id'), u'2')]))
         
@@ -185,123 +628,18 @@ class Path(object):
                  stream against the path
         :rtype: ``function``
         """
-        paths = [(p, len(p), [0], [], [0] * len(p)) for p in [
-            (ignore_context and [_DOTSLASHSLASH] or []) + p for p in self.paths
-        ]]
+        tests = [s.test(ignore_context) for s in self.strategies]
+        if len(tests) == 1:
+            return tests[0]
 
-        def _test(event, namespaces, variables, updateonly=False):
-            kind, data, pos = event[:3]
+        def _multi(event, namespaces, variables, updateonly=False):
             retval = None
-            for steps, size, cursors, cutoff, counter in paths:
-                # Manage the stack that tells us "where we are" in the stream
-                if kind is END:
-                    if cursors:
-                        cursors.pop()
-                    continue
-                elif kind is START:
-                    cursors.append(cursors and cursors[-1] or 0)
-                elif kind is START_NS or kind is END_NS \
-                        or kind is START_CDATA or kind is END_CDATA:
-                    continue
-
-                if updateonly or retval or not cursors:
-                    continue
-                cursor = cursors[-1]
-                depth = len(cursors)
-
-                if cutoff and depth + int(kind is not START) > cutoff[0]:
-                    continue
-
-                ctxtnode = not ignore_context and kind is START \
-                                              and depth == 2
-                matched = None
-                while 1:
-                    # Fetch the next location step
-                    axis, nodetest, predicates = steps[cursor]
-
-                    # If this is the start event for the context node, and the
-                    # axis of the location step doesn't include the current
-                    # element, skip the test
-                    if ctxtnode and (axis is CHILD or axis is DESCENDANT):
-                        break
-
-                    # Is this the last step of the location path?
-                    last_step = cursor + 1 == size
-
-                    # Perform the actual node test
-                    matched = nodetest(kind, data, pos, namespaces, variables)
-
-                    # The node test matched
-                    if matched:
-
-                        # Check all the predicates for this step
-                        if predicates:
-                            for predicate in predicates:
-                                pretval = predicate(kind, data, pos, namespaces,
-                                                    variables)
-                                if type(pretval) is float: # FIXME <- need to
-                                                           # check this for
-                                                           # other types that
-                                                           # can be coerced to
-                                                           # float
-                                    counter[cursor] += 1
-                                    if counter[cursor] != int(pretval):
-                                        pretval = False
-                                if not pretval:
-                                    matched = None
-                                    break
-
-                        # Both the node test and the predicates matched
-                        if matched:
-                            if last_step:
-                                if not ctxtnode or kind is not START \
-                                        or axis is ATTRIBUTE or axis is SELF:
-                                    retval = matched
-                            elif not ctxtnode or axis is SELF \
-                                              or axis is DESCENDANT_OR_SELF:
-                                cursor += 1
-                                cursors[-1] = cursor
-                            cutoff[:] = []
-
-                    if kind is START:
-                        if last_step and not (axis is DESCENDANT or
-                                              axis is DESCENDANT_OR_SELF):
-                            cutoff[:] = [depth]
-
-                        elif steps[cursor][0] is ATTRIBUTE:
-                            # If the axis of the next location step is the
-                            # attribute axis, we need to move on to processing
-                            # that step without waiting for the next markup
-                            # event
-                            continue
-
-                    # We're done with this step if it's the last step or the
-                    # axis isn't "self"
-                    if not matched or last_step or not (
-                            axis is SELF or axis is DESCENDANT_OR_SELF):
-                        break
-                    if ctxtnode and axis is DESCENDANT_OR_SELF:
-                        ctxtnode = False
-
-                if (retval or not matched) and kind is START and \
-                        not (axis is DESCENDANT or axis is DESCENDANT_OR_SELF):
-                    # If this step is not a closure, it cannot be matched until
-                    # the current element is closed... so we need to move the
-                    # cursor back to the previous closure and retest that
-                    # against the current element
-                    backsteps = [(i, k, d, p) for i, (k, d, p)
-                                 in enumerate(steps[:cursor])
-                                 if k is DESCENDANT or k is DESCENDANT_OR_SELF]
-                    backsteps.reverse()
-                    for cursor, axis, nodetest, predicates in backsteps:
-                        if nodetest(kind, data, pos, namespaces, variables):
-                            cutoff[:] = []
-                            break
-                    cursors[-1] = cursor
-
+            for test in tests:
+                val = test(event, namespaces, variables, updateonly=updateonly)
+                if retval is None:
+                    retval = val
             return retval
-
-        return _test
+        return _multi
 
 
 class PathSyntaxError(Exception):
@@ -374,19 +712,28 @@ class PathParser(object):
         steps = []
         while True:
             if self.cur_token.startswith('/'):
-                if self.cur_token == '//':
+                if not steps:
+                    if self.cur_token == '//':
+                        # hack to make //* match every node - also root
+                        self.next_token()
+                        axis, nodetest, predicates = self._location_step()
+                        steps.append((DESCENDANT_OR_SELF, nodetest, 
+                                      predicates))
+                        if self.at_end or not self.cur_token.startswith('/'):
+                            break
+                        continue
+                    else:
+                        raise PathSyntaxError('Absolute location paths not '
+                                              'supported', self.filename,
+                                              self.lineno)
+                elif self.cur_token == '//':
                     steps.append((DESCENDANT_OR_SELF, NodeTest(), []))
-                elif not steps:
-                    raise PathSyntaxError('Absolute location paths not '
-                                          'supported', self.filename,
-                                          self.lineno)
                 self.next_token()
 
             axis, nodetest, predicates = self._location_step()
             if not axis:
                 axis = CHILD
             steps.append((axis, nodetest, predicates))
-
             if self.at_end or not self.cur_token.startswith('/'):
                 break
 
@@ -715,6 +1062,7 @@ class BooleanFunction(Function):
     value.
     """
     __slots__ = ['expr']
+    _return_type = bool
     def __init__(self, expr):
         self.expr = expr
     def __call__(self, kind, data, pos, namespaces, variables):
@@ -1172,3 +1520,4 @@ _operator_map = {'=': EqualsOperator, '!=': NotEqualsOperator,
 
 
 _DOTSLASHSLASH = (DESCENDANT_OR_SELF, PrincipalTypeTest(None), ())
+_DOTSLASH = (SELF, PrincipalTypeTest(None), ())

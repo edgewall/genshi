@@ -527,14 +527,13 @@ class Template(DirectiveFactory):
                 new_attrs = []
                 for name, value in attrs:
                     if type(value) is list: # this is an interpolated string
-                        values = []
-                        for event in self._flatten(value, ctxt, **vars):
-                            if event[0] is TEXT:
-                                values.append(event[1])
-                        value = [x for x in values if x is not None]
-                        if not value:
+                        values = [event[1]
+                            for event in self._flatten(value, ctxt, **vars)
+                            if event[0] is TEXT and event[1] is not None
+                        ]
+                        if not values:
                             continue
-                        value = u''.join(value)
+                        value = u''.join(values)
                     new_attrs.append((name, value))
                 yield kind, (tag, Attrs(new_attrs)), pos
 

@@ -166,7 +166,7 @@ class AttrsDirective(Directive):
     def __call__(self, stream, directives, ctxt, **vars):
         def _generate():
             kind, (tag, attrib), pos  = stream.next()
-            attrs = _eval_expr(self.expr, ctxt, **vars)
+            attrs = _eval_expr(self.expr, ctxt, vars)
             if attrs:
                 if isinstance(attrs, Stream):
                     try:
@@ -182,7 +182,7 @@ class AttrsDirective(Directive):
             for event in stream:
                 yield event
 
-        return _apply_directives(_generate(), directives, ctxt, **vars)
+        return _apply_directives(_generate(), directives, ctxt, vars)
 
 
 class ContentDirective(Directive):
@@ -299,14 +299,14 @@ class DefDirective(Directive):
                     if name in kwargs:
                         val = kwargs.pop(name)
                     else:
-                        val = _eval_expr(self.defaults.get(name), ctxt, **vars)
+                        val = _eval_expr(self.defaults.get(name), ctxt, vars)
                     scope[name] = val
             if not self.star_args is None:
                 scope[self.star_args] = args
             if not self.dstar_args is None:
                 scope[self.dstar_args] = kwargs
             ctxt.push(scope)
-            for event in _apply_directives(stream, directives, ctxt, **vars):
+            for event in _apply_directives(stream, directives, ctxt, vars):
                 yield event
             ctxt.pop()
         function.__name__ = self.name
@@ -356,7 +356,7 @@ class ForDirective(Directive):
                                                namespaces, pos)
 
     def __call__(self, stream, directives, ctxt, **vars):
-        iterable = _eval_expr(self.expr, ctxt, **vars)
+        iterable = _eval_expr(self.expr, ctxt, vars)
         if iterable is None:
             return
 
@@ -366,7 +366,7 @@ class ForDirective(Directive):
         for item in iterable:
             assign(scope, item)
             ctxt.push(scope)
-            for event in _apply_directives(stream, directives, ctxt, **vars):
+            for event in _apply_directives(stream, directives, ctxt, vars):
                 yield event
             ctxt.pop()
 
@@ -397,9 +397,9 @@ class IfDirective(Directive):
                                               namespaces, pos)
 
     def __call__(self, stream, directives, ctxt, **vars):
-        value = _eval_expr(self.expr, ctxt, **vars)
+        value = _eval_expr(self.expr, ctxt, vars)
         if value:
-            return _apply_directives(stream, directives, ctxt, **vars)
+            return _apply_directives(stream, directives, ctxt, vars)
         return []
 
 
@@ -527,7 +527,7 @@ class StripDirective(Directive):
 
     def __call__(self, stream, directives, ctxt, **vars):
         def _generate():
-            if _eval_expr(self.expr, ctxt, **vars):
+            if _eval_expr(self.expr, ctxt, vars):
                 stream.next() # skip start tag
                 previous = stream.next()
                 for event in stream:
@@ -536,7 +536,7 @@ class StripDirective(Directive):
             else:
                 for event in stream:
                     yield event
-        return _apply_directives(_generate(), directives, ctxt, **vars)
+        return _apply_directives(_generate(), directives, ctxt, vars)
 
     @classmethod
     def attach(cls, template, stream, value, namespaces, pos):
@@ -597,9 +597,9 @@ class ChooseDirective(Directive):
     def __call__(self, stream, directives, ctxt, **vars):
         info = [False, bool(self.expr), None]
         if self.expr:
-            info[2] = _eval_expr(self.expr, ctxt, **vars)
+            info[2] = _eval_expr(self.expr, ctxt, vars)
         ctxt._choice_stack.append(info)
-        for event in _apply_directives(stream, directives, ctxt, **vars):
+        for event in _apply_directives(stream, directives, ctxt, vars):
             yield event
         ctxt._choice_stack.pop()
 
@@ -638,16 +638,16 @@ class WhenDirective(Directive):
         if info[1]:
             value = info[2]
             if self.expr:
-                matched = value == _eval_expr(self.expr, ctxt, **vars)
+                matched = value == _eval_expr(self.expr, ctxt, vars)
             else:
                 matched = bool(value)
         else:
-            matched = bool(_eval_expr(self.expr, ctxt, **vars))
+            matched = bool(_eval_expr(self.expr, ctxt, vars))
         info[0] = matched
         if not matched:
             return []
 
-        return _apply_directives(stream, directives, ctxt, **vars)
+        return _apply_directives(stream, directives, ctxt, vars)
 
 
 class OtherwiseDirective(Directive):
@@ -672,7 +672,7 @@ class OtherwiseDirective(Directive):
             return []
         info[0] = True
 
-        return _apply_directives(stream, directives, ctxt, **vars)
+        return _apply_directives(stream, directives, ctxt, vars)
 
 
 class WithDirective(Directive):
@@ -721,10 +721,10 @@ class WithDirective(Directive):
         frame = {}
         ctxt.push(frame)
         for targets, expr in self.vars:
-            value = _eval_expr(expr, ctxt, **vars)
+            value = _eval_expr(expr, ctxt, vars)
             for assign in targets:
                 assign(frame, value)
-        for event in _apply_directives(stream, directives, ctxt, **vars):
+        for event in _apply_directives(stream, directives, ctxt, vars):
             yield event
         ctxt.pop()
 

@@ -248,7 +248,7 @@ class Context(object):
         """Pop the top-most scope from the stack."""
 
 
-def _apply_directives(stream, directives, ctxt, **vars):
+def _apply_directives(stream, directives, ctxt, vars):
     """Apply the given directives to the stream.
     
     :param stream: the stream the directives should be applied to
@@ -262,7 +262,8 @@ def _apply_directives(stream, directives, ctxt, **vars):
         stream = directives[0](iter(stream), directives[1:], ctxt, **vars)
     return stream
 
-def _eval_expr(expr, ctxt, **vars):
+
+def _eval_expr(expr, ctxt, vars=None):
     """Evaluate the given `Expression` object.
     
     :param expr: the expression to evaluate
@@ -278,7 +279,8 @@ def _eval_expr(expr, ctxt, **vars):
         ctxt.pop()
     return retval
 
-def _exec_suite(suite, ctxt, **vars):
+
+def _exec_suite(suite, ctxt, vars=None):
     """Execute the given `Suite` object.
     
     :param suite: the code suite to execute
@@ -538,7 +540,7 @@ class Template(DirectiveFactory):
                 yield kind, (tag, Attrs(new_attrs)), pos
 
             elif kind is EXPR:
-                result = _eval_expr(data, ctxt, **vars)
+                result = _eval_expr(data, ctxt, vars)
                 if result is not None:
                     # First check for a string, otherwise the iterable test
                     # below succeeds, and the string will be chopped up into
@@ -555,12 +557,12 @@ class Template(DirectiveFactory):
                         yield TEXT, unicode(result), pos
 
             elif kind is EXEC:
-                _exec_suite(data, ctxt, **vars)
+                _exec_suite(data, ctxt, vars)
 
             elif kind is SUB:
                 # This event is a list of directives and a list of nested
                 # events to which those directives should be applied
-                substream = _apply_directives(data[1], data[0], ctxt, **vars)
+                substream = _apply_directives(data[1], data[0], ctxt, vars)
                 for event in self._flatten(substream, ctxt, **vars):
                     yield event
 

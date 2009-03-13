@@ -469,7 +469,8 @@ class HTMLSerializer(XHTMLSerializer):
             output = cache_get((kind, data))
             if output is not None:
                 yield output
-                if kind is START or kind is EMPTY and data[0] in noescape_elems:
+                if (kind is START or kind is EMPTY) \
+                        and data[0] in noescape_elems:
                     noescape = True
                 elif kind is END:
                     noescape = False

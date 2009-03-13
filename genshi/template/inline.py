@@ -313,23 +313,23 @@ if __name__ == '__main__':
 
     print
     print 'Executed module:'
-    module = tmpl.compile()
-    print Stream(module.generate(ctxt)).render('html')
+    tmpl.compile()
+    print tmpl.generate(ctxt).render('html')
 
     print
     print
     t = timeit.Timer('list(tmpl.generate(**data))', '''
-from genshi.template import Context, MarkupTemplate
+from genshi.template import MarkupTemplate
 data = dict(hello='world', items=range(10))
 tmpl = MarkupTemplate("""%s""")''' % text)
     print 'Interpreted: %.2f msec/pass' % (1000 * t.timeit(number=1000) / 1000)
     print
 
-    t = timeit.Timer('list(module.generate(Context(**data)))', '''
+    t = timeit.Timer('list(tmpl.generate(**data))', '''
 from genshi.core import Stream
-from genshi.template import Context, MarkupTemplate
+from genshi.template import MarkupTemplate
 data = dict(hello='world', items=range(10))
 tmpl = MarkupTemplate("""%s""")
-module = tmpl.compile()''' % text)
+tmpl.compile()''' % text)
     print 'Compiled: %.2f msec/pass' % (1000 * t.timeit(number=1000) / 1000)
     print

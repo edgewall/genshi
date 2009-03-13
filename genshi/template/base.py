@@ -22,6 +22,7 @@ except ImportError:
 import os
 from StringIO import StringIO
 import sys
+from types import ModuleType
 
 from genshi.core import Attrs, Stream, StreamEventKind, START, TEXT, _ensure
 from genshi.input import ParseError
@@ -394,6 +395,7 @@ class Template(DirectiveFactory):
         self.lookup = lookup
         self.allow_exec = allow_exec
         self._init_filters()
+        self._module = None
         self._prepared = False
 
         if isinstance(source, basestring):
@@ -498,11 +500,12 @@ class Template(DirectiveFactory):
         from genshi.template.inline import inline
 
         name = (self.filename or '_some_ident').replace('.', '_')
-        module = new_module(name)
+        module = ModuleType(name)
         source = u'\n'.join(list(inline(self)))
         code = compile(source, self.filepath or '<string>', 'exec')
         exec code in module.__dict__, module.__dict__
-        return module
+        self._module = module
+        return self
 
     def generate(self, *args, **kwargs):
         """Apply the template to the given context data.
@@ -529,9 +532,15 @@ class Template(DirectiveFactory):
         else:
             ctxt = Context(**kwargs)
 
-        stream = self.stream
-        for filter_ in self.filters:
-            stream = filter_(iter(stream), ctxt, **vars)
+        if self._module is not None:
+            stream = self._module.generate(ctxt)
+            for filter_ in [f for f in self.filters if f != self._flatten]:
+                stream = filter_(iter(stream), ctxt, **vars)
+        else:
+            stream = self.stream
+            for filter_ in self.filters:
+                stream = filter_(iter(stream), ctxt, **vars)
+
         return Stream(stream, self.serializer)
 
     def _flatten(self, stream, ctxt, **vars):

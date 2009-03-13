@@ -57,7 +57,13 @@ genshi_tmpl = MarkupTemplate("""
 </tr>
 </table>
 """)
-genshi_tmpl_compiled = genshi_tmpl.compile()
+genshi_tmpl_compiled = MarkupTemplate("""
+<table xmlns:py="http://genshi.edgewall.org/">
+<tr py:for="row in table">
+<td py:for="c in row.values()" py:content="c"/>
+</tr>
+</table>
+""").compile()
 
 genshi_tmpl2 = MarkupTemplate("""
 <table xmlns:py="http://genshi.edgewall.org/">$table</table>
@@ -108,7 +114,7 @@ def test_genshi():
 
 def test_genshi_compiled():
     """Genshi template, compiled to Python"""
-    stream = Stream(genshi_tmpl_compiled.generate(Context(table=table)))
+    stream = genshi_tmpl_compiled.generate(table=table)
     stream.render('html', strip_whitespace=False)
 
 def test_genshi_text():

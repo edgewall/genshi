@@ -65,12 +65,12 @@ class Axis(object):
     DESCENDANT_OR_SELF = 'descendant-or-self'
     SELF = 'self'
 
+    @classmethod
     def forname(cls, name):
         """Return the axis constant for the given name, or `None` if no such
         axis was defined.
         """
         return getattr(cls, name.upper().replace('-', '_'), None)
-    forname = classmethod(forname)
 
 
 ATTRIBUTE = Axis.ATTRIBUTE
@@ -674,8 +674,13 @@ class PathParser(object):
 
     # Tokenizer
 
-    at_end = property(lambda self: self.pos == len(self.tokens) - 1)
-    cur_token = property(lambda self: self.tokens[self.pos])
+    @property
+    def at_end(self):
+        return self.pos == len(self.tokens) - 1
+
+    @property
+    def cur_token(self):
+        return self.tokens[self.pos]
 
     def next_token(self):
         self.pos += 1

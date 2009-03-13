@@ -129,6 +129,7 @@ class DocType(object):
     )
     SVG = SVG_FULL
 
+    @classmethod
     def get(cls, name):
         """Return the ``(name, pubid, sysid)`` tuple of the ``DOCTYPE``
         declaration for the specified name.
@@ -164,7 +165,6 @@ class DocType(object):
             'svg-basic': cls.SVG_BASIC,
             'svg-tiny': cls.SVG_TINY
         }.get(name.lower())
-    get = classmethod(get)
 
 
 class XMLSerializer(object):
@@ -179,7 +179,7 @@ class XMLSerializer(object):
     _PRESERVE_SPACE = frozenset()
 
     def __init__(self, doctype=None, strip_whitespace=True,
-                 namespace_prefixes=None):
+                 namespace_prefixes=None, cache=True):
         """Initialize the XML serializer.
         
         :param doctype: a ``(name, pubid, sysid)`` tuple that represents the
@@ -188,42 +188,60 @@ class XMLSerializer(object):
                         defined in `DocType.get`
         :param strip_whitespace: whether extraneous whitespace should be
                                  stripped from the output
+        :param cache: whether to cache the text output per event, which
+                      improves performance for repetitive markup
         :note: Changed in 0.4.2: The  `doctype` parameter can now be a string.
+        :note: Changed in 0.6: The `cache` parameter was added
         """
         self.filters = [EmptyTagFilter()]
         if strip_whitespace:
             self.filters.append(WhitespaceFilter(self._PRESERVE_SPACE))
-        self.filters.append(NamespaceFlattener(prefixes=namespace_prefixes))
+        self.filters.append(NamespaceFlattener(prefixes=namespace_prefixes,
+                                               cache=cache))
         if doctype:
             self.filters.append(DocTypeInserter(doctype))
+        self.cache = cache
 
     def __call__(self, stream):
         have_decl = have_doctype = False
         in_cdata = False
 
+        cache = {}
+        cache_get = cache.get
+        if self.cache:
+            def _emit(kind, input, output):
+                cache[kind, input] = output
+                return output
+        else:
+            def _emit(kind, input, output):
+                return output
+
         for filter_ in self.filters:
             stream = filter_(stream)
         for kind, data, pos in stream:
+            cached = cache_get((kind, data))
+            if cached is not None:
+                yield cached
 
-            if kind is START or kind is EMPTY:
+            elif kind is START or kind is EMPTY:
                 tag, attrib = data
                 buf = ['<', tag]
                 for attr, value in attrib:
                     buf += [' ', attr, '="', escape(value), '"']
                 buf.append(kind is EMPTY and '/>' or '>')
-                yield Markup(u''.join(buf))
+                yield _emit(kind, data, Markup(u''.join(buf)))
 
             elif kind is END:
-                yield Markup('</%s>' % data)
+                yield _emit(kind, data, Markup('</%s>' % data))
 
             elif kind is TEXT:
                 if in_cdata:
-                    yield data
+                    yield _emit(kind, data, data)
                 else:
-                    yield escape(data, quotes=False)
+                    yield _emit(kind, data, escape(data, quotes=False))
 
             elif kind is COMMENT:
-                yield Markup('<!--%s-->' % data)
+                yield _emit(kind, data, Markup('<!--%s-->' % data))
 
             elif kind is XML_DECL and not have_decl:
                 version, encoding, standalone = data
@@ -259,7 +277,7 @@ class XMLSerializer(object):
                 in_cdata = False
 
             elif kind is PI:
-                yield Markup('<?%s %s?>' % data)
+                yield _emit(kind, data, Markup('<?%s %s?>' % data))
 
 
 class XHTMLSerializer(XMLSerializer):
@@ -283,17 +301,19 @@ class XHTMLSerializer(XMLSerializer):
     ])
 
     def __init__(self, doctype=None, strip_whitespace=True,
-                 namespace_prefixes=None, drop_xml_decl=True):
+                 namespace_prefixes=None, drop_xml_decl=True, cache=True):
         super(XHTMLSerializer, self).__init__(doctype, False)
         self.filters = [EmptyTagFilter()]
         if strip_whitespace:
             self.filters.append(WhitespaceFilter(self._PRESERVE_SPACE))
         namespace_prefixes = namespace_prefixes or {}
         namespace_prefixes['http://www.w3.org/1999/xhtml'] = ''
-        self.filters.append(NamespaceFlattener(prefixes=namespace_prefixes))
+        self.filters.append(NamespaceFlattener(prefixes=namespace_prefixes,
+                                               cache=cache))
         if doctype:
             self.filters.append(DocTypeInserter(doctype))
         self.drop_xml_decl = drop_xml_decl
+        self.cache = cache
 
     def __call__(self, stream):
         boolean_attrs = self._BOOLEAN_ATTRS
@@ -302,11 +322,24 @@ class XHTMLSerializer(XMLSerializer):
         have_decl = have_doctype = False
         in_cdata = False
 
+        cache = {}
+        cache_get = cache.get
+        if self.cache:
+            def _emit(kind, input, output):
+                cache[kind, input] = output
+                return output
+        else:
+            def _emit(kind, input, output):
+                return output
+
         for filter_ in self.filters:
             stream = filter_(stream)
         for kind, data, pos in stream:
+            cached = cache_get((kind, data))
+            if cached is not None:
+                yield cached
 
-            if kind is START or kind is EMPTY:
+            elif kind is START or kind is EMPTY:
                 tag, attrib = data
                 buf = ['<', tag]
                 for attr, value in attrib:
@@ -324,19 +357,19 @@ class XHTMLSerializer(XMLSerializer):
                         buf.append('></%s>' % tag)
                 else:
                     buf.append('>')
-                yield Markup(u''.join(buf))
+                yield _emit(kind, data, Markup(u''.join(buf)))
 
             elif kind is END:
-                yield Markup('</%s>' % data)
+                yield _emit(kind, data, Markup('</%s>' % data))
 
             elif kind is TEXT:
                 if in_cdata:
-                    yield data
+                    yield _emit(kind, data, data)
                 else:
-                    yield escape(data, quotes=False)
+                    yield _emit(kind, data, escape(data, quotes=False))
 
             elif kind is COMMENT:
-                yield Markup('<!--%s-->' % data)
+                yield _emit(kind, data, Markup('<!--%s-->' % data))
 
             elif kind is DOCTYPE and not have_doctype:
                 name, pubid, sysid = data
@@ -372,7 +405,7 @@ class XHTMLSerializer(XMLSerializer):
                 in_cdata = False
 
             elif kind is PI:
-                yield Markup('<?%s %s?>' % data)
+                yield _emit(kind, data, Markup('<?%s %s?>' % data))
 
 
 class HTMLSerializer(XHTMLSerializer):
@@ -389,7 +422,7 @@ class HTMLSerializer(XHTMLSerializer):
         QName('style'), QName('http://www.w3.org/1999/xhtml}style')
     ])
 
-    def __init__(self, doctype=None, strip_whitespace=True):
+    def __init__(self, doctype=None, strip_whitespace=True, cache=True):
         """Initialize the HTML serializer.
         
         :param doctype: a ``(name, pubid, sysid)`` tuple that represents the
@@ -397,6 +430,9 @@ class HTMLSerializer(XHTMLSerializer):
                         of the generated output
         :param strip_whitespace: whether extraneous whitespace should be
                                  stripped from the output
+        :param cache: whether to cache the text output per event, which
+                      improves performance for repetitive markup
+        :note: Changed in 0.6: The `cache` parameter was added
         """
         super(HTMLSerializer, self).__init__(doctype, False)
         self.filters = [EmptyTagFilter()]
@@ -405,9 +441,10 @@ class HTMLSerializer(XHTMLSerializer):
                                                  self._NOESCAPE_ELEMS))
         self.filters.append(NamespaceFlattener(prefixes={
             'http://www.w3.org/1999/xhtml': ''
-        }))
+        }, cache=cache))
         if doctype:
             self.filters.append(DocTypeInserter(doctype))
+        self.cache = True
 
     def __call__(self, stream):
         boolean_attrs = self._BOOLEAN_ATTRS
@@ -416,11 +453,28 @@ class HTMLSerializer(XHTMLSerializer):
         have_doctype = False
         noescape = False
 
+        cache = {}
+        cache_get = cache.get
+        if self.cache:
+            def _emit(kind, input, output):
+                cache[kind, input] = output
+                return output
+        else:
+            def _emit(kind, input, output):
+                return output
+
         for filter_ in self.filters:
             stream = filter_(stream)
-        for kind, data, pos in stream:
+        for kind, data, _ in stream:
+            output = cache_get((kind, data))
+            if output is not None:
+                yield output
+                if kind is START or kind is EMPTY and data[0] in noescape_elems:
+                    noescape = True
+                elif kind is END:
+                    noescape = False
 
-            if kind is START or kind is EMPTY:
+            elif kind is START or kind is EMPTY:
                 tag, attrib = data
                 buf = ['<', tag]
                 for attr, value in attrib:
@@ -436,22 +490,22 @@ class HTMLSerializer(XHTMLSerializer):
                 if kind is EMPTY:
                     if tag not in empty_elems:
                         buf.append('</%s>' % tag)
-                yield Markup(u''.join(buf))
+                yield _emit(kind, data, Markup(u''.join(buf)))
                 if tag in noescape_elems:
                     noescape = True
 
             elif kind is END:
-                yield Markup('</%s>' % data)
+                yield _emit(kind, data, Markup('</%s>' % data))
                 noescape = False
 
             elif kind is TEXT:
                 if noescape:
-                    yield data
+                    yield _emit(kind, data, data)
                 else:
-                    yield escape(data, quotes=False)
+                    yield _emit(kind, data, escape(data, quotes=False))
 
             elif kind is COMMENT:
-                yield Markup('<!--%s-->' % data)
+                yield _emit(kind, data, Markup('<!--%s-->' % data))
 
             elif kind is DOCTYPE and not have_doctype:
                 name, pubid, sysid = data
@@ -467,7 +521,7 @@ class HTMLSerializer(XHTMLSerializer):
                 have_doctype = True
 
             elif kind is PI:
-                yield Markup('<?%s %s?>' % data)
+                yield _emit(kind, data, Markup('<?%s %s?>' % data))
 
 
 class TextSerializer(object):
@@ -561,17 +615,41 @@ class NamespaceFlattener(object):
     END u'doc'
     """
 
-    def __init__(self, prefixes=None):
+    def __init__(self, prefixes=None, cache=True):
         self.prefixes = {XML_NAMESPACE.uri: 'xml'}
         if prefixes is not None:
             self.prefixes.update(prefixes)
+        self.cache = cache
 
     def __call__(self, stream):
+        cache = {}
+        cache_get = cache.get
+        if self.cache:
+            def _emit(kind, input, output, pos):
+                cache[kind, input] = output
+                return kind, output, pos
+        else:
+            def _emit(kind, input, output, pos):
+                return output
+
         prefixes = dict([(v, [k]) for k, v in self.prefixes.items()])
         namespaces = {XML_NAMESPACE.uri: ['xml']}
         def _push_ns(prefix, uri):
             namespaces.setdefault(uri, []).append(prefix)
             prefixes.setdefault(prefix, []).append(uri)
+            cache.clear()
+        def _pop_ns(prefix):
+            uris = prefixes.get(prefix)
+            uri = uris.pop()
+            if not uris:
+                del prefixes[prefix]
+            if uri not in uris or uri != uris[-1]:
+                uri_prefixes = namespaces[uri]
+                uri_prefixes.pop()
+                if not uri_prefixes:
+                    del namespaces[uri]
+            cache.clear()
+            return uri
 
         ns_attrs = []
         _push_ns_attr = ns_attrs.append
@@ -586,8 +664,11 @@ class NamespaceFlattener(object):
         _gen_prefix = _gen_prefix().next
 
         for kind, data, pos in stream:
+            output = cache_get((kind, data))
+            if output is not None:
+                yield kind, output, pos
 
-            if kind is START or kind is EMPTY:
+            elif kind is START or kind is EMPTY:
                 tag, attrs = data
 
                 tagname = tag.localname
@@ -616,7 +697,7 @@ class NamespaceFlattener(object):
                             attrname = u'%s:%s' % (prefix, attrname)
                     new_attrs.append((attrname, value))
 
-                yield kind, (tagname, Attrs(ns_attrs + new_attrs)), pos
+                yield _emit(kind, data, (tagname, Attrs(ns_attrs + new_attrs)), pos)
                 del ns_attrs[:]
 
             elif kind is END:
@@ -626,7 +707,7 @@ class NamespaceFlattener(object):
                     prefix = namespaces[tagns][-1]
                     if prefix:
                         tagname = u'%s:%s' % (prefix, tagname)
-                yield kind, tagname, pos
+                yield _emit(kind, data, tagname, pos)
 
             elif kind is START_NS:
                 prefix, uri = data
@@ -637,15 +718,7 @@ class NamespaceFlattener(object):
 
             elif kind is END_NS:
                 if data in prefixes:
-                    uris = prefixes.get(data)
-                    uri = uris.pop()
-                    if not uris:
-                        del prefixes[data]
-                    if uri not in uris or uri != uris[-1]:
-                        uri_prefixes = namespaces[uri]
-                        uri_prefixes.pop()
-                        if not uri_prefixes:
-                            del namespaces[uri]
+                    uri = _pop_ns(data)
                     if ns_attrs:
                         attr = _make_ns_attr(data, uri)
                         if attr in ns_attrs:

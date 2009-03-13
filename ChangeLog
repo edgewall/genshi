@@ -3,6 +3,7 @@ http://svn.edgewall.org/repos/genshi/tags/0.6.0/
 (???, from branches/stable/0.6.x)
 
  * Support for Python 2.3 has been dropped.
+ * Added caching in the serilization stage for improved performance.
 
 
 Version 0.5.2

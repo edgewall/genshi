@@ -9,8 +9,10 @@ import cgi
 import sys
 import timeit
 from StringIO import StringIO
+
 from genshi.builder import tag
-from genshi.template import MarkupTemplate, NewTextTemplate
+from genshi.core import Stream
+from genshi.template import Context, MarkupTemplate, NewTextTemplate
 
 try:
     from elementtree import ElementTree as et
@@ -55,6 +57,7 @@ genshi_tmpl = MarkupTemplate("""
 </tr>
 </table>
 """)
+genshi_tmpl_compiled = genshi_tmpl.compile()
 
 genshi_tmpl2 = MarkupTemplate("""
 <table xmlns:py="http://genshi.edgewall.org/">$table</table>
@@ -101,6 +104,11 @@ if MakoTemplate:
 def test_genshi():
     """Genshi template"""
     stream = genshi_tmpl.generate(table=table)
+    stream.render('html', strip_whitespace=False)
+
+def test_genshi_compiled():
+    """Genshi template, compiled to Python"""
+    stream = Stream(genshi_tmpl_compiled.generate(Context(table=table)))
     stream.render('html', strip_whitespace=False)
 
 def test_genshi_text():
@@ -196,9 +204,10 @@ if neo_cgi:
 
 
 def run(which=None, number=10):
-    tests = ['test_builder', 'test_genshi', 'test_genshi_text',
-             'test_genshi_builder', 'test_mako', 'test_kid', 'test_kid_et',
-             'test_et', 'test_cet', 'test_clearsilver', 'test_django']
+    tests = ['test_builder', 'test_genshi', 'test_genshi_compiled',
+             'test_genshi_text', 'test_genshi_builder', 'test_mako',
+             'test_kid', 'test_kid_et', 'test_et', 'test_cet',
+             'test_clearsilver', 'test_django']
 
     if which:
         tests = filter(lambda n: n[5:] in which, tests)

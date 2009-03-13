@@ -15,7 +15,7 @@ import imp
 
 from genshi.core import Attrs, Stream, _ensure, START, END, TEXT
 from genshi.template.astutil import _ast
-from genshi.template.base import EXPR, SUB
+from genshi.template.base import EXEC, EXPR, SUB
 from genshi.template.directives import *
 
 
@@ -45,21 +45,27 @@ def _expand(obj, pos):
         # characters
         if isinstance(obj, basestring):
             yield TEXT, obj, pos
+        elif isinstance(obj, (int, float, long)):
+            yield TEXT, unicode(obj), pos
         elif hasattr(obj, '__iter__'):
             for event in _ensure(obj):
                 yield event
         else:
             yield TEXT, unicode(obj), pos
 
+
 def _expand_text(obj):
     if obj is not None:
         if isinstance(obj, basestring):
             return [obj]
+        elif isinstance(obj, (int, float, long)):
+            return [unicode(result)]
         elif hasattr(obj, '__iter__'):
             return [e[1] for e in _ensure(obj) if e[0] is TEXT]
         else:
             return [unicode(obj)]
     return []
+
 
 def _assign(ast):
     buf = []
@@ -72,17 +78,19 @@ def _assign(ast):
     _build(ast, ())
     return '{%s}' % ', '.join(buf)
 
+
 def inline(template):
     w = CodeWriter()
 
     yield w('from genshi.core import Attrs, QName')
-    yield w('from genshi.core import START, START_NS, END, END_NS, DOCTYPE, TEXT')
+    yield w('from genshi.core import START, START_CDATA, START_NS, END, '
+                                    'END_CDATA, END_NS, DOCTYPE, TEXT')
     yield w('from genshi.path import Path')
-    yield w('from genshi.template.eval import Expression')
+    yield w('from genshi.template.eval import Expression, Suite')
     yield w('from genshi.template.inline import _expand, _expand_text')
     yield w()
 
-    def _predecl_vars(stream):
+    def _declare_vars(stream):
         for kind, data, pos in stream:
 
             if kind is START:
@@ -103,6 +111,9 @@ def inline(template):
             elif kind is EXPR:
                 yield 'E', data, data
 
+            elif kind is EXEC:
+                yield 'S', data, data
+
             elif kind is SUB:
                 directives, substream = data
                 for directive in directives:
@@ -117,24 +128,24 @@ def inline(template):
                     elif hasattr(directive, 'path') and directive.path:
                         yield 'P', directive.path, directive.path
 
-                for line in _predecl_vars(substream):
+                for line in _declare_vars(substream):
                     yield line
 
-    def _predecl_defs(stream):
+    def _declare_functions(stream, names):
         for kind, data, pos in stream:
             if kind is SUB:
                 directives, substream = data
                 for idx, directive in enumerate(directives):
                     if isinstance(directive, DefDirective):
-                        defs.append(directive.name)
+                        names.append(directive.name)
                         yield w('def %s:', directive.signature)
                         w.shift()
                         args = ['%r: %s' % (name, name) for name
                                 in directive.args]
-                        yield w('ctxt.push({%s})', ', '.join(args))
+                        yield w('push({%s})', ', '.join(args))
                         for line in _apply(directives[idx + 1:], substream):
                             yield line
-                        yield w('ctxt.pop()')
+                        yield w('pop()')
                         w.unshift()
 
     # Recursively apply directives
@@ -156,10 +167,10 @@ def inline(template):
         if isinstance(d, ForDirective):
             yield w('for v in e[%d].evaluate(ctxt):', index['E'][d.expr])
             w.shift()
-            yield w('ctxt.push(%s)', _assign(d.target))
+            yield w('push(%s)', _assign(d.target))
             for line in _apply(rest, stream):
                 yield line
-            yield w('ctxt.pop()')
+            yield w('pop()')
             w.unshift()
 
         elif isinstance(d, IfDirective):
@@ -181,6 +192,9 @@ def inline(template):
             if kind is EXPR:
                 yield w('for evt in _expand(e[%d].evaluate(ctxt), (f, %d, %d)): yield evt',
                         index['E'][data], *pos[1:])
+
+            elif kind is EXEC:
+                yield w('s[%d].execute(ctxt)', index['S'][data])
 
             elif kind is START:
                 tagname, attrs = data
@@ -225,9 +239,9 @@ def inline(template):
     yield w('_F = %r', template.filename)
     yield w()
 
-    yield '# predeclare qnames, attributes, and expressions'
+    yield '# Create qnames, attributes, expressions, and suite objects'
     index, counter, values = {}, {}, {}
-    for prefix, key, value in _predecl_vars(template.stream):
+    for prefix, key, value in _declare_vars(template.stream):
         if not prefix in counter:
             counter[prefix] = 0
         if key not in index.get(prefix, ()):
@@ -243,16 +257,17 @@ def inline(template):
 
     yield w('def generate(ctxt, %s):',
             ', '.join(['f=_F'] + ['%s=_%s' % (n.lower(), n) for n in index]))
-    yield w()
     w.shift()
+    yield w('push = ctxt.push; pop = ctxt.pop')
+    yield w()
 
     # Define macro functions
     defs = []
-    for line in _predecl_defs(template.stream):
+    for line in _declare_functions(template.stream, names=defs):
         yield line
     if defs:
         yield w()
-        yield w('ctxt.push({%s})', ', '.join(['%r: %s' % (n, n) for n in defs]))
+        yield w('push({%s})', ', '.join('%r: %s' % (n, n) for n in defs))
         yield w()
 
     ei, pi = [0], [0]
@@ -264,12 +279,13 @@ if __name__ == '__main__':
     import timeit
     from genshi.template import Context, MarkupTemplate
 
-    text = """<!DOCTYPE html
-    PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
-    "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
-<html xmlns="http://www.w3.org/1999/xhtml"
+    text = """<html xmlns="http://www.w3.org/1999/xhtml"
       xmlns:py="http://genshi.edgewall.org/"
       lang="en">
+ <?python
+    def foo(x):
+        return x*x
+ ?>
  <body>
     <h1 py:def="sayhi(name='world')" py:strip="">
       Hello, $name!
@@ -293,12 +309,12 @@ if __name__ == '__main__':
 
     print
     print 'Interpreted template:'
-    print tmpl.generate(ctxt)
+    print tmpl.generate(ctxt).render('html')
 
     print
     print 'Executed module:'
     module = tmpl.compile()
-    print Stream(module.generate(ctxt))
+    print Stream(module.generate(ctxt)).render('html')
 
     print
     print

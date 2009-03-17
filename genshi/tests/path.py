@@ -213,7 +213,7 @@ class PathTestCase(unittest.TestCase):
             input = xml,
             output = '<td>1</td><td>2</td>'
         )
-        xml = XML('''('<ul>
+        xml = XML('''<ul>
             <li>item1
                 <ul><li>subitem11</li></ul>
             </li>

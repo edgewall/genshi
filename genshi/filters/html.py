@@ -211,6 +211,10 @@ class HTMLSanitizer(object):
     default because it is very hard for such sanitizing to be completely safe,
     especially considering how much error recovery current web browsers perform.
     
+    It also does some basic filtering of CSS properties that may be used for
+    typical phishing attacks. For more sophisticated filtering, this class
+    provides a couple of hooks that can be overridden in sub-classes.
+    
     :warn: Note that this special processing of CSS is currently only applied to
            style attributes, **not** style elements.
     """
@@ -274,7 +278,7 @@ class HTMLSanitizer(object):
                 if waiting_for:
                     continue
                 tag, attrs = data
-                if tag not in self.safe_tags:
+                if not self.is_safe_elem(tag, attrs):
                     waiting_for = tag
                     continue
 
@@ -308,6 +312,43 @@ class HTMLSanitizer(object):
             elif kind is not COMMENT:
                 if not waiting_for:
                     yield kind, data, pos
+
+    def is_safe_css(self, propname, value):
+        """Determine whether the given css property declaration is to be
+        considered safe for inclusion in the output.
+        
+        :param propname: the CSS property name
+        :param value: the value of the property
+        :return: whether the property value should be considered safe
+        :rtype: bool
+        :since: version 0.6
+        """
+        if propname == 'position':
+            return False
+        if propname.startswith('margin') and '-' in value:
+            # Negative margins can be used for phishing
+            return False
+        return True
+
+    def is_safe_elem(self, tag, attrs):
+        """Determine whether the given element should be considered safe for
+        inclusion in the output.
+        
+        :param tag: the tag name of the element
+        :type tag: QName
+        :param attrs: the element attributes
+        :type attrs: Attrs
+        :return: whether the element should be considered safe
+        :rtype: bool
+        :since: version 0.6
+        """
+        if tag not in self.safe_tags:
+            return False
+        if tag.localname == 'input':
+            input_type = attrs.get('type', '').lower()
+            if input_type == 'password':
+                return False
+        return True
 
     def is_safe_uri(self, uri):
         """Determine whether the given URI is to be considered safe for
@@ -369,10 +410,16 @@ class HTMLSanitizer(object):
             decl = decl.strip()
             if not decl:
                 continue
+            try:
+                propname, value = decl.split(':', 1)
+            except ValueError:
+                continue
+            if not self.is_safe_css(propname.strip().lower(), value.strip()):
+                continue
             is_evil = False
-            if 'expression' in decl:
+            if 'expression' in value:
                 is_evil = True
-            for match in re.finditer(r'url\s*\(([^)]+)', decl):
+            for match in re.finditer(r'url\s*\(([^)]+)', value):
                 if not self.is_safe_uri(match.group(1)):
                     is_evil = True
                     break

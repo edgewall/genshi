@@ -12,6 +12,7 @@ http://svn.edgewall.org/repos/genshi/tags/0.6.0/
    with Google App Engine. This, too, is the result of integrating work done
    by  Marcin Kurczych during GSoC 2008.
  * Added caching in the serialization stage for improved performance.
+ * Various improvements to the HTML sanitization filter.
 
 
 Version 0.5.2

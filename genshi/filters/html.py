@@ -39,7 +39,7 @@ class HTMLFormFiller(object):
     #       (if not in a multiple-select)
     # TODO: only apply to elements in the XHTML namespace (or no namespace)?
 
-    def __init__(self, name=None, id=None, data=None):
+    def __init__(self, name=None, id=None, data=None, passwords=False):
         """Create the filter.
         
         :param name: The name of the form that should be populated. If this
@@ -51,12 +51,17 @@ class HTMLFormFiller(object):
         :param data: The dictionary of form values, where the keys are the names
                      of the form fields, and the values are the values to fill
                      in.
+        :param passwords: Whether password input fields should be populated.
+                          This is off by default for security reasons (for
+                          example, a password may end up in the browser cache)
+        :note: Changed in 0.5.2: added the `passwords` option
         """
         self.name = name
         self.id = id
         if data is None:
             data = {}
         self.data = data
+        self.passwords = passwords
 
     def __call__(self, stream):
         """Apply the filter to the given stream.
@@ -83,7 +88,7 @@ class HTMLFormFiller(object):
 
                 elif in_form:
                     if tagname == 'input':
-                        type = attrs.get('type')
+                        type = attrs.get('type').lower()
                         if type in ('checkbox', 'radio'):
                             name = attrs.get('name')
                             if name and name in self.data:
@@ -105,14 +110,17 @@ class HTMLFormFiller(object):
                                     attrs |= [(QName('checked'), 'checked')]
                                 elif 'checked' in attrs:
                                     attrs -= 'checked'
-                        elif type in (None, 'hidden', 'text'):
+                        elif type in (None, 'hidden', 'text') \
+                                or type == 'password' and self.passwords:
                             name = attrs.get('name')
                             if name and name in self.data:
                                 value = self.data[name]
                                 if isinstance(value, (list, tuple)):
                                     value = value[0]
                                 if value is not None:
-                                    attrs |= [(QName('value'), unicode(value))]
+                                    attrs |= [
+                                        (QName('value'), unicode(value))
+                                    ]
                     elif tagname == 'select':
                         name = attrs.get('name')
                         if name in self.data:

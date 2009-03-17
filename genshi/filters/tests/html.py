@@ -306,6 +306,22 @@ class HTMLFormFillerTestCase(unittest.TestCase):
           </select>
         </form>""", unicode(html))
 
+    def test_fill_input_password_disabled(self):
+        html = HTML("""<form><p>
+          <input type="password" name="pass" />
+        </p></form>""") | HTMLFormFiller(data={'pass': 'bar'})
+        self.assertEquals("""<form><p>
+          <input type="password" name="pass"/>
+        </p></form>""", unicode(html))
+
+    def test_fill_input_password_enabled(self):
+        html = HTML("""<form><p>
+          <input type="password" name="pass" />
+        </p></form>""") | HTMLFormFiller(data={'pass': '1234'}, passwords=True)
+        self.assertEquals("""<form><p>
+          <input type="password" name="pass" value="1234"/>
+        </p></form>""", unicode(html))
+
 
 class HTMLSanitizerTestCase(unittest.TestCase):
 

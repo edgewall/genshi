@@ -31,6 +31,7 @@ http://svn.edgewall.org/repos/genshi/tags/0.5.2/
    (ticket #276).
  * Fixed handling of relative URLs with fragment identifiers containing colons
    in the `HTMLSanitizer` (ticket #274).
+ * Added an option to the `HTMLFiller` to also populate password fields.
 
 
 Version 0.5.1

@@ -313,6 +313,9 @@ class HTMLSanitizerTestCase(unittest.TestCase):
         html = HTML('<a href="#">fo<br />o</a>')
         self.assertEquals(u'<a href="#">fo<br/>o</a>',
                           unicode(html | HTMLSanitizer()))
+        html = HTML('<a href="#with:colon">foo</a>')
+        self.assertEquals(u'<a href="#with:colon">foo</a>',
+                          unicode(html | HTMLSanitizer()))
 
     def test_sanitize_escape_text(self):
         html = HTML('<a href="#">fo&amp;</a>')

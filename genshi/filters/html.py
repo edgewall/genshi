@@ -327,6 +327,8 @@ class HTMLSanitizer(object):
         :rtype: `bool`
         :since: version 0.4.3
         """
+        if '#' in uri:
+            uri = uri.split('#', 1)[0] # Strip out the fragment identifier
         if ':' not in uri:
             return True # This is a relative URI
         chars = [char for char in uri.split(':', 1)[0] if char.isalnum()]

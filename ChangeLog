@@ -12,8 +12,6 @@ http://svn.edgewall.org/repos/genshi/tags/0.6.0/
    with Google App Engine. This, too, is the result of integrating work done
    by  Marcin Kurczych during GSoC 2008.
  * Added caching in the serialization stage for improved performance.
- * Fixed handling of relative URLs with fragment identifiers containing colons
-   in the `HTMLSanitizer` (ticket #274).
 
 
 Version 0.5.2
@@ -30,6 +28,8 @@ http://svn.edgewall.org/repos/genshi/tags/0.5.2/
  * Import statements inside function definitions in template code blocks no 
    longer result in an UndefinedError when the imported name is accessed 
    (ticket #276).
+ * Fixed handling of relative URLs with fragment identifiers containing colons
+   in the `HTMLSanitizer` (ticket #274).
 
 
 Version 0.5.1

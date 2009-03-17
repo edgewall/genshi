@@ -204,6 +204,15 @@ class PathTestCase(unittest.TestCase):
             input = xml,
             output = '<bar id="2"/>'
         )
+        xml = XML('''<table>
+            <tr><td>1</td><td>One</td></tr>
+            <tr><td>2</td><td>Two</td></tr>
+        </table>''')
+        self._test_eval(
+            path = 'tr/td[1]',
+            input = xml,
+            output = '<td>1</td><td>2</td>'
+        )
 
     def test_2step_text(self):
         xml = XML('<root><item>Foo</item></root>')

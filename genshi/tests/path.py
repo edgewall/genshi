@@ -213,6 +213,19 @@ class PathTestCase(unittest.TestCase):
             input = xml,
             output = '<td>1</td><td>2</td>'
         )
+        xml = XML('''('<ul>
+            <li>item1
+                <ul><li>subitem11</li></ul>
+            </li>
+            <li>item2
+                <ul><li>subitem21</li></ul>
+            </li>
+        </ul>''')
+        self._test_eval(
+            path = 'li[2]/ul',
+            input = xml,
+            output = '<ul><li>subitem21</li></ul>'
+        )
 
     def test_2step_text(self):
         xml = XML('<root><item>Foo</item></root>')

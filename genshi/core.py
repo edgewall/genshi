@@ -265,6 +265,7 @@ END_CDATA = Stream.END_CDATA
 PI = Stream.PI
 COMMENT = Stream.COMMENT
 
+
 def _ensure(stream):
     """Ensure that every item on the stream is actually a markup event."""
     stream = iter(stream)
@@ -549,7 +550,9 @@ try:
 except ImportError:
     pass # just use the Python implementation
 
+
 escape = Markup.escape
+
 
 def unescape(text):
     """Reverse-escapes &, <, >, and \" and returns a `unicode` object.

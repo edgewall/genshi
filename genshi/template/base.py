@@ -519,55 +519,65 @@ class Template(DirectiveFactory):
 
     def _flatten(self, stream, ctxt, **vars):
         number_conv = self._number_conv
+        stack = []
+        push = stack.append
+        pop = stack.pop
+        stream = iter(stream)
 
-        for kind, data, pos in stream:
+        while 1:
+            for kind, data, pos in stream:
 
-            if kind is START and data[1]:
-                # Attributes may still contain expressions in start tags at
-                # this point, so do some evaluation
-                tag, attrs = data
-                new_attrs = []
-                for name, value in attrs:
-                    if type(value) is list: # this is an interpolated string
-                        values = [event[1]
-                            for event in self._flatten(value, ctxt, **vars)
-                            if event[0] is TEXT and event[1] is not None
-                        ]
-                        if not values:
-                            continue
-                        value = u''.join(values)
-                    new_attrs.append((name, value))
-                yield kind, (tag, Attrs(new_attrs)), pos
+                if kind is START and data[1]:
+                    # Attributes may still contain expressions in start tags at
+                    # this point, so do some evaluation
+                    tag, attrs = data
+                    new_attrs = []
+                    for name, value in attrs:
+                        if type(value) is list: # this is an interpolated string
+                            values = [event[1]
+                                for event in self._flatten(value, ctxt, **vars)
+                                if event[0] is TEXT and event[1] is not None
+                            ]
+                            if not values:
+                                continue
+                            value = u''.join(values)
+                        new_attrs.append((name, value))
+                    yield kind, (tag, Attrs(new_attrs)), pos
 
-            elif kind is EXPR:
-                result = _eval_expr(data, ctxt, vars)
-                if result is not None:
-                    # First check for a string, otherwise the iterable test
-                    # below succeeds, and the string will be chopped up into
-                    # individual characters
-                    if isinstance(result, basestring):
-                        yield TEXT, result, pos
-                    elif isinstance(result, (int, float, long)):
-                        yield TEXT, number_conv(result), pos
-                    elif hasattr(result, '__iter__'):
-                        for event in self._flatten(_ensure(result), ctxt,
-                                                   **vars):
-                            yield event
-                    else:
-                        yield TEXT, unicode(result), pos
+                elif kind is EXPR:
+                    result = _eval_expr(data, ctxt, vars)
+                    if result is not None:
+                        # First check for a string, otherwise the iterable test
+                        # below succeeds, and the string will be chopped up into
+                        # individual characters
+                        if isinstance(result, basestring):
+                            yield TEXT, result, pos
+                        elif isinstance(result, (int, float, long)):
+                            yield TEXT, number_conv(result), pos
+                        elif hasattr(result, '__iter__'):
+                            push(stream)
+                            stream = _ensure(result)
+                            break
+                        else:
+                            yield TEXT, unicode(result), pos
 
-            elif kind is EXEC:
-                _exec_suite(data, ctxt, vars)
+                elif kind is SUB:
+                    # This event is a list of directives and a list of nested
+                    # events to which those directives should be applied
+                    push(stream)
+                    stream = _apply_directives(data[1], data[0], ctxt, vars)
+                    break
 
-            elif kind is SUB:
-                # This event is a list of directives and a list of nested
-                # events to which those directives should be applied
-                substream = _apply_directives(data[1], data[0], ctxt, vars)
-                for event in self._flatten(substream, ctxt, **vars):
-                    yield event
+                elif kind is EXEC:
+                    _exec_suite(data, ctxt, vars)
+
+                else:
+                    yield kind, data, pos
 
             else:
-                yield kind, data, pos
+                if not stack:
+                    break
+                stream = pop()
 
     def _include(self, stream, ctxt, **vars):
         """Internal stream filter that performs inclusion of external

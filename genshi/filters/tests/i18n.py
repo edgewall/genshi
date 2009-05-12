@@ -571,6 +571,32 @@ class TranslatorTestCase(unittest.TestCase):
         </html>""", tmpl.generate().render())
         
         
+    def test_extract_i18n_msg_with_other_directives_nested(self):
+        tmpl = MarkupTemplate("""<html xmlns:py="http://genshi.edgewall.org/"
+            xmlns:i18n="http://genshi.edgewall.org/i18n">
+          <p i18n:msg="" py:with="q = quote_plus(message[:80])">Before you do that, though, please first try
+            <strong><a href="${trac.homepage}search?ticket=yes&amp;noquickjump=1&amp;q=$q">searching</a>
+            for similar issues</strong>, as it is quite likely that this problem
+            has been reported before. For questions about installation
+            and configuration of Trac, please try the
+            <a href="${trac.homepage}wiki/MailingList">mailing list</a>
+            instead of filing a ticket.
+          </p>
+        </html>""")
+        translator = Translator()
+        translator.setup(tmpl)
+        messages = list(translator.extract(tmpl.stream))
+        self.assertEqual(1, len(messages))
+        self.assertEqual(
+            u'Before you do that, though, please first try\n            '
+            u'[1:[2:searching]\n            for similar issues], as it is '
+            u'quite likely that this problem\n            has been reported '
+            u'before. For questions about installation\n            and '
+            u'configuration of Trac, please try the\n            '
+            u'[3:mailing list]\n            instead of filing a ticket.',
+            messages[0][2]
+        )
+        
     def test_translate_i18n_domain_with_msg_directives(self):
         #"""translate with i18n:domain and nested i18n:msg directives """
 

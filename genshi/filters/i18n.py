@@ -40,14 +40,17 @@ I18N_NAMESPACE = Namespace('http://genshi.edgewall.org/i18n')
 MSGBUF = StreamEventKind('MSGBUF')
 
 
-class DirectiveExtract(object):
+class I18NDirective(Directive):
+    """Simple interface for i18n directives to support messages extraction"""
+
+class I18NDirectiveExtract(I18NDirective):
     """Simple interface for directives to support messages extraction"""
 
     def extract(self, stream, ctxt):
         raise NotImplementedError
 
 
-class CommentDirective(Directive):
+class CommentDirective(I18NDirective):
     """Implementation of the ``i18n:comment`` template directive which adds
     translation comments.
     
@@ -75,7 +78,7 @@ class CommentDirective(Directive):
         return stream
 
 
-class MsgDirective(Directive, DirectiveExtract):
+class MsgDirective(I18NDirectiveExtract):
     r"""Implementation of the ``i18n:msg`` directive which marks inner content
     as translatable. Consider the following examples:
     
@@ -196,7 +199,7 @@ class MsgDirective(Directive, DirectiveExtract):
 
         yield None, msgbuf.format(), filter(None, [ctxt.get('_i18n.comment')])
 
-class InnerChooseDirective(Directive):
+class InnerChooseDirective(I18NDirective):
     __slots__ = []
 
     def __call__(self, stream, directives, ctxt, **vars):
@@ -239,7 +242,7 @@ class PluralDirective(InnerChooseDirective):
     ``i18n:choose`` directive."""
 
 
-class ChooseDirective(Directive, DirectiveExtract):
+class ChooseDirective(I18NDirectiveExtract):
     """Implementation of the ``i18n:choose`` directive which provides plural
     internationalisation of strings.
     
@@ -413,7 +416,7 @@ class ChooseDirective(Directive, DirectiveExtract):
             filter(None, [ctxt.get('_i18n.comment')])
 
 
-class DomainDirective(Directive):
+class DomainDirective(I18NDirective):
     """Implementation of the ``i18n:domain`` directive which allows choosing
     another i18n domain(catalog) to translate from.
     
@@ -706,7 +709,7 @@ class Translator(DirectiveFactory):
                 # If this is an i18n directive, no need to translate text
                 # nodes here
                 is_i18n_directive = filter(None,
-                                           [isinstance(d, DirectiveExtract)
+                                           [isinstance(d, I18NDirectiveExtract)
                                             for d in directives])
                 substream = list(self(substream, ctxt,
                                       search_text=not is_i18n_directive))
@@ -855,9 +858,8 @@ class Translator(DirectiveFactory):
                             for lineno, funcname, text, comments in messages:
                                 yield lineno, funcname, text, comments
                         directives.pop(idx)
-                    elif isinstance(directive, StripDirective):
-                        # Previously we didn't evaluate py:strip directives
-                        # in extraction, let's continue not to
+                    elif not isinstance(directive, I18NDirective):
+                        # Remove all other non i18n directives from the process
                         directives.pop(idx)
 
                 if not directives and not comment:
@@ -871,7 +873,7 @@ class Translator(DirectiveFactory):
                         yield lineno, funcname, text, comments
 
                 for directive in directives:
-                    if isinstance(directive, DirectiveExtract):
+                    if isinstance(directive, I18NDirectiveExtract):
                         messages = directive.extract(substream, ctxt)
                         for funcname, text, comments in messages:
                             yield pos[1], funcname, text, comments

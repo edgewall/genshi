@@ -569,7 +569,7 @@ class TranslatorTestCase(unittest.TestCase):
         translator.setup(tmpl)
         self.assertEqual("""<html>
             Changed one day ago by me, the author
-        </html>""", tmpl.generate(date='um dia', author=u'Zé Manel').render())
+        </html>""", tmpl.generate().render())
         
         
     def test_translate_i18n_domain_with_msg_directives(self):

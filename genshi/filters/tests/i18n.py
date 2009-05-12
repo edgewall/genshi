@@ -552,7 +552,6 @@ class TranslatorTestCase(unittest.TestCase):
         translator = Translator()
         tmpl.add_directives(Translator.NAMESPACE, translator)
         messages = list(translator.extract(tmpl.stream))
-        print messages
         self.assertEqual(1, len(messages))
         self.assertEqual(
             (3, None, u'Changed %(date)s ago by %(author)s', []), messages[0]

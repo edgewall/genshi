@@ -542,6 +542,36 @@ class TranslatorTestCase(unittest.TestCase):
           Voh
         </html>""", tmpl.generate().render())
         
+    def test_i18n_msg_ticket_300_extract(self):
+        tmpl = MarkupTemplate("""<html xmlns:py="http://genshi.edgewall.org/"
+            xmlns:i18n="http://genshi.edgewall.org/i18n">
+          <i18n:msg params="date, author">
+            Changed ${ '10/12/2008' } ago by ${ 'me, the author' }
+          </i18n:msg>
+        </html>""")
+        translator = Translator()
+        tmpl.add_directives(Translator.NAMESPACE, translator)
+        messages = list(translator.extract(tmpl.stream))
+        print messages
+        self.assertEqual(1, len(messages))
+        self.assertEqual(
+            (3, None, u'Changed %(date)s ago by %(author)s', []), messages[0]
+        )
+        
+    def test_i18n_msg_ticket_300_translate(self):
+        tmpl = MarkupTemplate("""<html xmlns:py="http://genshi.edgewall.org/"
+            xmlns:i18n="http://genshi.edgewall.org/i18n">
+          <i18n:msg params="date, author">
+            Changed ${ 'one day' } ago by ${ 'me, the author' }
+          </i18n:msg>
+        </html>""")
+        translator = Translator()
+        translator.setup(tmpl)
+        self.assertEqual("""<html>
+            Changed one day ago by me, the author
+        </html>""", tmpl.generate(date='um dia', author=u'Zé Manel').render())
+        
+        
     def test_translate_i18n_domain_with_msg_directives(self):
         #"""translate with i18n:domain and nested i18n:msg directives """
 

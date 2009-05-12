@@ -185,11 +185,14 @@ class MsgDirective(Directive, DirectiveExtract):
         msgbuf = MessageBuffer(self.params, MsgDirective)
 
         stream = iter(stream)
-        stream.next() # the outer start tag
         previous = stream.next()
+        if previous[0] is START:
+            previous = stream.next()
         for event in stream:
             msgbuf.append(*previous)
             previous = event
+        if previous[0] is not END:
+            msgbuf.append(*previous)
 
         yield None, msgbuf.format(), filter(None, [ctxt.get('_i18n.comment')])
 
@@ -215,11 +218,14 @@ class InnerChooseDirective(Directive):
     def extract(self, stream, ctxt, msgbuf):
 
         stream = iter(stream)
-        stream.next() # the outer start tag
         previous = stream.next()
+        if previous[0] is START:
+            previous = stream.next()
         for event in stream:
             msgbuf.append(*previous)
             previous = event
+        if previous[0] is not END:
+            msgbuf.append(*previous)
         return msgbuf
 
 

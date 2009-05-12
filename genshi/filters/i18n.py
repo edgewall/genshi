@@ -163,8 +163,14 @@ class MsgDirective(I18NDirectiveExtract):
         stream = iter(_apply_directives(stream, directives, ctxt))
         strip_directive = [d for d in directives if
                            isinstance(d, StripDirective)]
-        new_stream.append(stream.next())
         previous = stream.next()
+        if previous[0] is START:
+            new_stream.append(previous)
+        else:
+            msgbuf.append(*previous)
+        
+        previous = stream.next()
+            
         for kind, data, pos in stream:
             if kind is SUB and not strip_directive:
                 # py:attrs for example
@@ -176,10 +182,15 @@ class MsgDirective(I18NDirectiveExtract):
                     previous = skind, sdata, spos
             msgbuf.append(*previous)
             previous = kind, data, pos
+            
+        if previous[0] is not END:
+            msgbuf.append(*previous)
+            previous = None
 
         for event in msgbuf.translate(gettext(msgbuf.format())):
             new_stream.append(event)
-        new_stream.append(previous)
+        if previous:
+            new_stream.append(previous)
         if strip_directive:
             return _apply_directives(new_stream, strip_directive, ctxt)
         return new_stream

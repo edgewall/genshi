@@ -561,14 +561,17 @@ class TranslatorTestCase(unittest.TestCase):
         tmpl = MarkupTemplate("""<html xmlns:py="http://genshi.edgewall.org/"
             xmlns:i18n="http://genshi.edgewall.org/i18n">
           <i18n:msg params="date, author">
-            Changed ${ 'one day' } ago by ${ 'me, the author' }
+            Changed ${ date } ago by ${ author }
           </i18n:msg>
         </html>""")
-        translator = Translator()
+        translations = DummyTranslations({
+            u'Changed %(date)s ago by %(author)s': u'Modificado à %(date)s por %(author)s'
+        })
+        translator = Translator(translations)
         translator.setup(tmpl)
         self.assertEqual("""<html>
-            Changed one day ago by me, the author
-        </html>""", tmpl.generate().render())
+          Modificado à um dia por Pedro
+        </html>""", tmpl.generate(date='um dia', author="Pedro").render())
         
         
     def test_extract_i18n_msg_with_other_directives_nested(self):

@@ -150,14 +150,13 @@ class MsgDirective(I18NDirectiveExtract):
                                                namespaces, pos)
 
     def __call__(self, stream, directives, ctxt, **vars):
-
         gettext = ctxt.get('_i18n.gettext')
         dgettext = ctxt.get('_i18n.dgettext')
         if ctxt.get('_i18n.domain'):
             assert callable(dgettext), "No domain gettext function passed"
             gettext = lambda msg: dgettext(ctxt.get('_i18n.domain'), msg)
 
-        msgbuf = MessageBuffer(self.params, MsgDirective)
+        msgbuf = MessageBuffer(self)
 
         new_stream = []
         stream = iter(_apply_directives(stream, directives, ctxt))
@@ -196,7 +195,7 @@ class MsgDirective(I18NDirectiveExtract):
         return new_stream
 
     def extract(self, stream, ctxt):
-        msgbuf = MessageBuffer(self.params, MsgDirective)
+        msgbuf = MessageBuffer(self)
 
         stream = iter(stream)
         previous = stream.next()
@@ -210,13 +209,14 @@ class MsgDirective(I18NDirectiveExtract):
 
         yield None, msgbuf.format(), filter(None, [ctxt.get('_i18n.comment')])
 
+
 class InnerChooseDirective(I18NDirective):
-    __slots__ = []
+    __slots__ = ['params']
 
     def __call__(self, stream, directives, ctxt, **vars):
 
-        msgbuf = MessageBuffer(ctxt.get('_i18n.choose.params', [])[:],
-                               InnerChooseDirective)
+        self.params = ctxt.get('_i18n.choose.params', [])[:]
+        msgbuf = MessageBuffer(self)
 
         stream = iter(_apply_directives(stream, directives, ctxt))
         yield stream.next() # the outer start tag
@@ -403,8 +403,8 @@ class ChooseDirective(I18NDirectiveExtract):
         if previous is START:
             stream.next()
 
-        singular_msgbuf = MessageBuffer(self.params, ChooseDirective)
-        plural_msgbuf = MessageBuffer(self.params, ChooseDirective)
+        singular_msgbuf = MessageBuffer(self)
+        plural_msgbuf = MessageBuffer(self)
 
         for kind, event, pos in stream:
             if kind is SUB:
@@ -914,7 +914,7 @@ class MessageBuffer(object):
     :since: version 0.5
     """
 
-    def __init__(self, params=u'', directive=None):
+    def __init__(self, directive=None):
         """Initialize the message buffer.
         
         :param params: comma-separated list of parameter names
@@ -922,12 +922,9 @@ class MessageBuffer(object):
         :param lineno: the line number on which the first stream event
                        belonging to the message was found
         """
-        if isinstance(params, basestring):
-            params = [name.strip() for name in params.split(',')]
-        self.orig_params = params
         # params list needs to be copied so that directives can be evaluated
         # more than once
-        self.params = params[:]
+        self.orig_params = self.params = directive.params[:]
         self.directive = directive
         self.string = []
         self.events = {}
@@ -948,6 +945,8 @@ class MessageBuffer(object):
             for skind, sdata, spos in data[1]:
                 self.append(skind, sdata, spos)
         if kind is TEXT:
+            if '[' in data or ']' in data:
+                data = data.replace('[', '\[').replace(']', '\]')
             self.string.append(data)
             self.events.setdefault(self.stack[-1], []).append(None)
         elif kind is EXPR:
@@ -1016,13 +1015,15 @@ class MessageBuffer(object):
                         if idx % 2:
                             yield self.values[part]
                         elif part:
-                            yield TEXT, part, (None, -1, -1)
+                            yield (TEXT,
+                                   part.replace('\[', '[').replace('\]', ']'),
+                                   (None, -1, -1))
                     # set string to None since we already handled it
                     string = None
                     if not self.events[order] or not self.events[order][0]:
                         break
 
-def parse_msg(string, regex=re.compile(r'(?:\[(\d+)\:)|\]')):
+def parse_msg(string, regex=re.compile(r'(?:\[(\d+)\:)|(?<!\\)\]')):
     """Parse a translated message using Genshi mixed content message
     formatting.
     

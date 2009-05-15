@@ -573,7 +573,35 @@ class TranslatorTestCase(unittest.TestCase):
           Modificado à um dia por Pedro
         </html>""", tmpl.generate(date='um dia', author="Pedro").render())
         
-        
+       
+    def test_i18n_msg_ticket_251_extract(self):
+        tmpl = MarkupTemplate("""<html xmlns:py="http://genshi.edgewall.org/"
+            xmlns:i18n="http://genshi.edgewall.org/i18n">
+          <p i18n:msg=""><tt><b>Translation[&nbsp;0&nbsp;]</b>: <em>One coin</em></tt></p>
+        </html>""")
+        translator = Translator()
+        tmpl.add_directives(Translator.NAMESPACE, translator)
+        messages = list(translator.extract(tmpl.stream))
+        self.assertEqual(1, len(messages))
+        self.assertEqual(
+            (3, None, u'[1:[2:Translation\\[\xa00\xa0\\]]: [3:One coin]]', []), messages[0]
+        )
+
+    def test_i18n_msg_ticket_251_translate(self):
+        tmpl = MarkupTemplate("""<html xmlns:py="http://genshi.edgewall.org/"
+            xmlns:i18n="http://genshi.edgewall.org/i18n">
+          <p i18n:msg=""><tt><b>Translation[&nbsp;0&nbsp;]</b>: <em>One coin</em></tt></p>
+        </html>""")
+        translations = DummyTranslations({
+            u'[1:[2:Translation\\[\xa00\xa0\\]]: [3:One coin]]':
+                u'[1:[2:Trandução\\[\xa00\xa0\\]]: [3:Uma moeda]]'
+        })
+        translator = Translator(translations)
+        translator.setup(tmpl)
+        self.assertEqual("""<html>
+          <p><tt><b>Trandução[ 0 ]</b>: </tt><em>Uma moeda</em></p>
+        </html>""", tmpl.generate().render()) 
+
     def test_extract_i18n_msg_with_other_directives_nested(self):
         tmpl = MarkupTemplate("""<html xmlns:py="http://genshi.edgewall.org/"
             xmlns:i18n="http://genshi.edgewall.org/i18n">

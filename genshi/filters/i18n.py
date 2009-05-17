@@ -124,8 +124,8 @@ class MsgDirective(I18NDirectiveExtract):
     >>> translator.setup(tmpl)
     >>> print tmpl.generate(fname='John', lname='Doe').render()
     <html>
-      <div><p>First Name: John
-        <p>Last Name: Doe</div>
+      <div><p>First Name: John</p>
+        <p>Last Name: Doe</p></div>
       <p>Foo <em>bar</em>!</p>
     </html>
     >>>
@@ -160,8 +160,8 @@ class MsgDirective(I18NDirectiveExtract):
 
         new_stream = []
         stream = iter(_apply_directives(stream, directives, ctxt))
-        strip_directive = [d for d in directives if
-                           isinstance(d, StripDirective)]
+        non_i18n_directives = [d for d in directives if not
+                               isinstance(d, I18NDirective)]
         previous = stream.next()
         if previous[0] is START:
             new_stream.append(previous)
@@ -171,7 +171,7 @@ class MsgDirective(I18NDirectiveExtract):
         previous = stream.next()
             
         for kind, data, pos in stream:
-            if kind is SUB and not strip_directive:
+            if kind is SUB:
                 # py:attrs for example
                 subdirectives, substream = data
                 for skind, sdata, spos in _apply_directives(substream,
@@ -190,8 +190,8 @@ class MsgDirective(I18NDirectiveExtract):
             new_stream.append(event)
         if previous:
             new_stream.append(previous)
-        if strip_directive:
-            return _apply_directives(new_stream, strip_directive, ctxt)
+        if non_i18n_directives:
+            return _apply_directives(new_stream, non_i18n_directives, ctxt)
         return new_stream
 
     def extract(self, stream, ctxt):
@@ -948,7 +948,7 @@ class MessageBuffer(object):
             if '[' in data or ']' in data:
                 data = data.replace('[', '\[').replace(']', '\]')
             self.string.append(data)
-            self.events.setdefault(self.stack[-1], []).append(None)
+            self.events.setdefault(self.stack[-1], []).append((kind, data, pos))
         elif kind is EXPR:
             if self.params:
                 param = self.params.pop(0)
@@ -965,13 +965,13 @@ class MessageBuffer(object):
                                                      'In Memmory Template'),
                                     pos[1]))
             self.string.append('%%(%s)s' % param)
-            self.events.setdefault(self.stack[-1], []).append(None)
+            self.events.setdefault(self.stack[-1], []).append((kind, data, pos))
             self.values[param] = (kind, data, pos)
         else:
-            if kind is START:
+            if kind is START: 
                 self.string.append(u'[%d:' % self.order)
-                self.events.setdefault(self.order, []).append((kind, data, pos))
                 self.stack.append(self.order)
+                self.events.setdefault(self.stack[-1], []).append((kind, data, pos))
                 self.depth += 1
                 self.order += 1
             elif kind is END:
@@ -993,35 +993,59 @@ class MessageBuffer(object):
         
         :param string: the translated message string
         """
+        def yield_parts(string):
+            for idx, part in enumerate(regex.split(string)):
+                if idx % 2:
+                    yield self.values[part]
+                elif part:
+                    yield (TEXT,
+                           part.replace('\[', '[').replace('\]', ']'),
+                           (None, -1, -1)
+                    )
+
         parts = parse_msg(string)
+        parts_counter = {}
         for order, string in parts:
-            events = self.events[order]
-            while events:
-                event = events.pop(0)
-                if event:
-                    if event[0] is END and string:
-                        for idx, part in enumerate(regex.split(string)):
-                            if idx % 2:
-                                yield self.values[part]
-                            elif part:
-                                yield TEXT, part, (None, -1, -1)
-                        # set string to None since we already handled it
+            parts_counter.setdefault(order, []).append(None)
+
+        while parts:
+            order, string = parts.pop(0)
+            if len(parts_counter[order]) == 1:
+                events = self.events[order]
+            else:
+                events = [self.events[order].pop(0)]
+            parts_counter[order].pop()
+            for event in events:
+                if event[0] is TEXT:
+                    if string:
+                        for part in yield_parts(string):
+                            yield part
+                        # String handled, reset it
+                        string = None
+                elif event[0] is START:
+                    yield event
+                    if string:
+                        for part in yield_parts(string):
+                            yield part
+                        # String handled, reset it
+                        string = None
+                elif event[0] is END:
+                    if string:
+                        for part in yield_parts(string):
+                            yield part
+                        # String handled, reset it
                         string = None
                     yield event
+                elif event[0] is EXPR:
+                    # These are handled on the strings itself
+                    continue
                 else:
-                    if not string:
-                        break
-                    for idx, part in enumerate(regex.split(string)):
-                        if idx % 2:
-                            yield self.values[part]
-                        elif part:
-                            yield (TEXT,
-                                   part.replace('\[', '[').replace('\]', ']'),
-                                   (None, -1, -1))
-                    # set string to None since we already handled it
-                    string = None
-                    if not self.events[order] or not self.events[order][0]:
-                        break
+                    if string:
+                        for part in yield_parts(string):
+                            yield part
+                        # String handled, reset it
+                        string = None
+                    yield event
 
 def parse_msg(string, regex=re.compile(r'(?:\[(\d+)\:)|(?<!\\)\]')):
     """Parse a translated message using Genshi mixed content message

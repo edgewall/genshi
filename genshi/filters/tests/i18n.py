@@ -18,7 +18,7 @@ from StringIO import StringIO
 import unittest
 
 from genshi.core import Attrs
-from genshi.template import MarkupTemplate
+from genshi.template import MarkupTemplate, Context
 from genshi.filters.i18n import Translator, extract
 from genshi.input import HTML
 
@@ -599,7 +599,7 @@ class TranslatorTestCase(unittest.TestCase):
         translator = Translator(translations)
         translator.setup(tmpl)
         self.assertEqual("""<html>
-          <p><tt><b>Trandução[ 0 ]</b>: </tt><em>Uma moeda</em></p>
+          <p><tt><b>Trandução[ 0 ]</b>: <em>Uma moeda</em></tt></p>
         </html>""", tmpl.generate().render()) 
 
     def test_extract_i18n_msg_with_other_directives_nested(self):
@@ -627,6 +627,79 @@ class TranslatorTestCase(unittest.TestCase):
             u'[3:mailing list]\n            instead of filing a ticket.',
             messages[0][2]
         )
+        
+    def test_translate_i18n_msg_with_other_directives_nested(self):
+        tmpl = MarkupTemplate("""<html xmlns:py="http://genshi.edgewall.org/"
+            xmlns:i18n="http://genshi.edgewall.org/i18n">
+          <p i18n:msg="">Before you do that, though, please first try
+            <strong><a href="${trac.homepage}search?ticket=yes&amp;noquickjump=1&amp;q=q">searching</a>
+            for similar issues</strong>, as it is quite likely that this problem
+            has been reported before. For questions about installation
+            and configuration of Trac, please try the
+            <a href="${trac.homepage}wiki/MailingList">mailing list</a>
+            instead of filing a ticket.
+          </p>
+        </html>""")
+        translations = DummyTranslations({
+            u'Before you do that, though, please first try\n            '
+            u'[1:[2:searching]\n            for similar issues], as it is '
+            u'quite likely that this problem\n            has been reported '
+            u'before. For questions about installation\n            and '
+            u'configuration of Trac, please try the\n            '
+            u'[3:mailing list]\n            instead of filing a ticket.':
+                u'Antes de o fazer, porém,\n            '
+                u'[1:por favor tente [2:procurar]\n            por problemas semelhantes], uma vez que '
+                u'é muito provável que este problema\n            já tenha sido reportado '
+                u'anteriormente. Para questões relativas à instalação\n            e '
+                u'configuração do Trac, por favor tente a\n            '
+                u'[3:mailing list]\n            em vez de criar um assunto.'
+        }) 
+        translator = Translator(translations)
+        translator.setup(tmpl)
+        messages = list(translator.extract(tmpl.stream))
+        self.assertEqual(1, len(messages))
+        ctx = Context()
+        ctx.push({'trac': {'homepage': 'http://trac.edgewall.org/'}})
+        self.assertEqual("""<html>
+          <p>Antes de o fazer, porém,
+            <strong>por favor tente <a href="http://trac.edgewall.org/search?ticket=yes&amp;noquickjump=1&amp;q=q">procurar</a>
+            por problemas semelhantes</strong>, uma vez que é muito provável que este problema
+            já tenha sido reportado anteriormente. Para questões relativas à instalação
+            e configuração do Trac, por favor tente a
+            <a href="http://trac.edgewall.org/wiki/MailingList">mailing list</a>
+            em vez de criar um assunto.</p>
+        </html>""", tmpl.generate(ctx).render())
+        
+    def test_i18n_msg_with_other_nested_directives_with_reordered_content(self):
+        # See: http://genshi.edgewall.org/ticket/300#comment:10
+        tmpl = MarkupTemplate("""<html xmlns:py="http://genshi.edgewall.org/"
+            xmlns:i18n="http://genshi.edgewall.org/i18n">
+          <p py:if="not editable" class="hint" i18n:msg="">
+            <strong>Note:</strong> This repository is defined in 
+            <code><a href="${ 'href.wiki(TracIni)' }">trac.ini</a></code>
+            and cannot be edited on this page.
+          </p>
+        </html>""")
+        translations = DummyTranslations({
+            u'[1:Note:] This repository is defined in \n            '
+            u'[2:[3:trac.ini]]\n            and cannot be edited on this page.':
+                u'[1:Nota:] Este repositório está definido em \n            '
+                u'[2:[3:trac.ini]]\n            e não pode ser editado nesta página.',
+        })
+        translator = Translator(translations)
+        translator.setup(tmpl)
+        messages = list(translator.extract(tmpl.stream))
+        self.assertEqual(1, len(messages))
+        self.assertEqual(
+            u'[1:Note:] This repository is defined in \n            '
+            u'[2:[3:trac.ini]]\n            and cannot be edited on this page.',
+            messages[0][2]
+        )
+        self.assertEqual("""<html>
+          <p class="hint"><strong>Nota:</strong> Este repositório está definido em
+            <code><a href="href.wiki(TracIni)">trac.ini</a></code>
+            e não pode ser editado nesta página.</p>
+        </html>""", tmpl.generate(editable=False).render())
         
     def test_translate_i18n_domain_with_msg_directives(self):
         #"""translate with i18n:domain and nested i18n:msg directives """

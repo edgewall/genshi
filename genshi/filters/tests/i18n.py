@@ -30,12 +30,12 @@ class DummyTranslations(NullTranslations):
         NullTranslations.__init__(self)
         self._catalog = catalog or {}
         self.plural = c2py('(n != 1)')
-        
+
     def add_domain(self, domain, catalog):
         translation = DummyTranslations(catalog)
         translation.add_fallback(self)
         self._domains[domain] = translation
-        
+
     def _domain_call(self, func, domain, *args, **kwargs):
         return getattr(self._domains.get(domain, self), func)(*args, **kwargs)
 
@@ -47,10 +47,10 @@ class DummyTranslations(NullTranslations):
                 return self._fallback.ugettext(message)
             return unicode(message)
         return tmsg
-    
+
     def dugettext(self, domain, message):
         return self._domain_call('ugettext', domain, message)
-    
+
     def ungettext(self, msgid1, msgid2, n):
         try:
             return self._catalog[(msgid1, self.plural(n))]
@@ -61,7 +61,7 @@ class DummyTranslations(NullTranslations):
                 return msgid1
             else:
                 return msgid2
-            
+
     def dungettext(self, domain, singular, plural, numeral):
         return self._domain_call('ungettext', domain, singular, plural, numeral)
 
@@ -235,7 +235,7 @@ class TranslatorTestCase(unittest.TestCase):
         self.assertEqual("""<html>
           <p>Für Details siehe bitte <a href="help.html"><em>Hilfeseite</em></a>.</p>
         </html>""", tmpl.generate().render())
-        
+
     def test_extract_i18n_msg_label_with_nested_input(self):
         tmpl = MarkupTemplate("""<html xmlns:py="http://genshi.edgewall.org/"
             xmlns:i18n="http://genshi.edgewall.org/i18n">
@@ -528,7 +528,7 @@ class TranslatorTestCase(unittest.TestCase):
         self.assertEqual("""<html>
           <p>Voh</p>
         </html>""", tmpl.generate().render())
-        
+
     def test_translate_i18n_msg_and_py_strip_directives(self):
         tmpl = MarkupTemplate("""<html xmlns:py="http://genshi.edgewall.org/"
             xmlns:i18n="http://genshi.edgewall.org/i18n">
@@ -541,7 +541,7 @@ class TranslatorTestCase(unittest.TestCase):
           Voh
           Voh
         </html>""", tmpl.generate().render())
-        
+
     def test_i18n_msg_ticket_300_extract(self):
         tmpl = MarkupTemplate("""<html xmlns:py="http://genshi.edgewall.org/"
             xmlns:i18n="http://genshi.edgewall.org/i18n">
@@ -556,7 +556,7 @@ class TranslatorTestCase(unittest.TestCase):
         self.assertEqual(
             (3, None, u'Changed %(date)s ago by %(author)s', []), messages[0]
         )
-        
+
     def test_i18n_msg_ticket_300_translate(self):
         tmpl = MarkupTemplate("""<html xmlns:py="http://genshi.edgewall.org/"
             xmlns:i18n="http://genshi.edgewall.org/i18n">
@@ -572,8 +572,8 @@ class TranslatorTestCase(unittest.TestCase):
         self.assertEqual("""<html>
           Modificado à um dia por Pedro
         </html>""", tmpl.generate(date='um dia', author="Pedro").render())
-        
-       
+
+
     def test_i18n_msg_ticket_251_extract(self):
         tmpl = MarkupTemplate("""<html xmlns:py="http://genshi.edgewall.org/"
             xmlns:i18n="http://genshi.edgewall.org/i18n">
@@ -600,7 +600,7 @@ class TranslatorTestCase(unittest.TestCase):
         translator.setup(tmpl)
         self.assertEqual("""<html>
           <p><tt><b>Trandução[ 0 ]</b>: <em>Uma moeda</em></tt></p>
-        </html>""", tmpl.generate().render()) 
+        </html>""", tmpl.generate().render())
 
     def test_extract_i18n_msg_with_other_directives_nested(self):
         tmpl = MarkupTemplate("""<html xmlns:py="http://genshi.edgewall.org/"
@@ -627,7 +627,7 @@ class TranslatorTestCase(unittest.TestCase):
             u'[3:mailing list]\n            instead of filing a ticket.',
             messages[0][2]
         )
-        
+
     def test_translate_i18n_msg_with_other_directives_nested(self):
         tmpl = MarkupTemplate("""<html xmlns:py="http://genshi.edgewall.org/"
             xmlns:i18n="http://genshi.edgewall.org/i18n">
@@ -653,7 +653,7 @@ class TranslatorTestCase(unittest.TestCase):
                 u'anteriormente. Para questões relativas à instalação\n            e '
                 u'configuração do Trac, por favor tente a\n            '
                 u'[3:mailing list]\n            em vez de criar um assunto.'
-        }) 
+        })
         translator = Translator(translations)
         translator.setup(tmpl)
         messages = list(translator.extract(tmpl.stream))
@@ -669,13 +669,13 @@ class TranslatorTestCase(unittest.TestCase):
             <a href="http://trac.edgewall.org/wiki/MailingList">mailing list</a>
             em vez de criar um assunto.</p>
         </html>""", tmpl.generate(ctx).render())
-        
+
     def test_i18n_msg_with_other_nested_directives_with_reordered_content(self):
         # See: http://genshi.edgewall.org/ticket/300#comment:10
         tmpl = MarkupTemplate("""<html xmlns:py="http://genshi.edgewall.org/"
             xmlns:i18n="http://genshi.edgewall.org/i18n">
           <p py:if="not editable" class="hint" i18n:msg="">
-            <strong>Note:</strong> This repository is defined in 
+            <strong>Note:</strong> This repository is defined in
             <code><a href="${ 'href.wiki(TracIni)' }">trac.ini</a></code>
             and cannot be edited on this page.
           </p>
@@ -700,7 +700,7 @@ class TranslatorTestCase(unittest.TestCase):
             <code><a href="href.wiki(TracIni)">trac.ini</a></code>
             e não pode ser editado nesta página.</p>
         </html>""", tmpl.generate(editable=False).render())
-        
+
     def test_translate_i18n_domain_with_msg_directives(self):
         #"""translate with i18n:domain and nested i18n:msg directives """
 
@@ -721,7 +721,7 @@ class TranslatorTestCase(unittest.TestCase):
             <p>PT_Foo</p>
           </div>
         </html>""", tmpl.generate().render())
-        
+
     def test_translate_i18n_domain_with_inline_directives(self):
         #"""translate with inlined i18n:domain and i18n:msg directives"""
         tmpl = MarkupTemplate("""<html xmlns:py="http://genshi.edgewall.org/"
@@ -735,18 +735,18 @@ class TranslatorTestCase(unittest.TestCase):
         self.assertEqual("""<html>
           <p>BarFoo</p>
         </html>""", tmpl.generate().render())
-        
+
     def test_translate_i18n_domain_without_msg_directives(self):
         #"""translate domain call without i18n:msg directives still uses current domain"""
-        
+
         tmpl = MarkupTemplate("""<html xmlns:py="http://genshi.edgewall.org/"
             xmlns:i18n="http://genshi.edgewall.org/i18n">
           <p i18n:msg="">Bar</p>
           <div i18n:domain="foo">
             <p i18n:msg="">FooBar</p>
-            <p i18n:msg="">Bar</p>            
+            <p i18n:msg="">Bar</p>
             <p>Bar</p>
-          </div>          
+          </div>
           <p>Bar</p>
         </html>""")
         translations = DummyTranslations({'Bar': 'Voh'})
@@ -762,10 +762,10 @@ class TranslatorTestCase(unittest.TestCase):
           </div>
           <p>Voh</p>
         </html>""", tmpl.generate().render())
-        
+
     def test_translate_i18n_domain_as_directive_not_attribute(self):
         #"""translate with domain as directive"""
-        
+
         tmpl = MarkupTemplate("""<html xmlns:py="http://genshi.edgewall.org/"
             xmlns:i18n="http://genshi.edgewall.org/i18n">
         <i18n:domain name="foo">
@@ -785,10 +785,10 @@ class TranslatorTestCase(unittest.TestCase):
           <p>PT_Foo</p>
           <p>Voh</p>
         </html>""", tmpl.generate().render())
-        
+
     def test_translate_i18n_domain_nested_directives(self):
         #"""translate with nested i18n:domain directives"""
-        
+
         tmpl = MarkupTemplate("""<html xmlns:py="http://genshi.edgewall.org/"
             xmlns:i18n="http://genshi.edgewall.org/i18n">
           <p i18n:msg="">Bar</p>
@@ -796,7 +796,7 @@ class TranslatorTestCase(unittest.TestCase):
             <p i18n:msg="">FooBar</p>
             <p i18n:domain="bar" i18n:msg="">Bar</p>
             <p>Bar</p>
-          </div>          
+          </div>
           <p>Bar</p>
         </html>""")
         translations = DummyTranslations({'Bar': 'Voh'})
@@ -813,10 +813,10 @@ class TranslatorTestCase(unittest.TestCase):
           </div>
           <p>Voh</p>
         </html>""", tmpl.generate().render())
-        
+
     def test_translate_i18n_domain_with_empty_nested_domain_directive(self):
         #"""translate with empty nested i18n:domain directive does not use dngettext"""
-        
+
         tmpl = MarkupTemplate("""<html xmlns:py="http://genshi.edgewall.org/"
             xmlns:i18n="http://genshi.edgewall.org/i18n">
           <p i18n:msg="">Bar</p>
@@ -824,7 +824,7 @@ class TranslatorTestCase(unittest.TestCase):
             <p i18n:msg="">FooBar</p>
             <p i18n:domain="" i18n:msg="">Bar</p>
             <p>Bar</p>
-          </div>          
+          </div>
           <p>Bar</p>
         </html>""")
         translations = DummyTranslations({'Bar': 'Voh'})
@@ -865,7 +865,7 @@ class TranslatorTestCase(unittest.TestCase):
             <p>FooBars</p>
           </div>
         </html>""", tmpl.generate(one=1, two=2).render())
-        
+
     def test_translate_i18n_choose_as_directive(self):
         tmpl = MarkupTemplate("""<html xmlns:py="http://genshi.edgewall.org/"
             xmlns:i18n="http://genshi.edgewall.org/i18n">
@@ -885,7 +885,7 @@ class TranslatorTestCase(unittest.TestCase):
           <p>FooBars</p>
           <p>FooBar</p>
         </html>""", tmpl.generate(one=1, two=2).render())
-        
+
     def test_translate_i18n_choose_as_attribute_with_params(self):
         tmpl = MarkupTemplate("""<html xmlns:py="http://genshi.edgewall.org/"
             xmlns:i18n="http://genshi.edgewall.org/i18n">
@@ -907,7 +907,7 @@ class TranslatorTestCase(unittest.TestCase):
             <p>Vohs John Doe</p>
           </div>
         </html>""", tmpl.generate(two=2, fname='John', lname='Doe').render())
-        
+
     def test_translate_i18n_choose_as_attribute_with_params_and_domain_as_param(self):
         tmpl = MarkupTemplate("""<html xmlns:py="http://genshi.edgewall.org/"
             xmlns:i18n="http://genshi.edgewall.org/i18n"
@@ -931,7 +931,7 @@ class TranslatorTestCase(unittest.TestCase):
             <p>Vohs John Doe</p>
           </div>
         </html>""", tmpl.generate(two=2, fname='John', lname='Doe').render())
-        
+
     def test_translate_i18n_choose_as_directive_with_params(self):
         tmpl = MarkupTemplate("""<html xmlns:py="http://genshi.edgewall.org/"
             xmlns:i18n="http://genshi.edgewall.org/i18n">
@@ -957,7 +957,7 @@ class TranslatorTestCase(unittest.TestCase):
           <p>Voh John Doe</p>
         </html>""", tmpl.generate(one=1, two=2,
                                   fname='John', lname='Doe').render())
-        
+
     def test_translate_i18n_choose_as_directive_with_params_and_domain_as_directive(self):
         tmpl = MarkupTemplate("""<html xmlns:py="http://genshi.edgewall.org/"
             xmlns:i18n="http://genshi.edgewall.org/i18n">
@@ -1005,7 +1005,7 @@ class TranslatorTestCase(unittest.TestCase):
         self.assertEqual(2, len(messages))
         self.assertEqual((3, 'ngettext', (u'FooBar', u'FooBars'), []), messages[0])
         self.assertEqual((7, 'ngettext', (u'FooBar', u'FooBars'), []), messages[1])
-        
+
     def test_extract_i18n_choose_as_directive(self):
         tmpl = MarkupTemplate("""<html xmlns:py="http://genshi.edgewall.org/"
             xmlns:i18n="http://genshi.edgewall.org/i18n">
@@ -1024,7 +1024,7 @@ class TranslatorTestCase(unittest.TestCase):
         self.assertEqual(2, len(messages))
         self.assertEqual((3, 'ngettext', (u'FooBar', u'FooBars'), []), messages[0])
         self.assertEqual((7, 'ngettext', (u'FooBar', u'FooBars'), []), messages[1])
-        
+
     def test_extract_i18n_choose_as_attribute_with_params(self):
         tmpl = MarkupTemplate("""<html xmlns:py="http://genshi.edgewall.org/"
             xmlns:i18n="http://genshi.edgewall.org/i18n">
@@ -1105,7 +1105,7 @@ class TranslatorTestCase(unittest.TestCase):
         self.assertEqual((9, 'ngettext', (u'Foo %(fname)s %(lname)s',
                                           u'Foos %(fname)s %(lname)s'), []),
                          messages[1])
-        
+
     def test_extract_i18n_choose_as_attribute_with_params_and_comment(self):
         tmpl = MarkupTemplate("""<html xmlns:py="http://genshi.edgewall.org/"
             xmlns:i18n="http://genshi.edgewall.org/i18n">
@@ -1122,7 +1122,7 @@ class TranslatorTestCase(unittest.TestCase):
                                           u'Foos %(fname)s %(lname)s'),
                           [u'As in Foo Bar']),
                          messages[0])
-        
+
     def test_extract_i18n_choose_as_directive_with_params_and_comment(self):
         tmpl = MarkupTemplate("""<html xmlns:py="http://genshi.edgewall.org/"
             xmlns:i18n="http://genshi.edgewall.org/i18n">
@@ -1182,7 +1182,7 @@ class TranslatorTestCase(unittest.TestCase):
                 translator.setup(template)
             loader = TemplateLoader([dirname], callback=callback)
             tmpl = loader.load('tmpl10.html')
-            
+
             self.assertEqual("""<html>
                         <div>Included tmpl0</div>
                         <p>foo_Bar 0</p>
@@ -1222,7 +1222,7 @@ class TranslatorTestCase(unittest.TestCase):
                 </html>""", tmpl.generate(idx=-1).render())
         finally:
             shutil.rmtree(dirname)
-            
+
     def test_translate_i18n_domain_with_nested_inlcudes_with_translatable_attrs(self):
         import os, shutil, tempfile
         from genshi.template.loader import TemplateLoader
@@ -1257,18 +1257,18 @@ class TranslatorTestCase(unittest.TestCase):
                 </html>""")
             finally:
                 file2.close()
-                
+
             translations = DummyTranslations({'Bar %(idx)s': 'Voh %(idx)s',
                                               'Bar': 'Voh'})
             translations.add_domain('foo', {'Bar %(idx)s': 'foo_Bar %(idx)s'})
             translations.add_domain('bar', {'Bar': 'bar_Bar'})
             translator = Translator(translations)
-            
-            def callback(template):                
+
+            def callback(template):
                 translator.setup(template)
             loader = TemplateLoader([dirname], callback=callback)
             tmpl = loader.load('tmpl10.html')
-            
+
             self.assertEqual("""<html>
                         <div>Included tmpl0</div>
                         <p title="foo_Bar 0">foo_Bar 0</p>
@@ -1298,7 +1298,7 @@ class TranslatorTestCase(unittest.TestCase):
                                           dg=translations.dugettext).render())
         finally:
             shutil.rmtree(dirname)
-            
+
     def test_translate_i18n_msg_and_comment_with_py_strip_directives(self):
         tmpl = MarkupTemplate("""<html xmlns:py="http://genshi.edgewall.org/"
             xmlns:i18n="http://genshi.edgewall.org/i18n">
@@ -1311,7 +1311,7 @@ class TranslatorTestCase(unittest.TestCase):
           Voh
           Voh
         </html>""", tmpl.generate().render())
-        
+
     def test_translate_i18n_choose_and_py_strip(self):
         tmpl = MarkupTemplate("""<html xmlns:py="http://genshi.edgewall.org/"
             xmlns:i18n="http://genshi.edgewall.org/i18n">
@@ -1333,7 +1333,7 @@ class TranslatorTestCase(unittest.TestCase):
             <p>Vohs John Doe</p>
           </div>
         </html>""", tmpl.generate(two=2, fname='John', lname='Doe').render())
-        
+
     def test_translate_i18n_choose_and_domain_and_py_strip(self):
         tmpl = MarkupTemplate("""<html xmlns:py="http://genshi.edgewall.org/"
             xmlns:i18n="http://genshi.edgewall.org/i18n"
@@ -1357,7 +1357,7 @@ class TranslatorTestCase(unittest.TestCase):
             <p>Vohs John Doe</p>
           </div>
         </html>""", tmpl.generate(two=2, fname='John', lname='Doe').render())
-        
+
     def test_extract_i18n_msg_with_py_strip(self):
         tmpl = MarkupTemplate("""<html xmlns:py="http://genshi.edgewall.org/"
             xmlns:i18n="http://genshi.edgewall.org/i18n">
@@ -1371,7 +1371,7 @@ class TranslatorTestCase(unittest.TestCase):
         self.assertEqual(1, len(messages))
         self.assertEqual((3, None, u'Please see [1:Help] for details.', []),
                          messages[0])
-        
+
     def test_extract_i18n_msg_with_py_strip_and_comment(self):
         tmpl = MarkupTemplate("""<html xmlns:py="http://genshi.edgewall.org/"
             xmlns:i18n="http://genshi.edgewall.org/i18n">
@@ -1399,7 +1399,7 @@ class TranslatorTestCase(unittest.TestCase):
         messages = list(translator.extract(tmpl.stream))
         self.assertEqual(1, len(messages))
         self.assertEqual((3, 'ngettext', (u'FooBar', u'FooBars'), []), messages[0])
-        
+
     def test_translate_i18n_domain_with_inline_directive_on_START_NS(self):
         tmpl = MarkupTemplate("""<html xmlns:py="http://genshi.edgewall.org/"
             xmlns:i18n="http://genshi.edgewall.org/i18n" i18n:domain="foo">
@@ -1412,7 +1412,7 @@ class TranslatorTestCase(unittest.TestCase):
         self.assertEqual("""<html>
           <p>BarFoo</p>
         </html>""", tmpl.generate().render())
-        
+
     def test_translate_i18n_domain_with_inline_directive_on_START_NS_with_py_strip(self):
         tmpl = MarkupTemplate("""<html xmlns:py="http://genshi.edgewall.org/"
             xmlns:i18n="http://genshi.edgewall.org/i18n"
@@ -1463,12 +1463,12 @@ class ExtractTestCase(unittest.TestCase):
 
     def test_text_template_extraction(self):
         buf = StringIO("""${_("Dear %(name)s") % {'name': name}},
-        
+
         ${ngettext("Your item:", "Your items", len(items))}
         #for item in items
          * $item
         #end
-        
+
         All the best,
         Foobar""")
         results = list(extract(buf, ['_', 'ngettext'], [], {

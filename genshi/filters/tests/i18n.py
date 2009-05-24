@@ -681,9 +681,9 @@ class TranslatorTestCase(unittest.TestCase):
           </p>
         </html>""")
         translations = DummyTranslations({
-            u'[1:Note:] This repository is defined in \n            '
+            u'[1:Note:] This repository is defined in\n            '
             u'[2:[3:trac.ini]]\n            and cannot be edited on this page.':
-                u'[1:Nota:] Este repositório está definido em \n            '
+                u'[1:Nota:] Este repositório está definido em \n           '
                 u'[2:[3:trac.ini]]\n            e não pode ser editado nesta página.',
         })
         translator = Translator(translations)
@@ -691,13 +691,13 @@ class TranslatorTestCase(unittest.TestCase):
         messages = list(translator.extract(tmpl.stream))
         self.assertEqual(1, len(messages))
         self.assertEqual(
-            u'[1:Note:] This repository is defined in \n            '
+            u'[1:Note:] This repository is defined in\n            '
             u'[2:[3:trac.ini]]\n            and cannot be edited on this page.',
             messages[0][2]
         )
         self.assertEqual("""<html>
           <p class="hint"><strong>Nota:</strong> Este repositório está definido em
-            <code><a href="href.wiki(TracIni)">trac.ini</a></code>
+           <code><a href="href.wiki(TracIni)">trac.ini</a></code>
             e não pode ser editado nesta página.</p>
         </html>""", tmpl.generate(editable=False).render())
 

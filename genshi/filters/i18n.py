@@ -38,10 +38,15 @@ __docformat__ = 'restructuredtext en'
 I18N_NAMESPACE = Namespace('http://genshi.edgewall.org/i18n')
 
 MSGBUF = StreamEventKind('MSGBUF')
+SUB_START = StreamEventKind('SUB_START')
+SUB_END = StreamEventKind('SUB_END')
 
 
 class I18NDirective(Directive):
     """Simple interface for i18n directives to support messages extraction"""
+
+    def __call__(self, stream, directives, ctxt, **vars):
+        return _apply_directives(stream, directives, ctxt)
 
 class I18NDirectiveExtract(I18NDirective):
     """Simple interface for directives to support messages extraction"""
@@ -73,9 +78,6 @@ class CommentDirective(I18NDirective):
                  lineno=-1, offset=-1):
         Directive.__init__(self, None, template, namespaces, lineno, offset)
         self.comment = value
-
-    def __call__(self, stream, directives, ctxt, **vars):
-        return stream
 
 
 class MsgDirective(I18NDirectiveExtract):
@@ -156,43 +158,26 @@ class MsgDirective(I18NDirectiveExtract):
             assert callable(dgettext), "No domain gettext function passed"
             gettext = lambda msg: dgettext(ctxt.get('_i18n.domain'), msg)
 
-        msgbuf = MessageBuffer(self)
+        def _generate():
+            msgbuf = MessageBuffer(self)
+            previous = stream.next()
+            if previous[0] is START:
+                yield previous
+            else:
+                msgbuf.append(*previous)
+            previous = stream.next()
+            for kind, data, pos in stream:
+                msgbuf.append(*previous)
+                previous = kind, data, pos
+            if previous[0] is not END:
+                msgbuf.append(*previous)
+                previous = None
+            for event in msgbuf.translate(gettext(msgbuf.format())):
+                yield event
+            if previous:
+                yield previous
 
-        new_stream = []
-        stream = iter(_apply_directives(stream, directives, ctxt))
-        non_i18n_directives = [d for d in directives if not
-                               isinstance(d, I18NDirective)]
-        previous = stream.next()
-        if previous[0] is START:
-            new_stream.append(previous)
-        else:
-            msgbuf.append(*previous)
-        
-        previous = stream.next()
-            
-        for kind, data, pos in stream:
-            if kind is SUB:
-                # py:attrs for example
-                subdirectives, substream = data
-                for skind, sdata, spos in _apply_directives(substream,
-                                                            subdirectives,
-                                                            ctxt):
-                    msgbuf.append(*previous)
-                    previous = skind, sdata, spos
-            msgbuf.append(*previous)
-            previous = kind, data, pos
-            
-        if previous[0] is not END:
-            msgbuf.append(*previous)
-            previous = None
-
-        for event in msgbuf.translate(gettext(msgbuf.format())):
-            new_stream.append(event)
-        if previous:
-            new_stream.append(previous)
-        if non_i18n_directives:
-            return _apply_directives(new_stream, non_i18n_directives, ctxt)
-        return new_stream
+        return _apply_directives(_generate(), directives, ctxt)
 
     def extract(self, stream, ctxt):
         msgbuf = MessageBuffer(self)
@@ -932,6 +917,7 @@ class MessageBuffer(object):
         self.depth = 1
         self.order = 1
         self.stack = [0]
+        self.subdirectives = {}
 
     def append(self, kind, data, pos):
         """Append a stream event to the buffer.
@@ -941,11 +927,20 @@ class MessageBuffer(object):
         :param pos: the position of the event in the source
         """
         if kind is SUB:
-            # py:attrs for example
-            for skind, sdata, spos in data[1]:
+            # The order needs to be +1 because a new START kind event will
+            # happen and we we need to wrap those events into our custom kind(s)
+            order = self.stack[-1] + 1
+            subdirectives, substream = data
+            # Store the directives that should be applied after translation
+            self.subdirectives.setdefault(order, []).extend(subdirectives)
+            self.events.setdefault(order, []).append((SUB_START, None, pos))
+            for skind, sdata, spos in substream:
                 self.append(skind, sdata, spos)
-        if kind is TEXT:
+            self.events.setdefault(order, []).append((SUB_END, None, pos))
+        elif kind is TEXT:
             if '[' in data or ']' in data:
+                # Quote [ and ] if it ain't us adding it, ie, if the user is
+                # using those chars in his templates, escape them
                 data = data.replace('[', '\[').replace(']', '\]')
             self.string.append(data)
             self.events.setdefault(self.stack[-1], []).append((kind, data, pos))
@@ -971,7 +966,8 @@ class MessageBuffer(object):
             if kind is START: 
                 self.string.append(u'[%d:' % self.order)
                 self.stack.append(self.order)
-                self.events.setdefault(self.stack[-1], []).append((kind, data, pos))
+                self.events.setdefault(self.stack[-1],
+                                       []).append((kind, data, pos))
                 self.depth += 1
                 self.order += 1
             elif kind is END:
@@ -993,6 +989,8 @@ class MessageBuffer(object):
         
         :param string: the translated message string
         """
+        substream = None
+        
         def yield_parts(string):
             for idx, part in enumerate(regex.split(string)):
                 if idx % 2:
@@ -1015,37 +1013,66 @@ class MessageBuffer(object):
             else:
                 events = [self.events[order].pop(0)]
             parts_counter[order].pop()
+
             for event in events:
-                if event[0] is TEXT:
+                if event[0] is SUB_START:
+                    substream = []
+                elif event[0] is SUB_END:
+                    # Yield a substream which might have directives to be
+                    # applied to it (after translation events)
+                    yield SUB, (self.subdirectives[order], substream), event[2]
+                    substream = None
+                elif event[0] is TEXT:
                     if string:
                         for part in yield_parts(string):
-                            yield part
+                            if substream is not None:
+                                substream.append(part)
+                            else:
+                                yield part
                         # String handled, reset it
                         string = None
                 elif event[0] is START:
-                    yield event
+                    if substream is not None:
+                        substream.append(event)
+                    else:
+                        yield event
                     if string:
                         for part in yield_parts(string):
-                            yield part
+                            if substream is not None:
+                                substream.append(part)
+                            else:
+                                yield part
                         # String handled, reset it
                         string = None
                 elif event[0] is END:
                     if string:
                         for part in yield_parts(string):
-                            yield part
+                            if substream is not None:
+                                substream.append(part)
+                            else:
+                                yield part
                         # String handled, reset it
                         string = None
-                    yield event
+                    if substream is not None:
+                        substream.append(event)
+                    else:
+                        yield event
                 elif event[0] is EXPR:
                     # These are handled on the strings itself
                     continue
                 else:
                     if string:
                         for part in yield_parts(string):
-                            yield part
+                            if substream is not None:
+                                substream.append(part)
+                            else:
+                                yield part
                         # String handled, reset it
                         string = None
-                    yield event
+                    if substream is not None:
+                        substream.append(event)
+                    else:
+                        yield event
 
 def parse_msg(string, regex=re.compile(r'(?:\[(\d+)\:)|(?<!\\)\]')):
     """Parse a translated message using Genshi mixed content message

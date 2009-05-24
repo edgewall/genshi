@@ -529,11 +529,11 @@ class TranslatorTestCase(unittest.TestCase):
           <p>Voh</p>
         </html>""", tmpl.generate().render())
         
-    def test_translate_mixing_py_and_i18n_directives(self):
+    def test_translate_i18n_msg_and_py_strip_directives(self):
         tmpl = MarkupTemplate("""<html xmlns:py="http://genshi.edgewall.org/"
             xmlns:i18n="http://genshi.edgewall.org/i18n">
-          <p i18n:msg="" i18n:comment="As in foo bar" py:strip="">Foo</p>
-          <p py:strip="" i18n:msg="" i18n:comment="As in foo bar">Foo</p>
+          <p i18n:msg="" py:strip="">Foo</p>
+          <p py:strip="" i18n:msg="">Foo</p>
         </html>""")
         translator = Translator(DummyTranslations({'Foo': 'Voh'}))
         translator.setup(tmpl)
@@ -1299,7 +1299,7 @@ class TranslatorTestCase(unittest.TestCase):
         finally:
             shutil.rmtree(dirname)
             
-    def test_translate_with_i18n_msg_and_py_strip_directives(self):
+    def test_translate_i18n_msg_and_comment_with_py_strip_directives(self):
         tmpl = MarkupTemplate("""<html xmlns:py="http://genshi.edgewall.org/"
             xmlns:i18n="http://genshi.edgewall.org/i18n">
           <p i18n:msg="" i18n:comment="As in foo bar" py:strip="">Foo</p>

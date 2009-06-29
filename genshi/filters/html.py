@@ -88,7 +88,7 @@ class HTMLFormFiller(object):
 
                 elif in_form:
                     if tagname == 'input':
-                        type = attrs.get('type').lower()
+                        type = attrs.get('type', '').lower()
                         if type in ('checkbox', 'radio'):
                             name = attrs.get('name')
                             if name and name in self.data:
@@ -110,7 +110,7 @@ class HTMLFormFiller(object):
                                     attrs |= [(QName('checked'), 'checked')]
                                 elif 'checked' in attrs:
                                     attrs -= 'checked'
-                        elif type in (None, 'hidden', 'text') \
+                        elif type in ('', 'hidden', 'text') \
                                 or type == 'password' and self.passwords:
                             name = attrs.get('name')
                             if name and name in self.data:

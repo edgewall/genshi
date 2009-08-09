@@ -258,6 +258,14 @@ class ExpressionTestCase(unittest.TestCase):
         self.assertEqual([2, 3, 4, 5, 6],
                          expr.evaluate({'numbers': range(5), 'offset': 2}))
 
+        expr = Expression("[n for group in groups for n in group]")
+        self.assertEqual([0, 1, 0, 1, 2],
+                         expr.evaluate({'groups': [range(2), range(3)]}))
+
+        expr = Expression("[(a, b) for a in x for b in y]")
+        self.assertEqual([('x0', 'y0'), ('x0', 'y1'), ('x1', 'y0'), ('x1', 'y1')],
+                         expr.evaluate({'x': ['x0', 'x1'], 'y': ['y0', 'y1']}))
+
     def test_list_comprehension_with_getattr(self):
         items = [{'name': 'a', 'value': 1}, {'name': 'b', 'value': 2}]
         expr = Expression("[i.name for i in items if i.value > 1]")
@@ -279,6 +287,14 @@ class ExpressionTestCase(unittest.TestCase):
         expr = Expression("list(offset + n for n in numbers)")
         self.assertEqual([2, 3, 4, 5, 6],
                          expr.evaluate({'numbers': range(5), 'offset': 2}))
+
+        expr = Expression("list(n for group in groups for n in group)")
+        self.assertEqual([0, 1, 0, 1, 2],
+                         expr.evaluate({'groups': [range(2), range(3)]}))
+
+        expr = Expression("list((a, b) for a in x for b in y)")
+        self.assertEqual([('x0', 'y0'), ('x0', 'y1'), ('x1', 'y0'), ('x1', 'y1')],
+                         expr.evaluate({'x': ['x0', 'x1'], 'y': ['y0', 'y1']}))
 
     def test_generator_expression_with_getattr(self):
         items = [{'name': 'a', 'value': 1}, {'name': 'b', 'value': 2}]

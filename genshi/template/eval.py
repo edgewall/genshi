@@ -558,15 +558,13 @@ class TemplateASTTransformer(ASTTransformer):
     # GeneratorExp(expr elt, comprehension* generators)
     def visit_GeneratorExp(self, node):
         gens = []
-        # need to visit them in inverse order
-        for generator in node.generators[::-1]:
+        for generator in node.generators:
             # comprehension = (expr target, expr iter, expr* ifs)
             self.locals.append(set())
             gen = _new(_ast.comprehension, self.visit(generator.target),
-                            self.visit(generator.iter),
-                            [self.visit(if_) for if_ in generator.ifs])
+                       self.visit(generator.iter),
+                       [self.visit(if_) for if_ in generator.ifs])
             gens.append(gen)
-        gens.reverse()
 
         # use node.__class__ to make it reusable as ListComp
         ret = _new(node.__class__, self.visit(node.elt), gens)

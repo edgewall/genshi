@@ -18,9 +18,6 @@ try:
 except ImportError:
     from genshi.template.ast24 import _ast, parse
 else:
-    if not hasattr(_ast, 'AST'):
-        from genshi.template.astgae import restore
-        restore(_ast)
     def parse(source, mode):
         return compile(source, '', mode, _ast.PyCF_ONLY_AST)
 

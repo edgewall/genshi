@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2006-2008 Edgewall Software
+# Copyright (C) 2006-2009 Edgewall Software
 # All rights reserved.
 #
 # This software is licensed as described in the file COPYING, which
@@ -317,7 +317,7 @@ class DirectiveFactory(object):
     __metaclass__ = DirectiveFactoryMeta
 
     directives = []
-    """A list of `(name, cls)` tuples that define the set of directives
+    """A list of ``(name, cls)`` tuples that define the set of directives
     provided by this factory.
     """
 
@@ -331,8 +331,14 @@ class DirectiveFactory(object):
         return self._dir_by_name.get(name)
 
     def get_directive_index(self, dir_cls):
-        """Return a function that takes two directive classes and compares
-        them to determine their relative ordering.
+        """Return a key for the given directive class that should be used to
+        sort it among other directives on the same `SUB` event.
+        
+        The default implementation simply returns the index of the directive in
+        the `directives` list.
+        
+        :param dir_cls: the directive class
+        :return: the sort key
         """
         if dir_cls in self._dir_order:
             return self._dir_order.index(dir_cls)

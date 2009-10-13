@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2006-2008 Edgewall Software
+# Copyright (C) 2006-2009 Edgewall Software
 # All rights reserved.
 #
 # This software is licensed as described in the file COPYING, which
@@ -537,15 +537,6 @@ class StripDirective(Directive):
                 for event in stream:
                     yield event
         return _apply_directives(_generate(), directives, ctxt, vars)
-
-    # FIXME: would be nice to get back the optimization of removing static
-    # stripped elements at compilation time
-    #@classmethod
-    #def attach(cls, template, stream, value, namespaces, pos):
-    #    if not value:
-    #        return None, stream[1:-1]
-    #    return super(StripDirective, cls).attach(template, stream, value,
-    #                                             namespaces, pos)
 
 
 class ChooseDirective(Directive):

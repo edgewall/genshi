@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2006-2008 Edgewall Software
+# Copyright (C) 2006-2009 Edgewall Software
 # All rights reserved.
 #
 # This software is licensed as described in the file COPYING, which
@@ -527,7 +527,7 @@ class StripDirective(Directive):
 
     def __call__(self, stream, directives, ctxt, **vars):
         def _generate():
-            if _eval_expr(self.expr, ctxt, vars):
+            if not self.expr or _eval_expr(self.expr, ctxt, vars):
                 stream.next() # skip start tag
                 previous = stream.next()
                 for event in stream:
@@ -537,13 +537,6 @@ class StripDirective(Directive):
                 for event in stream:
                     yield event
         return _apply_directives(_generate(), directives, ctxt, vars)
-
-    @classmethod
-    def attach(cls, template, stream, value, namespaces, pos):
-        if not value:
-            return None, stream[1:-1]
-        return super(StripDirective, cls).attach(template, stream, value,
-                                                 namespaces, pos)
 
 
 class ChooseDirective(Directive):

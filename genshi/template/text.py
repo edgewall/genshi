@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2006-2008 Edgewall Software
+# Copyright (C) 2006-2009 Edgewall Software
 # All rights reserved.
 #
 # This software is licensed as described in the file COPYING, which
@@ -219,7 +219,7 @@ class NewTextTemplate(Template):
                 cls = self.get_directive(command)
                 if cls is None:
                     raise BadDirectiveError(command)
-                directive = cls, value, None, (self.filepath, lineno, 0)
+                directive = 0, cls, value, None, (self.filepath, lineno, 0)
                 dirmap[depth] = (directive, len(stream))
                 depth += 1
 
@@ -315,7 +315,7 @@ class OldTextTemplate(Template):
                 cls = self.get_directive(command)
                 if cls is None:
                     raise BadDirectiveError(command)
-                directive = cls, value, None, (self.filepath, lineno, 0)
+                directive = 0, cls, value, None, (self.filepath, lineno, 0)
                 dirmap[depth] = (directive, len(stream))
                 depth += 1
 

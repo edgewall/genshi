@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2006-2008 Edgewall Software
+# Copyright (C) 2006-2009 Edgewall Software
 # All rights reserved.
 #
 # This software is licensed as described in the file COPYING, which
@@ -131,7 +131,8 @@ class MarkupTemplate(Template):
                                                 self.filepath, pos[1])
                     args = dict([(name.localname, value) for name, value
                                  in attrs if not name.namespace])
-                    directives.append((cls, args, ns_prefix.copy(), pos))
+                    directives.append((factory.get_directive_index(cls), cls,
+                                       args, ns_prefix.copy(), pos))
                     strip = True
 
                 new_attrs = []
@@ -143,14 +144,14 @@ class MarkupTemplate(Template):
                                                     self.filepath, pos[1])
                         if type(value) is list and len(value) == 1:
                             value = value[0][1]
-                        directives.append((cls, value, ns_prefix.copy(),
-                                           pos))
+                        directives.append((factory.get_directive_index(cls),
+                                           cls, value, ns_prefix.copy(), pos))
                     else:
                         new_attrs.append((name, value))
                 new_attrs = Attrs(new_attrs)
 
                 if directives:
-                    directives.sort(self.compare_directives())
+                    directives.sort()
                     dirmap[(depth, tag)] = (directives, len(new_stream),
                                             strip)
 

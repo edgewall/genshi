@@ -321,17 +321,6 @@ class DirectiveFactory(object):
     provided by this factory.
     """
 
-    def compare_directives(self):
-        """Return a function that takes two directive classes and compares
-        them to determine their relative ordering.
-        """
-        from genshi.template.directives import Directive
-        def _get_index(cls):
-            if cls in self._dir_order:
-                return self._dir_order.index(cls)
-            return 0
-        return lambda a, b: cmp(_get_index(a[0]), _get_index(b[0]))
-
     def get_directive(self, name):
         """Return the directive class for the given name.
         
@@ -340,6 +329,14 @@ class DirectiveFactory(object):
         :see: `Directive`
         """
         return self._dir_by_name.get(name)
+
+    def get_directive_index(self, dir_cls):
+        """Return a function that takes two directive classes and compares
+        them to determine their relative ordering.
+        """
+        if dir_cls in self._dir_order:
+            return self._dir_order.index(dir_cls)
+        return len(self._dir_order)
 
 
 class Template(DirectiveFactory):
@@ -452,7 +449,7 @@ class Template(DirectiveFactory):
             if kind is SUB:
                 directives = []
                 substream = data[1]
-                for cls, value, namespaces, pos in data[0]:
+                for _, cls, value, namespaces, pos in sorted(data[0]):
                     directive, substream = cls.attach(self, substream, value,
                                                       namespaces, pos)
                     if directive:

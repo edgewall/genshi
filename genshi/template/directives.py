@@ -527,10 +527,7 @@ class StripDirective(Directive):
 
     def __call__(self, stream, directives, ctxt, **vars):
         def _generate():
-            if not self.expr:
-                for event in list(stream)[1:-1]:
-                    yield event
-            elif _eval_expr(self.expr, ctxt, vars):
+            if not self.expr or _eval_expr(self.expr, ctxt, vars):
                 stream.next() # skip start tag
                 previous = stream.next()
                 for event in stream:
@@ -541,8 +538,8 @@ class StripDirective(Directive):
                     yield event
         return _apply_directives(_generate(), directives, ctxt, vars)
 
-    # FIXME: need to get back the optimization of removing static stripped
-    # elements at compilation time
+    # FIXME: would be nice to get back the optimization of removing static
+    # stripped elements at compilation time
     #@classmethod
     #def attach(cls, template, stream, value, namespaces, pos):
     #    if not value:

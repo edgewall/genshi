@@ -13,7 +13,7 @@
 
 from datetime import datetime
 import doctest
-from gettext import NullTranslations, c2py
+from gettext import NullTranslations
 from StringIO import StringIO
 import unittest
 
@@ -29,7 +29,7 @@ class DummyTranslations(NullTranslations):
     def __init__(self, catalog=()):
         NullTranslations.__init__(self)
         self._catalog = catalog or {}
-        self.plural = c2py('(n != 1)')
+        self.plural = lambda n: n != 1
 
     def add_domain(self, domain, catalog):
         translation = DummyTranslations(catalog)

@@ -265,6 +265,7 @@ END_CDATA = Stream.END_CDATA
 PI = Stream.PI
 COMMENT = Stream.COMMENT
 
+
 def _ensure(stream):
     """Ensure that every item on the stream is actually a markup event."""
     stream = iter(stream)
@@ -468,6 +469,7 @@ class Markup(unicode):
         return Markup(unicode(self).join([escape(item, quotes=escape_quotes)
                                           for item in seq]))
 
+    @classmethod
     def escape(cls, text, quotes=True):
         """Create a Markup instance from a string and escape special characters
         it may contain (<, >, & and \").
@@ -501,7 +503,6 @@ class Markup(unicode):
         if quotes:
             text = text.replace('"', '&#34;')
         return cls(text)
-    escape = classmethod(escape)
 
     def unescape(self):
         """Reverse-escapes &, <, >, and \" and returns a `unicode` object.
@@ -549,7 +550,9 @@ try:
 except ImportError:
     pass # just use the Python implementation
 
+
 escape = Markup.escape
+
 
 def unescape(text):
     """Reverse-escapes &, <, >, and \" and returns a `unicode` object.

@@ -306,12 +306,31 @@ class HTMLFormFillerTestCase(unittest.TestCase):
           </select>
         </form>""", unicode(html))
 
+    def test_fill_input_password_disabled(self):
+        html = HTML("""<form><p>
+          <input type="password" name="pass" />
+        </p></form>""") | HTMLFormFiller(data={'pass': 'bar'})
+        self.assertEquals("""<form><p>
+          <input type="password" name="pass"/>
+        </p></form>""", unicode(html))
+
+    def test_fill_input_password_enabled(self):
+        html = HTML("""<form><p>
+          <input type="password" name="pass" />
+        </p></form>""") | HTMLFormFiller(data={'pass': '1234'}, passwords=True)
+        self.assertEquals("""<form><p>
+          <input type="password" name="pass" value="1234"/>
+        </p></form>""", unicode(html))
+
 
 class HTMLSanitizerTestCase(unittest.TestCase):
 
     def test_sanitize_unchanged(self):
         html = HTML('<a href="#">fo<br />o</a>')
         self.assertEquals(u'<a href="#">fo<br/>o</a>',
+                          unicode(html | HTMLSanitizer()))
+        html = HTML('<a href="#with:colon">foo</a>')
+        self.assertEquals(u'<a href="#with:colon">foo</a>',
                           unicode(html | HTMLSanitizer()))
 
     def test_sanitize_escape_text(self):
@@ -354,6 +373,10 @@ class HTMLSanitizerTestCase(unittest.TestCase):
         html = HTML('<div onclick=\'alert("foo")\' />')
         self.assertEquals(u'<div/>', unicode(html | HTMLSanitizer()))
 
+    def test_sanitize_remove_input_password(self):
+        html = HTML('<form><input type="password" /></form>')
+        self.assertEquals(u'<form/>', unicode(html | HTMLSanitizer()))
+
     def test_sanitize_remove_comments(self):
         html = HTML('''<div><!-- conditional comment crap --></div>''')
         self.assertEquals(u'<div/>', unicode(html | HTMLSanitizer()))
@@ -389,6 +412,22 @@ class HTMLSanitizerTestCase(unittest.TestCase):
         html = HTML('<DIV STYLE=\'background: \\000075 rl(javascript:alert("foo"))\'>')
         self.assertEquals(u'<div/>', unicode(html | sanitizer))
         html = HTML('<DIV STYLE=\'background: \\000075\r\nrl(javascript:alert("foo"))\'>')
+        self.assertEquals(u'<div/>', unicode(html | sanitizer))
+
+    def test_sanitize_remove_style_phishing(self):
+        sanitizer = HTMLSanitizer(safe_attrs=HTMLSanitizer.SAFE_ATTRS | set(['style']))
+        # The position property is not allowed
+        html = HTML('<div style="position:absolute;top:0"></div>')
+        self.assertEquals(u'<div style="top:0"/>', unicode(html | sanitizer))
+        # Normal margins get passed through
+        html = HTML('<div style="margin:10px 20px"></div>')
+        self.assertEquals(u'<div style="margin:10px 20px"/>', unicode(html | sanitizer))
+        # But not negative margins
+        html = HTML('<div style="margin:-1000px 0 0"></div>')
+        self.assertEquals(u'<div/>', unicode(html | sanitizer))
+        html = HTML('<div style="margin-left:-2000px 0 0"></div>')
+        self.assertEquals(u'<div/>', unicode(html | sanitizer))
+        html = HTML('<div style="margin-left:1em 1em 1em -4000px"></div>')
         self.assertEquals(u'<div/>', unicode(html | sanitizer))
 
     def test_sanitize_remove_src_javascript(self):
@@ -429,6 +468,7 @@ def suite():
     suite.addTest(unittest.makeSuite(HTMLFormFillerTestCase, 'test'))
     suite.addTest(unittest.makeSuite(HTMLSanitizerTestCase, 'test'))
     return suite
+
 
 if __name__ == '__main__':
     unittest.main(defaultTest='suite')

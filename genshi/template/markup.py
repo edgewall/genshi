@@ -311,10 +311,11 @@ class MarkupTemplate(Template):
         match_templates = ctxt._match_templates
 
         tail = []
-        def _strip(stream):
+        def _strip(stream, append=tail.append):
             depth = 1
+            next = stream.next
             while 1:
-                event = stream.next()
+                event = next()
                 if event[0] is START:
                     depth += 1
                 elif event[0] is END:
@@ -322,7 +323,7 @@ class MarkupTemplate(Template):
                 if depth > 0:
                     yield event
                 else:
-                    tail[:] = [event]
+                    append(event)
                     break
 
         for event in stream:
@@ -356,22 +357,23 @@ class MarkupTemplate(Template):
                         pre_end -= 1
                     inner = _strip(stream)
                     if pre_end > 0:
-                        inner = self._match(inner, ctxt, end=pre_end)
+                        inner = self._match(inner, ctxt, end=pre_end, **vars)
                     content = self._include(chain([event], inner, tail), ctxt)
                     if 'not_buffered' not in hints:
                         content = list(content)
+                    content = Stream(content)
 
                     # Make the select() function available in the body of the
                     # match template
                     selected = [False]
                     def select(path):
                         selected[0] = True
-                        return Stream(content).select(path, namespaces, ctxt)
+                        return content.select(path, namespaces, ctxt)
                     vars = dict(select=select)
 
                     # Recursively process the output
                     template = _apply_directives(template, directives, ctxt,
-                                                 **vars)
+                                                 vars)
                     for event in self._match(self._flatten(template, ctxt,
                                                            **vars),
                                              ctxt, start=idx + 1, **vars):

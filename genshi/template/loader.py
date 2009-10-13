@@ -264,6 +264,7 @@ class TemplateLoader(object):
                    encoding=encoding, lookup=self.variable_lookup,
                    allow_exec=self.allow_exec)
 
+    @staticmethod
     def directory(path):
         """Loader factory for loading templates from a local directory.
         
@@ -279,8 +280,8 @@ class TemplateLoader(object):
                 return mtime == os.path.getmtime(filepath)
             return filepath, filename, fileobj, _uptodate
         return _load_from_directory
-    directory = staticmethod(directory)
 
+    @staticmethod
     def package(name, path):
         """Loader factory for loading templates from egg package data.
         
@@ -294,8 +295,8 @@ class TemplateLoader(object):
             filepath = os.path.join(path, filename)
             return filepath, filename, resource_stream(name, filepath), None
         return _load_from_package
-    package = staticmethod(package)
 
+    @staticmethod
     def prefixed(**delegates):
         """Factory for a load function that delegates to other loaders
         depending on the prefix of the requested template path.
@@ -327,7 +328,7 @@ class TemplateLoader(object):
                     return filepath, filename, fileobj, uptodate
             raise TemplateNotFound(filename, delegates.keys())
         return _dispatch_by_prefix
-    prefixed = staticmethod(prefixed)
+
 
 directory = TemplateLoader.directory
 package = TemplateLoader.package

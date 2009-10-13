@@ -46,7 +46,7 @@ class I18NDirective(Directive):
     """Simple interface for i18n directives to support messages extraction"""
 
     def __call__(self, stream, directives, ctxt, **vars):
-        return _apply_directives(stream, directives, ctxt)
+        return _apply_directives(stream, directives, ctxt, vars)
 
 class I18NDirectiveExtract(I18NDirective):
     """Simple interface for directives to support messages extraction"""
@@ -177,7 +177,7 @@ class MsgDirective(I18NDirectiveExtract):
             if previous:
                 yield previous
 
-        return _apply_directives(_generate(), directives, ctxt)
+        return _apply_directives(_generate(), directives, ctxt, vars)
 
     def extract(self, stream, ctxt):
         msgbuf = MessageBuffer(self)
@@ -199,11 +199,10 @@ class InnerChooseDirective(I18NDirective):
     __slots__ = ['params']
 
     def __call__(self, stream, directives, ctxt, **vars):
-
         self.params = ctxt.get('_i18n.choose.params', [])[:]
         msgbuf = MessageBuffer(self)
 
-        stream = iter(_apply_directives(stream, directives, ctxt))
+        stream = iter(_apply_directives(stream, directives, ctxt, vars))
         yield stream.next() # the outer start tag
         previous = stream.next()
         for kind, data, pos in stream:
@@ -322,7 +321,6 @@ class ChooseDirective(I18NDirectiveExtract):
                                                   namespaces, pos)
 
     def __call__(self, stream, directives, ctxt, **vars):
-
         ctxt.push({'_i18n.choose.params': self.params,
                    '_i18n.choose.SingularDirective': None,
                    '_i18n.choose.PluralDirective': None})
@@ -347,14 +345,15 @@ class ChooseDirective(I18NDirectiveExtract):
                     # Apply directives to update context
                     singular_stream = list(_apply_directives(substream,
                                                              subdirectives,
-                                                             ctxt))
+                                                             ctxt, vars))
                     new_stream.append((MSGBUF, (), ('', -1))) # msgbuf place holder
                     singular_msgbuf = ctxt.get('_i18n.choose.SingularDirective')
                 elif isinstance(subdirectives[0],
                                 PluralDirective) and not plural_stream:
                     # Apply directives to update context
                     plural_stream = list(_apply_directives(substream,
-                                                           subdirectives, ctxt))
+                                                           subdirectives,
+                                                           ctxt, vars))
                     plural_msgbuf = ctxt.get('_i18n.choose.PluralDirective')
                 else:
                     new_stream.append((kind, event, pos))
@@ -490,7 +489,7 @@ class DomainDirective(I18NDirective):
 
     def __call__(self, stream, directives, ctxt, **vars):
         ctxt.push({'_i18n.domain': self.domain})
-        for event in _apply_directives(stream, directives, ctxt):
+        for event in _apply_directives(stream, directives, ctxt, vars):
             yield event
         ctxt.pop()
 

@@ -75,6 +75,10 @@ class MarkupTemplateTestCase(unittest.TestCase):
         tmpl = MarkupTemplate('<root attr=""/>')
         self.assertEqual('<root attr=""/>', str(tmpl.generate()))
 
+    def test_empty_attr_interpolated(self):
+        tmpl = MarkupTemplate('<root attr="$attr"/>')
+        self.assertEqual('<root attr=""/>', str(tmpl.generate(attr='')))
+
     def test_bad_directive_error(self):
         xml = '<p xmlns:py="http://genshi.edgewall.org/" py:do="nothing" />'
         try:

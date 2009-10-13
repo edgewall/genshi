@@ -317,7 +317,7 @@ class DirectiveFactory(object):
     __metaclass__ = DirectiveFactoryMeta
 
     directives = []
-    """A list of `(name, cls)` tuples that define the set of directives
+    """A list of ``(name, cls)`` tuples that define the set of directives
     provided by this factory.
     """
 

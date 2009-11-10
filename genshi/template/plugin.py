@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2006-2008 Edgewall Software
+# Copyright (C) 2006-2009 Edgewall Software
 # Copyright (C) 2006 Matthew Good
 # All rights reserved.
 #
@@ -48,7 +48,8 @@ class AbstractTemplateEnginePlugin(object):
         auto_reload = options.get('genshi.auto_reload', '1')
         if isinstance(auto_reload, basestring):
             auto_reload = auto_reload.lower() in ('1', 'on', 'yes', 'true')
-        search_path = filter(None, options.get('genshi.search_path', '').split(':'))
+        search_path = [p for p in
+                       options.get('genshi.search_path', '').split(':') if p]
         self.use_package_naming = not search_path
         try:
             max_cache_size = int(options.get('genshi.max_cache_size', 25))

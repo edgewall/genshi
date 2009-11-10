@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2006-2007 Edgewall Software
+# Copyright (C) 2006-2009 Edgewall Software
 # All rights reserved.
 #
 # This software is licensed as described in the file COPYING, which
@@ -59,7 +59,7 @@ class LRUCache(dict):
 
     class _Item(object):
         def __init__(self, key, value):
-            self.previous = self.next = None
+            self.prv = self.nxt = None
             self.key = key
             self.value = value
         def __repr__(self):
@@ -78,7 +78,7 @@ class LRUCache(dict):
         cur = self.head
         while cur:
             yield cur.key
-            cur = cur.next
+            cur = cur.nxt
 
     def __len__(self):
         return len(self._dict)
@@ -103,10 +103,10 @@ class LRUCache(dict):
         return repr(self._dict)
 
     def _insert_item(self, item):
-        item.previous = None
-        item.next = self.head
+        item.prv = None
+        item.nxt = self.head
         if self.head is not None:
-            self.head.previous = item
+            self.head.prv = item
         else:
             self.tail = item
         self.head = item
@@ -117,8 +117,8 @@ class LRUCache(dict):
             olditem = self._dict[self.tail.key]
             del self._dict[self.tail.key]
             if self.tail != self.head:
-                self.tail = self.tail.previous
-                self.tail.next = None
+                self.tail = self.tail.prv
+                self.tail.nxt = None
             else:
                 self.head = self.tail = None
 
@@ -126,16 +126,16 @@ class LRUCache(dict):
         if self.head == item:
             return
 
-        previous = item.previous
-        previous.next = item.next
-        if item.next is not None:
-            item.next.previous = previous
+        prv = item.prv
+        prv.nxt = item.nxt
+        if item.nxt is not None:
+            item.nxt.prv = prv
         else:
-            self.tail = previous
+            self.tail = prv
 
-        item.previous = None
-        item.next = self.head
-        self.head.previous = self.head = item
+        item.prv = None
+        item.nxt = self.head
+        self.head.prv = self.head = item
 
 
 def flatten(items):

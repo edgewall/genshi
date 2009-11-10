@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2006-2008 Edgewall Software
+# Copyright (C) 2006-2009 Edgewall Software
 # All rights reserved.
 #
 # This software is licensed as described in the file COPYING, which
@@ -211,23 +211,23 @@ class MarkupTemplateTestCase(unittest.TestCase):
         Verify that a code block processing instruction with trailing space
         does not cause a syntax error (see ticket #127).
         """
-        MarkupTemplate(u"""<foo>
+        MarkupTemplate("""<foo>
           <?python
             bar = 42
           ?>
         </foo>""")
 
     def test_exec_import(self):
-        tmpl = MarkupTemplate(u"""<?python from datetime import timedelta ?>
+        tmpl = MarkupTemplate("""<?python from datetime import timedelta ?>
         <div xmlns:py="http://genshi.edgewall.org/">
           ${timedelta(days=2)}
         </div>""")
-        self.assertEqual(u"""<div>
+        self.assertEqual("""<div>
           2 days, 0:00:00
         </div>""", str(tmpl.generate()))
 
     def test_exec_def(self):
-        tmpl = MarkupTemplate(u"""
+        tmpl = MarkupTemplate("""
         <?python
         def foo():
             return 42
@@ -235,7 +235,7 @@ class MarkupTemplateTestCase(unittest.TestCase):
         <div xmlns:py="http://genshi.edgewall.org/">
           ${foo()}
         </div>""")
-        self.assertEqual(u"""<div>
+        self.assertEqual("""<div>
           42
         </div>""", str(tmpl.generate()))
 

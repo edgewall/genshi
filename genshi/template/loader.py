@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2006-2008 Edgewall Software
+# Copyright (C) 2006-2009 Edgewall Software
 # All rights reserved.
 #
 # This software is licensed as described in the file COPYING, which
@@ -326,7 +326,7 @@ class TemplateLoader(object):
                         filename[len(prefix):].lstrip('/\\')
                     )
                     return filepath, filename, fileobj, uptodate
-            raise TemplateNotFound(filename, delegates.keys())
+            raise TemplateNotFound(filename, list(delegates.keys()))
         return _dispatch_by_prefix
 
 

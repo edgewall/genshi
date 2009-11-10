@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2006-2008 Edgewall Software
+# Copyright (C) 2006-2009 Edgewall Software
 # All rights reserved.
 #
 # This software is licensed as described in the file COPYING, which
@@ -265,7 +265,7 @@ class XMLSerializer(object):
                 if sysid:
                     buf.append(' "%s"')
                 buf.append('>\n')
-                yield Markup(''.join(buf)) % filter(None, data)
+                yield Markup(''.join(buf)) % tuple([p for p in data if p])
                 have_doctype = True
 
             elif kind is START_CDATA:
@@ -381,7 +381,7 @@ class XHTMLSerializer(XMLSerializer):
                 if sysid:
                     buf.append(' "%s"')
                 buf.append('>\n')
-                yield Markup(''.join(buf)) % filter(None, data)
+                yield Markup(''.join(buf)) % tuple([p for p in data if p])
                 have_doctype = True
 
             elif kind is XML_DECL and not have_decl and not drop_xml_decl:
@@ -518,7 +518,7 @@ class HTMLSerializer(XHTMLSerializer):
                 if sysid:
                     buf.append(' "%s"')
                 buf.append('>\n')
-                yield Markup(''.join(buf)) % filter(None, data)
+                yield Markup(''.join(buf)) % tuple([p for p in data if p])
                 have_doctype = True
 
             elif kind is PI:

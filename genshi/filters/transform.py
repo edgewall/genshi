@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2007 Edgewall Software
+# Copyright (C) 2007-2009 Edgewall Software
 # All rights reserved.
 #
 # This software is licensed as described in the file COPYING, which
@@ -876,7 +876,7 @@ class TraceTransformation(object):
         :param stream: the marked event stream to filter
         """
         for event in stream:
-            print>>self.fileobj, self.prefix + str(event)
+            self.fileobj.write('%s%s\n' % (self.prefix, event))
             yield event
 
 

@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2006-2008 Edgewall Software
+# Copyright (C) 2006-2009 Edgewall Software
 # All rights reserved.
 #
 # This software is licensed as described in the file COPYING, which
@@ -53,12 +53,14 @@ class OldTextTemplateTestCase(unittest.TestCase):
     def test_latin1_encoded(self):
         text = u'$foo\xf6$bar'.encode('iso-8859-1')
         tmpl = OldTextTemplate(text, encoding='iso-8859-1')
-        self.assertEqual(u'x\xf6y', unicode(tmpl.generate(foo='x', bar='y')))
+        self.assertEqual(u'x\xf6y',
+                         tmpl.generate(foo='x', bar='y').render(encoding=None))
 
     def test_unicode_input(self):
         text = u'$foo\xf6$bar'
         tmpl = OldTextTemplate(text)
-        self.assertEqual(u'x\xf6y', unicode(tmpl.generate(foo='x', bar='y')))
+        self.assertEqual(u'x\xf6y',
+                         tmpl.generate(foo='x', bar='y').render(encoding=None))
 
     def test_empty_lines1(self):
         tmpl = OldTextTemplate("""Your items:
@@ -144,12 +146,14 @@ class NewTextTemplateTestCase(unittest.TestCase):
     def test_latin1_encoded(self):
         text = u'$foo\xf6$bar'.encode('iso-8859-1')
         tmpl = NewTextTemplate(text, encoding='iso-8859-1')
-        self.assertEqual(u'x\xf6y', unicode(tmpl.generate(foo='x', bar='y')))
+        self.assertEqual(u'x\xf6y',
+                         tmpl.generate(foo='x', bar='y').render(encoding=None))
 
     def test_unicode_input(self):
         text = u'$foo\xf6$bar'
         tmpl = NewTextTemplate(text)
-        self.assertEqual(u'x\xf6y', unicode(tmpl.generate(foo='x', bar='y')))
+        self.assertEqual(u'x\xf6y',
+                         tmpl.generate(foo='x', bar='y').render(encoding=None))
 
     def test_empty_lines1(self):
         tmpl = NewTextTemplate("""Your items:

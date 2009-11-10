@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2006 Edgewall Software
+# Copyright (C) 2006-2009 Edgewall Software
 # All rights reserved.
 #
 # This software is licensed as described in the file COPYING, which
@@ -27,7 +27,7 @@ class XMLParserTestCase(unittest.TestCase):
         events = list(XMLParser(StringIO(text)))
         kind, data, pos = events[1]
         self.assertEqual(Stream.TEXT, kind)
-        self.assertEqual(u'foo bar', data)
+        self.assertEqual('foo bar', data)
         self.assertEqual((None, 1, 6), pos)
 
     def test_text_node_pos_multi_line(self):
@@ -36,7 +36,7 @@ bar</elem>'''
         events = list(XMLParser(StringIO(text)))
         kind, data, pos = events[1]
         self.assertEqual(Stream.TEXT, kind)
-        self.assertEqual(u'foo\nbar', data)
+        self.assertEqual('foo\nbar', data)
         self.assertEqual((None, 1, -1), pos)
 
     def test_element_attribute_order(self):
@@ -45,10 +45,10 @@ bar</elem>'''
         kind, data, pos = events[0]
         self.assertEqual(Stream.START, kind)
         tag, attrib = data
-        self.assertEqual(u'elem', tag)
-        self.assertEqual((u'title', u'baz'), attrib[0])
-        self.assertEqual((u'id', u'foo'), attrib[1])
-        self.assertEqual((u'class', u'bar'), attrib[2])
+        self.assertEqual('elem', tag)
+        self.assertEqual(('title', 'baz'), attrib[0])
+        self.assertEqual(('id', 'foo'), attrib[1])
+        self.assertEqual(('class', 'bar'), attrib[2])
 
     def test_unicode_input(self):
         text = u'<div>\u2013</div>'
@@ -120,7 +120,7 @@ class HTMLParserTestCase(unittest.TestCase):
         events = list(HTMLParser(StringIO(text)))
         kind, data, pos = events[1]
         self.assertEqual(Stream.TEXT, kind)
-        self.assertEqual(u'foo bar', data)
+        self.assertEqual('foo bar', data)
         self.assertEqual((None, 1, 6), pos)
 
     def test_text_node_pos_multi_line(self):
@@ -129,7 +129,7 @@ bar</elem>'''
         events = list(HTMLParser(StringIO(text)))
         kind, data, pos = events[1]
         self.assertEqual(Stream.TEXT, kind)
-        self.assertEqual(u'foo\nbar', data)
+        self.assertEqual('foo\nbar', data)
         self.assertEqual((None, 1, 6), pos)
 
     def test_input_encoding_text(self):
@@ -174,15 +174,15 @@ bar</elem>'''
         events = list(HTMLParser(StringIO(text)))
         kind, (target, data), pos = events[0]
         self.assertEqual(Stream.PI, kind)
-        self.assertEqual(u'php', target)
-        self.assertEqual(u'echo "Foobar"', data)
+        self.assertEqual('php', target)
+        self.assertEqual('echo "Foobar"', data)
 
     def test_xmldecl(self):
         text = '<?xml version="1.0" ?><root />'
         events = list(XMLParser(StringIO(text)))
         kind, (version, encoding, standalone), pos = events[0]
         self.assertEqual(Stream.XML_DECL, kind)
-        self.assertEqual(u'1.0', version)
+        self.assertEqual('1.0', version)
         self.assertEqual(None, encoding)
         self.assertEqual(-1, standalone)
 
@@ -191,8 +191,8 @@ bar</elem>'''
         events = list(XMLParser(StringIO(text)))
         kind, (version, encoding, standalone), pos = events[0]
         self.assertEqual(Stream.XML_DECL, kind)
-        self.assertEqual(u'1.0', version)
-        self.assertEqual(u'utf-8', encoding)
+        self.assertEqual('1.0', version)
+        self.assertEqual('utf-8', encoding)
         self.assertEqual(-1, standalone)
 
     def test_xmldecl_standalone(self):
@@ -200,7 +200,7 @@ bar</elem>'''
         events = list(XMLParser(StringIO(text)))
         kind, (version, encoding, standalone), pos = events[0]
         self.assertEqual(Stream.XML_DECL, kind)
-        self.assertEqual(u'1.0', version)
+        self.assertEqual('1.0', version)
         self.assertEqual(None, encoding)
         self.assertEqual(1, standalone)
 
@@ -209,8 +209,8 @@ bar</elem>'''
         events = list(HTMLParser(StringIO(text)))
         kind, (target, data), pos = events[0]
         self.assertEqual(Stream.PI, kind)
-        self.assertEqual(u'php', target)
-        self.assertEqual(u'echo "Foobar" ?', data)
+        self.assertEqual('php', target)
+        self.assertEqual('echo "Foobar" ?', data)
 
     def test_out_of_order_tags1(self):
         text = '<span><b>Foobar</span></b>'

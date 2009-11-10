@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2006-2008 Edgewall Software
+# Copyright (C) 2006-2009 Edgewall Software
 # All rights reserved.
 #
 # This software is licensed as described in the file COPYING, which
@@ -637,7 +637,7 @@ x = create()
     def test_import_in_def(self):
         suite = Suite("""def fun():
     from itertools import ifilter
-    return ifilter(None, xrange(3))
+    return ifilter(None, range(3))
 """)
         data = Context()
         suite.execute(data)

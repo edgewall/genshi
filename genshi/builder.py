@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2006-2008 Edgewall Software
+# Copyright (C) 2006-2009 Edgewall Software
 # All rights reserved.
 #
 # This software is licensed as described in the file COPYING, which
@@ -93,7 +93,8 @@ class Fragment(object):
         
         :see: `append`
         """
-        map(self.append, args)
+        for arg in args:
+            self.append(arg)
         return self
 
     def __iter__(self):
@@ -125,7 +126,8 @@ class Fragment(object):
             self.children.extend(node.children)
         elif node is not None:
             try:
-                map(self.append, iter(node))
+                for child in node:
+                    self.append(child)
             except TypeError:
                 self.children.append(node)
 

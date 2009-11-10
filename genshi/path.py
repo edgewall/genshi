@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2006-2008 Edgewall Software
+# Copyright (C) 2006-2009 Edgewall Software
 # All rights reserved.
 #
 # This software is licensed as described in the file COPYING, which
@@ -278,7 +278,7 @@ class SimplePathStrategy(object):
                 return []
             pi = [0]
             s = 0
-            for i in xrange(1, len(f)):
+            for i in range(1, len(f)):
                 while s > 0 and not nodes_equal(f[s], f[i]):
                     s = pi[s-1]
                 if nodes_equal(f[s], f[i]):
@@ -537,7 +537,7 @@ class Path(object):
                     self.strategies.append(strategy_class(path))
                     break
             else:
-                raise NotImplemented, "This path is not implemented"
+                raise NotImplemented('No strategy found for path')
 
     def __repr__(self):
         paths = []
@@ -667,9 +667,9 @@ class PathParser(object):
     def __init__(self, text, filename=None, lineno=-1):
         self.filename = filename
         self.lineno = lineno
-        self.tokens = filter(None, [dqstr or sqstr or number or token or name
-                                    for dqstr, sqstr, number, token, name in
-                                    self._tokenize(text)])
+        self.tokens = [t for t in [dqstr or sqstr or number or token or name
+                                   for dqstr, sqstr, number, token, name in
+                                   self._tokenize(text)] if t]
         self.pos = 0
 
     # Tokenizer

@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2006-2008 Edgewall Software
+# Copyright (C) 2006-2009 Edgewall Software
 # All rights reserved.
 #
 # This software is licensed as described in the file COPYING, which
@@ -100,7 +100,7 @@ class HTMLFormFiller(object):
                                         checked = declval in [unicode(v) for v
                                                               in value]
                                     else:
-                                        checked = bool(filter(None, value))
+                                        checked = bool([v for v in value if v])
                                 else:
                                     if declval:
                                         checked = declval == unicode(value)
@@ -414,7 +414,7 @@ class HTMLSanitizer(object):
         """
         decls = []
         text = self._strip_css_comments(self._replace_unicode_escapes(text))
-        for decl in filter(None, text.split(';')):
+        for decl in [d for d in text.split(';') if d]:
             decl = decl.strip()
             if not decl:
                 continue

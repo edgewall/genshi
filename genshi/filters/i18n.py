@@ -147,7 +147,8 @@ class MsgDirective(ExtractableI18NDirective):
         gettext = ctxt.get('_i18n.gettext')
         dgettext = ctxt.get('_i18n.dgettext')
         if ctxt.get('_i18n.domain'):
-            assert callable(dgettext), "No domain gettext function passed"
+            assert hasattr(dgettext, '__call__'), \
+                'No domain gettext function passed'
             gettext = lambda msg: dgettext(ctxt.get('_i18n.domain'), msg)
 
         def _generate():
@@ -318,7 +319,7 @@ class ChooseDirective(ExtractableI18NDirective):
         plural_msgbuf = None
 
         ngettext = ctxt.get('_i18n.ungettext')
-        assert callable(ngettext), "No ngettext function available"
+        assert hasattr(ngettext, '__call__'), 'No ngettext function available'
         dngettext = ctxt.get('_i18n.dngettext')
         if not dngettext:
             dngettext = lambda d, s, p, n: ngettext(s, p, n)
@@ -656,9 +657,9 @@ class Translator(DirectiveFactory):
 
                 # If this is an i18n directive, no need to translate text
                 # nodes here
-                is_i18n_directive = filter(None,
-                                           [isinstance(d, ExtractableI18NDirective)
-                                            for d in directives])
+                is_i18n_directive = [b for b in
+                                     [isinstance(d, ExtractableI18NDirective)
+                                      for d in directives] if b]
                 substream = list(self(substream, ctxt,
                                       search_text=not is_i18n_directive))
                 yield kind, (directives, substream), pos
@@ -761,7 +762,7 @@ class Translator(DirectiveFactory):
             elif not skip and search_text and kind is TEXT:
                 if not msgbuf:
                     text = data.strip()
-                    if text and filter(None, [ch.isalpha() for ch in text]):
+                    if text and [ch for ch in text if ch.isalpha()]:
                         yield pos[1], None, text, comment_stack[-1:]
                 else:
                     msgbuf.append(kind, data, pos)
@@ -769,8 +770,9 @@ class Translator(DirectiveFactory):
             elif not skip and msgbuf and kind is END:
                 msgbuf.append(kind, data, pos)
                 if not msgbuf.depth:
-                    yield msgbuf.lineno, None, msgbuf.format(), \
-                                                  filter(None, [msgbuf.comment])
+                    yield msgbuf.lineno, None, msgbuf.format(), [
+                        c for c in msgbuf.comment if c
+                    ]
                     msgbuf = None
 
             elif kind is EXPR or kind is EXEC:
@@ -918,7 +920,7 @@ class MessageBuffer(object):
             self.values[param] = (kind, data, pos)
         else:
             if kind is START: 
-                self.string.append(u'[%d:' % self.order)
+                self.string.append('[%d:' % self.order)
                 self.stack.append(self.order)
                 self.events.setdefault(self.stack[-1],
                                        []).append((kind, data, pos))
@@ -928,14 +930,14 @@ class MessageBuffer(object):
                 self.depth -= 1
                 if self.depth:
                     self.events[self.stack[-1]].append((kind, data, pos))
-                    self.string.append(u']')
+                    self.string.append(']')
                     self.stack.pop()
 
     def format(self):
         """Return a message identifier representing the content in the
         buffer.
         """
-        return u''.join(self.string).strip()
+        return ''.join(self.string).strip()
 
     def translate(self, string, regex=re.compile(r'%\((\w+)\)s')):
         """Interpolate the given message translation with the events in the

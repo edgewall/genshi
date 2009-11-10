@@ -144,10 +144,10 @@ class NewTextTemplate(Template):
             raise ValueError('delimiers tuple must have exactly four elements')
         self._delims = delims
         self._directive_re = re.compile(self._DIRECTIVE_RE % tuple(
-            map(re.escape, delims)
+            [re.escape(d) for d in delims]
         ), re.DOTALL)
         self._escape_re = re.compile(self._ESCAPE_RE % tuple(
-            map(re.escape, delims[::2])
+            [re.escape(d) for d in delims[::2]]
         ))
     delimiters = property(_get_delims, _set_delims, """\
     The delimiters for directives and comments. This should be a four item tuple

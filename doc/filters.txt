@@ -47,7 +47,7 @@ values of those controls. For example:
   ...   </p>
   ... </form>""")
   >>> filler = HTMLFormFiller(data=dict(username='john', remember=True))
-  >>> print template.generate() | filler
+  >>> print(template.generate() | filler)
   <form>
     <p>
       <label>User name:
@@ -104,7 +104,7 @@ be used for various kinds of abuse, such as cross-site scripting (XSS) attacks:
   ...   <script>alert("Danger: " + document.cookie)</script>
   ... </div>""")
   >>> sanitize = HTMLSanitizer()
-  >>> print html | sanitize
+  >>> print(html | sanitize)
   <div>
     <p>Innocent looking text.</p>
   </div>
@@ -130,7 +130,7 @@ dangerous URL scheme (such as ``javascript:``) are also stripped out:
   ...   <br style="background: url(javascript:alert(document.cookie); color: #000" />
   ... </div>""")
   >>> sanitize = HTMLSanitizer(safe_attrs=HTMLSanitizer.SAFE_ATTRS | set(['style']))
-  >>> print html | sanitize
+  >>> print(html | sanitize)
   <div>
     <br style="color: #000"/>
   </div>
@@ -164,10 +164,10 @@ attach a variety of transformations to the parts that match:
   ...   </body>
   ... </html>''')
   
-  >>> print html | Transformer('body/em').map(unicode.upper, TEXT) \
-  ...                                    .unwrap().wrap(tag.u).end() \
-  ...                                    .select('body/u') \
-  ...                                    .prepend('underlined ')
+  >>> print(html | Transformer('body/em').map(unicode.upper, TEXT)
+  ...                                    .unwrap().wrap(tag.u).end()
+  ...                                    .select('body/u')
+  ...                                    .prepend('underlined '))
   <html>
     <head><title>Some Title</title></head>
     <body>
@@ -216,7 +216,7 @@ transformer instance:
 
   >>> xform = Transformer('body//em').map(unicode.upper, TEXT) \
   >>> xform = xform.apply(RenameTransformation('u'))
-  >>> print html | xform
+  >>> print(html | xform)
   <html>
     <head><title>Some Title</title></head>
     <body>

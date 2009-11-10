@@ -79,7 +79,7 @@ class XMLParser(object):
     
     >>> parser = XMLParser(StringIO('<root id="2"><child>Foo</child></root>'))
     >>> for kind, data, pos in parser:
-    ...     print kind, data
+    ...     print('%s %s' % (kind, data))
     START (QName(u'root'), Attrs([(QName(u'id'), u'2')]))
     START (QName(u'child'), Attrs())
     TEXT Foo
@@ -256,11 +256,11 @@ def XML(text):
     iterated over multiple times:
     
     >>> xml = XML('<doc><elem>Foo</elem><elem>Bar</elem></doc>')
-    >>> print xml
+    >>> print(xml)
     <doc><elem>Foo</elem><elem>Bar</elem></doc>
-    >>> print xml.select('elem')
+    >>> print(xml.select('elem'))
     <elem>Foo</elem><elem>Bar</elem>
-    >>> print xml.select('elem/text()')
+    >>> print(xml.select('elem/text()'))
     FooBar
     
     :param text: the XML source
@@ -280,7 +280,7 @@ class HTMLParser(html.HTMLParser, object):
     
     >>> parser = HTMLParser(StringIO('<UL compact><LI>Foo</UL>'))
     >>> for kind, data, pos in parser:
-    ...     print kind, data
+    ...     print('%s %s' % (kind, data))
     START (QName(u'ul'), Attrs([(QName(u'compact'), u'compact')]))
     START (QName(u'li'), Attrs())
     TEXT Foo
@@ -409,11 +409,11 @@ def HTML(text, encoding='utf-8'):
     iterated over multiple times:
     
     >>> html = HTML('<body><h1>Foo</h1></body>')
-    >>> print html
+    >>> print(html)
     <body><h1>Foo</h1></body>
-    >>> print html.select('h1')
+    >>> print(html.select('h1'))
     <h1>Foo</h1>
-    >>> print html.select('h1/text()')
+    >>> print(html.select('h1/text()'))
     Foo
     
     :param text: the HTML source

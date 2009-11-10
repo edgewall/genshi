@@ -229,7 +229,7 @@ class Undefined(object):
     False
     >>> list(foo)
     []
-    >>> print foo
+    >>> print(foo)
     undefined
     
     However, calling an undefined variable, or trying to access an attribute

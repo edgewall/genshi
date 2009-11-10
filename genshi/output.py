@@ -172,7 +172,7 @@ class XMLSerializer(object):
     
     >>> from genshi.builder import tag
     >>> elem = tag.div(tag.a(href='foo'), tag.br, tag.hr(noshade=True))
-    >>> print ''.join(XMLSerializer()(elem.generate()))
+    >>> print(''.join(XMLSerializer()(elem.generate())))
     <div><a href="foo"/><br/><hr noshade="True"/></div>
     """
 
@@ -285,7 +285,7 @@ class XHTMLSerializer(XMLSerializer):
     
     >>> from genshi.builder import tag
     >>> elem = tag.div(tag.a(href='foo'), tag.br, tag.hr(noshade=True))
-    >>> print ''.join(XHTMLSerializer()(elem.generate()))
+    >>> print(''.join(XHTMLSerializer()(elem.generate())))
     <div><a href="foo"></a><br /><hr noshade="noshade" /></div>
     """
 
@@ -413,7 +413,7 @@ class HTMLSerializer(XHTMLSerializer):
     
     >>> from genshi.builder import tag
     >>> elem = tag.div(tag.a(href='foo'), tag.br, tag.hr(noshade=True))
-    >>> print ''.join(HTMLSerializer()(elem.generate()))
+    >>> print(''.join(HTMLSerializer()(elem.generate())))
     <div><a href="foo"></a><br><hr noshade></div>
     """
 
@@ -533,23 +533,23 @@ class TextSerializer(object):
     
     >>> from genshi.builder import tag
     >>> elem = tag.div(tag.a('<Hello!>', href='foo'), tag.br)
-    >>> print elem
+    >>> print(elem)
     <div><a href="foo">&lt;Hello!&gt;</a><br/></div>
-    >>> print ''.join(TextSerializer()(elem.generate()))
+    >>> print(''.join(TextSerializer()(elem.generate())))
     <Hello!>
 
     If text events contain literal markup (instances of the `Markup` class),
     that markup is by default passed through unchanged:
     
     >>> elem = tag.div(Markup('<a href="foo">Hello &amp; Bye!</a><br/>'))
-    >>> print elem.generate().render(TextSerializer)
+    >>> print(elem.generate().render(TextSerializer))
     <a href="foo">Hello &amp; Bye!</a><br/>
     
     You can use the ``strip_markup`` to change this behavior, so that tags and
     entities are stripped from the output (or in the case of entities,
     replaced with the equivalent character):
 
-    >>> print elem.generate().render(TextSerializer, strip_markup=True)
+    >>> print(elem.generate().render(TextSerializer, strip_markup=True))
     Hello & Bye!
     """
 
@@ -607,7 +607,7 @@ class NamespaceFlattener(object):
     ...   <two:item/>
     ... </doc>''')
     >>> for kind, data, pos in NamespaceFlattener()(xml):
-    ...     print kind, repr(data)
+    ...     print('%s %r' % (kind, data))
     START (u'doc', Attrs([('xmlns', u'NS1'), (u'xmlns:two', u'NS2')]))
     TEXT u'\n  '
     START (u'two:item', Attrs())

@@ -46,7 +46,7 @@ class LRUCache(dict):
     used:
     
     >>> for key in cache:
-    ...     print key
+    ...     print(key)
     D
     A
     C

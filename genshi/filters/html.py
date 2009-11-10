@@ -30,7 +30,7 @@ class HTMLFormFiller(object):
     ...   <p><input type="text" name="foo" /></p>
     ... </form>''')
     >>> filler = HTMLFormFiller(data={'foo': 'bar'})
-    >>> print html | filler
+    >>> print(html | filler)
     <form>
       <p><input type="text" name="foo" value="bar"/></p>
     </form>
@@ -195,7 +195,7 @@ class HTMLSanitizer(object):
     
     >>> from genshi import HTML
     >>> html = HTML('<div><script>alert(document.cookie)</script></div>')
-    >>> print html | HTMLSanitizer()
+    >>> print(html | HTMLSanitizer())
     <div/>
     
     The default set of safe tags and attributes can be modified when the filter
@@ -204,14 +204,14 @@ class HTMLSanitizer(object):
     
     >>> html = HTML('<div style="background: #000"></div>')
     >>> sanitizer = HTMLSanitizer(safe_attrs=HTMLSanitizer.SAFE_ATTRS | set(['style']))
-    >>> print html | sanitizer
+    >>> print(html | sanitizer)
     <div style="background: #000"/>
     
     Note that even in this case, the filter *does* attempt to remove dangerous
     constructs from style attributes:
 
     >>> html = HTML('<div style="background: url(javascript:void); color: #000"></div>')
-    >>> print html | sanitizer
+    >>> print(html | sanitizer)
     <div style="color: #000"/>
     
     This handles HTML entities, unicode escapes in CSS and Javascript text, as

@@ -308,9 +308,9 @@ class TemplateLoader(object):
         ...     app1 = lambda filename: ('app1', filename, None, None),
         ...     app2 = lambda filename: ('app2', filename, None, None)
         ... )
-        >>> print load('app1/foo.html')
+        >>> print(load('app1/foo.html'))
         ('app1', 'app1/foo.html', None, None)
-        >>> print load('app2/bar.html')
+        >>> print(load('app2/bar.html'))
         ('app2', 'app2/bar.html', None, None)
         
         :param delegates: mapping of path prefixes to loader functions

@@ -52,12 +52,12 @@ class optional_build_ext(build_ext):
             self._unavailable(e)
 
     def _unavailable(self, exc):
-        print '*' * 70
-        print """WARNING:
+        print('*' * 70)
+        print("""WARNING:
 An optional C extension could not be compiled, speedups will not be
-available."""
-        print '*' * 70
-        print exc
+available.""")
+        print('*' * 70)
+        print(exc)
 
 
 if Feature:

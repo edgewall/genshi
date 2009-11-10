@@ -30,8 +30,8 @@
 ...       </item>
 ...   </items>
 ... </doc>''')
->>> print doc.select('items/item[@status="closed" and '
-...     '(@resolution="invalid" or not(@resolution))]/summary/text()')
+>>> print(doc.select('items/item[@status="closed" and '
+...     '(@resolution="invalid" or not(@resolution))]/summary/text()'))
 BarBaz
 
 Because the XPath engine operates on markup streams (as opposed to tree
@@ -558,10 +558,10 @@ class Path(object):
         >>> from genshi.input import XML
         >>> xml = XML('<root><elem><child>Text</child></elem></root>')
         
-        >>> print Path('.//child').select(xml)
+        >>> print(Path('.//child').select(xml))
         <child>Text</child>
         
-        >>> print Path('.//child/text()').select(xml)
+        >>> print(Path('.//child/text()').select(xml))
         Text
         
         :param stream: the stream to select from
@@ -618,7 +618,7 @@ class Path(object):
         >>> namespaces, variables = {}, {}
         >>> for event in xml:
         ...     if test(event, namespaces, variables):
-        ...         print event[0], repr(event[1])
+        ...         print('%s %r' % (event[0], event[1]))
         START (QName(u'child'), Attrs([(QName(u'id'), u'2')]))
         
         :param ignore_context: if `True`, the path is interpreted like a pattern

@@ -36,7 +36,7 @@ class MarkupTemplate(Template):
     >>> tmpl = MarkupTemplate('''<ul xmlns:py="http://genshi.edgewall.org/">
     ...   <li py:for="item in items">${item}</li>
     ... </ul>''')
-    >>> print tmpl.generate(items=[1, 2, 3])
+    >>> print(tmpl.generate(items=[1, 2, 3]))
     <ul>
       <li>1</li><li>2</li><li>3</li>
     </ul>

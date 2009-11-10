@@ -116,7 +116,7 @@ For example:
   >>> from genshi.template import MarkupTemplate
   >>> tmpl = MarkupTemplate('<h1>Hello, $name!</h1>')
   >>> stream = tmpl.generate(name='world')
-  >>> print stream.render('xhtml')
+  >>> print(stream.render('xhtml'))
   <h1>Hello, world!</h1>
 
 .. note:: See the Serialization_ section of the `Markup Streams`_ page for
@@ -129,7 +129,7 @@ Using a text template is similar:
   >>> from genshi.template import TextTemplate
   >>> tmpl = TextTemplate('Hello, $name!')
   >>> stream = tmpl.generate(name='world')
-  >>> print stream
+  >>> print(stream)
   Hello, world!
 
 .. note:: If you want to use text templates, you should consider using the
@@ -152,7 +152,7 @@ template loader would generally look as follows:
   loader = TemplateLoader([templates_dir1, templates_dir2])
   tmpl = loader.load('test.html')
   stream = tmpl.generate(title='Hello, world!')
-  print stream.render()
+  print(stream.render())
 
 See the `API documentation <api/index.html>`_ for details on using Genshi via
 the Python API.
@@ -181,7 +181,7 @@ ends:
 
   >>> from genshi.template import MarkupTemplate
   >>> tmpl = MarkupTemplate('<em>${items[0].capitalize()} item</em>')
-  >>> print tmpl.generate(items=['first', 'second'])
+  >>> print(tmpl.generate(items=['first', 'second']))
   <em>First item</em>
 
 Expressions support the full power of Python. In addition, it is possible to
@@ -193,7 +193,7 @@ dictionary):
 
   >>> from genshi.template import MarkupTemplate
   >>> tmpl = MarkupTemplate('<em>${dict.foo}</em>')
-  >>> print tmpl.generate(dict={'foo': 'bar'})
+  >>> print(tmpl.generate(dict={'foo': 'bar'}))
   <em>bar</em>
 
 Because there are two ways to access either attributes or items, expressions
@@ -213,12 +213,12 @@ normally detect an expression, you can simply add another dollar sign:
 
   >>> from genshi.template import MarkupTemplate
   >>> tmpl = MarkupTemplate('<em>$foo</em>') # Wanted "$foo" as literal output
-  >>> print tmpl.generate()
+  >>> print(tmpl.generate())
   Traceback (most recent call last):
     ...
   UndefinedError: "foo" not defined
   >>> tmpl = MarkupTemplate('<em>$$foo</em>')
-  >>> print tmpl.generate()
+  >>> print(tmpl.generate())
   <em>$foo</em>
 
 But note that this is not necessary if the characters following the dollar sign
@@ -227,7 +227,7 @@ do not qualify as an expression. For example, the following needs no escaping:
 .. code-block:: pycon
 
   >>> tmpl = MarkupTemplate('<script>$(function() {})</script>')
-  >>> print tmpl.generate()
+  >>> print(tmpl.generate())
   <script>$(function() {})</script>
 
 On the other hand, Genshi will always replace two dollar signs in text with a
@@ -237,7 +237,7 @@ output:
 .. code-block:: pycon
 
   >>> tmpl = MarkupTemplate('<script>$$$("div")</script>')
-  >>> print tmpl.generate()
+  >>> print(tmpl.generate())
   <script>$$("div")</script>
 
 
@@ -338,7 +338,7 @@ in regular Python code:
 
   >>> from genshi.template import MarkupTemplate
   >>> tmpl = MarkupTemplate('<p>${defined("doh")}</p>')
-  >>> print tmpl.generate().render('xhtml')
+  >>> print(tmpl.generate().render('xhtml'))
   <p>False</p>
 
 .. note:: Lenient error handling was the default in Genshi prior to version 0.5.
@@ -364,7 +364,7 @@ keyword argument to the ``TemplateLoader`` initializer:
 
   >>> from genshi.template import MarkupTemplate
   >>> tmpl = MarkupTemplate('<p>${doh}</p>', lookup='lenient')
-  >>> print tmpl.generate().render('xhtml')
+  >>> print(tmpl.generate().render('xhtml'))
   <p></p>
 
 You *will* however get an exception if you try to call an undefined variable, or
@@ -374,7 +374,7 @@ do anything else with it, such as accessing its attributes:
 
   >>> from genshi.template import MarkupTemplate
   >>> tmpl = MarkupTemplate('<p>${doh.oops}</p>', lookup='lenient')
-  >>> print tmpl.generate().render('xhtml')
+  >>> print(tmpl.generate().render('xhtml'))
   Traceback (most recent call last):
     ...
   UndefinedError: "doh" not defined
@@ -387,7 +387,7 @@ against the ``Undefined`` class, for example in a conditional directive:
   >>> from genshi.template import MarkupTemplate
   >>> tmpl = MarkupTemplate('<p>${type(doh) is not Undefined}</p>',
   ...                       lookup='lenient')
-  >>> print tmpl.generate().render('xhtml')
+  >>> print(tmpl.generate().render('xhtml'))
   <p>False</p>
 
 Alternatively, the built-in functions defined_ or value_of_ can be used in this

@@ -91,7 +91,7 @@ class MsgDirective(ExtractableI18NDirective):
     >>> translator.setup(tmpl)
     >>> list(translator.extract(tmpl.stream))
     [(2, None, u'[1:Foo]\n    [2:Bar]', []), (6, None, u'Foo [1:bar]!', [])]
-    >>> print tmpl.generate().render()
+    >>> print(tmpl.generate().render())
     <html>
       <div><p>Foo</p>
         <p>Bar</p></div>
@@ -118,7 +118,7 @@ class MsgDirective(ExtractableI18NDirective):
     ...   <p i18n:msg="">Foo <em>bar</em>!</p>
     ... </html>''')
     >>> translator.setup(tmpl)
-    >>> print tmpl.generate(fname='John', lname='Doe').render()
+    >>> print(tmpl.generate(fname='John', lname='Doe').render())
     <html>
       <div><p>First Name: John</p>
         <p>Last Name: Doe</p></div>
@@ -259,13 +259,13 @@ class ChooseDirective(ExtractableI18NDirective):
     ...   </div>
     ... </html>''')
     >>> translator.setup(tmpl)
-    >>> print tmpl.generate(num=1).render()
+    >>> print(tmpl.generate(num=1).render())
     <html>
       <div>
         <p>There is 1 coin</p>
       </div>
     </html>
-    >>> print tmpl.generate(num=2).render()
+    >>> print(tmpl.generate(num=2).render())
     <html>
       <div>
         <p>There are 2 coins</p>
@@ -420,7 +420,7 @@ class DomainDirective(I18NDirective):
     >>> translator = Translator(translations)
     >>> translator.setup(tmpl)
 
-    >>> print tmpl.generate().render()
+    >>> print(tmpl.generate().render())
     <html>
       <p>Voh</p>
       <div>
@@ -487,7 +487,7 @@ class Translator(DirectiveFactory):
     When generating the template output, our hard-coded translations should be
     applied as expected:
     
-    >>> print tmpl.generate(username='Hans', _=pseudo_gettext)
+    >>> print(tmpl.generate(username='Hans', _=pseudo_gettext))
     <html>
       <head>
         <title>Beispiel</title>
@@ -698,7 +698,7 @@ class Translator(DirectiveFactory):
         ...   </body>
         ... </html>''', filename='example.html')
         >>> for line, func, msg, comments in Translator().extract(tmpl.stream):
-        ...    print "%d, %r, %r" % (line, func, msg)
+        ...    print('%d, %r, %r' % (line, func, msg))
         3, None, u'Example'
         6, None, u'Example'
         7, '_', u'Hello, %(name)s'

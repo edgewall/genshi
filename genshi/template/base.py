@@ -544,7 +544,7 @@ class Template(DirectiveFactory):
                             ]
                             if not values:
                                 continue
-                            value = u''.join(values)
+                            value = ''.join(values)
                         new_attrs.append((name, value))
                     yield kind, (tag, Attrs(new_attrs)), pos
 
@@ -598,7 +598,7 @@ class Template(DirectiveFactory):
                                                                   **vars):
                         if subkind is TEXT:
                             parts.append(subdata)
-                    href = u''.join([x for x in parts if x is not None])
+                    href = ''.join([x for x in parts if x is not None])
                 try:
                     tmpl = self.loader.load(href, relative_to=event[2][0],
                                             cls=cls or self.__class__)

@@ -651,7 +651,7 @@ class ASTCodeGenerator(object):
                     self._write(', ')
                     self.visit(dim)
             else:
-                raise NotImplemented, 'Slice type not implemented'
+                raise NotImplemented('Slice type not implemented')
         _process_slice(node.slice)
         self._write(']')
 

@@ -158,6 +158,7 @@ def flatten(items):
             retval.append(item)
     return retval
 
+
 def plaintext(text, keeplinebreaks=True):
     """Returns the text as a `unicode` string with all entities and tags
     removed.
@@ -179,8 +180,9 @@ def plaintext(text, keeplinebreaks=True):
     """
     text = stripentities(striptags(text))
     if not keeplinebreaks:
-        text = text.replace(u'\n', u' ')
+        text = text.replace('\n', ' ')
     return text
+
 
 _STRIPENTITIES_RE = re.compile(r'&(?:#((?:\d+)|(?:[xX][0-9a-fA-F]+));?|(\w+);)')
 def stripentities(text, keepxmlentities=False):
@@ -213,15 +215,16 @@ def stripentities(text, keepxmlentities=False):
         else: # character entity
             ref = match.group(2)
             if keepxmlentities and ref in ('amp', 'apos', 'gt', 'lt', 'quot'):
-                return u'&%s;' % ref
+                return '&%s;' % ref
             try:
                 return unichr(htmlentitydefs.name2codepoint[ref])
             except KeyError:
                 if keepxmlentities:
-                    return u'&amp;%s;' % ref
+                    return '&amp;%s;' % ref
                 else:
                     return ref
     return _STRIPENTITIES_RE.sub(_replace_entity, text)
+
 
 _STRIPTAGS_RE = re.compile(r'(<!--.*?-->|<[^>]*>)')
 def striptags(text):

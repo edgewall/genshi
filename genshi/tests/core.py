@@ -175,6 +175,10 @@ class AttrsTestCase(unittest.TestCase):
         self.assertEquals("Attrs([('attr1', 'foo'), ('attr2', 'bar')])",
                           repr(unpickled))
 
+    def test_non_ascii(self):
+        attrs_tuple = Attrs([("attr1", u"föö"), ("attr2", u"bär")]).totuple()
+        self.assertEqual(u'fööbär', attrs_tuple[1])
+
 
 class NamespaceTestCase(unittest.TestCase):
 
@@ -211,6 +215,10 @@ class QNameTestCase(unittest.TestCase):
         qname = QName('{http://www.example.org/namespace}elem')
         self.assertEquals('http://www.example.org/namespace', qname.namespace)
         self.assertEquals('elem', qname.localname)
+
+    def test_non_ascii(self):
+        qname = QName(u'http://www.example.org/namespace}gürü')
+        self.assertEqual(u'gürü', qname.localname)
 
 
 def suite():

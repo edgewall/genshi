@@ -937,7 +937,7 @@ def as_long(value):
 def as_string(value):
     value = as_scalar(value)
     if value is False:
-        return u''
+        return ''
     return unicode(value)
 
 def as_bool(value):
@@ -1101,7 +1101,7 @@ class ConcatFunction(Function):
         for item in [expr(kind, data, pos, namespaces, variables)
                      for expr in self.exprs]:
             strings.append(as_string(item))
-        return u''.join(strings)
+        return ''.join(strings)
     def __repr__(self):
         return 'concat(%s)' % ', '.join([repr(expr) for expr in self.exprs])
 
@@ -1311,7 +1311,7 @@ class SubstringAfterFunction(Function):
         index = string1.find(string2)
         if index >= 0:
             return string1[index + len(string2):]
-        return u''
+        return ''
     def __repr__(self):
         return 'substring-after(%r, %r)' % (self.string1, self.string2)
 
@@ -1329,7 +1329,7 @@ class SubstringBeforeFunction(Function):
         index = string1.find(string2)
         if index >= 0:
             return string1[:index]
-        return u''
+        return ''
     def __repr__(self):
         return 'substring-after(%r, %r)' % (self.string1, self.string2)
 

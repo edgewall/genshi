@@ -93,7 +93,7 @@ class Stream(object):
         
         >>> from genshi.input import HTML
         >>> html = HTML('''<p onclick="alert('Whoa')">Hello, world!</p>''')
-        >>> print html
+        >>> print(html)
         <p onclick="alert('Whoa')">Hello, world!</p>
         
         A filter such as the HTML sanitizer can be applied to that stream using
@@ -101,7 +101,7 @@ class Stream(object):
         
         >>> from genshi.filters import HTMLSanitizer
         >>> sanitizer = HTMLSanitizer()
-        >>> print html | sanitizer
+        >>> print(html | sanitizer)
         <p>Hello, world!</p>
         
         Filters can be any function that accepts and produces a stream (where
@@ -112,14 +112,14 @@ class Stream(object):
         ...         if kind is TEXT:
         ...             data = data.upper()
         ...         yield kind, data, pos
-        >>> print html | sanitizer | uppercase
+        >>> print(html | sanitizer | uppercase)
         <p>HELLO, WORLD!</p>
         
         Serializers can also be used with this notation:
         
         >>> from genshi.output import TextSerializer
         >>> output = TextSerializer()
-        >>> print html | sanitizer | uppercase | output
+        >>> print(html | sanitizer | uppercase | output)
         HELLO, WORLD!
         
         Commonly, serializers should be used at the end of the "pipeline";
@@ -188,9 +188,9 @@ class Stream(object):
         
         >>> from genshi import HTML
         >>> stream = HTML('<doc><elem>foo</elem><elem>bar</elem></doc>')
-        >>> print stream.select('elem')
+        >>> print(stream.select('elem'))
         <elem>foo</elem><elem>bar</elem>
-        >>> print stream.select('elem/text()')
+        >>> print(stream.select('elem/text()'))
         foobar
         
         Note that the outermost element of the stream becomes the *context
@@ -198,13 +198,13 @@ class Stream(object):
         not match anything in the example above, because it only tests against
         child elements of the outermost element:
         
-        >>> print stream.select('doc')
+        >>> print(stream.select('doc'))
         <BLANKLINE>
         
         You can use the "." expression to match the context node itself
         (although that usually makes little sense):
         
-        >>> print stream.select('.')
+        >>> print(stream.select('.'))
         <doc><elem>foo</elem><elem>bar</elem></doc>
         
         :param path: a string containing the XPath expression
@@ -354,6 +354,20 @@ class Attrs(tuple):
             if attr == name:
                 return True
 
+    def __getitem__(self, i):
+        """Return an item or slice of the attributes list.
+        
+        >>> attrs = Attrs([('href', '#'), ('title', 'Foo')])
+        >>> attrs[1]
+        ('title', 'Foo')
+        >>> attrs[1:]
+        Attrs([('title', 'Foo')])
+        """
+        items = tuple.__getitem__(self, i)
+        if type(i) is slice:
+            return Attrs(items)
+        return items
+
     def __getslice__(self, i, j):
         """Return a slice of the attributes list.
         
@@ -413,12 +427,12 @@ class Attrs(tuple):
         attributes joined together.
         
         >>> Attrs([('href', '#'), ('title', 'Foo')]).totuple()
-        ('TEXT', u'#Foo', (None, -1, -1))
+        ('TEXT', '#Foo', (None, -1, -1))
         
         :return: a `TEXT` event
         :rtype: `tuple`
         """
-        return TEXT, u''.join([x[1] for x in self]), (None, -1, -1)
+        return TEXT, ''.join([x[1] for x in self]), (None, -1, -1)
 
 
 class Markup(unicode):
@@ -515,7 +529,7 @@ class Markup(unicode):
         :see: `genshi.core.unescape`
         """
         if not self:
-            return u''
+            return ''
         return unicode(self).replace('&#34;', '"') \
                             .replace('&gt;', '>') \
                             .replace('&lt;', '<') \
@@ -644,7 +658,7 @@ class Namespace(object):
         return self.uri == other
 
     def __getitem__(self, name):
-        return QName(self.uri + u'}' + name)
+        return QName(self.uri + '}' + name)
     __getattr__ = __getitem__
 
     def __hash__(self):
@@ -699,9 +713,9 @@ class QName(unicode):
         if type(qname) is cls:
             return qname
 
-        parts = qname.lstrip(u'{').split(u'}', 1)
+        parts = qname.lstrip('{').split('}', 1)
         if len(parts) > 1:
-            self = unicode.__new__(cls, u'{%s' % qname)
+            self = unicode.__new__(cls, '{%s' % qname)
             self.namespace, self.localname = map(unicode, parts)
         else:
             self = unicode.__new__(cls, qname)

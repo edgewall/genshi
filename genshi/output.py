@@ -53,7 +53,7 @@ def encode(iterator, method='xml', encoding='utf-8', out=None):
     else:
         _encode = lambda string: string
     if out is None:
-        return _encode(u''.join(list(iterator)))
+        return _encode(''.join(list(iterator)))
     for chunk in iterator:
         out.write(_encode(chunk))
 
@@ -229,7 +229,7 @@ class XMLSerializer(object):
                 for attr, value in attrib:
                     buf += [' ', attr, '="', escape(value), '"']
                 buf.append(kind is EMPTY and '/>' or '>')
-                yield _emit(kind, data, Markup(u''.join(buf)))
+                yield _emit(kind, data, Markup(''.join(buf)))
 
             elif kind is END:
                 yield _emit(kind, data, Markup('</%s>' % data))
@@ -252,7 +252,7 @@ class XMLSerializer(object):
                     standalone = standalone and 'yes' or 'no'
                     buf.append(' standalone="%s"' % standalone)
                 buf.append('?>\n')
-                yield Markup(u''.join(buf))
+                yield Markup(''.join(buf))
                 have_decl = True
 
             elif kind is DOCTYPE and not have_doctype:
@@ -265,7 +265,7 @@ class XMLSerializer(object):
                 if sysid:
                     buf.append(' "%s"')
                 buf.append('>\n')
-                yield Markup(u''.join(buf)) % filter(None, data)
+                yield Markup(''.join(buf)) % filter(None, data)
                 have_doctype = True
 
             elif kind is START_CDATA:
@@ -345,9 +345,9 @@ class XHTMLSerializer(XMLSerializer):
                 for attr, value in attrib:
                     if attr in boolean_attrs:
                         value = attr
-                    elif attr == u'xml:lang' and u'lang' not in attrib:
+                    elif attr == 'xml:lang' and 'lang' not in attrib:
                         buf += [' lang="', escape(value), '"']
-                    elif attr == u'xml:space':
+                    elif attr == 'xml:space':
                         continue
                     buf += [' ', attr, '="', escape(value), '"']
                 if kind is EMPTY:
@@ -357,7 +357,7 @@ class XHTMLSerializer(XMLSerializer):
                         buf.append('></%s>' % tag)
                 else:
                     buf.append('>')
-                yield _emit(kind, data, Markup(u''.join(buf)))
+                yield _emit(kind, data, Markup(''.join(buf)))
 
             elif kind is END:
                 yield _emit(kind, data, Markup('</%s>' % data))
@@ -381,7 +381,7 @@ class XHTMLSerializer(XMLSerializer):
                 if sysid:
                     buf.append(' "%s"')
                 buf.append('>\n')
-                yield Markup(u''.join(buf)) % filter(None, data)
+                yield Markup(''.join(buf)) % filter(None, data)
                 have_doctype = True
 
             elif kind is XML_DECL and not have_decl and not drop_xml_decl:
@@ -393,7 +393,7 @@ class XHTMLSerializer(XMLSerializer):
                     standalone = standalone and 'yes' or 'no'
                     buf.append(' standalone="%s"' % standalone)
                 buf.append('?>\n')
-                yield Markup(u''.join(buf))
+                yield Markup(''.join(buf))
                 have_decl = True
 
             elif kind is START_CDATA:
@@ -483,7 +483,7 @@ class HTMLSerializer(XHTMLSerializer):
                         if value:
                             buf += [' ', attr]
                     elif ':' in attr:
-                        if attr == 'xml:lang' and u'lang' not in attrib:
+                        if attr == 'xml:lang' and 'lang' not in attrib:
                             buf += [' lang="', escape(value), '"']
                     elif attr != 'xmlns':
                         buf += [' ', attr, '="', escape(value), '"']
@@ -491,7 +491,7 @@ class HTMLSerializer(XHTMLSerializer):
                 if kind is EMPTY:
                     if tag not in empty_elems:
                         buf.append('</%s>' % tag)
-                yield _emit(kind, data, Markup(u''.join(buf)))
+                yield _emit(kind, data, Markup(''.join(buf)))
                 if tag in noescape_elems:
                     noescape = True
 
@@ -518,7 +518,7 @@ class HTMLSerializer(XHTMLSerializer):
                 if sysid:
                     buf.append(' "%s"')
                 buf.append('>\n')
-                yield Markup(u''.join(buf)) % filter(None, data)
+                yield Markup(''.join(buf)) % filter(None, data)
                 have_doctype = True
 
             elif kind is PI:
@@ -608,7 +608,7 @@ class NamespaceFlattener(object):
     ... </doc>''')
     >>> for kind, data, pos in NamespaceFlattener()(xml):
     ...     print kind, repr(data)
-    START (u'doc', Attrs([(u'xmlns', u'NS1'), (u'xmlns:two', u'NS2')]))
+    START (u'doc', Attrs([('xmlns', u'NS1'), (u'xmlns:two', u'NS2')]))
     TEXT u'\n  '
     START (u'two:item', Attrs())
     END u'two:item'
@@ -655,7 +655,7 @@ class NamespaceFlattener(object):
         ns_attrs = []
         _push_ns_attr = ns_attrs.append
         def _make_ns_attr(prefix, uri):
-            return u'xmlns%s' % (prefix and ':%s' % prefix or ''), uri
+            return 'xmlns%s' % (prefix and ':%s' % prefix or ''), uri
 
         def _gen_prefix():
             val = 0
@@ -678,9 +678,9 @@ class NamespaceFlattener(object):
                     if tagns in namespaces:
                         prefix = namespaces[tagns][-1]
                         if prefix:
-                            tagname = u'%s:%s' % (prefix, tagname)
+                            tagname = '%s:%s' % (prefix, tagname)
                     else:
-                        _push_ns_attr((u'xmlns', tagns))
+                        _push_ns_attr(('xmlns', tagns))
                         _push_ns('', tagns)
 
                 new_attrs = []
@@ -695,7 +695,7 @@ class NamespaceFlattener(object):
                         else:
                             prefix = namespaces[attrns][-1]
                         if prefix:
-                            attrname = u'%s:%s' % (prefix, attrname)
+                            attrname = '%s:%s' % (prefix, attrname)
                     new_attrs.append((attrname, value))
 
                 yield _emit(kind, data, (tagname, Attrs(ns_attrs + new_attrs)), pos)
@@ -707,7 +707,7 @@ class NamespaceFlattener(object):
                 if tagns:
                     prefix = namespaces[tagns][-1]
                     if prefix:
-                        tagname = u'%s:%s' % (prefix, tagname)
+                        tagname = '%s:%s' % (prefix, tagname)
                 yield _emit(kind, data, tagname, pos)
 
             elif kind is START_NS:

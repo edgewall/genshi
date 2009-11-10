@@ -434,7 +434,7 @@ def _coalesce(stream):
                 textpos = pos
         else:
             if textbuf:
-                yield TEXT, u''.join(textbuf), textpos
+                yield TEXT, ''.join(textbuf), textpos
                 del textbuf[:]
                 textpos = None
             if kind:

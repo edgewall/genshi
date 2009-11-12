@@ -13,6 +13,10 @@
 
 """Implementation of a number of stream filters."""
 
+try:
+    any
+except NameError:
+    from genshi.util import any
 import re
 
 from genshi.core import Attrs, QName, stripentities
@@ -100,7 +104,7 @@ class HTMLFormFiller(object):
                                         checked = declval in [unicode(v) for v
                                                               in value]
                                     else:
-                                        checked = bool([v for v in value if v])
+                                        checked = any(value)
                                 else:
                                     if declval:
                                         checked = declval == unicode(value)
@@ -414,7 +418,7 @@ class HTMLSanitizer(object):
         """
         decls = []
         text = self._strip_css_comments(self._replace_unicode_escapes(text))
-        for decl in [d for d in text.split(';') if d]:
+        for decl in text.split(';'):
             decl = decl.strip()
             if not decl:
                 continue

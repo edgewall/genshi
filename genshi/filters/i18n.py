@@ -18,6 +18,10 @@ templates.
 :note: Directives support added since version 0.6
 """
 
+try:
+    any
+except NameError:
+    from genshi.util import any
 from gettext import NullTranslations
 import os
 import re
@@ -657,9 +661,10 @@ class Translator(DirectiveFactory):
 
                 # If this is an i18n directive, no need to translate text
                 # nodes here
-                is_i18n_directive = [b for b in
-                                     [isinstance(d, ExtractableI18NDirective)
-                                      for d in directives] if b]
+                is_i18n_directive = any([
+                    isinstance(d, ExtractableI18NDirective)
+                    for d in directives
+                ])
                 substream = list(self(substream, ctxt,
                                       search_text=not is_i18n_directive))
                 yield kind, (directives, substream), pos

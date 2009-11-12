@@ -13,7 +13,10 @@
 
 """Various utility classes and functions."""
 
-import htmlentitydefs
+try:
+    import htmlentitydefs as entities
+except ImportError:
+    from html import entities
 import re
 
 __docformat__ = 'restructuredtext en'
@@ -160,8 +163,7 @@ def flatten(items):
 
 
 def plaintext(text, keeplinebreaks=True):
-    """Returns the text as a `unicode` string with all entities and tags
-    removed.
+    """Return the text with all entities and tags removed.
     
     >>> plaintext('<b>1 &lt; 2</b>')
     u'1 < 2'
@@ -217,7 +219,7 @@ def stripentities(text, keepxmlentities=False):
             if keepxmlentities and ref in ('amp', 'apos', 'gt', 'lt', 'quot'):
                 return '&%s;' % ref
             try:
-                return unichr(htmlentitydefs.name2codepoint[ref])
+                return unichr(entities.name2codepoint[ref])
             except KeyError:
                 if keepxmlentities:
                     return '&amp;%s;' % ref
@@ -246,3 +248,22 @@ def striptags(text):
     :return: the text with tags removed
     """
     return _STRIPTAGS_RE.sub('', text)
+
+
+# Compatibility fallback implementations for older Python versions
+
+try:
+    all = all
+    any = any
+except NameError:
+    def any(S):
+        for x in S:
+            if x:
+               return True
+        return False
+
+    def all(S):
+        for x in S:
+            if not x:
+               return False
+        return True

@@ -16,10 +16,18 @@ sources.
 """
 
 from itertools import chain
+try:
+    import htmlentitydefs as entities
+    import HTMLParser as html
+except ImportError:
+    from html import entities
+    from html import parser as html
+try:
+    from StringIO import StringIO
+    BytesIO = StringIO
+except ImportError:
+    from io import BytesIO, StringIO
 from xml.parsers import expat
-import HTMLParser as html
-import htmlentitydefs
-from StringIO import StringIO
 
 from genshi.core import Attrs, QName, Stream, stripentities
 from genshi.core import START, END, XML_DECL, DOCTYPE, TEXT, START_NS, END_NS, \
@@ -88,7 +96,7 @@ class XMLParser(object):
     """
 
     _entitydefs = ['<!ENTITY %s "&#%d;">' % (name, value) for name, value in
-                   htmlentitydefs.name2codepoint.items()]
+                   entities.name2codepoint.items()]
     _external_dtd = '\n'.join(_entitydefs)
 
     def __init__(self, source, filename=None, encoding=None):
@@ -169,7 +177,7 @@ class XMLParser(object):
 
     def _build_foreign(self, context, base, sysid, pubid):
         parser = self.expat.ExternalEntityParserCreate(context)
-        parser.ParseFile(StringIO(self._external_dtd))
+        parser.ParseFile(BytesIO(self._external_dtd))
         return 1
 
     def _enqueue(self, kind, data=None, pos=None):
@@ -237,7 +245,7 @@ class XMLParser(object):
         if text.startswith('&'):
             # deal with undefined entities
             try:
-                text = unichr(htmlentitydefs.name2codepoint[text[1:-1]])
+                text = unichr(entities.name2codepoint[text[1:-1]])
                 self._enqueue(TEXT, text)
             except KeyError:
                 filename, lineno, offset = self._getpos()
@@ -267,7 +275,7 @@ def XML(text):
     :return: the parsed XML event stream
     :raises ParseError: if the XML text is not well-formed
     """
-    return Stream(list(XMLParser(StringIO(text))))
+    return Stream(list(XMLParser(BytesIO(text))))
 
 
 class HTMLParser(html.HTMLParser, object):
@@ -387,7 +395,7 @@ class HTMLParser(html.HTMLParser, object):
 
     def handle_entityref(self, name):
         try:
-            text = unichr(htmlentitydefs.name2codepoint[name])
+            text = unichr(entities.name2codepoint[name])
         except KeyError:
             text = '&%s;' % name
         self._enqueue(TEXT, text)
@@ -421,7 +429,7 @@ def HTML(text, encoding='utf-8'):
     :raises ParseError: if the HTML text is not well-formed, and error recovery
                         fails
     """
-    return Stream(list(HTMLParser(StringIO(text), encoding=encoding)))
+    return Stream(list(HTMLParser(BytesIO(text), encoding=encoding)))
 
 def _coalesce(stream):
     """Coalesces adjacent TEXT events into a single event."""

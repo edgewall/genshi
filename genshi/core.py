@@ -14,9 +14,9 @@
 """Core classes for markup processing."""
 
 try:
+    reduce # builtin in Python < 3
+except NameError:
     from functools import reduce
-except ImportError:
-    pass # builtin in Python <= 2.5
 from itertools import chain
 import operator
 

@@ -263,9 +263,9 @@ class SimplePathStrategy(object):
 
         def nodes_equal(node1, node2):
             """Tests if two node tests are equal"""
-            if node1.__class__ is not node2.__class__:
+            if type(node1) is not type(node2):
                 return False
-            if node1.__class__ == LocalNameTest:
+            if type(node1) == LocalNameTest:
                 return node1.name == node2.name
             return True
 
@@ -548,7 +548,7 @@ class Path(object):
                 for predicate in predicates:
                     steps[-1] += '[%s]' % predicate
             paths.append('/'.join(steps))
-        return '<%s "%s">' % (self.__class__.__name__, '|'.join(paths))
+        return '<%s "%s">' % (type(self).__name__, '|'.join(paths))
 
     def select(self, stream, namespaces=None, variables=None):
         """Returns a substream of the given stream that matches the path.

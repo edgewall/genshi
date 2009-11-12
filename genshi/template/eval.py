@@ -120,7 +120,7 @@ class Code(object):
         return not self == other
 
     def __repr__(self):
-        return '%s(%r)' % (self.__class__.__name__, self.source)
+        return '%s(%r)' % (type(self).__name__, self.source)
 
 
 class Expression(Code):
@@ -266,7 +266,7 @@ class Undefined(object):
         return False
 
     def __repr__(self):
-        return '<%s %r>' % (self.__class__.__name__, self._name)
+        return '<%s %r>' % (type(self).__name__, self._name)
 
     def __str__(self):
         return 'undefined'

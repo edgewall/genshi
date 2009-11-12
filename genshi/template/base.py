@@ -416,7 +416,7 @@ class Template(DirectiveFactory):
         self._init_filters()
 
     def __repr__(self):
-        return '<%s "%s">' % (self.__class__.__name__, self.filename)
+        return '<%s "%s">' % (type(self).__name__, self.filename)
 
     def _init_filters(self):
         self.filters = [self._flatten]

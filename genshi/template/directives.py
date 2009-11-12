@@ -98,7 +98,7 @@ class Directive(object):
         expr = ''
         if getattr(self, 'expr', None) is not None:
             expr = ' "%s"' % self.expr.source
-        return '<%s%s>' % (self.__class__.__name__, expr)
+        return '<%s%s>' % (type(self).__name__, expr)
 
     @classmethod
     def _parse_expr(cls, expr, template, lineno=-1, offset=-1):
@@ -319,7 +319,7 @@ class DefDirective(Directive):
         return []
 
     def __repr__(self):
-        return '<%s "%s">' % (self.__class__.__name__, self.name)
+        return '<%s "%s">' % (type(self).__name__, self.name)
 
 
 class ForDirective(Directive):
@@ -371,7 +371,7 @@ class ForDirective(Directive):
             ctxt.pop()
 
     def __repr__(self):
-        return '<%s>' % self.__class__.__name__
+        return '<%s>' % type(self).__name__
 
 
 class IfDirective(Directive):
@@ -450,7 +450,7 @@ class MatchDirective(Directive):
         return []
 
     def __repr__(self):
-        return '<%s "%s">' % (self.__class__.__name__, self.path.source)
+        return '<%s "%s">' % (type(self).__name__, self.path.source)
 
 
 class ReplaceDirective(Directive):
@@ -722,4 +722,4 @@ class WithDirective(Directive):
         ctxt.pop()
 
     def __repr__(self):
-        return '<%s>' % (self.__class__.__name__)
+        return '<%s>' % (type(self).__name__)

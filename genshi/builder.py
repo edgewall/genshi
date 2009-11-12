@@ -101,7 +101,7 @@ class Fragment(object):
         return self._generate()
 
     def __repr__(self):
-        return '<%s>' % self.__class__.__name__
+        return '<%s>' % type(self).__name__
 
     def __str__(self):
         return str(self.generate())
@@ -262,7 +262,7 @@ class Element(Fragment):
         return self
 
     def __repr__(self):
-        return '<%s "%s">' % (self.__class__.__name__, self.tag)
+        return '<%s "%s">' % (type(self).__name__, self.tag)
 
     def _generate(self):
         yield START, (self.tag, self.attrib), (None, -1, -1)

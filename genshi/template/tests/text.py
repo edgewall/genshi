@@ -33,22 +33,22 @@ class OldTextTemplateTestCase(unittest.TestCase):
 
     def test_escaping(self):
         tmpl = OldTextTemplate('\\#escaped')
-        self.assertEqual('#escaped', str(tmpl.generate()))
+        self.assertEqual('#escaped', tmpl.generate().render())
 
     def test_comment(self):
         tmpl = OldTextTemplate('## a comment')
-        self.assertEqual('', str(tmpl.generate()))
+        self.assertEqual('', tmpl.generate().render())
 
     def test_comment_escaping(self):
         tmpl = OldTextTemplate('\\## escaped comment')
-        self.assertEqual('## escaped comment', str(tmpl.generate()))
+        self.assertEqual('## escaped comment', tmpl.generate().render())
 
     def test_end_with_args(self):
         tmpl = OldTextTemplate("""
         #if foo
           bar
         #end 'if foo'""")
-        self.assertEqual('\n', str(tmpl.generate(foo=False)))
+        self.assertEqual('\n', tmpl.generate(foo=False).render())
 
     def test_latin1_encoded(self):
         text = u'$foo\xf6$bar'.encode('iso-8859-1')
@@ -126,22 +126,22 @@ class NewTextTemplateTestCase(unittest.TestCase):
 
     def test_escaping(self):
         tmpl = NewTextTemplate('\\{% escaped %}')
-        self.assertEqual('{% escaped %}', str(tmpl.generate()))
+        self.assertEqual('{% escaped %}', tmpl.generate().render())
 
     def test_comment(self):
         tmpl = NewTextTemplate('{# a comment #}')
-        self.assertEqual('', str(tmpl.generate()))
+        self.assertEqual('', tmpl.generate().render())
 
     def test_comment_escaping(self):
         tmpl = NewTextTemplate('\\{# escaped comment #}')
-        self.assertEqual('{# escaped comment #}', str(tmpl.generate()))
+        self.assertEqual('{# escaped comment #}', tmpl.generate().render())
 
     def test_end_with_args(self):
         tmpl = NewTextTemplate("""
 {% if foo %}
   bar
 {% end 'if foo' %}""")
-        self.assertEqual('\n', str(tmpl.generate(foo=False)))
+        self.assertEqual('\n', tmpl.generate(foo=False).render())
 
     def test_latin1_encoded(self):
         text = u'$foo\xf6$bar'.encode('iso-8859-1')
@@ -190,30 +190,30 @@ class NewTextTemplateTestCase(unittest.TestCase):
         Verify that a code block with trailing space does not cause a syntax
         error (see ticket #127).
         """
-        NewTextTemplate(u"""
+        NewTextTemplate("""
           {% python
             bar = 42
           $}
         """)
 
     def test_exec_import(self):
-        tmpl = NewTextTemplate(u"""{% python from datetime import timedelta %}
+        tmpl = NewTextTemplate("""{% python from datetime import timedelta %}
         ${timedelta(days=2)}
         """)
         self.assertEqual("""
         2 days, 0:00:00
-        """, str(tmpl.generate()))
+        """, tmpl.generate().render())
 
     def test_exec_def(self):
-        tmpl = NewTextTemplate(u"""{% python
+        tmpl = NewTextTemplate("""{% python
         def foo():
             return 42
         %}
         ${foo()}
         """)
-        self.assertEqual(u"""
+        self.assertEqual("""
         42
-        """, str(tmpl.generate()))
+        """, tmpl.generate().render())
 
     def test_include(self):
         file1 = open(os.path.join(self.dirname, 'tmpl1.txt'), 'w')

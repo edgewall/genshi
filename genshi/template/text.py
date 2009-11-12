@@ -169,7 +169,7 @@ class NewTextTemplate(Template):
 
         _escape_sub = self._escape_re.sub
         def _escape_repl(mo):
-            groups = filter(None, mo.groups()) 
+            groups = [g for g in mo.groups() if g]
             if not groups:
                 return ''
             return groups[0]

@@ -12,7 +12,6 @@
 # history and logs, available at http://genshi.edgewall.org/log/.
 
 import doctest
-from HTMLParser import HTMLParseError
 import unittest
 
 from genshi.builder import Element, tag
@@ -24,12 +23,12 @@ class ElementFactoryTestCase(unittest.TestCase):
 
     def test_link(self):
         link = tag.a(href='#', title='Foo', accesskey=None)('Bar')
-        bits = iter(link.generate())
+        events = list(link.generate())
         self.assertEqual((Stream.START,
                           ('a', Attrs([('href', "#"), ('title', "Foo")])),
-                          (None, -1, -1)), bits.next())
-        self.assertEqual((Stream.TEXT, u'Bar', (None, -1, -1)), bits.next())
-        self.assertEqual((Stream.END, 'a', (None, -1, -1)), bits.next())
+                          (None, -1, -1)), events[0])
+        self.assertEqual((Stream.TEXT, 'Bar', (None, -1, -1)), events[1])
+        self.assertEqual((Stream.END, 'a', (None, -1, -1)), events[2])
 
     def test_nonstring_attributes(self):
         """
@@ -37,41 +36,40 @@ class ElementFactoryTestCase(unittest.TestCase):
         non-string type), it is coverted to a string when the stream is
         generated.
         """
-        event = iter(tag.foo(id=3)).next()
+        events = list(tag.foo(id=3))
         self.assertEqual((Stream.START, ('foo', Attrs([('id', '3')])),
-                          (None, -1, -1)),
-                         event)
+                          (None, -1, -1)), events[0])
 
     def test_duplicate_attributes(self):
         link = tag.a(href='#1', href_='#2')('Bar')
-        bits = iter(link.generate())
-        self.assertEqual((Stream.START,
-                          ('a', Attrs([('href', "#1")])),
-                          (None, -1, -1)), bits.next())
-        self.assertEqual((Stream.TEXT, u'Bar', (None, -1, -1)), bits.next())
-        self.assertEqual((Stream.END, 'a', (None, -1, -1)), bits.next())
+        events = list(link.generate())
+        self.assertEqual((Stream.START, ('a', Attrs([('href', "#1")])),
+                         (None, -1, -1)), events[0])
+        self.assertEqual((Stream.TEXT, 'Bar', (None, -1, -1)), events[1])
+        self.assertEqual((Stream.END, 'a', (None, -1, -1)), events[2])
 
     def test_stream_as_child(self):
-        xml = list(tag.span(XML('<b>Foo</b>')).generate())
-        self.assertEqual(5, len(xml))
-        self.assertEqual((Stream.START, ('span', ())), xml[0][:2])
-        self.assertEqual((Stream.START, ('b', ())), xml[1][:2])
-        self.assertEqual((Stream.TEXT, 'Foo'), xml[2][:2])
-        self.assertEqual((Stream.END, 'b'), xml[3][:2])
-        self.assertEqual((Stream.END, 'span'), xml[4][:2])
+        events = list(tag.span(XML('<b>Foo</b>')).generate())
+        self.assertEqual(5, len(events))
+        self.assertEqual((Stream.START, ('span', ())), events[0][:2])
+        self.assertEqual((Stream.START, ('b', ())), events[1][:2])
+        self.assertEqual((Stream.TEXT, 'Foo'), events[2][:2])
+        self.assertEqual((Stream.END, 'b'), events[3][:2])
+        self.assertEqual((Stream.END, 'span'), events[4][:2])
 
     def test_markup_escape(self):
-        from genshi.core import Markup
         m = Markup('See %s') % tag.a('genshi',
                                      href='http://genshi.edgwall.org')
         self.assertEqual(m, Markup('See <a href="http://genshi.edgwall.org">'
                                    'genshi</a>'))
+
 
 def suite():
     suite = unittest.TestSuite()
     suite.addTest(doctest.DocTestSuite(Element.__module__))
     suite.addTest(unittest.makeSuite(ElementFactoryTestCase, 'test'))
     return suite
+
 
 if __name__ == '__main__':
     unittest.main(defaultTest='suite')

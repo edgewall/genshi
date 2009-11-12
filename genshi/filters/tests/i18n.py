@@ -88,7 +88,7 @@ class TranslatorTestCase(unittest.TestCase):
         translator = Translator(extract_text=False)
         messages = list(translator.extract(tmpl.stream))
         self.assertEqual(1, len(messages))
-        self.assertEqual((3, 'ngettext', (u'Singular', u'Plural', None), []),
+        self.assertEqual((3, 'ngettext', ('Singular', 'Plural', None), []),
                          messages[0])
 
     def test_extract_plural_form(self):
@@ -98,7 +98,7 @@ class TranslatorTestCase(unittest.TestCase):
         translator = Translator()
         messages = list(translator.extract(tmpl.stream))
         self.assertEqual(1, len(messages))
-        self.assertEqual((2, 'ngettext', (u'Singular', u'Plural', None), []),
+        self.assertEqual((2, 'ngettext', ('Singular', 'Plural', None), []),
                          messages[0])
 
     def test_extract_funky_plural_form(self):
@@ -126,7 +126,7 @@ class TranslatorTestCase(unittest.TestCase):
         translator = Translator()
         messages = list(translator.extract(tmpl.stream))
         self.assertEqual(1, len(messages))
-        self.assertEqual((2, None, u'Foo', []), messages[0])
+        self.assertEqual((2, None, 'Foo', []), messages[0])
 
     def test_extract_attribute_expr(self):
         tmpl = MarkupTemplate("""<html xmlns:py="http://genshi.edgewall.org/">
@@ -135,7 +135,7 @@ class TranslatorTestCase(unittest.TestCase):
         translator = Translator()
         messages = list(translator.extract(tmpl.stream))
         self.assertEqual(1, len(messages))
-        self.assertEqual((2, '_', u'Save', []), messages[0])
+        self.assertEqual((2, '_', 'Save', []), messages[0])
 
     def test_extract_non_included_attribute_interpolated(self):
         tmpl = MarkupTemplate("""<html xmlns:py="http://genshi.edgewall.org/">
@@ -144,7 +144,7 @@ class TranslatorTestCase(unittest.TestCase):
         translator = Translator()
         messages = list(translator.extract(tmpl.stream))
         self.assertEqual(1, len(messages))
-        self.assertEqual((2, None, u'Foo', []), messages[0])
+        self.assertEqual((2, None, 'Foo', []), messages[0])
 
     def test_extract_text_from_sub(self):
         tmpl = MarkupTemplate("""<html xmlns:py="http://genshi.edgewall.org/">
@@ -153,7 +153,7 @@ class TranslatorTestCase(unittest.TestCase):
         translator = Translator()
         messages = list(translator.extract(tmpl.stream))
         self.assertEqual(1, len(messages))
-        self.assertEqual((2, None, u'Foo', []), messages[0])
+        self.assertEqual((2, None, 'Foo', []), messages[0])
 
     def test_ignore_tag_with_fixed_xml_lang(self):
         tmpl = MarkupTemplate("""<html xmlns:py="http://genshi.edgewall.org/">
@@ -170,7 +170,7 @@ class TranslatorTestCase(unittest.TestCase):
         translator = Translator()
         messages = list(translator.extract(tmpl.stream))
         self.assertEqual(1, len(messages))
-        self.assertEqual((2, None, u'(c) 2007 Edgewall Software', []),
+        self.assertEqual((2, None, '(c) 2007 Edgewall Software', []),
                          messages[0])
 
     def test_ignore_attribute_with_expression(self):
@@ -468,7 +468,7 @@ class TranslatorTestCase(unittest.TestCase):
         tmpl.add_directives(Translator.NAMESPACE, translator)
         messages = list(translator.extract(tmpl.stream))
         self.assertEqual(1, len(messages))
-        self.assertEqual((3, None, u'Foo', ['As in foo bar']), messages[0])
+        self.assertEqual((3, None, 'Foo', ['As in foo bar']), messages[0])
         tmpl = MarkupTemplate("""<html xmlns:py="http://genshi.edgewall.org/"
             xmlns:i18n="http://genshi.edgewall.org/i18n">
           <p i18n:msg="" i18n:comment="As in foo bar">Foo</p>
@@ -477,7 +477,7 @@ class TranslatorTestCase(unittest.TestCase):
         tmpl.add_directives(Translator.NAMESPACE, translator)
         messages = list(translator.extract(tmpl.stream))
         self.assertEqual(1, len(messages))
-        self.assertEqual((3, None, u'Foo', ['As in foo bar']), messages[0])
+        self.assertEqual((3, None, 'Foo', ['As in foo bar']), messages[0])
 
     def test_translate_i18n_msg_with_comment(self):
         tmpl = MarkupTemplate("""<html xmlns:py="http://genshi.edgewall.org/"
@@ -499,8 +499,8 @@ class TranslatorTestCase(unittest.TestCase):
         translator = Translator()
         messages = list(translator.extract(tmpl.stream))
         self.assertEqual(2, len(messages))
-        self.assertEqual((3, None, u'Foo bar', []), messages[0])
-        self.assertEqual((3, None, u'Foo', []), messages[1])
+        self.assertEqual((3, None, 'Foo bar', []), messages[0])
+        self.assertEqual((3, None, 'Foo', []), messages[1])
 
     def test_translate_i18n_msg_with_attr(self):
         tmpl = MarkupTemplate("""<html xmlns:py="http://genshi.edgewall.org/"
@@ -509,7 +509,7 @@ class TranslatorTestCase(unittest.TestCase):
         </html>""")
         gettext = lambda s: u"Voh"
         translator = Translator(DummyTranslations({
-            'Foo': u'Voh',
+            'Foo': 'Voh',
             'Foo bar': u'Voh bär'
         }))
         tmpl.filters.insert(0, translator)
@@ -554,7 +554,7 @@ class TranslatorTestCase(unittest.TestCase):
         messages = list(translator.extract(tmpl.stream))
         self.assertEqual(1, len(messages))
         self.assertEqual(
-            (3, None, u'Changed %(date)s ago by %(author)s', []), messages[0]
+            (3, None, 'Changed %(date)s ago by %(author)s', []), messages[0]
         )
 
     def test_i18n_msg_ticket_300_translate(self):
@@ -565,7 +565,7 @@ class TranslatorTestCase(unittest.TestCase):
           </i18n:msg>
         </html>""")
         translations = DummyTranslations({
-            u'Changed %(date)s ago by %(author)s': u'Modificado à %(date)s por %(author)s'
+            'Changed %(date)s ago by %(author)s': u'Modificado à %(date)s por %(author)s'
         })
         translator = Translator(translations)
         translator.setup(tmpl)
@@ -619,12 +619,12 @@ class TranslatorTestCase(unittest.TestCase):
         messages = list(translator.extract(tmpl.stream))
         self.assertEqual(1, len(messages))
         self.assertEqual(
-            u'Before you do that, though, please first try\n            '
-            u'[1:[2:searching]\n            for similar issues], as it is '
-            u'quite likely that this problem\n            has been reported '
-            u'before. For questions about installation\n            and '
-            u'configuration of Trac, please try the\n            '
-            u'[3:mailing list]\n            instead of filing a ticket.',
+            'Before you do that, though, please first try\n            '
+            '[1:[2:searching]\n            for similar issues], as it is '
+            'quite likely that this problem\n            has been reported '
+            'before. For questions about installation\n            and '
+            'configuration of Trac, please try the\n            '
+            '[3:mailing list]\n            instead of filing a ticket.',
             messages[0][2]
         )
 
@@ -641,12 +641,12 @@ class TranslatorTestCase(unittest.TestCase):
           </p>
         </html>""")
         translations = DummyTranslations({
-            u'Before you do that, though, please first try\n            '
-            u'[1:[2:searching]\n            for similar issues], as it is '
-            u'quite likely that this problem\n            has been reported '
-            u'before. For questions about installation\n            and '
-            u'configuration of Trac, please try the\n            '
-            u'[3:mailing list]\n            instead of filing a ticket.':
+            'Before you do that, though, please first try\n            '
+            '[1:[2:searching]\n            for similar issues], as it is '
+            'quite likely that this problem\n            has been reported '
+            'before. For questions about installation\n            and '
+            'configuration of Trac, please try the\n            '
+            '[3:mailing list]\n            instead of filing a ticket.':
                 u'Antes de o fazer, porém,\n            '
                 u'[1:por favor tente [2:procurar]\n            por problemas semelhantes], uma vez que '
                 u'é muito provável que este problema\n            já tenha sido reportado '
@@ -681,8 +681,8 @@ class TranslatorTestCase(unittest.TestCase):
           </p>
         </html>""")
         translations = DummyTranslations({
-            u'[1:Note:] This repository is defined in\n            '
-            u'[2:[3:trac.ini]]\n            and cannot be edited on this page.':
+            '[1:Note:] This repository is defined in\n            '
+            '[2:[3:trac.ini]]\n            and cannot be edited on this page.':
                 u'[1:Nota:] Este repositório está definido em \n           '
                 u'[2:[3:trac.ini]]\n            e não pode ser editado nesta página.',
         })
@@ -691,8 +691,8 @@ class TranslatorTestCase(unittest.TestCase):
         messages = list(translator.extract(tmpl.stream))
         self.assertEqual(1, len(messages))
         self.assertEqual(
-            u'[1:Note:] This repository is defined in\n            '
-            u'[2:[3:trac.ini]]\n            and cannot be edited on this page.',
+            '[1:Note:] This repository is defined in\n            '
+            '[2:[3:trac.ini]]\n            and cannot be edited on this page.',
             messages[0][2]
         )
         self.assertEqual("""<html>
@@ -1003,8 +1003,8 @@ class TranslatorTestCase(unittest.TestCase):
         tmpl.add_directives(Translator.NAMESPACE, translator)
         messages = list(translator.extract(tmpl.stream))
         self.assertEqual(2, len(messages))
-        self.assertEqual((3, 'ngettext', (u'FooBar', u'FooBars'), []), messages[0])
-        self.assertEqual((7, 'ngettext', (u'FooBar', u'FooBars'), []), messages[1])
+        self.assertEqual((3, 'ngettext', ('FooBar', 'FooBars'), []), messages[0])
+        self.assertEqual((7, 'ngettext', ('FooBar', 'FooBars'), []), messages[1])
 
     def test_extract_i18n_choose_as_directive(self):
         tmpl = MarkupTemplate("""<html xmlns:py="http://genshi.edgewall.org/"
@@ -1022,8 +1022,8 @@ class TranslatorTestCase(unittest.TestCase):
         tmpl.add_directives(Translator.NAMESPACE, translator)
         messages = list(translator.extract(tmpl.stream))
         self.assertEqual(2, len(messages))
-        self.assertEqual((3, 'ngettext', (u'FooBar', u'FooBars'), []), messages[0])
-        self.assertEqual((7, 'ngettext', (u'FooBar', u'FooBars'), []), messages[1])
+        self.assertEqual((3, 'ngettext', ('FooBar', 'FooBars'), []), messages[0])
+        self.assertEqual((7, 'ngettext', ('FooBar', 'FooBars'), []), messages[1])
 
     def test_extract_i18n_choose_as_attribute_with_params(self):
         tmpl = MarkupTemplate("""<html xmlns:py="http://genshi.edgewall.org/"
@@ -1037,8 +1037,8 @@ class TranslatorTestCase(unittest.TestCase):
         tmpl.add_directives(Translator.NAMESPACE, translator)
         messages = list(translator.extract(tmpl.stream))
         self.assertEqual(1, len(messages))
-        self.assertEqual((3, 'ngettext', (u'Foo %(fname)s %(lname)s',
-                                          u'Foos %(fname)s %(lname)s'), []),
+        self.assertEqual((3, 'ngettext', ('Foo %(fname)s %(lname)s',
+                                          'Foos %(fname)s %(lname)s'), []),
                          messages[0])
 
     def test_extract_i18n_choose_as_attribute_with_params_and_domain_as_param(self):
@@ -1054,8 +1054,8 @@ class TranslatorTestCase(unittest.TestCase):
         tmpl.add_directives(Translator.NAMESPACE, translator)
         messages = list(translator.extract(tmpl.stream))
         self.assertEqual(1, len(messages))
-        self.assertEqual((4, 'ngettext', (u'Foo %(fname)s %(lname)s',
-                                          u'Foos %(fname)s %(lname)s'), []),
+        self.assertEqual((4, 'ngettext', ('Foo %(fname)s %(lname)s',
+                                          'Foos %(fname)s %(lname)s'), []),
                          messages[0])
 
     def test_extract_i18n_choose_as_directive_with_params(self):
@@ -1074,11 +1074,11 @@ class TranslatorTestCase(unittest.TestCase):
         tmpl.add_directives(Translator.NAMESPACE, translator)
         messages = list(translator.extract(tmpl.stream))
         self.assertEqual(2, len(messages))
-        self.assertEqual((3, 'ngettext', (u'Foo %(fname)s %(lname)s',
-                                          u'Foos %(fname)s %(lname)s'), []),
+        self.assertEqual((3, 'ngettext', ('Foo %(fname)s %(lname)s',
+                                          'Foos %(fname)s %(lname)s'), []),
                          messages[0])
-        self.assertEqual((7, 'ngettext', (u'Foo %(fname)s %(lname)s',
-                                          u'Foos %(fname)s %(lname)s'), []),
+        self.assertEqual((7, 'ngettext', ('Foo %(fname)s %(lname)s',
+                                          'Foos %(fname)s %(lname)s'), []),
                          messages[1])
 
     def test_extract_i18n_choose_as_directive_with_params_and_domain_as_directive(self):
@@ -1099,11 +1099,11 @@ class TranslatorTestCase(unittest.TestCase):
         tmpl.add_directives(Translator.NAMESPACE, translator)
         messages = list(translator.extract(tmpl.stream))
         self.assertEqual(2, len(messages))
-        self.assertEqual((4, 'ngettext', (u'Foo %(fname)s %(lname)s',
-                                          u'Foos %(fname)s %(lname)s'), []),
+        self.assertEqual((4, 'ngettext', ('Foo %(fname)s %(lname)s',
+                                          'Foos %(fname)s %(lname)s'), []),
                          messages[0])
-        self.assertEqual((9, 'ngettext', (u'Foo %(fname)s %(lname)s',
-                                          u'Foos %(fname)s %(lname)s'), []),
+        self.assertEqual((9, 'ngettext', ('Foo %(fname)s %(lname)s',
+                                          'Foos %(fname)s %(lname)s'), []),
                          messages[1])
 
     def test_extract_i18n_choose_as_attribute_with_params_and_comment(self):
@@ -1118,9 +1118,9 @@ class TranslatorTestCase(unittest.TestCase):
         tmpl.add_directives(Translator.NAMESPACE, translator)
         messages = list(translator.extract(tmpl.stream))
         self.assertEqual(1, len(messages))
-        self.assertEqual((3, 'ngettext', (u'Foo %(fname)s %(lname)s',
-                                          u'Foos %(fname)s %(lname)s'),
-                          [u'As in Foo Bar']),
+        self.assertEqual((3, 'ngettext', ('Foo %(fname)s %(lname)s',
+                                          'Foos %(fname)s %(lname)s'),
+                          ['As in Foo Bar']),
                          messages[0])
 
     def test_extract_i18n_choose_as_directive_with_params_and_comment(self):
@@ -1135,9 +1135,9 @@ class TranslatorTestCase(unittest.TestCase):
         tmpl.add_directives(Translator.NAMESPACE, translator)
         messages = list(translator.extract(tmpl.stream))
         self.assertEqual(1, len(messages))
-        self.assertEqual((3, 'ngettext', (u'Foo %(fname)s %(lname)s',
-                                          u'Foos %(fname)s %(lname)s'),
-                          [u'As in Foo Bar']),
+        self.assertEqual((3, 'ngettext', ('Foo %(fname)s %(lname)s',
+                                          'Foos %(fname)s %(lname)s'),
+                          ['As in Foo Bar']),
                          messages[0])
 
     def test_translate_i18n_domain_with_nested_inlcudes(self):
@@ -1369,7 +1369,7 @@ class TranslatorTestCase(unittest.TestCase):
         tmpl.add_directives(Translator.NAMESPACE, translator)
         messages = list(translator.extract(tmpl.stream))
         self.assertEqual(1, len(messages))
-        self.assertEqual((3, None, u'Please see [1:Help] for details.', []),
+        self.assertEqual((3, None, 'Please see [1:Help] for details.', []),
                          messages[0])
 
     def test_extract_i18n_msg_with_py_strip_and_comment(self):
@@ -1383,7 +1383,7 @@ class TranslatorTestCase(unittest.TestCase):
         tmpl.add_directives(Translator.NAMESPACE, translator)
         messages = list(translator.extract(tmpl.stream))
         self.assertEqual(1, len(messages))
-        self.assertEqual((3, None, u'Please see [1:Help] for details.',
+        self.assertEqual((3, None, 'Please see [1:Help] for details.',
                           ['Foo']), messages[0])
 
     def test_extract_i18n_choose_as_attribute_and_py_strip(self):
@@ -1398,7 +1398,7 @@ class TranslatorTestCase(unittest.TestCase):
         tmpl.add_directives(Translator.NAMESPACE, translator)
         messages = list(translator.extract(tmpl.stream))
         self.assertEqual(1, len(messages))
-        self.assertEqual((3, 'ngettext', (u'FooBar', u'FooBars'), []), messages[0])
+        self.assertEqual((3, 'ngettext', ('FooBar', 'FooBars'), []), messages[0])
 
     def test_translate_i18n_domain_with_inline_directive_on_START_NS(self):
         tmpl = MarkupTemplate("""<html xmlns:py="http://genshi.edgewall.org/"
@@ -1442,10 +1442,10 @@ class ExtractTestCase(unittest.TestCase):
         </html>""")
         results = list(extract(buf, ['_', 'ngettext'], [], {}))
         self.assertEqual([
-            (3, None, u'Example', []),
-            (6, None, u'Example', []),
-            (7, '_', u'Hello, %(name)s', []),
-            (8, 'ngettext', (u'You have %d item', u'You have %d items', None),
+            (3, None, 'Example', []),
+            (6, None, 'Example', []),
+            (7, '_', 'Hello, %(name)s', []),
+            (8, 'ngettext', ('You have %d item', 'You have %d items', None),
                              []),
         ], results)
 
@@ -1458,7 +1458,7 @@ class ExtractTestCase(unittest.TestCase):
             'extract_text': 'no'
         }))
         self.assertEqual([
-            (3, 'ngettext', (u'Singular', u'Plural', None), []),
+            (3, 'ngettext', ('Singular', 'Plural', None), []),
         ], results)
 
     def test_text_template_extraction(self):
@@ -1475,9 +1475,9 @@ class ExtractTestCase(unittest.TestCase):
             'template_class': 'genshi.template:TextTemplate'
         }))
         self.assertEqual([
-            (1, '_', u'Dear %(name)s', []),
-            (3, 'ngettext', (u'Your item:', u'Your items', None), []),
-            (7, None, u'All the best,\n        Foobar', [])
+            (1, '_', 'Dear %(name)s', []),
+            (3, 'ngettext', ('Your item:', 'Your items', None), []),
+            (7, None, 'All the best,\n        Foobar', [])
         ], results)
 
     def test_extraction_with_keyword_arg(self):
@@ -1486,7 +1486,7 @@ class ExtractTestCase(unittest.TestCase):
         </html>""")
         results = list(extract(buf, ['gettext'], [], {}))
         self.assertEqual([
-            (2, 'gettext', (u'Foobar'), []),
+            (2, 'gettext', ('Foobar'), []),
         ], results)
 
     def test_extraction_with_nonstring_arg(self):
@@ -1495,7 +1495,7 @@ class ExtractTestCase(unittest.TestCase):
         </html>""")
         results = list(extract(buf, ['dgettext'], [], {}))
         self.assertEqual([
-            (2, 'dgettext', (None, u'Foobar'), []),
+            (2, 'dgettext', (None, 'Foobar'), []),
         ], results)
 
     def test_extraction_inside_ignored_tags(self):
@@ -1509,7 +1509,7 @@ class ExtractTestCase(unittest.TestCase):
         </html>""")
         results = list(extract(buf, ['_'], [], {}))
         self.assertEqual([
-            (5, '_', u'Please wait...', []),
+            (5, '_', 'Please wait...', []),
         ], results)
 
     def test_extraction_inside_ignored_tags_with_directives(self):
@@ -1565,16 +1565,16 @@ class ExtractTestCase(unittest.TestCase):
         messages = list(translator.extract(tmpl.stream))
         self.assertEqual(10, len(messages))
         self.assertEqual([
-            (3, None, u'View differences', []),
-            (6, None, u'inline', []),
-            (8, None, u'side by side', []),
-            (10, None, u'Show', []),
-            (13, None, u'lines around each change', []),
-            (16, None, u'Ignore:', []),
-            (20, None, u'Blank lines', []),
-            (25, None, u'Case changes',[]),
-            (30, None, u'White space changes', []),
-            (34, '_', u'Update', [])], messages)
+            (3, None, 'View differences', []),
+            (6, None, 'inline', []),
+            (8, None, 'side by side', []),
+            (10, None, 'Show', []),
+            (13, None, 'lines around each change', []),
+            (16, None, 'Ignore:', []),
+            (20, None, 'Blank lines', []),
+            (25, None, 'Case changes',[]),
+            (30, None, 'White space changes', []),
+            (34, '_', 'Update', [])], messages)
 
 
 def suite():

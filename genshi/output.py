@@ -26,6 +26,7 @@ __all__ = ['encode', 'get_serializer', 'DocType', 'XMLSerializer',
            'XHTMLSerializer', 'HTMLSerializer', 'TextSerializer']
 __docformat__ = 'restructuredtext en'
 
+
 def encode(iterator, method='xml', encoding='utf-8', out=None):
     """Encode serializer output into a string.
     
@@ -56,6 +57,7 @@ def encode(iterator, method='xml', encoding='utf-8', out=None):
         return _encode(''.join(list(iterator)))
     for chunk in iterator:
         out.write(_encode(chunk))
+
 
 def get_serializer(method='xml', **kwargs):
     """Return a serializer object for the given method.
@@ -542,14 +544,15 @@ class TextSerializer(object):
     that markup is by default passed through unchanged:
     
     >>> elem = tag.div(Markup('<a href="foo">Hello &amp; Bye!</a><br/>'))
-    >>> print(elem.generate().render(TextSerializer))
+    >>> print(elem.generate().render(TextSerializer, encoding=None))
     <a href="foo">Hello &amp; Bye!</a><br/>
     
     You can use the ``strip_markup`` to change this behavior, so that tags and
     entities are stripped from the output (or in the case of entities,
     replaced with the equivalent character):
 
-    >>> print(elem.generate().render(TextSerializer, strip_markup=True))
+    >>> print(elem.generate().render(TextSerializer, strip_markup=True,
+    ...                              encoding=None))
     Hello & Bye!
     """
 

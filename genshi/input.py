@@ -88,8 +88,8 @@ class XMLParser(object):
     >>> parser = XMLParser(StringIO('<root id="2"><child>Foo</child></root>'))
     >>> for kind, data, pos in parser:
     ...     print('%s %s' % (kind, data))
-    START (QName(u'root'), Attrs([(QName(u'id'), u'2')]))
-    START (QName(u'child'), Attrs())
+    START (QName('root'), Attrs([(QName('id'), u'2')]))
+    START (QName('child'), Attrs())
     TEXT Foo
     END child
     END root
@@ -289,8 +289,8 @@ class HTMLParser(html.HTMLParser, object):
     >>> parser = HTMLParser(StringIO('<UL compact><LI>Foo</UL>'))
     >>> for kind, data, pos in parser:
     ...     print('%s %s' % (kind, data))
-    START (QName(u'ul'), Attrs([(QName(u'compact'), u'compact')]))
-    START (QName(u'li'), Attrs())
+    START (QName('ul'), Attrs([(QName('compact'), u'compact')]))
+    START (QName('li'), Attrs())
     TEXT Foo
     END li
     END ul

@@ -48,15 +48,15 @@ of the form ``(kind, data, pos)``, where:
   >>> for kind, data, pos in stream:
   ...     print('%s %r %r' % (kind, data, pos))
   ... 
-  START (QName(u'p'), Attrs([(QName(u'class'), u'intro')])) (None, 1, 0)
+  START (QName('p'), Attrs([(QName('class'), u'intro')])) (None, 1, 0)
   TEXT u'Some text and ' (None, 1, 17)
-  START (QName(u'a'), Attrs([(QName(u'href'), u'http://example.org/')])) (None, 1, 31)
+  START (QName('a'), Attrs([(QName('href'), u'http://example.org/')])) (None, 1, 31)
   TEXT u'a link' (None, 1, 61)
-  END QName(u'a') (None, 1, 67)
+  END QName('a') (None, 1, 67)
   TEXT u'.' (None, 1, 71)
-  START (QName(u'br'), Attrs()) (None, 1, 72)
-  END QName(u'br') (None, 1, 77)
-  END QName(u'p') (None, 1, 77)
+  START (QName('br'), Attrs()) (None, 1, 72)
+  END QName('br') (None, 1, 77)
+  END QName('p') (None, 1, 77)
 
 
 Filtering
@@ -379,7 +379,7 @@ declarations):
 
 .. code-block:: python
 
-  START, (QName(u'p'), Attrs([(QName(u'class'), u'intro')])), pos
+  START, (QName('p'), Attrs([(QName('class'), u'intro')])), pos
 
 END
 ---
@@ -390,7 +390,7 @@ describing the qualified name of the tag:
 
 .. code-block:: python
 
-  END, QName(u'p'), pos
+  END, QName('p'), pos
 
 TEXT
 ----

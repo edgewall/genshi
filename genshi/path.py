@@ -619,7 +619,7 @@ class Path(object):
         >>> for event in xml:
         ...     if test(event, namespaces, variables):
         ...         print('%s %r' % (event[0], event[1]))
-        START (QName(u'child'), Attrs([(QName(u'id'), u'2')]))
+        START (QName('child'), Attrs([(QName('id'), u'2')]))
         
         :param ignore_context: if `True`, the path is interpreted like a pattern
                                in XSLT, meaning for example that it will match

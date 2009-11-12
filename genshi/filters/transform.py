@@ -235,13 +235,13 @@ class Transformer(object):
 
         >>> html = HTML('<body>Some <em>test</em> text</body>')
         >>> print(html | Transformer().select('.//em').trace())
-        (None, ('START', (QName(u'body'), Attrs()), (None, 1, 0)))
+        (None, ('START', (QName('body'), Attrs()), (None, 1, 0)))
         (None, ('TEXT', u'Some ', (None, 1, 6)))
-        ('ENTER', ('START', (QName(u'em'), Attrs()), (None, 1, 11)))
+        ('ENTER', ('START', (QName('em'), Attrs()), (None, 1, 11)))
         ('INSIDE', ('TEXT', u'test', (None, 1, 15)))
-        ('EXIT', ('END', QName(u'em'), (None, 1, 19)))
+        ('EXIT', ('END', QName('em'), (None, 1, 19)))
         (None, ('TEXT', u' text', (None, 1, 24)))
-        (None, ('END', QName(u'body'), (None, 1, 29)))
+        (None, ('END', QName('body'), (None, 1, 29)))
         <body>Some <em>test</em> text</body>
 
         :param path: an XPath expression (as string) or a `Path` instance
@@ -259,13 +259,13 @@ class Transformer(object):
 
         >>> html = HTML('<body>Some <em>test</em> text</body>')
         >>> print(html | Transformer('//em').invert().trace())
-        ('OUTSIDE', ('START', (QName(u'body'), Attrs()), (None, 1, 0)))
+        ('OUTSIDE', ('START', (QName('body'), Attrs()), (None, 1, 0)))
         ('OUTSIDE', ('TEXT', u'Some ', (None, 1, 6)))
-        (None, ('START', (QName(u'em'), Attrs()), (None, 1, 11)))
+        (None, ('START', (QName('em'), Attrs()), (None, 1, 11)))
         (None, ('TEXT', u'test', (None, 1, 15)))
-        (None, ('END', QName(u'em'), (None, 1, 19)))
+        (None, ('END', QName('em'), (None, 1, 19)))
         ('OUTSIDE', ('TEXT', u' text', (None, 1, 24)))
-        ('OUTSIDE', ('END', QName(u'body'), (None, 1, 29)))
+        ('OUTSIDE', ('END', QName('body'), (None, 1, 29)))
         <body>Some <em>test</em> text</body>
 
         :rtype: `Transformer`
@@ -279,13 +279,13 @@ class Transformer(object):
 
         >>> html = HTML('<body>Some <em>test</em> text</body>')
         >>> print(html | Transformer('//em').end().trace())
-        ('OUTSIDE', ('START', (QName(u'body'), Attrs()), (None, 1, 0)))
+        ('OUTSIDE', ('START', (QName('body'), Attrs()), (None, 1, 0)))
         ('OUTSIDE', ('TEXT', u'Some ', (None, 1, 6)))
-        ('OUTSIDE', ('START', (QName(u'em'), Attrs()), (None, 1, 11)))
+        ('OUTSIDE', ('START', (QName('em'), Attrs()), (None, 1, 11)))
         ('OUTSIDE', ('TEXT', u'test', (None, 1, 15)))
-        ('OUTSIDE', ('END', QName(u'em'), (None, 1, 19)))
+        ('OUTSIDE', ('END', QName('em'), (None, 1, 19)))
         ('OUTSIDE', ('TEXT', u' text', (None, 1, 24)))
-        ('OUTSIDE', ('END', QName(u'body'), (None, 1, 29)))
+        ('OUTSIDE', ('END', QName('body'), (None, 1, 29)))
         <body>Some <em>test</em> text</body>
 
         :return: the stream augmented by transformation marks
@@ -470,7 +470,7 @@ class Transformer(object):
         ...     print(attrs)
         ...     return attrs.get(name)
         >>> print(html | Transformer('body/em').attr('class', print_attr))
-        Attrs([(QName(u'class'), u'before')])
+        Attrs([(QName('class'), u'before')])
         Attrs()
         <html><head><title>Some Title</title></head><body>Some <em
         class="before">body</em> <em>text</em>.</body></html>
@@ -660,13 +660,13 @@ class Transformer(object):
 
         >>> html = HTML('<body>Some <em>test</em> text</body>')
         >>> print(html | Transformer('em').trace())
-        (None, ('START', (QName(u'body'), Attrs()), (None, 1, 0)))
+        (None, ('START', (QName('body'), Attrs()), (None, 1, 0)))
         (None, ('TEXT', u'Some ', (None, 1, 6)))
-        ('ENTER', ('START', (QName(u'em'), Attrs()), (None, 1, 11)))
+        ('ENTER', ('START', (QName('em'), Attrs()), (None, 1, 11)))
         ('INSIDE', ('TEXT', u'test', (None, 1, 15)))
-        ('EXIT', ('END', QName(u'em'), (None, 1, 19)))
+        ('EXIT', ('END', QName('em'), (None, 1, 19)))
         (None, ('TEXT', u' text', (None, 1, 24)))
-        (None, ('END', QName(u'body'), (None, 1, 29)))
+        (None, ('END', QName('body'), (None, 1, 29)))
         <body>Some <em>test</em> text</body>
 
         :param prefix: a string to prefix each event with in the output

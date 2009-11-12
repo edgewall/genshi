@@ -182,13 +182,25 @@ class AttrsTestCase(unittest.TestCase):
 
 class NamespaceTestCase(unittest.TestCase):
 
+    def test_repr(self):
+        self.assertEqual("Namespace('http://www.example.org/namespace')",
+                         repr(Namespace('http://www.example.org/namespace')))
+
+    def test_repr_eval(self):
+        ns = Namespace('http://www.example.org/namespace')
+        self.assertEqual(eval(repr(ns)), ns)
+
+    def test_repr_eval_non_ascii(self):
+        ns = Namespace(u'http://www.example.org/nämespäcé')
+        self.assertEqual(eval(repr(ns)), ns)
+
     def test_pickle(self):
         ns = Namespace('http://www.example.org/namespace')
         buf = StringIO()
         pickle.dump(ns, buf, 2)
         buf.seek(0)
         unpickled = pickle.load(buf)
-        self.assertEquals('<Namespace "http://www.example.org/namespace">',
+        self.assertEquals("Namespace('http://www.example.org/namespace')",
                           repr(unpickled))
         self.assertEquals('http://www.example.org/namespace', unpickled.uri)
 
@@ -207,18 +219,22 @@ class QNameTestCase(unittest.TestCase):
         self.assertEquals('elem', unpickled.localname)
 
     def test_repr(self):
-        self.assertEqual("QName(u'elem')", repr(QName('elem')))
-        self.assertEqual("QName(u'http://www.example.org/namespace}elem')",
+        self.assertEqual("QName('elem')", repr(QName('elem')))
+        self.assertEqual("QName('http://www.example.org/namespace}elem')",
                          repr(QName('http://www.example.org/namespace}elem')))
+
+    def test_repr_eval(self):
+        qn = QName('elem')
+        self.assertEqual(eval(repr(qn)), qn)
+
+    def test_repr_eval_non_ascii(self):
+        qn = QName(u'élem')
+        self.assertEqual(eval(repr(qn)), qn)
 
     def test_leading_curly_brace(self):
         qname = QName('{http://www.example.org/namespace}elem')
         self.assertEquals('http://www.example.org/namespace', qname.namespace)
         self.assertEquals('elem', qname.localname)
-
-    def test_non_ascii(self):
-        qname = QName(u'http://www.example.org/namespace}gürü')
-        self.assertEqual(u'gürü', qname.localname)
 
 
 def suite():

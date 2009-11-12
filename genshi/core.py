@@ -20,7 +20,7 @@ except NameError:
 from itertools import chain
 import operator
 
-from genshi.util import plaintext, stripentities, striptags
+from genshi.util import plaintext, stripentities, striptags, stringrepr
 
 __all__ = ['Stream', 'Markup', 'escape', 'unescape', 'Attrs', 'Namespace',
            'QName']
@@ -463,7 +463,7 @@ class Markup(unicode):
         return Markup(num * unicode(self))
 
     def __repr__(self):
-        return '<%s %r>' % (self.__class__.__name__, unicode(self))
+        return "<%s %s>" % (self.__class__.__name__, unicode.__repr__(self))
 
     def join(self, seq, escape_quotes=True):
         """Return a `Markup` object which is the concatenation of the strings
@@ -600,7 +600,7 @@ class Namespace(object):
     
     >>> html = Namespace('http://www.w3.org/1999/xhtml')
     >>> html
-    <Namespace "http://www.w3.org/1999/xhtml">
+    Namespace('http://www.w3.org/1999/xhtml')
     >>> html.uri
     u'http://www.w3.org/1999/xhtml'
     
@@ -608,7 +608,7 @@ class Namespace(object):
     that namespace:
     
     >>> html.body
-    QName(u'http://www.w3.org/1999/xhtml}body')
+    QName('http://www.w3.org/1999/xhtml}body')
     >>> html.body.localname
     u'body'
     >>> html.body.namespace
@@ -618,7 +618,7 @@ class Namespace(object):
     attribute names that are not valid Python identifiers:
     
     >>> html['body']
-    QName(u'http://www.w3.org/1999/xhtml}body')
+    QName('http://www.w3.org/1999/xhtml}body')
     
     A `Namespace` object can also be used to test whether a specific `QName`
     belongs to that namespace using the ``in`` operator:
@@ -665,7 +665,7 @@ class Namespace(object):
         return hash(self.uri)
 
     def __repr__(self):
-        return '<Namespace "%s">' % self.uri
+        return 'Namespace(%s)' % stringrepr(self.uri)
 
     def __str__(self):
         return self.uri.encode('utf-8')
@@ -688,14 +688,14 @@ class QName(unicode):
     
     >>> qname = QName('foo')
     >>> qname
-    QName(u'foo')
+    QName('foo')
     >>> qname.localname
     u'foo'
     >>> qname.namespace
     
     >>> qname = QName('http://www.w3.org/1999/xhtml}body')
     >>> qname
-    QName(u'http://www.w3.org/1999/xhtml}body')
+    QName('http://www.w3.org/1999/xhtml}body')
     >>> qname.localname
     u'body'
     >>> qname.namespace
@@ -726,4 +726,4 @@ class QName(unicode):
         return (self.lstrip('{'),)
 
     def __repr__(self):
-        return 'QName(%s)' % unicode.__repr__(self.lstrip('{'))
+        return 'QName(%s)' % stringrepr(self.lstrip('{'))

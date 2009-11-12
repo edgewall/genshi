@@ -250,6 +250,15 @@ def striptags(text):
     return _STRIPTAGS_RE.sub('', text)
 
 
+def stringrepr(string):
+    slen = len(string)
+    ascii = string.encode('ascii', 'backslashreplace')
+    r = "'" +  ascii.replace("'", "\\'") + "'"
+    if (unicode is not str) and (len(ascii) > len(string)):
+        return 'u' + r
+    return r
+
+
 # Compatibility fallback implementations for older Python versions
 
 try:

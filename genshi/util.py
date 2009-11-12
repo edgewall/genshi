@@ -13,10 +13,7 @@
 
 """Various utility classes and functions."""
 
-try:
-    import htmlentitydefs as entities
-except ImportError:
-    from html import entities
+import htmlentitydefs as entities
 import re
 
 __docformat__ = 'restructuredtext en'
@@ -251,12 +248,11 @@ def striptags(text):
 
 
 def stringrepr(string):
-    slen = len(string)
     ascii = string.encode('ascii', 'backslashreplace')
-    r = "'" +  ascii.replace("'", "\\'") + "'"
-    if (unicode is not str) and (len(ascii) > len(string)):
-        return 'u' + r
-    return r
+    quoted = "'" +  ascii.replace("'", "\\'") + "'"
+    if len(ascii) > len(string):
+        return 'u' + quoted
+    return quoted
 
 
 # Compatibility fallback implementations for older Python versions

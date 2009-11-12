@@ -36,6 +36,7 @@ token_re = re.compile('%s|%s(?s)' % (
     PseudoToken
 ))
 
+
 def interpolate(text, filepath=None, lineno=-1, offset=0, lookup='strict'):
     """Parse the given string and extract expressions.
     
@@ -45,9 +46,9 @@ def interpolate(text, filepath=None, lineno=-1, offset=0, lookup='strict'):
     
     >>> for kind, data, pos in interpolate("hey ${foo}bar"):
     ...     print('%s %r' % (kind, data))
-    TEXT u'hey '
+    TEXT 'hey '
     EXPR Expression('foo')
-    TEXT u'bar'
+    TEXT 'bar'
     
     :param text: the text to parse
     :param filepath: absolute path to the file in which the text was found
@@ -68,7 +69,7 @@ def interpolate(text, filepath=None, lineno=-1, offset=0, lookup='strict'):
     for is_expr, chunk in chain(lex(text, pos, filepath), [(True, '')]):
         if is_expr:
             if textbuf:
-                yield TEXT, u''.join(textbuf), textpos
+                yield TEXT, ''.join(textbuf), textpos
                 del textbuf[:]
                 textpos = None
             if chunk:
@@ -90,6 +91,7 @@ def interpolate(text, filepath=None, lineno=-1, offset=0, lookup='strict'):
             pos[2] += len(lines[-1])
         else:
             pos[2] += len(chunk)
+
 
 def lex(text, textpos, filepath):
     offset = pos = 0

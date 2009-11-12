@@ -72,7 +72,7 @@ class AbstractTemplateEnginePlugin(object):
             raise ConfigurationError('Invalid value for allow_exec "%s"' %
                                      options.get('genshi.allow_exec'))
 
-        self.loader = TemplateLoader(filter(None, search_path),
+        self.loader = TemplateLoader([p for p in search_path if p],
                                      auto_reload=auto_reload,
                                      max_cache_size=max_cache_size,
                                      default_class=self.template_class,

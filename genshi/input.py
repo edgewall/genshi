@@ -16,25 +16,18 @@ sources.
 """
 
 from itertools import chain
-try:
-    import htmlentitydefs as entities
-    import HTMLParser as html
-except ImportError:
-    from html import entities
-    from html import parser as html
-try:
-    from StringIO import StringIO
-    BytesIO = StringIO
-except ImportError:
-    from io import BytesIO, StringIO
+import htmlentitydefs as entities
+import HTMLParser as html
+from StringIO import StringIO
 from xml.parsers import expat
 
 from genshi.core import Attrs, QName, Stream, stripentities
-from genshi.core import START, END, XML_DECL, DOCTYPE, TEXT, START_NS, END_NS, \
-                        START_CDATA, END_CDATA, PI, COMMENT
+from genshi.core import START, END, XML_DECL, DOCTYPE, TEXT, START_NS, \
+                        END_NS, START_CDATA, END_CDATA, PI, COMMENT
 
 __all__ = ['ET', 'ParseError', 'XMLParser', 'XML', 'HTMLParser', 'HTML']
 __docformat__ = 'restructuredtext en'
+
 
 def ET(element):
     """Convert a given ElementTree element to a markup stream.
@@ -177,7 +170,7 @@ class XMLParser(object):
 
     def _build_foreign(self, context, base, sysid, pubid):
         parser = self.expat.ExternalEntityParserCreate(context)
-        parser.ParseFile(BytesIO(self._external_dtd))
+        parser.ParseFile(StringIO(self._external_dtd))
         return 1
 
     def _enqueue(self, kind, data=None, pos=None):
@@ -275,7 +268,7 @@ def XML(text):
     :return: the parsed XML event stream
     :raises ParseError: if the XML text is not well-formed
     """
-    return Stream(list(XMLParser(BytesIO(text))))
+    return Stream(list(XMLParser(StringIO(text))))
 
 
 class HTMLParser(html.HTMLParser, object):
@@ -429,7 +422,8 @@ def HTML(text, encoding='utf-8'):
     :raises ParseError: if the HTML text is not well-formed, and error recovery
                         fails
     """
-    return Stream(list(HTMLParser(BytesIO(text), encoding=encoding)))
+    return Stream(list(HTMLParser(StringIO(text), encoding=encoding)))
+
 
 def _coalesce(stream):
     """Coalesces adjacent TEXT events into a single event."""

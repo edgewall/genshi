@@ -663,7 +663,7 @@ class Namespace(object):
         return hash(self.uri)
 
     def __repr__(self):
-        return 'Namespace(%s)' % stringrepr(self.uri)
+        return '%s(%s)' % (type(self).__name__, stringrepr(self.uri))
 
     def __str__(self):
         return self.uri.encode('utf-8')
@@ -724,4 +724,4 @@ class QName(unicode):
         return (self.lstrip('{'),)
 
     def __repr__(self):
-        return 'QName(%s)' % stringrepr(self.lstrip('{'))
+        return '%s(%s)' % (type(self).__name__, stringrepr(self.lstrip('{')))

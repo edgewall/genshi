@@ -57,7 +57,7 @@ class StreamTestCase(unittest.TestCase):
         pickle.dump(xml, buf, 2)
         buf.seek(0)
         xml = pickle.load(buf)
-        self.assertEquals('<li>Foo</li>', xml.render())
+        self.assertEquals('<li>Foo</li>', xml.render(encoding=None))
 
 
 class MarkupTestCase(unittest.TestCase):

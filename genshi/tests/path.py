@@ -658,7 +658,8 @@ class PathTestCase(unittest.TestCase):
                 continue
             s = strategy(path)
             rendered = FakePath(s).select(input, namespaces=namespaces,
-                                          variables=variables).render()
+                                          variables=variables) \
+                                  .render(encoding=None)
             msg = 'Bad render using %s strategy' % str(strategy)
             msg += '\nExpected:\t%r' % output
             msg += '\nRendered:\t%r' % rendered
@@ -674,7 +675,7 @@ class PathTestCase(unittest.TestCase):
             return
 
         rendered = path.select(input, namespaces=namespaces,
-                               variables=variables).render()
+                               variables=variables).render(encoding=None)
         msg = 'Bad output using whole path'
         msg += '\nExpected:\t%r' % output
         msg += '\nRendered:\t%r' % rendered

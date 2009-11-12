@@ -33,22 +33,23 @@ class OldTextTemplateTestCase(unittest.TestCase):
 
     def test_escaping(self):
         tmpl = OldTextTemplate('\\#escaped')
-        self.assertEqual('#escaped', tmpl.generate().render())
+        self.assertEqual('#escaped', tmpl.generate().render(encoding=None))
 
     def test_comment(self):
         tmpl = OldTextTemplate('## a comment')
-        self.assertEqual('', tmpl.generate().render())
+        self.assertEqual('', tmpl.generate().render(encoding=None))
 
     def test_comment_escaping(self):
         tmpl = OldTextTemplate('\\## escaped comment')
-        self.assertEqual('## escaped comment', tmpl.generate().render())
+        self.assertEqual('## escaped comment',
+                         tmpl.generate().render(encoding=None))
 
     def test_end_with_args(self):
         tmpl = OldTextTemplate("""
         #if foo
           bar
         #end 'if foo'""")
-        self.assertEqual('\n', tmpl.generate(foo=False).render())
+        self.assertEqual('\n', tmpl.generate(foo=False).render(encoding=None))
 
     def test_latin1_encoded(self):
         text = u'$foo\xf6$bar'.encode('iso-8859-1')
@@ -73,7 +74,7 @@ class OldTextTemplateTestCase(unittest.TestCase):
           * 0
           * 1
           * 2
-""", tmpl.generate(items=range(3)).render())
+""", tmpl.generate(items=range(3)).render(encoding=None))
 
     def test_empty_lines2(self):
         tmpl = OldTextTemplate("""Your items:
@@ -90,7 +91,7 @@ class OldTextTemplateTestCase(unittest.TestCase):
 
           * 2
 
-""", tmpl.generate(items=range(3)).render())
+""", tmpl.generate(items=range(3)).render(encoding=None))
 
     def test_include(self):
         file1 = open(os.path.join(self.dirname, 'tmpl1.txt'), 'w')
@@ -112,7 +113,7 @@ class OldTextTemplateTestCase(unittest.TestCase):
         self.assertEqual("""----- Included data below this line -----
 Included
             ----- Included data above this line -----""",
-                         tmpl.generate().render())
+                         tmpl.generate().render(encoding=None))
 
 
 class NewTextTemplateTestCase(unittest.TestCase):
@@ -126,22 +127,24 @@ class NewTextTemplateTestCase(unittest.TestCase):
 
     def test_escaping(self):
         tmpl = NewTextTemplate('\\{% escaped %}')
-        self.assertEqual('{% escaped %}', tmpl.generate().render())
+        self.assertEqual('{% escaped %}',
+                         tmpl.generate().render(encoding=None))
 
     def test_comment(self):
         tmpl = NewTextTemplate('{# a comment #}')
-        self.assertEqual('', tmpl.generate().render())
+        self.assertEqual('', tmpl.generate().render(encoding=None))
 
     def test_comment_escaping(self):
         tmpl = NewTextTemplate('\\{# escaped comment #}')
-        self.assertEqual('{# escaped comment #}', tmpl.generate().render())
+        self.assertEqual('{# escaped comment #}',
+                         tmpl.generate().render(encoding=None))
 
     def test_end_with_args(self):
         tmpl = NewTextTemplate("""
 {% if foo %}
   bar
 {% end 'if foo' %}""")
-        self.assertEqual('\n', tmpl.generate(foo=False).render())
+        self.assertEqual('\n', tmpl.generate(foo=False).render(encoding=None))
 
     def test_latin1_encoded(self):
         text = u'$foo\xf6$bar'.encode('iso-8859-1')
@@ -166,7 +169,7 @@ class NewTextTemplateTestCase(unittest.TestCase):
   * 0
   * 1
   * 2
-""", tmpl.generate(items=range(3)).render())
+""", tmpl.generate(items=range(3)).render(encoding=None))
 
     def test_empty_lines2(self):
         tmpl = NewTextTemplate("""Your items:
@@ -183,7 +186,7 @@ class NewTextTemplateTestCase(unittest.TestCase):
 
   * 2
 
-""", tmpl.generate(items=range(3)).render())
+""", tmpl.generate(items=range(3)).render(encoding=None))
 
     def test_exec_with_trailing_space(self):
         """
@@ -202,7 +205,7 @@ class NewTextTemplateTestCase(unittest.TestCase):
         """)
         self.assertEqual("""
         2 days, 0:00:00
-        """, tmpl.generate().render())
+        """, tmpl.generate().render(encoding=None))
 
     def test_exec_def(self):
         tmpl = NewTextTemplate("""{% python
@@ -213,7 +216,7 @@ class NewTextTemplateTestCase(unittest.TestCase):
         """)
         self.assertEqual("""
         42
-        """, tmpl.generate().render())
+        """, tmpl.generate().render(encoding=None))
 
     def test_include(self):
         file1 = open(os.path.join(self.dirname, 'tmpl1.txt'), 'w')
@@ -234,7 +237,8 @@ class NewTextTemplateTestCase(unittest.TestCase):
         tmpl = loader.load('tmpl2.txt', cls=NewTextTemplate)
         self.assertEqual("""----- Included data below this line -----
 Included
------ Included data above this line -----""", tmpl.generate().render())
+----- Included data above this line -----""",
+                         tmpl.generate().render(encoding=None))
 
     def test_include_expr(self):
          file1 = open(os.path.join(self.dirname, 'tmpl1.txt'), 'w')
@@ -255,7 +259,8 @@ Included
          tmpl = loader.load('tmpl2.txt', cls=NewTextTemplate)
          self.assertEqual("""----- Included data below this line -----
     Included
-    ----- Included data above this line -----""", tmpl.generate().render())
+    ----- Included data above this line -----""",
+                          tmpl.generate().render(encoding=None))
 
 
 def suite():

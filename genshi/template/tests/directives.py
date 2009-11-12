@@ -32,7 +32,7 @@ class AttrsDirectiveTestCase(unittest.TestCase):
         items = [{'id': 1, 'class': 'foo'}, {'id': 2, 'class': 'bar'}]
         self.assertEqual("""<doc>
           <elem id="1" class="foo"/><elem id="2" class="bar"/>
-        </doc>""", str(tmpl.generate(items=items)))
+        </doc>""", tmpl.generate(items=items).render(encoding=None))
 
     def test_update_existing_attr(self):
         """
@@ -44,7 +44,7 @@ class AttrsDirectiveTestCase(unittest.TestCase):
         </doc>""")
         self.assertEqual("""<doc>
           <elem class="bar"/>
-        </doc>""", str(tmpl.generate()))
+        </doc>""", tmpl.generate().render(encoding=None))
 
     def test_remove_existing_attr(self):
         """
@@ -56,7 +56,7 @@ class AttrsDirectiveTestCase(unittest.TestCase):
         </doc>""")
         self.assertEqual("""<doc>
           <elem/>
-        </doc>""", str(tmpl.generate()))
+        </doc>""", tmpl.generate().render(encoding=None))
 
 
 class ChooseDirectiveTestCase(unittest.TestCase):
@@ -75,7 +75,7 @@ class ChooseDirectiveTestCase(unittest.TestCase):
         </div>""")
         self.assertEqual("""<div>
           <span>1</span>
-        </div>""", str(tmpl.generate()))
+        </div>""", tmpl.generate().render(encoding=None))
 
     def test_otherwise(self):
         tmpl = MarkupTemplate("""<div xmlns:py="http://genshi.edgewall.org/" py:choose="">
@@ -84,7 +84,7 @@ class ChooseDirectiveTestCase(unittest.TestCase):
         </div>""")
         self.assertEqual("""<div>
           <span>hello</span>
-        </div>""", str(tmpl.generate()))
+        </div>""", tmpl.generate().render(encoding=None))
 
     def test_nesting(self):
         """
@@ -104,7 +104,7 @@ class ChooseDirectiveTestCase(unittest.TestCase):
               <span>3</span>
             </div>
           </div>
-        </doc>""", str(tmpl.generate()))
+        </doc>""", tmpl.generate().render(encoding=None))
 
     def test_complex_nesting(self):
         """
@@ -124,7 +124,7 @@ class ChooseDirectiveTestCase(unittest.TestCase):
               <span>OK</span>
             </div>
           </div>
-        </doc>""", str(tmpl.generate()))
+        </doc>""", tmpl.generate().render(encoding=None))
 
     def test_complex_nesting_otherwise(self):
         """
@@ -144,7 +144,7 @@ class ChooseDirectiveTestCase(unittest.TestCase):
               <span>OK</span>
             </div>
           </div>
-        </doc>""", str(tmpl.generate()))
+        </doc>""", tmpl.generate().render(encoding=None))
 
     def test_when_with_strip(self):
         """
@@ -158,7 +158,7 @@ class ChooseDirectiveTestCase(unittest.TestCase):
         </doc>""")
         self.assertEqual("""<doc>
             <span>foo</span>
-        </doc>""", str(tmpl.generate()))
+        </doc>""", tmpl.generate().render(encoding=None))
 
     def test_when_outside_choose(self):
         """
@@ -205,7 +205,7 @@ class ChooseDirectiveTestCase(unittest.TestCase):
         </doc>""")
         self.assertEqual("""<doc>
             foo
-        </doc>""", str(tmpl.generate(foo='Yeah')))
+        </doc>""", tmpl.generate(foo='Yeah').render(encoding=None))
 
     def test_otherwise_without_test(self):
         """
@@ -219,7 +219,7 @@ class ChooseDirectiveTestCase(unittest.TestCase):
         </doc>""")
         self.assertEqual("""<doc>
             foo
-        </doc>""", str(tmpl.generate()))
+        </doc>""", tmpl.generate().render(encoding=None))
 
     def test_as_element(self):
         """
@@ -234,7 +234,7 @@ class ChooseDirectiveTestCase(unittest.TestCase):
         </doc>""")
         self.assertEqual("""<doc>
             1
-        </doc>""", str(tmpl.generate()))
+        </doc>""", tmpl.generate().render(encoding=None))
 
     def test_in_text_template(self):
         """
@@ -251,7 +251,8 @@ class ChooseDirectiveTestCase(unittest.TestCase):
             3
           #end
         #end""")
-        self.assertEqual("""            1\n""", str(tmpl.generate()))
+        self.assertEqual("""            1\n""",
+                         tmpl.generate().render(encoding=None))
 
 
 class DefDirectiveTestCase(unittest.TestCase):
@@ -270,7 +271,7 @@ class DefDirectiveTestCase(unittest.TestCase):
         </doc>""")
         self.assertEqual("""<doc>
             <b>foo</b>
-        </doc>""", str(tmpl.generate()))
+        </doc>""", tmpl.generate().render(encoding=None))
 
     def test_exec_in_replace(self):
         tmpl = MarkupTemplate("""<div xmlns:py="http://genshi.edgewall.org/">
@@ -283,7 +284,7 @@ class DefDirectiveTestCase(unittest.TestCase):
           <p class="message">
             hello, world!
           </p>
-        </div>""", str(tmpl.generate()))
+        </div>""", tmpl.generate().render(encoding=None))
 
     def test_as_element(self):
         """
@@ -297,7 +298,7 @@ class DefDirectiveTestCase(unittest.TestCase):
         </doc>""")
         self.assertEqual("""<doc>
             <b>foo</b>
-        </doc>""", str(tmpl.generate()))
+        </doc>""", tmpl.generate().render(encoding=None))
 
     def test_nested_defs(self):
         """
@@ -315,7 +316,7 @@ class DefDirectiveTestCase(unittest.TestCase):
         </doc>""")
         self.assertEqual("""<doc>
           <strong>foo</strong>
-        </doc>""", str(tmpl.generate(semantic=True)))
+        </doc>""", tmpl.generate(semantic=True).render(encoding=None))
 
     def test_function_with_default_arg(self):
         """
@@ -327,7 +328,7 @@ class DefDirectiveTestCase(unittest.TestCase):
         </doc>""")
         self.assertEqual("""<doc>
           foo
-        </doc>""", str(tmpl.generate()))
+        </doc>""", tmpl.generate().render(encoding=None))
 
     def test_invocation_in_attribute(self):
         tmpl = MarkupTemplate("""<doc xmlns:py="http://genshi.edgewall.org/">
@@ -336,7 +337,7 @@ class DefDirectiveTestCase(unittest.TestCase):
         </doc>""")
         self.assertEqual("""<doc>
           <p class="foo">bar</p>
-        </doc>""", str(tmpl.generate()))
+        </doc>""", tmpl.generate().render(encoding=None))
 
     def test_invocation_in_attribute_none(self):
         tmpl = MarkupTemplate("""<doc xmlns:py="http://genshi.edgewall.org/">
@@ -345,7 +346,7 @@ class DefDirectiveTestCase(unittest.TestCase):
         </doc>""")
         self.assertEqual("""<doc>
           <p>bar</p>
-        </doc>""", str(tmpl.generate()))
+        </doc>""", tmpl.generate().render(encoding=None))
 
     def test_function_raising_typeerror(self):
         def badfunc():
@@ -368,7 +369,7 @@ class DefDirectiveTestCase(unittest.TestCase):
         </doc>""")
         self.assertEqual("""<doc>
           <head><title>True</title></head>
-        </doc>""", str(tmpl.generate()))
+        </doc>""", tmpl.generate().render(encoding=None))
 
     def test_in_text_template(self):
         """
@@ -383,7 +384,7 @@ class DefDirectiveTestCase(unittest.TestCase):
         self.assertEqual("""
                       Hi, you!
 
-        """, str(tmpl.generate()))
+        """, tmpl.generate().render(encoding=None))
 
     def test_function_with_star_args(self):
         """
@@ -402,7 +403,7 @@ class DefDirectiveTestCase(unittest.TestCase):
             [1, 2]
             {'a': 3, 'b': 4}
           </div>
-        </doc>""", str(tmpl.generate()))
+        </doc>""", tmpl.generate().render(encoding=None))
 
 
 class ForDirectiveTestCase(unittest.TestCase):
@@ -424,7 +425,7 @@ class ForDirectiveTestCase(unittest.TestCase):
             <b>3</b>
             <b>4</b>
             <b>5</b>
-        </doc>""", str(tmpl.generate(items=range(1, 6))))
+        </doc>""", tmpl.generate(items=range(1, 6)).render(encoding=None))
 
     def test_as_element(self):
         """
@@ -441,7 +442,7 @@ class ForDirectiveTestCase(unittest.TestCase):
             <b>3</b>
             <b>4</b>
             <b>5</b>
-        </doc>""", str(tmpl.generate(items=range(1, 6))))
+        </doc>""", tmpl.generate(items=range(1, 6)).render(encoding=None))
 
     def test_multi_assignment(self):
         """
@@ -455,7 +456,8 @@ class ForDirectiveTestCase(unittest.TestCase):
         self.assertEqual("""<doc>
             <p>key=a, value=1</p>
             <p>key=b, value=2</p>
-        </doc>""", str(tmpl.generate(items=dict(a=1, b=2).items())))
+        </doc>""", tmpl.generate(items=dict(a=1, b=2).items())
+                       .render(encoding=None))
 
     def test_nested_assignment(self):
         """
@@ -469,7 +471,8 @@ class ForDirectiveTestCase(unittest.TestCase):
         self.assertEqual("""<doc>
             <p>0: key=a, value=1</p>
             <p>1: key=b, value=2</p>
-        </doc>""", str(tmpl.generate(items=enumerate(dict(a=1, b=2).items()))))
+        </doc>""", tmpl.generate(items=enumerate(dict(a=1, b=2).items()))
+                       .render(encoding=None))
 
     def test_not_iterable(self):
         """
@@ -528,7 +531,7 @@ class IfDirectiveTestCase(unittest.TestCase):
         </doc>""")
         self.assertEqual("""<doc>
           Hello
-        </doc>""", str(tmpl.generate(foo=True, bar='Hello')))
+        </doc>""", tmpl.generate(foo=True, bar='Hello').render(encoding=None))
 
     def test_as_element(self):
         """
@@ -539,7 +542,7 @@ class IfDirectiveTestCase(unittest.TestCase):
         </doc>""")
         self.assertEqual("""<doc>
           Hello
-        </doc>""", str(tmpl.generate(foo=True, bar='Hello')))
+        </doc>""", tmpl.generate(foo=True, bar='Hello').render(encoding=None))
 
 
 class MatchDirectiveTestCase(unittest.TestCase):
@@ -558,7 +561,7 @@ class MatchDirectiveTestCase(unittest.TestCase):
         </doc>""")
         self.assertEqual("""<doc>
             <div class="elem">Hey Joe</div>
-        </doc>""", str(tmpl.generate()))
+        </doc>""", tmpl.generate().render(encoding=None))
 
     def test_without_strip(self):
         """
@@ -575,7 +578,7 @@ class MatchDirectiveTestCase(unittest.TestCase):
           <elem>
             <div class="elem">Hey Joe</div>
           </elem>
-        </doc>""", str(tmpl.generate()))
+        </doc>""", tmpl.generate().render(encoding=None))
 
     def test_as_element(self):
         """
@@ -589,7 +592,7 @@ class MatchDirectiveTestCase(unittest.TestCase):
         </doc>""")
         self.assertEqual("""<doc>
             <div class="elem">Hey Joe</div>
-        </doc>""", str(tmpl.generate()))
+        </doc>""", tmpl.generate().render(encoding=None))
 
     def test_recursive_match_1(self):
         """
@@ -619,7 +622,7 @@ class MatchDirectiveTestCase(unittest.TestCase):
             </subelem>
             </div>
           </elem>
-        </doc>""", str(tmpl.generate()))
+        </doc>""", tmpl.generate().render(encoding=None))
 
     def test_recursive_match_2(self):
         """
@@ -645,7 +648,7 @@ class MatchDirectiveTestCase(unittest.TestCase):
             <div id="header"/><h1>Foo</h1>
             <div id="footer"/>
           </body>
-        </html>""", str(tmpl.generate()))
+        </html>""", tmpl.generate().render(encoding=None))
 
     def test_recursive_match_3(self):
         tmpl = MarkupTemplate("""<test xmlns:py="http://genshi.edgewall.org/">
@@ -671,7 +674,7 @@ class MatchDirectiveTestCase(unittest.TestCase):
             <generic>
             <ul><bullet>1</bullet><bullet>2</bullet></ul>
           </generic>
-        </test>""", str(tmpl.generate()))
+        </test>""", tmpl.generate().render(encoding=None))
 
     def test_not_match_self(self):
         """
@@ -693,7 +696,7 @@ class MatchDirectiveTestCase(unittest.TestCase):
             Hello!
             Goodbye!
           </h1></body>
-        </html>""", str(tmpl.generate()))
+        </html>""", tmpl.generate().render(encoding=None))
 
     def test_select_text_in_element(self):
         """
@@ -719,7 +722,7 @@ class MatchDirectiveTestCase(unittest.TestCase):
             </text>
             Goodbye!
           </h1></body>
-        </html>""", str(tmpl.generate()))
+        </html>""", tmpl.generate().render(encoding=None))
 
     def test_select_all_attrs(self):
         tmpl = MarkupTemplate("""<doc xmlns:py="http://genshi.edgewall.org/">
@@ -732,7 +735,7 @@ class MatchDirectiveTestCase(unittest.TestCase):
           <div id="joe">
             Hey Joe
           </div>
-        </doc>""", str(tmpl.generate()))
+        </doc>""", tmpl.generate().render(encoding=None))
 
     def test_select_all_attrs_empty(self):
         tmpl = MarkupTemplate("""<doc xmlns:py="http://genshi.edgewall.org/">
@@ -745,7 +748,7 @@ class MatchDirectiveTestCase(unittest.TestCase):
           <div>
             Hey Joe
           </div>
-        </doc>""", str(tmpl.generate()))
+        </doc>""", tmpl.generate().render(encoding=None))
 
     def test_select_all_attrs_in_body(self):
         tmpl = MarkupTemplate("""<doc xmlns:py="http://genshi.edgewall.org/">
@@ -758,7 +761,7 @@ class MatchDirectiveTestCase(unittest.TestCase):
           <div>
             Hey Joe Cool
           </div>
-        </doc>""", str(tmpl.generate()))
+        </doc>""", tmpl.generate().render(encoding=None))
 
     def test_def_in_match(self):
         tmpl = MarkupTemplate("""<doc xmlns:py="http://genshi.edgewall.org/">
@@ -768,7 +771,7 @@ class MatchDirectiveTestCase(unittest.TestCase):
         </doc>""")
         self.assertEqual("""<doc>
           <head><title>True</title></head>
-        </doc>""", str(tmpl.generate()))
+        </doc>""", tmpl.generate().render(encoding=None))
 
     def test_match_with_xpath_variable(self):
         tmpl = MarkupTemplate("""<div xmlns:py="http://genshi.edgewall.org/">
@@ -781,10 +784,10 @@ class MatchDirectiveTestCase(unittest.TestCase):
           <span>
             Hello Dude
           </span>
-        </div>""", str(tmpl.generate(tagname='greeting')))
+        </div>""", tmpl.generate(tagname='greeting').render(encoding=None))
         self.assertEqual("""<div>
           <greeting name="Dude"/>
-        </div>""", str(tmpl.generate(tagname='sayhello')))
+        </div>""", tmpl.generate(tagname='sayhello').render(encoding=None))
 
     def test_content_directive_in_match(self):
         tmpl = MarkupTemplate("""<html xmlns:py="http://genshi.edgewall.org/">
@@ -793,7 +796,7 @@ class MatchDirectiveTestCase(unittest.TestCase):
         </html>""")
         self.assertEqual("""<html>
           <div>I said <q>bar</q>.</div>
-        </html>""", str(tmpl.generate()))
+        </html>""", tmpl.generate().render(encoding=None))
 
     def test_cascaded_matches(self):
         tmpl = MarkupTemplate("""<html xmlns:py="http://genshi.edgewall.org/">
@@ -806,7 +809,7 @@ class MatchDirectiveTestCase(unittest.TestCase):
         self.assertEqual("""<html>
           <head><title>Welcome to Markup</title></head>
           <body><h2>Are you ready to mark up?</h2><hr/></body>
-        </html>""", str(tmpl.generate()))
+        </html>""", tmpl.generate().render(encoding=None))
 
     def test_multiple_matches(self):
         tmpl = MarkupTemplate("""<html xmlns:py="http://genshi.edgewall.org/">
@@ -836,7 +839,8 @@ class MatchDirectiveTestCase(unittest.TestCase):
             <label>Hello_4</label>
             <input value="4" type="text" name="hello_4"/>
           </p></form>
-        </html>""", str(tmpl.generate(fields=fields, values=values)))
+        </html>""", tmpl.generate(fields=fields, values=values)
+                        .render(encoding=None))
 
     def test_namespace_context(self):
         tmpl = MarkupTemplate("""<html xmlns:py="http://genshi.edgewall.org/"
@@ -848,7 +852,7 @@ class MatchDirectiveTestCase(unittest.TestCase):
         #        such as the "x" in this example
         self.assertEqual("""<html xmlns:x="http://www.example.org/">
           <div>Foo</div>
-        </html>""", str(tmpl.generate()))
+        </html>""", tmpl.generate().render(encoding=None))
 
     def test_match_with_position_predicate(self):
         tmpl = MarkupTemplate("""<html xmlns:py="http://genshi.edgewall.org/">
@@ -863,7 +867,7 @@ class MatchDirectiveTestCase(unittest.TestCase):
             <p class="first">Foo</p>
             <p>Bar</p>
           </body>
-        </html>""", str(tmpl.generate()))
+        </html>""", tmpl.generate().render(encoding=None))
 
     def test_match_with_closure(self):
         tmpl = MarkupTemplate("""<html xmlns:py="http://genshi.edgewall.org/">
@@ -878,7 +882,7 @@ class MatchDirectiveTestCase(unittest.TestCase):
             <p class="para">Foo</p>
             <div><p class="para">Bar</p></div>
           </body>
-        </html>""", str(tmpl.generate()))
+        </html>""", tmpl.generate().render(encoding=None))
 
     def test_match_without_closure(self):
         tmpl = MarkupTemplate("""<html xmlns:py="http://genshi.edgewall.org/">
@@ -893,7 +897,7 @@ class MatchDirectiveTestCase(unittest.TestCase):
             <p class="para">Foo</p>
             <div><p>Bar</p></div>
           </body>
-        </html>""", str(tmpl.generate()))
+        </html>""", tmpl.generate().render(encoding=None))
 
     def test_match_with_once_attribute(self):
         tmpl = MarkupTemplate("""<html xmlns:py="http://genshi.edgewall.org/">
@@ -918,7 +922,7 @@ class MatchDirectiveTestCase(unittest.TestCase):
           <body>
             <p>Bar</p>
           </body>
-        </html>""", str(tmpl.generate()))
+        </html>""", tmpl.generate().render(encoding=None))
 
     def test_match_with_recursive_attribute(self):
         tmpl = MarkupTemplate("""<doc xmlns:py="http://genshi.edgewall.org/">
@@ -941,7 +945,7 @@ class MatchDirectiveTestCase(unittest.TestCase):
             </subelem>
             </div>
           </elem>
-        </doc>""", str(tmpl.generate()))
+        </doc>""", tmpl.generate().render(encoding=None))
 
     # FIXME
     #def test_match_after_step(self):
@@ -955,7 +959,7 @@ class MatchDirectiveTestCase(unittest.TestCase):
     #      <span>
     #        Hello Dude
     #      </span>
-    #    </div>""", str(tmpl.generate()))
+    #    </div>""", tmpl.generate().render(encoding=None))
 
 
 class ContentDirectiveTestCase(unittest.TestCase):
@@ -995,7 +999,7 @@ class ReplaceDirectiveTestCase(unittest.TestCase):
         </div>""", filename='test.html')
         self.assertEqual("""<div>
           Test
-        </div>""", str(tmpl.generate(title='Test')))
+        </div>""", tmpl.generate(title='Test').render(encoding=None))
 
 
 class StripDirectiveTestCase(unittest.TestCase):
@@ -1007,7 +1011,7 @@ class StripDirectiveTestCase(unittest.TestCase):
         </div>""")
         self.assertEqual("""<div>
           <div><b>foo</b></div>
-        </div>""", str(tmpl.generate()))
+        </div>""", tmpl.generate().render(encoding=None))
 
     def test_strip_empty(self):
         tmpl = MarkupTemplate("""<div xmlns:py="http://genshi.edgewall.org/">
@@ -1015,7 +1019,7 @@ class StripDirectiveTestCase(unittest.TestCase):
         </div>""")
         self.assertEqual("""<div>
           <b>foo</b>
-        </div>""", str(tmpl.generate()))
+        </div>""", tmpl.generate().render(encoding=None))
 
 
 class WithDirectiveTestCase(unittest.TestCase):
@@ -1031,7 +1035,7 @@ class WithDirectiveTestCase(unittest.TestCase):
           42
           84
           42
-        </div>""", str(tmpl.generate(x=42)))
+        </div>""", tmpl.generate(x=42).render(encoding=None))
 
     def test_as_element(self):
         tmpl = MarkupTemplate("""<div xmlns:py="http://genshi.edgewall.org/">
@@ -1039,7 +1043,7 @@ class WithDirectiveTestCase(unittest.TestCase):
         </div>""")
         self.assertEqual("""<div>
           84
-        </div>""", str(tmpl.generate(x=42)))
+        </div>""", tmpl.generate(x=42).render(encoding=None))
 
     def test_multiple_vars_same_name(self):
         tmpl = MarkupTemplate("""<div xmlns:py="http://genshi.edgewall.org/">
@@ -1052,7 +1056,7 @@ class WithDirectiveTestCase(unittest.TestCase):
         </div>""")
         self.assertEqual("""<div>
             baz
-        </div>""", str(tmpl.generate(x=42)))
+        </div>""", tmpl.generate(x=42).render(encoding=None))
 
     def test_multiple_vars_single_assignment(self):
         tmpl = MarkupTemplate("""<div xmlns:py="http://genshi.edgewall.org/">
@@ -1060,7 +1064,7 @@ class WithDirectiveTestCase(unittest.TestCase):
         </div>""")
         self.assertEqual("""<div>
           1 1 1
-        </div>""", str(tmpl.generate(x=42)))
+        </div>""", tmpl.generate(x=42).render(encoding=None))
 
     def test_nested_vars_single_assignment(self):
         tmpl = MarkupTemplate("""<div xmlns:py="http://genshi.edgewall.org/">
@@ -1068,7 +1072,7 @@ class WithDirectiveTestCase(unittest.TestCase):
         </div>""")
         self.assertEqual("""<div>
           1 2 3
-        </div>""", str(tmpl.generate(x=42)))
+        </div>""", tmpl.generate(x=42).render(encoding=None))
 
     def test_multiple_vars_trailing_semicolon(self):
         tmpl = MarkupTemplate("""<div xmlns:py="http://genshi.edgewall.org/">
@@ -1076,7 +1080,7 @@ class WithDirectiveTestCase(unittest.TestCase):
         </div>""")
         self.assertEqual("""<div>
           84 42
-        </div>""", str(tmpl.generate(x=42)))
+        </div>""", tmpl.generate(x=42).render(encoding=None))
 
     def test_semicolon_escape(self):
         tmpl = MarkupTemplate("""<div xmlns:py="http://genshi.edgewall.org/">
@@ -1088,7 +1092,7 @@ class WithDirectiveTestCase(unittest.TestCase):
         self.assertEqual("""<div>
             here is a semicolon: ;
             here are two semicolons: ;;
-        </div>""", str(tmpl.generate()))
+        </div>""", tmpl.generate().render(encoding=None))
 
     def test_ast_transformation(self):
         """
@@ -1104,19 +1108,19 @@ class WithDirectiveTestCase(unittest.TestCase):
           <span>
             42
           </span>
-        </div>""", str(tmpl.generate(foo={'bar': 42})))
+        </div>""", tmpl.generate(foo={'bar': 42}).render(encoding=None))
 
     def test_unicode_expr(self):
-        tmpl = MarkupTemplate("""<div xmlns:py="http://genshi.edgewall.org/">
+        tmpl = MarkupTemplate(u"""<div xmlns:py="http://genshi.edgewall.org/">
           <span py:with="weeks=(u'一', u'二', u'三', u'四', u'五', u'六', u'日')">
             $weeks
           </span>
         </div>""")
-        self.assertEqual("""<div>
+        self.assertEqual(u"""<div>
           <span>
             一二三四五六日
           </span>
-        </div>""", str(tmpl.generate()))
+        </div>""", tmpl.generate().render(encoding=None))
         
     def test_with_empty_value(self):
         """
@@ -1126,7 +1130,7 @@ class WithDirectiveTestCase(unittest.TestCase):
           <span py:with="">Text</span></div>""")
 
         self.assertEqual("""<div>
-          <span>Text</span></div>""", str(tmpl.generate()))
+          <span>Text</span></div>""", tmpl.generate().render(encoding=None))
 
 
 def suite():

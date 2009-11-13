@@ -12,9 +12,11 @@
 # history and logs, available at http://genshi.edgewall.org/log/.
 
 import doctest
+import os
 import pickle
 from StringIO import StringIO
 import sys
+from tempfile import NamedTemporaryFile
 import unittest
 
 from genshi.core import Markup
@@ -782,6 +784,41 @@ assert f() == 42
         d = {'k': 'foo'}
         Suite("del d['k']").execute({'d': d})
         self.failIf('k' in d, repr(d))
+
+    if sys.version_info >= (2, 5):
+        def test_with_statement(self):
+            f = NamedTemporaryFile()
+            f.write('foo\nbar\n')
+            f.seek(0)
+
+            d = {'path': f.name}
+            suite = Suite("""from __future__ import with_statement
+lines = []
+with open(path) as file:
+    for line in file:
+        lines.append(line)
+""")
+            suite.execute(d)
+            self.assertEqual(['foo\n', 'bar\n'], d['lines'])
+
+        def test_yield_expression(self):
+            d = {}
+            suite = Suite("""results = []
+def counter(maximum):
+    i = 0
+    while i < maximum:
+        val = (yield i)
+        if val is not None:
+            i = val
+        else:
+            i += 1
+it = counter(5)
+results.append(it.next())
+results.append(it.send(3))
+results.append(it.next())
+""")
+            suite.execute(d)
+            self.assertEqual([0, 3, 4], d['results'])
 
 
 def suite():

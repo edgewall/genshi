@@ -34,7 +34,7 @@ def print_class(cls):
     done.add(cls)
 
 print('# Generated automatically, please do not edit')
-print('# Generator can be found in Genshi SVN, scripts/ast-generator.py')
+print('# Generator can be found in Genshi SVN, scripts/ast_generator.py')
 print('')
 print('__version__ = %s' % _ast.__version__)
 print('')

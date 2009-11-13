@@ -62,8 +62,8 @@ available.""")
 
 if Feature:
     speedups = Feature(
-        "optionial C speed-enhancements",
-        standard = True,
+        "optional C speed-enhancements",
+        standard = False,
         ext_modules = [
             Extension('genshi._speedups', ['genshi/_speedups.c']),
         ],

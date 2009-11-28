@@ -16,7 +16,7 @@ import os
 import pickle
 from StringIO import StringIO
 import sys
-from tempfile import NamedTemporaryFile
+from tempfile import mkstemp
 import unittest
 
 from genshi.core import Markup
@@ -787,19 +787,24 @@ assert f() == 42
 
     if sys.version_info >= (2, 5):
         def test_with_statement(self):
-            f = NamedTemporaryFile()
-            f.write('foo\nbar\n')
-            f.seek(0)
+            fd, path = mkstemp()
+            f = os.fdopen(fd, "w")
+            try:
+                f.write('foo\nbar\n')
+                f.seek(0)
+                f.close()
 
-            d = {'path': f.name}
-            suite = Suite("""from __future__ import with_statement
+                d = {'path': path}
+                suite = Suite("""from __future__ import with_statement
 lines = []
 with open(path) as file:
     for line in file:
         lines.append(line)
 """)
-            suite.execute(d)
-            self.assertEqual(['foo\n', 'bar\n'], d['lines'])
+                suite.execute(d)
+                self.assertEqual(['foo\n', 'bar\n'], d['lines'])
+            finally:
+                os.remove(path)
 
         def test_yield_expression(self):
             d = {}

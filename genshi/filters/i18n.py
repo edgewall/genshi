@@ -186,8 +186,7 @@ class MsgDirective(ExtractableI18NDirective):
         for event in stream:
             msgbuf.append(*previous)
             previous = event
-        if previous[0] is not END:
-            msgbuf.append(*previous)
+        msgbuf.append(*previous)
 
         yield None, msgbuf.format(), comment_stack[-1:]
 

@@ -208,6 +208,52 @@ class TranslatorTestCase(unittest.TestCase):
           <p>Für Details siehe bitte <a href="help.html">Hilfe</a>.</p>
         </html>""", tmpl.generate().render())
 
+    def test_extract_i18n_msg_nonewline(self):
+        tmpl = MarkupTemplate("""<html xmlns:py="http://genshi.edgewall.org/"
+            xmlns:i18n="http://genshi.edgewall.org/i18n">
+          <p i18n:msg="">Please see <a href="help.html">Help</a></p>
+        </html>""")
+        translator = Translator()
+        tmpl.add_directives(Translator.NAMESPACE, translator)
+        messages = list(translator.extract(tmpl.stream))
+        self.assertEqual(1, len(messages))
+        self.assertEqual('Please see [1:Help]', messages[0][2])
+
+    def test_translate_i18n_msg_nonewline(self):
+        tmpl = MarkupTemplate("""<html xmlns:py="http://genshi.edgewall.org/"
+            xmlns:i18n="http://genshi.edgewall.org/i18n">
+          <p i18n:msg="">Please see <a href="help.html">Help</a></p>
+        </html>""")
+        gettext = lambda s: u"Für Details siehe bitte [1:Hilfe]"
+        translator = Translator(gettext)
+        translator.setup(tmpl)
+        self.assertEqual("""<html>
+          <p>Für Details siehe bitte <a href="help.html">Hilfe</a></p>
+        </html>""", tmpl.generate().render())
+
+    def test_extract_i18n_msg_elt_nonewline(self):
+        tmpl = MarkupTemplate("""<html xmlns:py="http://genshi.edgewall.org/"
+            xmlns:i18n="http://genshi.edgewall.org/i18n">
+          <i18n:msg>Please see <a href="help.html">Help</a></i18n:msg>
+        </html>""")
+        translator = Translator()
+        tmpl.add_directives(Translator.NAMESPACE, translator)
+        messages = list(translator.extract(tmpl.stream))
+        self.assertEqual(1, len(messages))
+        self.assertEqual('Please see [1:Help]', messages[0][2])
+
+    def test_translate_i18n_msg_elt_nonewline(self):
+        tmpl = MarkupTemplate("""<html xmlns:py="http://genshi.edgewall.org/"
+            xmlns:i18n="http://genshi.edgewall.org/i18n">
+          <i18n:msg>Please see <a href="help.html">Help</a></i18n:msg>
+        </html>""")
+        gettext = lambda s: u"Für Details siehe bitte [1:Hilfe]"
+        translator = Translator(gettext)
+        translator.setup(tmpl)
+        self.assertEqual("""<html>
+          Für Details siehe bitte <a href="help.html">Hilfe</a>
+        </html>""", tmpl.generate().render())
+
     def test_extract_i18n_msg_nested(self):
         tmpl = MarkupTemplate("""<html xmlns:py="http://genshi.edgewall.org/"
             xmlns:i18n="http://genshi.edgewall.org/i18n">

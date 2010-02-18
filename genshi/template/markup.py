@@ -358,7 +358,8 @@ class MarkupTemplate(Template):
                         pre_end -= 1
                     inner = _strip(stream)
                     if pre_end > 0:
-                        inner = self._match(inner, ctxt, end=pre_end, **vars)
+                        inner = self._match(inner, ctxt, start=start,
+                                            end=pre_end, **vars)
                     content = self._include(chain([event], inner, tail), ctxt)
                     if 'not_buffered' not in hints:
                         content = list(content)

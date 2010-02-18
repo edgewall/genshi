@@ -12,6 +12,7 @@
 # history and logs, available at http://genshi.edgewall.org/log/.
 
 import doctest
+import re
 import sys
 import unittest
 
@@ -946,6 +947,32 @@ class MatchDirectiveTestCase(unittest.TestCase):
             </div>
           </elem>
         </doc>""", tmpl.generate().render(encoding=None))
+
+    # See http://genshi.edgewall.org/ticket/254/
+    def test_triple_match_produces_no_duplicate_items(self):
+        tmpl = MarkupTemplate("""<doc xmlns:py="http://genshi.edgewall.org/">
+          <div py:match="div[@id='content']" py:attrs="select('@*')" once="true">
+            <ul id="tabbed_pane" />
+            ${select('*')}
+          </div>
+
+          <body py:match="body" once="true" buffer="false">
+            ${select('*|text()')}
+          </body>
+          <body py:match="body" once="true" buffer="false">
+              ${select('*|text()')}
+          </body>
+
+          <body>
+            <div id="content">
+              <h1>Ticket X</h1>
+            </div>
+          </body>
+        </doc>""")
+        output = tmpl.generate().render('xhtml', doctype='xhtml')
+        matches = re.findall("tabbed_pane", output)
+        self.assertNotEqual(None, matches)
+        self.assertEqual(1, len(matches))
 
     # FIXME
     #def test_match_after_step(self):

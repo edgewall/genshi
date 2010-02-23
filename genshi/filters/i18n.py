@@ -949,7 +949,7 @@ class MessageBuffer(object):
                                     self.directive.tagname,
                                     len(self.orig_params)+1,
                                     os.path.basename(pos[0] or
-                                                     'In Memmory Template'),
+                                                     'In-memory Template'),
                                     pos[1]))
             self.string.append('%%(%s)s' % param)
             self.events.setdefault(self.stack[-1], []).append((kind, data, pos))

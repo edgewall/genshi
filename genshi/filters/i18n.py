@@ -193,19 +193,36 @@ class MsgDirective(ExtractableI18NDirective):
 
 class ChooseBranchDirective(I18NDirective):
     __slots__ = ['params']
-
+        
     def __call__(self, stream, directives, ctxt, **vars):
         self.params = ctxt.get('_i18n.choose.params', [])[:]
         msgbuf = MessageBuffer(self)
 
         stream = iter(_apply_directives(stream, directives, ctxt, vars))
-        yield stream.next() # the outer start tag
+        
         previous = stream.next()
+        if previous[0] is START:
+            yield previous
+        else:
+            msgbuf.append(*previous)
+            
+        try:
+            previous = stream.next()
+        except StopIteration:
+            # For example <i18n:singular> or <i18n:plural> directives
+            yield MSGBUF, (), -1 # the place holder for msgbuf output
+            ctxt['_i18n.choose.%s' % type(self).__name__] = msgbuf
+            return
+        
         for kind, data, pos in stream:
             msgbuf.append(*previous)
             previous = kind, data, pos
         yield MSGBUF, (), -1 # the place holder for msgbuf output
-        yield previous # the outer end tag
+
+        if previous[0] is END:
+            yield previous # the outer end tag
+        else:
+            msgbuf.append(*previous)
         ctxt['_i18n.choose.%s' % type(self).__name__] = msgbuf
 
 
@@ -330,12 +347,27 @@ class ChooseDirective(ExtractableI18NDirective):
         for kind, event, pos in stream:
             if kind is SUB:
                 subdirectives, substream = event
+                strip_directive_present = []
+                for idx, subdirective in enumerate(subdirectives):
+                    if isinstance(subdirective, StripDirective):
+                        # XXX: Any strip directive should be applied AFTER the
+                        # event's have been translated and singular or plural
+                        # form has been chosen. So, by having py:strip on
+                        # an i18n:singular element is as if i18n:plural had it
+                        # too.
+                        strip_directive_present.append(subdirectives.pop(idx))
                 if isinstance(subdirectives[0],
                               SingularDirective) and not singular_stream:
                     # Apply directives to update context
                     singular_stream = list(_apply_directives(substream,
                                                              subdirectives,
                                                              ctxt, vars))
+                    if strip_directive_present:
+                        singular_stream = list(
+                            _apply_directives(singular_stream,
+                                              strip_directive_present,
+                                              ctxt, vars)
+                        )
                     new_stream.append((MSGBUF, (), ('', -1))) # msgbuf place holder
                     singular_msgbuf = ctxt.get('_i18n.choose.SingularDirective')
                 elif isinstance(subdirectives[0],

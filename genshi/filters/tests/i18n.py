@@ -931,6 +931,36 @@ class TranslatorTestCase(unittest.TestCase):
           <p>FooBars</p>
           <p>FooBar</p>
         </html>""", tmpl.generate(one=1, two=2).render())
+        
+    def test_translate_i18n_choose_as_directive_singular_and_plural_with_strip(self):
+        tmpl = MarkupTemplate("""<html xmlns:py="http://genshi.edgewall.org/"
+            xmlns:i18n="http://genshi.edgewall.org/i18n">
+        <i18n:choose numeral="two">
+          <p i18n:singular="" py:strip="">FooBar Singular with Strip</p>
+          <p i18n:plural="">FooBars Plural without Strip</p>
+        </i18n:choose>
+        <i18n:choose numeral="two">
+          <p i18n:singular="">FooBar singular without strip</p>
+          <p i18n:plural="" py:strip="">FooBars plural with strip</p>
+        </i18n:choose>
+        <i18n:choose numeral="one">
+          <p i18n:singular="">FooBar singular without strip</p>
+          <p i18n:plural="" py:strip="">FooBars plural with strip</p>
+        </i18n:choose>
+        <i18n:choose numeral="one">
+          <p i18n:singular="" py:strip="">FooBar singular with strip</p>
+          <p i18n:plural="">FooBars plural without strip</p>
+        </i18n:choose>
+        </html>""")
+        translations = DummyTranslations()
+        translator = Translator(translations)
+        translator.setup(tmpl)
+        self.assertEqual("""<html>
+          <p>FooBars Plural without Strip</p>
+          FooBars plural with strip
+          <p>FooBar singular without strip</p>
+          FooBar singular with strip
+        </html>""", tmpl.generate(one=1, two=2).render())
 
     def test_translate_i18n_choose_plural_singular_as_directive(self):
         # Ticket 371
@@ -1437,6 +1467,10 @@ class TranslatorTestCase(unittest.TestCase):
             <p i18n:singular="" py:strip="">Foo $fname $lname</p>
             <p i18n:plural="">Foos $fname $lname</p>
           </div>
+          <div i18n:choose="one; fname, lname">
+            <p i18n:singular="" py:strip="">Foo $fname $lname</p>
+            <p i18n:plural="">Foos $fname $lname</p>
+          </div>
         </html>""")
         translations = DummyTranslations({
             ('Foo %(fname)s %(lname)s', 0): 'Voh %(fname)s %(lname)s',
@@ -1448,9 +1482,13 @@ class TranslatorTestCase(unittest.TestCase):
         translator.setup(tmpl)
         self.assertEqual("""<html>
           <div>
-            Vohs John Doe
+            <p>Vohs John Doe</p>
           </div>
-        </html>""", tmpl.generate(two=2, fname='John', lname='Doe').render())
+          <div>
+            Voh John Doe
+          </div>
+        </html>""", tmpl.generate(
+            one=1, two=2, fname='John',lname='Doe').render())
         
     def test_translate_i18n_choose_and_plural_with_py_strip(self):
         tmpl = MarkupTemplate("""<html xmlns:py="http://genshi.edgewall.org/"

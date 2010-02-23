@@ -343,21 +343,19 @@ class ChooseDirective(ExtractableI18NDirective):
         dngettext = ctxt.get('_i18n.dngettext')
         if not dngettext:
             dngettext = lambda d, s, p, n: ngettext(s, p, n)
-
         for kind, event, pos in stream:
             if kind is SUB:
                 subdirectives, substream = event
-                strip_directive_present = []
-                for idx, subdirective in enumerate(subdirectives):
-                    if isinstance(subdirective, StripDirective):
-                        # XXX: Any strip directive should be applied AFTER the
-                        # event's have been translated and singular or plural
-                        # form has been chosen. So, by having py:strip on
-                        # an i18n:singular element is as if i18n:plural had it
-                        # too.
-                        strip_directive_present.append(subdirectives.pop(idx))
                 if isinstance(subdirectives[0],
                               SingularDirective) and not singular_stream:
+                    strip_directive_present = []
+                    for idx, subdirective in enumerate(subdirectives):
+                        if isinstance(subdirective, StripDirective):
+                            # Any strip directive should be applied AFTER
+                            # the event's have been translated.
+                            strip_directive_present.append(
+                                subdirectives.pop(idx)
+                            )
                     # Apply directives to update context
                     singular_stream = list(_apply_directives(substream,
                                                              subdirectives,
@@ -368,14 +366,30 @@ class ChooseDirective(ExtractableI18NDirective):
                                               strip_directive_present,
                                               ctxt, vars)
                         )
+                    del strip_directive_present
                     new_stream.append((MSGBUF, (), ('', -1))) # msgbuf place holder
                     singular_msgbuf = ctxt.get('_i18n.choose.SingularDirective')
                 elif isinstance(subdirectives[0],
                                 PluralDirective) and not plural_stream:
+                    strip_directive_present = []
+                    for idx, subdirective in enumerate(subdirectives):
+                        if isinstance(subdirective, StripDirective):
+                            # Any strip directive should be applied AFTER
+                            # the event's have been translated.
+                            strip_directive_present.append(
+                                subdirectives.pop(idx)
+                            )
                     # Apply directives to update context
                     plural_stream = list(_apply_directives(substream,
                                                            subdirectives,
                                                            ctxt, vars))
+                    if strip_directive_present:
+                        plural_stream = list(
+                            _apply_directives(plural_stream,
+                                              strip_directive_present,
+                                              ctxt, vars)
+                        )
+                    del strip_directive_present
                     plural_msgbuf = ctxt.get('_i18n.choose.PluralDirective')
                 else:
                     new_stream.append((kind, event, pos))
@@ -386,14 +400,29 @@ class ChooseDirective(ExtractableI18NDirective):
             ngettext = lambda s, p, n: dngettext(ctxt.get('_i18n.domain'),
                                                  s, p, n)
 
+        # XXX: should we test which form was chosen like this!?!?!?
+        # There should be no match in any catalogue for these singular and
+        # plural test strings
+        singular_test = ur'O\x85\xbe\xa9\xa8az\xc3?\xe6\xa1\x02n\x84\x93'
+        plural_test = ur'\xcc\xfb+\xd3Pn\x9d\tT\xec\x1d\xda\x1a\x88\x00'
+        translation = ngettext(singular_test, plural_test,
+                               self.numeral.evaluate(ctxt))
+        if translation==singular_test:
+            chosen_msgbuf = singular_msgbuf
+            chosen_stream = singular_stream
+        else:
+            chosen_msgbuf = plural_msgbuf
+            chosen_stream = plural_stream
+        del singular_test, plural_test, translation
+
         for kind, data, pos in new_stream:
             if kind is MSGBUF:
-                for skind, sdata, spos in singular_stream:
+                for skind, sdata, spos in chosen_stream:
                     if skind is MSGBUF:
                         translation = ngettext(singular_msgbuf.format(),
                                                plural_msgbuf.format(),
                                                self.numeral.evaluate(ctxt))
-                        for event in singular_msgbuf.translate(translation):
+                        for event in chosen_msgbuf.translate(translation):
                             yield event
                     else:
                         yield skind, sdata, spos

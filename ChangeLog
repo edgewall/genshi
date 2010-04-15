@@ -28,6 +28,8 @@ http://svn.edgewall.org/repos/genshi/tags/0.6.0/
  * Added an option to the `HTMLFiller` to also populate password fields.
  * Match template processing no longer produces unwanted duplicate output in
    some cases (ticket #254).
+ * Templates instantiated without a loader now get an implicit loader based on
+   their file path, or the current directory as a fallback (ticket #320).
 
 
 Version 0.5.1

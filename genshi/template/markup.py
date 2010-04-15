@@ -70,11 +70,8 @@ class MarkupTemplate(Template):
     def _init_filters(self):
         Template._init_filters(self)
         # Make sure the include filter comes after the match filter
-        if self.loader:
-            self.filters.remove(self._include)
-        self.filters += [self._match]
-        if self.loader:
-            self.filters.append(self._include)
+        self.filters.remove(self._include)
+        self.filters += [self._match, self._include]
 
     def _parse(self, source, encoding):
         if not isinstance(source, Stream):

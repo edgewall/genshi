@@ -395,6 +395,7 @@ class Template(DirectiveFactory):
         self.lookup = lookup
         self.allow_exec = allow_exec
         self._init_filters()
+        self._init_loader()
         self._prepared = False
 
         if isinstance(source, basestring):
@@ -419,9 +420,21 @@ class Template(DirectiveFactory):
         return '<%s "%s">' % (type(self).__name__, self.filename)
 
     def _init_filters(self):
-        self.filters = [self._flatten]
-        if self.loader:
-            self.filters.append(self._include)
+        self.filters = [self._flatten, self._include]
+
+    def _init_loader(self):
+        if self.loader is None:
+            from genshi.template.loader import TemplateLoader
+            if self.filename:
+                if self.filepath != self.filename:
+                    basedir = os.path.normpath(self.filepath)[:-len(
+                        os.path.normpath(self.filename))
+                    ]
+                else:
+                    basedir = os.path.dirname(self.filename)
+            else:
+                basedir = '.'
+            self.loader = TemplateLoader([os.path.abspath(basedir)])
 
     @property
     def stream(self):

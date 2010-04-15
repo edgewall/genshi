@@ -131,6 +131,15 @@ class TemplateLoader(object):
         self._uptodate = {}
         self._lock = threading.RLock()
 
+    def __getstate__(self):
+        state = self.__dict__.copy()
+        state['_lock'] = None
+        return state
+
+    def __setstate__(self, state):
+        self.__dict__ = state
+        self._lock = threading.RLock()
+
     def load(self, filename, relative_to=None, cls=None, encoding=None):
         """Load the template with the given name.
         

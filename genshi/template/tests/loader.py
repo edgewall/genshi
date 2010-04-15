@@ -153,6 +153,50 @@ class TemplateLoaderTestCase(unittest.TestCase):
               <div>Included</div>
             </html>""", tmpl.generate().render(encoding=None))
 
+    def test_relative_include_without_loader(self):
+        file1 = open(os.path.join(self.dirname, 'tmpl1.html'), 'w')
+        try:
+            file1.write("""<div>Included</div>""")
+        finally:
+            file1.close()
+
+        file2 = open(os.path.join(self.dirname, 'tmpl2.html'), 'w')
+        try:
+            file2.write("""<html xmlns:xi="http://www.w3.org/2001/XInclude">
+              <xi:include href="tmpl1.html" />
+            </html>""")
+        finally:
+            file2.close()
+
+        tmpl = MarkupTemplate("""<html xmlns:xi="http://www.w3.org/2001/XInclude">
+              <xi:include href="tmpl1.html" />
+            </html>""", os.path.join(self.dirname, 'tmpl2.html'), 'tmpl2.html')
+        self.assertEqual("""<html>
+              <div>Included</div>
+            </html>""", tmpl.generate().render(encoding=None))
+
+    def test_relative_include_without_loader_relative(self):
+        file1 = open(os.path.join(self.dirname, 'tmpl1.html'), 'w')
+        try:
+            file1.write("""<div>Included</div>""")
+        finally:
+            file1.close()
+
+        file2 = open(os.path.join(self.dirname, 'tmpl2.html'), 'w')
+        try:
+            file2.write("""<html xmlns:xi="http://www.w3.org/2001/XInclude">
+              <xi:include href="tmpl1.html" />
+            </html>""")
+        finally:
+            file2.close()
+
+        tmpl = MarkupTemplate("""<html xmlns:xi="http://www.w3.org/2001/XInclude">
+              <xi:include href="tmpl1.html" />
+            </html>""", filename=os.path.join(self.dirname, 'tmpl2.html'))
+        self.assertEqual("""<html>
+              <div>Included</div>
+            </html>""", tmpl.generate().render(encoding=None))
+
     def test_relative_include_without_search_path_nested(self):
         file1 = open(os.path.join(self.dirname, 'tmpl1.html'), 'w')
         try:

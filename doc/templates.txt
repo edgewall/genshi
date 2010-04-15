@@ -29,10 +29,11 @@ Synopsis
 
 A Genshi *markup template* is a well-formed XML document with embedded Python
 used for control flow and variable substitution. Markup templates should be
-used to generate any kind of HTML or XML output, as they provide many advantages
-over simple text-based templates (such as automatic escaping of strings).
+used to generate any kind of HTML or XML output, as they provide a number of
+advantages over simple text-based templates (such as automatic escaping of
+variable data).
 
-The following illustrates a very basic Genshi markup template:
+The following is a simple Genshi markup template:
 
 .. code-block:: genshi
 
@@ -57,7 +58,7 @@ The following illustrates a very basic Genshi markup template:
 
 This example shows:
 
-(a) a Python code block, using a processing instruction
+(a) a Python code block in a processing instruction
 (b) the Genshi namespace declaration
 (c) usage of templates directives (``py:content`` and ``py:for``)
 (d) an inline Python expression (``${fruit}``).
@@ -81,9 +82,10 @@ The template would generate output similar to this:
     </body>
   </html>
 
-A *text template* is a simple plain text document that can also contain embedded
-Python code. Text templates can be used to generate simple *non-markup* text
-formats, such as the body of an plain text email. For example:
+A *text template* is a simple plain text document that can also contain
+embedded Python code. Text templates are intended to be used for simple
+*non-markup* text formats, such as the body of an plain text email. For
+example:
 
 .. code-block:: genshitext
 

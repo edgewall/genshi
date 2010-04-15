@@ -277,6 +277,10 @@ class Undefined(object):
         raise UndefinedError(self._name, self._owner)
     __call__ = __getattr__ = __getitem__ = _die
 
+    # Hack around some behavior introduced in Python 2.6.2
+    # http://genshi.edgewall.org/ticket/324
+    __length_hint__ = None
+
 
 class LookupBase(object):
     """Abstract base class for variable lookup implementations."""

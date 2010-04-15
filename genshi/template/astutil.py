@@ -130,9 +130,14 @@ class ASTCodeGenerator(object):
             self._write('**' + node.kwarg)
 
     # FunctionDef(identifier name, arguments args,
-    #                           stmt* body, expr* decorators)
+    #                           stmt* body, expr* decorator_list)
     def visit_FunctionDef(self, node):
-        for decorator in getattr(node, 'decorators', ()):
+        decarators = ()
+        if hasattr(node, 'decorator_list'):
+            decorators = getattr(node, 'decorator_list')
+        else: # different name in earlier Python versions
+            decorators = getattr(node, 'decorators', ())
+        for decorator in decorators:
             self._new_line()
             self._write('@')
             self.visit(decorator)

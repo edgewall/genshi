@@ -588,6 +588,21 @@ x = doit()
         suite.execute(data)
         self.assertEqual(['foo', 'bar'], data['x'])
 
+    def test_def_with_decorator(self):
+        suite = Suite("""
+def lower(fun):
+    return lambda: fun().lower()
+
+@lower
+def say_hi():
+    return 'Hi!'
+
+result = say_hi()
+""")
+        data = {}
+        suite.execute(data)
+        self.assertEqual('hi!', data['result'])
+
     def test_delete(self):
         suite = Suite("""foo = 42
 del foo

@@ -243,7 +243,7 @@ class MarkupTemplate(Template):
                         cls = {
                             'xml': MarkupTemplate,
                             'text': NewTextTemplate
-                        }[parse or 'xml']
+                        }.get(parse) or self.__class__
                     except KeyError:
                         raise TemplateSyntaxError('Invalid value for "parse" '
                                                   'attribute of include',

@@ -974,6 +974,37 @@ class MatchDirectiveTestCase(unittest.TestCase):
         self.assertNotEqual(None, matches)
         self.assertEqual(1, len(matches))
 
+    def test_match_multiple_times1(self):
+        # See http://genshi.edgewall.org/ticket/370
+        tmpl = MarkupTemplate("""<html xmlns:py="http://genshi.edgewall.org/">
+          <py:match path="body[@id='content']/h2" />
+          <head py:match="head" />
+          <head py:match="head" />
+          <head />
+          <body />
+        </html>""")
+        self.assertEqual("""<html>
+          <head/>
+          <body/>
+        </html>""", tmpl.generate().render())
+
+    def test_match_multiple_times2(self):
+        # See http://genshi.edgewall.org/ticket/370
+        tmpl = MarkupTemplate("""<html xmlns:py="http://genshi.edgewall.org/">
+          <py:match path="body/div[@id='properties']" />
+          <head py:match="head" />
+          <head py:match="head" />
+          <head/>
+          <body>
+            <div id="properties">Foo</div>
+          </body>
+        </html>""")
+        self.assertEqual("""<html>
+          <head/>
+          <body>
+          </body>
+        </html>""", tmpl.generate().render())
+
     # FIXME
     #def test_match_after_step(self):
     #    tmpl = MarkupTemplate("""<div xmlns:py="http://genshi.edgewall.org/">

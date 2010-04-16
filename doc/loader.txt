@@ -102,7 +102,7 @@ template, you'd use code similar to this:
   from genshi.template import TemplateLoader
   
   def template_loaded(template):
-      template.filters.insert(0, Translator(translations.ugettext))
+      Translator(translations.ugettext).setup(template)
   
   loader = TemplateLoader('templates', callback=template_loaded)
 

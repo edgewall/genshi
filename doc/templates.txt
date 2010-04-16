@@ -142,7 +142,7 @@ Using a text template is similar:
 .. _`Text Template Language`: text-templates.html
 .. _`Markup Streams`: streams.html
 
-Using a template loader provides the advantage that “compiled” templates are
+Using a `template loader`_ provides the advantage that “compiled” templates are
 automatically cached, and only parsed again when the template file changes. In
 addition, it enables the use of a *template search path*, allowing template
 directories to be spread across different file-system locations. Using a
@@ -159,6 +159,7 @@ template loader would generally look as follows:
 See the `API documentation <api/index.html>`_ for details on using Genshi via
 the Python API.
 
+.. _`template loader`: loader.html
 
 .. _`expressions`:
 

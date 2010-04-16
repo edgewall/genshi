@@ -205,7 +205,7 @@ which you add the filter:
       template.filters.insert(0, Translator(translations.ugettext))
   
   loader = TemplateLoader('templates', callback=template_loaded)
-  template = loader.load("...")
+  template = loader.load('test.html')
 
 This approach ensures that the filter is not added everytime the template is 
 loaded, and thus being applied multiple times.

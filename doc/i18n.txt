@@ -4,7 +4,7 @@
 Internationalization and Localization
 =====================================
 
-Genshi provides basic supporting infrastructure for internationalizing
+Genshi provides comprehensive supporting infrastructure for internationalizing
 and localizing templates. That includes functionality for extracting
 localizable strings from templates, as well as a template filter that can
 apply translations to templates as they get rendered.

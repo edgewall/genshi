@@ -8,9 +8,8 @@ http://svn.edgewall.org/repos/genshi/tags/0.6.0/
    during GSoC 2008.
  * Updated the Python AST processing for template code evaluation to use the
    `_ast` module instead of the deprecated `compiler` package, including an
-   adapter layer for Python 2.4, and some workarounds to enable compatibility
-   with Google App Engine. This, too, is the result of integrating work done
-   by  Marcin Kurczych during GSoC 2008.
+   adapter layer for Python 2.4. This, too, is the result of integrating work
+   done by  Marcin Kurczych during GSoC 2008.
  * Added caching in the serialization stage for improved performance.
  * Various improvements to the HTML sanitization filter.
  * Fix problem with I18n filter that would get confused by expressions in

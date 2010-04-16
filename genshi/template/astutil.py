@@ -742,6 +742,7 @@ class ASTTransformer(object):
     visit_TryExcept = _clone
     visit_TryFinally = _clone
     visit_Assert = _clone
+    visit_ExceptHandler = _clone
 
     visit_Import = _clone
     visit_ImportFrom = _clone

@@ -18,6 +18,11 @@ Required Python Version
 Support for Python 2.3 has been dropped in this release. Python 2.4 is
 now the minimum version of Python required to run Genshi.
 
+The XPath engine has been completely overhauled for this version. Some
+patterns that previously matched incorrectly will no longer match, and
+the other way around. In such cases, the XPath expressions need to be
+fixed in your application and templates.
+
 
 ------------------------------------
 Upgrading from Genshi 0.4.x to 0.5.x

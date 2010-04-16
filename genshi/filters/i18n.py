@@ -403,8 +403,8 @@ class ChooseDirective(ExtractableI18NDirective):
         # XXX: should we test which form was chosen like this!?!?!?
         # There should be no match in any catalogue for these singular and
         # plural test strings
-        singular_test = ur'O\x85\xbe\xa9\xa8az\xc3?\xe6\xa1\x02n\x84\x93'
-        plural_test = ur'\xcc\xfb+\xd3Pn\x9d\tT\xec\x1d\xda\x1a\x88\x00'
+        singular_test = u'O\x85\xbe\xa9\xa8az\xc3?\xe6\xa1\x02n\x84\x93'
+        plural_test = u'\xcc\xfb+\xd3Pn\x9d\tT\xec\x1d\xda\x1a\x88\x00'
         translation = ngettext(singular_test, plural_test,
                                self.numeral.evaluate(ctxt))
         if translation==singular_test:
@@ -923,10 +923,8 @@ class MessageBuffer(object):
     def __init__(self, directive=None):
         """Initialize the message buffer.
         
-        :param params: comma-separated list of parameter names
-        :type params: `basestring`
-        :param lineno: the line number on which the first stream event
-                       belonging to the message was found
+        :param directive: the directive owning the buffer
+        :type directive: I18NDirective
         """
         # params list needs to be copied so that directives can be evaluated
         # more than once
@@ -1224,6 +1222,7 @@ def extract(fileobj, keywords, comment_tags, options):
 
     tmpl = template_class(fileobj, filename=getattr(fileobj, 'name', None),
                           encoding=encoding)
+    tmpl.loader = None
 
     translator = Translator(None, ignore_tags, include_attrs, extract_text)
     if hasattr(tmpl, 'add_directives'):

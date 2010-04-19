@@ -137,8 +137,8 @@ For example, consider the following template snippet:
   </p>
 
 Without further annotation, the translation filter would treat this sentence
-as two separate messages (“Please click” and “here”), and the translator would
-have no control over the position of the link in the sentence.
+as two separate messages (“Please visit” and “for help”), and the translator
+would have no control over the position of the link in the sentence.
 
 However, when you use the Genshi internationalization directives, you simply
 add an ``i18n:msg`` attribute to the enclosing ``<p>`` element:
@@ -185,8 +185,7 @@ The resulting output might be:
     <a href="http://example.com/">Example</a>
   </p>
 
-Please note that messages may contain multiple tags, and they may also be
-nested. For example:
+Messages may contain multiple tags, and they may also be nested. For example:
 
 .. code-block:: genshi
 
@@ -234,7 +233,7 @@ translator understand in what context the message will be used:
 .. code-block:: genshi
 
   <p i18n:msg="name" i18n:comment="Link to the relevant support site">
-    Please visit <a href="${site.url}">${site.name}</a> help.
+    Please visit <a href="${site.url}">${site.name}</a> for help.
   </p>
 
 This comment will be extracted together with the message itself, and will
@@ -248,6 +247,23 @@ outside of the extraction process.
 -------------
 Pluralization
 -------------
+
+Translatable strings that vary based on some number of objects, such as “You
+have 1 new message” or “You have 3 new messages”, present their own challenge,
+in particular when you consider that different languages have different rules
+for pluralization. For example, while English and most western languages have
+two plural forms (one for ``n=1`` and one for ``n<>1``), Welsh has five
+different plural forms, while Hungarian only has one.
+
+The ``gettext`` framework has long supported this via the ``ngettext()``
+family of functions. You specify two default messages, one singular and one
+plural, and the number of items. The translations however may contain any
+number of plural forms for the message, depending on how many are commonly
+used in the language. ``ngettext`` will choose the correct plural form of the
+translated message based on the specified number of items.
+
+Genshi provides a variant of the ``i18n:msg`` directive described above that
+allows choosing the proper plural form based on some variable.
 
 ``i18n:choose``, ``i18n:singular``, ``i18n:plural``
 ---------------------------------------------------

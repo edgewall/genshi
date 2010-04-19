@@ -293,7 +293,7 @@ class ChooseDirective(ExtractableI18NDirective):
       </div>
     </html>
 
-    When used as a directive and not as an attribute:
+    When used as a element and not as an attribute:
 
     >>> tmpl = MarkupTemplate('''\
         <html xmlns:i18n="http://genshi.edgewall.org/i18n">

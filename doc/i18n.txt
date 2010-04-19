@@ -222,6 +222,66 @@ tags.
              structure of the text changing, thus making translation as a
              single message ineffective.
 
+``i18n:choose``, ``i18n:singular``, ``i18n:plural``
+---------------------------------------------------
+
+Translatable strings that vary based on some number of objects, such as “You
+have 1 new message” or “You have 3 new messages”, present their own challenge,
+in particular when you consider that different languages have different rules
+for pluralization. For example, while English and most western languages have
+two plural forms (one for ``n=1`` and an other for ``n<>1``), Welsh has five
+different plural forms, while Hungarian only has one.
+
+The ``gettext`` framework has long supported this via the ``ngettext()``
+family of functions. You specify two default messages, one singular and one
+plural, and the number of items. The translations however may contain any
+number of plural forms for the message, depending on how many are commonly
+used in the language. ``ngettext`` will choose the correct plural form of the
+translated message based on the specified number of items.
+
+Genshi provides a variant of the ``i18n:msg`` directive described above that
+allows choosing the proper plural form based on the numeric value of a given
+variable. The pluralization support is implemented in a set of three
+directives that must be used together: ``i18n:choose``, ``i18n:singular``, and
+``i18n:plural``.
+
+The ``i18n:choose`` directive is used to set up the context of the message: it
+simply wraps the singular and plural variants.
+
+The value of this directive is split into two parts: the first is the
+*numeral*, a Python expression that evaluates to a number to determine which
+plural form should be chosen. The second part, separated by a semicolon, lists
+the parameter names. This part is equivalent to the value of the ``i18n:msg``
+directive.
+
+For example:
+
+.. code-block:: genshi
+
+  <p i18n:choose="len(messages); num">
+    <i18n:singular>You have <b>${len(messages)}</b> new message.</i18n:singular>
+    <i18n:plural>You have <b>${len(messages)}</b> new messages.</i18n:plural>
+  </p>
+
+All three directives can be used either as elements or attribute. So the above
+example could also be written as follows:
+
+.. code-block:: genshi
+
+  <i18n:choose numeral="len(messages)" params="num">
+    <p i18n:singular="">You have <b>${len(messages)}</b> new message.</p>
+    <p i18n:plural="">You have <b>${len(messages)}</b> new messages.</p>
+  </i18n:choose>
+
+When used as an element, the two parts of the ``i18n:choose`` value are split
+into two different attributes: ``numeral`` and ``params``. The
+``i18n:singular`` and ``i18n:plural`` directives do not require or support any
+value (or any extra attributes).
+
+--------------------
+Comments and Domains
+--------------------
+
 ``i18n:comment``
 ----------------
 
@@ -243,41 +303,22 @@ easily visible to the person doing the translation.
 This directive has no impact on how the template is rendered, and is ignored
 outside of the extraction process.
 
-
--------------
-Pluralization
--------------
-
-Translatable strings that vary based on some number of objects, such as “You
-have 1 new message” or “You have 3 new messages”, present their own challenge,
-in particular when you consider that different languages have different rules
-for pluralization. For example, while English and most western languages have
-two plural forms (one for ``n=1`` and one for ``n<>1``), Welsh has five
-different plural forms, while Hungarian only has one.
-
-The ``gettext`` framework has long supported this via the ``ngettext()``
-family of functions. You specify two default messages, one singular and one
-plural, and the number of items. The translations however may contain any
-number of plural forms for the message, depending on how many are commonly
-used in the language. ``ngettext`` will choose the correct plural form of the
-translated message based on the specified number of items.
-
-Genshi provides a variant of the ``i18n:msg`` directive described above that
-allows choosing the proper plural form based on some variable.
-
-``i18n:choose``, ``i18n:singular``, ``i18n:plural``
----------------------------------------------------
-
-TODO
-
--------------------
-Translation Domains
--------------------
-
 ``i18n:domain``
 ---------------
 
-TODO
+In larger projects, message catalogs are commonly split up into different
+*domains*. For example, you might have a core application domain, and then
+separate domains for extensions or libraries.
+
+Genshi provides a directive called ``i18n:domain`` that lets you choose the
+translation domain for a particular scope. For example:
+
+.. code-block:: genshi
+
+  <div i18n:domain="examples">
+    <p>Hello, world!</p>
+  </div>
+
 
 Extraction
 ==========

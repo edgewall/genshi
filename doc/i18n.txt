@@ -178,7 +178,7 @@ So if the German translator of this snippet decided to translate it to::
 
 The resulting output might be:
 
-.. code-block:: html
+.. code-block:: xml
 
   <p>
     Um Hilfe zu erhalten, besuchen Sie bitte
@@ -206,7 +206,7 @@ the German translation could actually look like this::
 
 Which Genshi would recompose into the following outout:
 
-.. code-block:: html
+.. code-block:: xml
 
   <p>
     Um Hilfe zu erhalten besuchen Sie <i>bitte</i>

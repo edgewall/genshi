@@ -241,9 +241,9 @@ method compatible to that of the ``TemplateLoader`` class, at the minimum with
 the signature ``load(filename, relative_to=None, cls=None)``.
 
 In addition, templates currently check for the existence and value of a boolean
-``auto_reload`` property. If the property exists and evaluates to a non-truth
-value, inlining of included templates is disabled. Inlining is a small
-optimization that removes some overhead in the processing of includes.
+``auto_reload`` property. If the property does not exist or evaluates to a
+non-truth value, inlining of included templates is disabled. Inlining is a
+small optimization that removes some overhead in the processing of includes.
 
 Subclassing ``TemplateLoader``
 ==============================

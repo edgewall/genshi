@@ -6,8 +6,8 @@ Internationalization and Localization
 
 Genshi provides comprehensive supporting infrastructure for internationalizing
 and localizing templates. That includes functionality for extracting
-localizable strings from templates, as well as a template filter that can
-apply translations to templates as they get rendered.
+localizable strings from templates, as well as a template filter and special
+directives that can apply translations to templates as they get rendered.
 
 This support is based on `gettext`_ message catalogs and the `gettext Python 
 module`_. The extraction process can be used from the API level, or through
@@ -40,7 +40,7 @@ However, this approach results in significant “character noise” in templates
 making them harder to read and preview.
 
 The ``genshi.filters.Translator`` filter allows you to get rid of the 
-explicit `gettext`_ function calls, so you can continue to just write:
+explicit `gettext`_ function calls, so you can (often) just continue to write:
 
 .. code-block:: genshi
 
@@ -100,9 +100,10 @@ translations to know the syntax and escaping rules of HTML and XML.
 
 In those cases the simple text extraction and translation process described
 above is not sufficient. You could just use ``gettext`` API functions in
-embedded Python expressions for parameters and pluralization, but Genshi also
-provides special template directives for internationalization that attempt to
-provide a comprehensive solution for this problem space.
+embedded Python expressions for parameters and pluralization, but that does
+not help when messages contain embedded markup. Genshi provides special
+template directives for internationalization that attempt to provide a
+comprehensive solution for this problem space.
 
 To enable these directives, you'll need to register them with the templates
 they are used in. You can do this by adding them manually via the
@@ -112,11 +113,27 @@ they are used in. You can do this by adding them manually via the
 class method, which both registers the directives and adds the translation
 filter.
 
+After the directives have been registered with the template engine on the
+Python side of your application, you need to declare the corresponding
+directive namespace in all markup templates that use them. For example:
+
+.. code-block:: genshi
+
+  <html xmlns:py="http://genshi.edgewall.org/"
+        xmlns:i18n="http://genshi.edgewall.org/i18n/">
+    …
+  </html>
+
+These directives only make sense in the context of `markup templates`_. For
+`text templates`_, you can just use the corresponding ``gettext`` API calls as needed.
+
 .. note:: The internationalization directives are still somewhat experimental
           and have some known issues. However, the attribute language they
           implement should be stable and is not subject to change
           substantially in future versions.
 
+.. _`markup templates`: xml-templates.html
+.. _`text templates`: text-templates.html
 
 --------
 Messages
@@ -405,9 +422,10 @@ By default, any text nodes not inside ignored tags, and values of attribute in
 the ``include_attrs`` list are extracted. If this option is disabled, only 
 strings in ``gettext`` function calls are extracted.
 
-.. note:: If you disable this option, it's not necessary to add the translation
-          filter as described above. You only need to make sure that the
-          template has access to the ``gettext`` functions it uses.
+.. note:: If you disable this option, and do not make use of the
+          internationalization directives, it's not necessary to add the
+          translation filter as described above. You only need to make sure
+          that the template has access to the ``gettext`` functions it uses.
 
 
 Translation
@@ -432,22 +450,24 @@ filters that Genshi adds itself:
   template = MarkupTemplate("...")
   template.filters.insert(0, Translator(translations.ugettext))
 
-If you're using `TemplateLoader`, you should specify a callback function in 
-which you add the filter:
+The ``Translator`` class also provides the convenience method ``setup()``,
+which will both add the filter and register the i18n directives:
 
 .. code-block:: python
 
   from genshi.filters import Translator
-  from genshi.template import TemplateLoader
+  from genshi.template import MarkupTemplate
   
-  def template_loaded(template):
-      Translator(translations.ugettext).setup(template)
-  
-  loader = TemplateLoader('templates', callback=template_loaded)
-  template = loader.load('test.html')
+  template = MarkupTemplate("...")
+  translator = Translator(translations.ugettext)
+  translator.setup(template)
 
-This approach ensures that the filter is not added everytime the template is 
-loaded, and thus being applied multiple times.
+.. warning:: If you're using ``TemplateLoader``, you should specify a
+            `callback function`_ in which you add the filter. That ensures
+            that the filter is not added everytime the template is rendered,
+            thereby being applied multiple times.
+
+.. _`callback function`: loader.html#callback-interface
 
 
 Related Considerations

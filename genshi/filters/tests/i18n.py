@@ -254,6 +254,73 @@ class TranslatorTestCase(unittest.TestCase):
           Für Details siehe bitte <a href="help.html">Hilfe</a>
         </html>""", tmpl.generate().render())
 
+    def test_extract_i18n_msg_with_attributes(self):
+        tmpl = MarkupTemplate("""<html xmlns:py="http://genshi.edgewall.org/"
+            xmlns:i18n="http://genshi.edgewall.org/i18n">
+          <p i18n:msg="" title="A helpful paragraph">
+            Please see <a href="help.html" title="Click for help">Help</a>
+          </p>
+        </html>""")
+        translator = Translator()
+        translator.setup(tmpl)
+        messages = list(translator.extract(tmpl.stream))
+        self.assertEqual(3, len(messages))
+        self.assertEqual('A helpful paragraph', messages[0][2])
+        self.assertEqual(3, messages[0][0])
+        self.assertEqual('Click for help', messages[1][2])
+        self.assertEqual(4, messages[1][0])
+        self.assertEqual('Please see [1:Help]', messages[2][2])
+        self.assertEqual(3, messages[2][0])
+
+    def test_translate_i18n_msg_with_attributes(self):
+        tmpl = MarkupTemplate("""<html xmlns:py="http://genshi.edgewall.org/"
+            xmlns:i18n="http://genshi.edgewall.org/i18n">
+          <p i18n:msg="" title="A helpful paragraph">
+            Please see <a href="help.html" title="Click for help">Help</a>
+          </p>
+        </html>""")
+        translator = Translator(lambda msgid: {
+            'A helpful paragraph': 'Ein hilfreicher Absatz',
+            'Click for help': u'Klicken für Hilfe',
+            'Please see [1:Help]': u'Siehe bitte [1:Hilfe]'
+        }[msgid])
+        translator.setup(tmpl)
+        self.assertEqual(u"""<html>
+          <p title="Ein hilfreicher Absatz">Siehe bitte <a href="help.html" title="Klicken für Hilfe">Hilfe</a></p>
+        </html>""", tmpl.generate().render(encoding=None))
+
+    def test_extract_i18n_msg_elt_with_attributes(self):
+        tmpl = MarkupTemplate("""<html xmlns:py="http://genshi.edgewall.org/"
+            xmlns:i18n="http://genshi.edgewall.org/i18n">
+          <i18n:msg params="">
+            Please see <a href="help.html" title="Click for help">Help</a>
+          </i18n:msg>
+        </html>""")
+        translator = Translator()
+        translator.setup(tmpl)
+        messages = list(translator.extract(tmpl.stream))
+        self.assertEqual(2, len(messages))
+        self.assertEqual('Click for help', messages[0][2])
+        self.assertEqual(4, messages[0][0])
+        self.assertEqual('Please see [1:Help]', messages[1][2])
+        self.assertEqual(3, messages[1][0])
+
+    def test_translate_i18n_msg_elt_with_attributes(self):
+        tmpl = MarkupTemplate("""<html xmlns:py="http://genshi.edgewall.org/"
+            xmlns:i18n="http://genshi.edgewall.org/i18n">
+          <i18n:msg params="">
+            Please see <a href="help.html" title="Click for help">Help</a>
+          </i18n:msg>
+        </html>""")
+        translator = Translator(lambda msgid: {
+            'Click for help': u'Klicken für Hilfe',
+            'Please see [1:Help]': u'Siehe bitte [1:Hilfe]'
+        }[msgid])
+        translator.setup(tmpl)
+        self.assertEqual(u"""<html>
+          Siehe bitte <a href="help.html" title="Klicken für Hilfe">Hilfe</a>
+        </html>""", tmpl.generate().render(encoding=None))
+
     def test_extract_i18n_msg_nested(self):
         tmpl = MarkupTemplate("""<html xmlns:py="http://genshi.edgewall.org/"
             xmlns:i18n="http://genshi.edgewall.org/i18n">
@@ -931,7 +998,7 @@ class TranslatorTestCase(unittest.TestCase):
           <p>FooBars</p>
           <p>FooBar</p>
         </html>""", tmpl.generate(one=1, two=2).render())
-        
+
     def test_translate_i18n_choose_as_directive_singular_and_plural_with_strip(self):
         tmpl = MarkupTemplate("""<html xmlns:py="http://genshi.edgewall.org/"
             xmlns:i18n="http://genshi.edgewall.org/i18n">
@@ -1241,6 +1308,115 @@ class TranslatorTestCase(unittest.TestCase):
                                           'Foos %(fname)s %(lname)s'),
                           ['As in Foo Bar']),
                          messages[0])
+
+    def test_extract_i18n_choose_with_attributes(self):
+        tmpl = MarkupTemplate("""<html xmlns:py="http://genshi.edgewall.org/"
+            xmlns:i18n="http://genshi.edgewall.org/i18n">
+          <p i18n:choose="num; num" title="Things">
+            <i18n:singular>
+              There is <a href="$link" title="View thing">${num} thing</a>.
+            </i18n:singular>
+            <i18n:plural>
+              There are <a href="$link" title="View things">${num} things</a>.
+            </i18n:plural>
+          </p>
+        </html>""")
+        translator = Translator()
+        translator.setup(tmpl)
+        messages = list(translator.extract(tmpl.stream))
+        self.assertEqual(4, len(messages))
+        self.assertEqual((3, None, 'Things', []), messages[0])
+        self.assertEqual((5, None, 'View thing', []), messages[1])
+        self.assertEqual((8, None, 'View things', []), messages[2])
+        self.assertEqual(
+            (3, 'ngettext', ('There is [1:%(num)s thing].',
+                             'There are [1:%(num)s things].'), []),
+            messages[3])
+
+    def test_translate_i18n_msg_with_attributes(self):
+        tmpl = MarkupTemplate("""<html xmlns:py="http://genshi.edgewall.org/"
+            xmlns:i18n="http://genshi.edgewall.org/i18n">
+          <p i18n:choose="num; num" title="Things">
+            <i18n:singular>
+              There is <a href="$link" title="View thing">${num} thing</a>.
+            </i18n:singular>
+            <i18n:plural>
+              There are <a href="$link" title="View things">${num} things</a>.
+            </i18n:plural>
+          </p>
+        </html>""")
+        translations = DummyTranslations({
+            'Things': 'Sachen',
+            'View thing': 'Sache betrachten',
+            'View things': 'Sachen betrachten',
+            ('There is [1:%(num)s thing].', 0): 'Da ist [1:%(num)s Sache].',
+            ('There is [1:%(num)s thing].', 1): 'Da sind [1:%(num)s Sachen].'
+        })
+        translator = Translator(translations)
+        translator.setup(tmpl)
+        self.assertEqual(u"""<html>
+          <p title="Sachen">
+            Da ist <a href="/things" title="Sache betrachten">1 Sache</a>.
+          </p>
+        </html>""", tmpl.generate(link="/things", num=1).render(encoding=None))
+        self.assertEqual(u"""<html>
+          <p title="Sachen">
+            Da sind <a href="/things" title="Sachen betrachten">3 Sachen</a>.
+          </p>
+        </html>""", tmpl.generate(link="/things", num=3).render(encoding=None))
+
+    def test_extract_i18n_choose_as_element_with_attributes(self):
+        tmpl = MarkupTemplate("""<html xmlns:py="http://genshi.edgewall.org/"
+            xmlns:i18n="http://genshi.edgewall.org/i18n">
+          <i18n:choose numeral="num" params="num">
+            <p i18n:singular="" title="Things">
+              There is <a href="$link" title="View thing">${num} thing</a>.
+            </p>
+            <p i18n:plural="" title="Things">
+              There are <a href="$link" title="View things">${num} things</a>.
+            </p>
+          </i18n:choose>
+        </html>""")
+        translator = Translator()
+        translator.setup(tmpl)
+        messages = list(translator.extract(tmpl.stream))
+        self.assertEqual(5, len(messages))
+        self.assertEqual((4, None, 'Things', []), messages[0])
+        self.assertEqual((5, None, 'View thing', []), messages[1])
+        self.assertEqual((7, None, 'Things', []), messages[2])
+        self.assertEqual((8, None, 'View things', []), messages[3])
+        self.assertEqual(
+            (3, 'ngettext', ('There is [1:%(num)s thing].',
+                             'There are [1:%(num)s things].'), []),
+            messages[4])
+
+    def test_translate_i18n_msg_as_element_with_attributes(self):
+        tmpl = MarkupTemplate("""<html xmlns:py="http://genshi.edgewall.org/"
+            xmlns:i18n="http://genshi.edgewall.org/i18n">
+          <i18n:choose numeral="num" params="num">
+            <p i18n:singular="" title="Things">
+              There is <a href="$link" title="View thing">${num} thing</a>.
+            </p>
+            <p i18n:plural="" title="Things">
+              There are <a href="$link" title="View things">${num} things</a>.
+            </p>
+          </i18n:choose>
+        </html>""")
+        translations = DummyTranslations({
+            'Things': 'Sachen',
+            'View thing': 'Sache betrachten',
+            'View things': 'Sachen betrachten',
+            ('There is [1:%(num)s thing].', 0): 'Da ist [1:%(num)s Sache].',
+            ('There is [1:%(num)s thing].', 1): 'Da sind [1:%(num)s Sachen].'
+        })
+        translator = Translator(translations)
+        translator.setup(tmpl)
+        self.assertEqual(u"""<html>
+            <p title="Sachen">Da ist <a href="/things" title="Sache betrachten">1 Sache</a>.</p>
+        </html>""", tmpl.generate(link="/things", num=1).render(encoding=None))
+        self.assertEqual(u"""<html>
+            <p title="Sachen">Da sind <a href="/things" title="Sachen betrachten">3 Sachen</a>.</p>
+        </html>""", tmpl.generate(link="/things", num=3).render(encoding=None))
 
     def test_translate_i18n_domain_with_nested_inlcudes(self):
         import os, shutil, tempfile
@@ -1580,6 +1756,7 @@ class TranslatorTestCase(unittest.TestCase):
         self.assertEqual("""
           <p>BarFoo</p>
         """, tmpl.generate().render())
+
 
 class ExtractTestCase(unittest.TestCase):
 

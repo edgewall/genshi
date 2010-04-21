@@ -248,6 +248,11 @@ class ExpressionTestCase(unittest.TestCase):
         expr = Expression("filter(lambda x: x > 2, items)")
         self.assertEqual([3, 4], expr.evaluate(data))
 
+    def test_lambda_tuple_arg(self):
+        data = {'items': [(1, 2), (2, 1)]}
+        expr = Expression("filter(lambda (x, y): x > y, items)")
+        self.assertEqual([(2, 1)], expr.evaluate(data))
+
     def test_list_comprehension(self):
         expr = Expression("[n for n in numbers if n < 2]")
         self.assertEqual([0, 1], expr.evaluate({'numbers': range(5)}))

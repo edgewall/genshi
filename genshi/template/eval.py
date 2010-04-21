@@ -499,7 +499,7 @@ class TemplateASTTransformer(ASTTransformer):
                 names.add(node.asname or node.name)
             elif isinstance(node, _ast.Tuple):
                 for elt in node.elts:
-                    _process(node)
+                    _process(elt)
         if hasattr(node, 'args'):
             for arg in node.args:
                 _process(arg)

@@ -27,8 +27,8 @@ import os
 import re
 from types import FunctionType
 
-from genshi.core import Attrs, Namespace, QName, START, END, TEXT, START_NS, \
-                        END_NS, XML_NAMESPACE, _ensure, StreamEventKind
+from genshi.core import Attrs, Namespace, QName, START, END, TEXT, \
+                        XML_NAMESPACE, _ensure, StreamEventKind
 from genshi.template.eval import _ast
 from genshi.template.base import DirectiveFactory, EXPR, SUB, _apply_directives
 from genshi.template.directives import Directive, StripDirective
@@ -215,34 +215,32 @@ class ChooseBranchDirective(I18NDirective):
     def __call__(self, stream, directives, ctxt, **vars):
         self.params = ctxt.get('_i18n.choose.params', [])[:]
         msgbuf = MessageBuffer(self)
+        stream = _apply_directives(stream, directives, ctxt, vars)
 
-        stream = iter(_apply_directives(stream, directives, ctxt, vars))
-        
         previous = stream.next()
         if previous[0] is START:
             yield previous
         else:
             msgbuf.append(*previous)
-            
+
         try:
             previous = stream.next()
         except StopIteration:
             # For example <i18n:singular> or <i18n:plural> directives
             yield MSGBUF, (), -1 # the place holder for msgbuf output
-            ctxt['_i18n.choose.%s' % type(self).__name__] = msgbuf
+            ctxt['_i18n.choose.%s' % self.tagname] = msgbuf
             return
-        
-        for kind, data, pos in stream:
+
+        for event in stream:
             msgbuf.append(*previous)
-            previous = kind, data, pos
+            previous = event
         yield MSGBUF, (), -1 # the place holder for msgbuf output
 
         if previous[0] is END:
             yield previous # the outer end tag
         else:
             msgbuf.append(*previous)
-        ctxt['_i18n.choose.%s' % type(self).__name__] = msgbuf
-
+        ctxt['_i18n.choose.%s' % self.tagname] = msgbuf
 
     def extract(self, translator, stream, gettext_functions=GETTEXT_FUNCTIONS,
                 search_text=True, comment_stack=None, msgbuf=None):
@@ -361,8 +359,14 @@ class ChooseDirective(ExtractableI18NDirective):
 
     def __call__(self, stream, directives, ctxt, **vars):
         ctxt.push({'_i18n.choose.params': self.params,
-                   '_i18n.choose.SingularDirective': None,
-                   '_i18n.choose.PluralDirective': None})
+                   '_i18n.choose.singular': None,
+                   '_i18n.choose.plural': None})
+
+        ngettext = ctxt.get('_i18n.ngettext')
+        assert hasattr(ngettext, '__call__'), 'No ngettext function available'
+        dngettext = ctxt.get('_i18n.dngettext')
+        if not dngettext:
+            dngettext = lambda d, s, p, n: ngettext(s, p, n)
 
         new_stream = []
         singular_stream = None
@@ -370,95 +374,52 @@ class ChooseDirective(ExtractableI18NDirective):
         plural_stream = None
         plural_msgbuf = None
 
-        ngettext = ctxt.get('_i18n.ungettext')
-        assert hasattr(ngettext, '__call__'), 'No ngettext function available'
-        dngettext = ctxt.get('_i18n.dngettext')
-        if not dngettext:
-            dngettext = lambda d, s, p, n: ngettext(s, p, n)
+        numeral = self.numeral.evaluate(ctxt)
+        is_plural = self._is_plural(numeral, ngettext)
 
-        for kind, event, pos in stream:
-            if kind is SUB:
-                subdirectives, substream = event
-                if isinstance(subdirectives[0],
-                              SingularDirective) and not singular_stream:
-                    strip_directive_present = []
-                    for idx, subdirective in enumerate(subdirectives):
-                        if isinstance(subdirective, StripDirective):
-                            # Any strip directive should be applied AFTER
-                            # the event's have been translated.
-                            strip_directive_present.append(
-                                subdirectives.pop(idx)
-                            )
-                    # Apply directives to update context
+        for event in stream:
+            if event[0] is SUB and any(isinstance(d, ChooseBranchDirective)
+                                       for d in event[1][0]):
+                subdirectives, substream = event[1]
+
+                if isinstance(subdirectives[0], SingularDirective):
                     singular_stream = list(_apply_directives(substream,
                                                              subdirectives,
                                                              ctxt, vars))
-                    if strip_directive_present:
-                        singular_stream = list(
-                            _apply_directives(singular_stream,
-                                              strip_directive_present,
-                                              ctxt, vars)
-                        )
-                    del strip_directive_present
-                    new_stream.append((MSGBUF, (), ('', -1))) # msgbuf place holder
-                    singular_msgbuf = ctxt.get('_i18n.choose.SingularDirective')
-                elif isinstance(subdirectives[0],
-                                PluralDirective) and not plural_stream:
-                    strip_directive_present = []
-                    for idx, subdirective in enumerate(subdirectives):
-                        if isinstance(subdirective, StripDirective):
-                            # Any strip directive should be applied AFTER
-                            # the event's have been translated.
-                            strip_directive_present.append(
-                                subdirectives.pop(idx)
-                            )
-                    # Apply directives to update context
-                    plural_stream = list(_apply_directives(substream,
-                                                           subdirectives,
-                                                           ctxt, vars))
-                    if strip_directive_present:
-                        plural_stream = list(
-                            _apply_directives(plural_stream,
-                                              strip_directive_present,
-                                              ctxt, vars)
-                        )
-                    del strip_directive_present
-                    plural_msgbuf = ctxt.get('_i18n.choose.PluralDirective')
-                else:
-                    new_stream.append((kind, event, pos))
+                    new_stream.append((MSGBUF, None, (None, -1, -1)))
+
+                elif isinstance(subdirectives[0], PluralDirective):
+                    if is_plural:
+                        plural_stream = list(_apply_directives(substream,
+                                                               subdirectives,
+                                                               ctxt, vars))
+
             else:
-                new_stream.append((kind, event, pos))
+                new_stream.append(event)
 
         if ctxt.get('_i18n.domain'):
             ngettext = lambda s, p, n: dngettext(ctxt.get('_i18n.domain'),
                                                  s, p, n)
 
-        # XXX: should we test which form was chosen like this!?!?!?
-        # There should be no match in any catalogue for these singular and
-        # plural test strings
-        singular_test = u'O\x85\xbe\xa9\xa8az\xc3?\xe6\xa1\x02n\x84\x93'
-        plural_test = u'\xcc\xfb+\xd3Pn\x9d\tT\xec\x1d\xda\x1a\x88\x00'
-        translation = ngettext(singular_test, plural_test,
-                               self.numeral.evaluate(ctxt))
-        if translation == singular_test:
-            chosen_msgbuf = singular_msgbuf
-            chosen_stream = singular_stream
+        singular_msgbuf = ctxt.get('_i18n.choose.singular')
+        if is_plural:
+            plural_msgbuf = ctxt.get('_i18n.choose.plural')
+            msgbuf, choice = plural_msgbuf, plural_stream
         else:
-            chosen_msgbuf = plural_msgbuf
-            chosen_stream = plural_stream
-        del singular_test, plural_test, translation
+            msgbuf, choice = singular_msgbuf, singular_stream
+            plural_msgbuf = MessageBuffer(self)
 
         for kind, data, pos in new_stream:
             if kind is MSGBUF:
-                for skind, sdata, spos in chosen_stream:
-                    if skind is MSGBUF:
+                for event in choice:
+                    if event[0] is MSGBUF:
                         translation = ngettext(singular_msgbuf.format(),
                                                plural_msgbuf.format(),
-                                               self.numeral.evaluate(ctxt))
-                        for event in chosen_msgbuf.translate(translation):
-                            yield event
+                                               numeral)
+                        for subevent in msgbuf.translate(translation):
+                            yield subevent
                     else:
-                        yield skind, sdata, spos
+                        yield event
             else:
                 yield kind, data, pos
 
@@ -517,6 +478,14 @@ class ChooseDirective(ExtractableI18NDirective):
             (singular_msgbuf.format(), plural_msgbuf.format()), \
             comment_stack[-1:]
 
+    def _is_plural(self, numeral, ngettext):
+        # XXX: should we test which form was chosen like this!?!?!?
+        # There should be no match in any catalogue for these singular and
+        # plural test strings
+        singular = u'O\x85\xbe\xa9\xa8az\xc3?\xe6\xa1\x02n\x84\x93'
+        plural = u'\xcc\xfb+\xd3Pn\x9d\tT\xec\x1d\xda\x1a\x88\x00'
+        return ngettext(singular, plural, numeral) == plural
+
 
 class DomainDirective(I18NDirective):
     """Implementation of the ``i18n:domain`` directive which allows choosing
@@ -558,7 +527,7 @@ class DomainDirective(I18NDirective):
     def __init__(self, value, template=None, namespaces=None, lineno=-1,
                  offset=-1):
         Directive.__init__(self, None, template, namespaces, lineno, offset)
-        self.domain = value and value.strip() or '__DEFAULT__' 
+        self.domain = value and value.strip() or '__DEFAULT__'
 
     @classmethod
     def attach(cls, template, stream, value, namespaces, pos):
@@ -663,7 +632,8 @@ class Translator(DirectiveFactory):
         self.include_attrs = include_attrs
         self.extract_text = extract_text
 
-    def __call__(self, stream, ctxt=None, search_text=True):
+    def __call__(self, stream, ctxt=None, translate_text=True,
+                 translate_attrs=True):
         """Translate any localizable strings in the given stream.
         
         This function shouldn't be called directly. Instead, an instance of
@@ -674,14 +644,19 @@ class Translator(DirectiveFactory):
         
         :param stream: the markup event stream
         :param ctxt: the template context (not used)
-        :param search_text: whether text nodes should be translated (used
-                            internally)
+        :param translate_text: whether text nodes should be translated (used
+                               internally)
+        :param translate_attrs: whether attribute values should be translated
+                                (used internally)
         :return: the localized stream
         """
         ignore_tags = self.ignore_tags
         include_attrs = self.include_attrs
         skip = 0
         xml_lang = XML_NAMESPACE['lang']
+        if not self.extract_text:
+            translate_text = False
+            translate_attrs = False
 
         if type(self.translate) is FunctionType:
             gettext = self.translate
@@ -689,30 +664,20 @@ class Translator(DirectiveFactory):
                 ctxt['_i18n.gettext'] = gettext
         else:
             gettext = self.translate.ugettext
-            try:
-                dgettext = self.translate.dugettext
-            except AttributeError:
-                dgettext = lambda x, y: gettext(y)
             ngettext = self.translate.ungettext
             try:
+                dgettext = self.translate.dugettext
                 dngettext = self.translate.dungettext
             except AttributeError:
-                dngettext = lambda d, s, p, n: ngettext(s, p, n)
-
+                dgettext = lambda _, y: gettext(y)
+                dngettext = lambda _, s, p, n: ngettext(s, p, n)
             if ctxt:
                 ctxt['_i18n.gettext'] = gettext
-                ctxt['_i18n.ugettext'] = gettext
-                ctxt['_i18n.dgettext'] = dgettext
                 ctxt['_i18n.ngettext'] = ngettext
-                ctxt['_i18n.ungettext'] = ngettext
+                ctxt['_i18n.dgettext'] = dgettext
                 ctxt['_i18n.dngettext'] = dngettext
 
-        extract_text = self.extract_text
-        if not extract_text:
-            search_text = False
-
         if ctxt and ctxt.get('_i18n.domain'):
-            old_gettext = gettext
             gettext = lambda msg: dgettext(ctxt.get('_i18n.domain'), msg)
 
         for kind, data, pos in stream:
@@ -740,12 +705,12 @@ class Translator(DirectiveFactory):
 
                 for name, value in attrs:
                     newval = value
-                    if extract_text and isinstance(value, basestring):
-                        if name in include_attrs:
+                    if isinstance(value, basestring):
+                        if translate_attrs and name in include_attrs:
                             newval = gettext(value)
                     else:
                         newval = list(
-                            self(_ensure(value), ctxt, search_text=False)
+                            self(_ensure(value), ctxt, translate_text=False)
                         )
                     if newval != value:
                         value = newval
@@ -756,7 +721,7 @@ class Translator(DirectiveFactory):
 
                 yield kind, (tag, attrs), pos
 
-            elif search_text and kind is TEXT:
+            elif translate_text and kind is TEXT:
                 text = data.strip()
                 if text:
                     data = data.replace(text, unicode(gettext(text)))
@@ -767,6 +732,7 @@ class Translator(DirectiveFactory):
                 current_domain = None
                 for idx, directive in enumerate(directives):
                     # Organize directives to make everything work
+                    # FIXME: There's got to be a better way to do this!
                     if isinstance(directive, DomainDirective):
                         # Grab current domain and update context
                         current_domain = directive.domain
@@ -782,7 +748,8 @@ class Translator(DirectiveFactory):
                     for d in directives
                 ])
                 substream = list(self(substream, ctxt,
-                                      search_text=not is_i18n_directive))
+                                      translate_text=not is_i18n_directive,
+                                      translate_attrs=translate_attrs))
                 yield kind, (directives, substream), pos
 
                 if current_domain:
@@ -1048,7 +1015,7 @@ class MessageBuffer(object):
         :param string: the translated message string
         """
         substream = None
-        
+
         def yield_parts(string):
             for idx, part in enumerate(regex.split(string)):
                 if idx % 2:

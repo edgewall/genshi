@@ -149,8 +149,8 @@ class MsgDirective(ExtractableI18NDirective):
 
     def __call__(self, stream, directives, ctxt, **vars):
         gettext = ctxt.get('_i18n.gettext')
-        dgettext = ctxt.get('_i18n.dgettext')
         if ctxt.get('_i18n.domain'):
+            dgettext = ctxt.get('_i18n.dgettext')
             assert hasattr(dgettext, '__call__'), \
                 'No domain gettext function passed'
             gettext = lambda msg: dgettext(ctxt.get('_i18n.domain'), msg)
@@ -738,7 +738,7 @@ class Translator(DirectiveFactory):
                          'ugettext', 'ungettext')
 
     def extract(self, stream, gettext_functions=GETTEXT_FUNCTIONS,
-                search_text=True, msgbuf=None, comment_stack=None):
+                search_text=True, comment_stack=None):
         """Extract localizable strings from the given template stream.
         
         For every string found, this function yields a ``(lineno, function,
@@ -790,7 +790,6 @@ class Translator(DirectiveFactory):
             comment_stack = []
         skip = 0
 
-        # Un-comment bellow to extract messages without adding directives
         xml_lang = XML_NAMESPACE['lang']
 
         for kind, data, pos in stream:
@@ -821,28 +820,12 @@ class Translator(DirectiveFactory):
                                 search_text=False):
                             yield lineno, funcname, text, comments
 
-                if msgbuf:
-                    msgbuf.append(kind, data, pos)
-
             elif not skip and search_text and kind is TEXT:
-                if not msgbuf:
-                    text = data.strip()
-                    if text and [ch for ch in text if ch.isalpha()]:
-                        yield pos[1], None, text, comment_stack[-1:]
-                else:
-                    msgbuf.append(kind, data, pos)
-
-            elif not skip and msgbuf and kind is END:
-                msgbuf.append(kind, data, pos)
-                if not msgbuf.depth:
-                    yield msgbuf.lineno, None, msgbuf.format(), [
-                        c for c in msgbuf.comment if c
-                    ]
-                    msgbuf = None
+                text = data.strip()
+                if text and [ch for ch in text if ch.isalpha()]:
+                    yield pos[1], None, text, comment_stack[-1:]
 
             elif kind is EXPR or kind is EXEC:
-                if msgbuf:
-                    msgbuf.append(kind, data, pos)
                 for funcname, strings in extract_from_code(data,
                                                            gettext_functions):
                     # XXX: Do we need to grab i18n:comment from comment_stack ???
@@ -864,7 +847,7 @@ class Translator(DirectiveFactory):
                             messages = self.extract(
                                 substream, gettext_functions,
                                 search_text=search_text and not skip,
-                                msgbuf=msgbuf, comment_stack=comment_stack)
+                                comment_stack=comment_stack)
                             for lineno, funcname, text, comments in messages:
                                 yield lineno, funcname, text, comments
                         directives.pop(idx)
@@ -878,7 +861,7 @@ class Translator(DirectiveFactory):
                     # Extraction in this case has been taken care of.
                     messages = self.extract(
                         substream, gettext_functions,
-                        search_text=search_text and not skip, msgbuf=msgbuf)
+                        search_text=search_text and not skip)
                     for lineno, funcname, text, comments in messages:
                         yield lineno, funcname, text, comments
 
@@ -890,7 +873,7 @@ class Translator(DirectiveFactory):
                     else:
                         messages = self.extract(
                             substream, gettext_functions,
-                            search_text=search_text and not skip, msgbuf=msgbuf)
+                            search_text=search_text and not skip)
                         for lineno, funcname, text, comments in messages:
                             yield lineno, funcname, text, comments
 

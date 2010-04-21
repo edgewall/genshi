@@ -289,7 +289,42 @@ class TranslatorTestCase(unittest.TestCase):
           <p title="Ein hilfreicher Absatz">Siehe bitte <a href="help.html" title="Klicken für Hilfe">Hilfe</a></p>
         </html>""", tmpl.generate().render(encoding=None))
 
-    def test_extract_i18n_msg_elt_with_attributes(self):
+    def test_extract_i18n_msg_with_dynamic_attributes(self):
+        tmpl = MarkupTemplate("""<html xmlns:py="http://genshi.edgewall.org/"
+            xmlns:i18n="http://genshi.edgewall.org/i18n">
+          <p i18n:msg="" title="${_('A helpful paragraph')}">
+            Please see <a href="help.html" title="${_('Click for help')}">Help</a>
+          </p>
+        </html>""")
+        translator = Translator()
+        translator.setup(tmpl)
+        messages = list(translator.extract(tmpl.stream))
+        self.assertEqual(3, len(messages))
+        self.assertEqual('A helpful paragraph', messages[0][2])
+        self.assertEqual(3, messages[0][0])
+        self.assertEqual('Click for help', messages[1][2])
+        self.assertEqual(4, messages[1][0])
+        self.assertEqual('Please see [1:Help]', messages[2][2])
+        self.assertEqual(3, messages[2][0])
+
+    def test_translate_i18n_msg_with_dynamic_attributes(self):
+        tmpl = MarkupTemplate("""<html xmlns:py="http://genshi.edgewall.org/"
+            xmlns:i18n="http://genshi.edgewall.org/i18n">
+          <p i18n:msg="" title="${_('A helpful paragraph')}">
+            Please see <a href="help.html" title="${_('Click for help')}">Help</a>
+          </p>
+        </html>""")
+        translator = Translator(lambda msgid: {
+            'A helpful paragraph': 'Ein hilfreicher Absatz',
+            'Click for help': u'Klicken für Hilfe',
+            'Please see [1:Help]': u'Siehe bitte [1:Hilfe]'
+        }[msgid])
+        translator.setup(tmpl)
+        self.assertEqual(u"""<html>
+          <p title="Ein hilfreicher Absatz">Siehe bitte <a href="help.html" title="Klicken für Hilfe">Hilfe</a></p>
+        </html>""", tmpl.generate(_=translator.translate).render(encoding=None))
+
+    def test_extract_i18n_msg_as_element_with_attributes(self):
         tmpl = MarkupTemplate("""<html xmlns:py="http://genshi.edgewall.org/"
             xmlns:i18n="http://genshi.edgewall.org/i18n">
           <i18n:msg params="">
@@ -305,7 +340,7 @@ class TranslatorTestCase(unittest.TestCase):
         self.assertEqual('Please see [1:Help]', messages[1][2])
         self.assertEqual(3, messages[1][0])
 
-    def test_translate_i18n_msg_elt_with_attributes(self):
+    def test_translate_i18n_msg_as_element_with_attributes(self):
         tmpl = MarkupTemplate("""<html xmlns:py="http://genshi.edgewall.org/"
             xmlns:i18n="http://genshi.edgewall.org/i18n">
           <i18n:msg params="">

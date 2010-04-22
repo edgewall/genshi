@@ -1,6 +1,6 @@
 Version 0.6
 http://svn.edgewall.org/repos/genshi/tags/0.6.0/
-(???, from branches/stable/0.6.x)
+(Apr 22 2010, from branches/stable/0.6.x)
 
  * Support for Python 2.3 has been dropped.
  * Rewrite of the XPath evaluation engine for better performance and improved
@@ -10,7 +10,8 @@ http://svn.edgewall.org/repos/genshi/tags/0.6.0/
    `_ast` module instead of the deprecated `compiler` package, including an
    adapter layer for Python 2.4. This, too, is the result of integrating work
    done by  Marcin Kurczych during GSoC 2008.
- * Added caching in the serialization stage for improved performance.
+ * Added caching in the serialization stage for improved performance in some
+   cases.
  * Various improvements to the HTML sanitization filter.
  * Fix problem with I18n filter that would get confused by expressions in
    attribute values when inside an `i18n:msg` block (ticket #250).
@@ -29,6 +30,8 @@ http://svn.edgewall.org/repos/genshi/tags/0.6.0/
    some cases (ticket #254).
  * Templates instantiated without a loader now get an implicit loader based on
    their file path, or the current directory as a fallback (ticket #320).
+ * Added documentation for the `TemplateLoader`.
+ * Enhanced documentation for internationalization.
 
 
 Version 0.5.1

@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2006-2008 Edgewall Software
+# Copyright (C) 2006-2010 Edgewall Software
 # All rights reserved.
 #
 # This software is licensed as described in the file COPYING, which
@@ -34,6 +34,7 @@ except ImportError:
     build_doc = test_doc = None
 
 _speedup_available = False
+
 
 class optional_build_ext(build_ext):
     # This class allows C extension building to fail.

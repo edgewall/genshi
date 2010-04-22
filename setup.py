@@ -88,7 +88,7 @@ if bdist_egg:
 
 setup(
     name = 'Genshi',
-    version = '0.6',
+    version = '0.7',
     description = 'A toolkit for generation of output for the web',
     long_description = \
 """Genshi is a Python library that provides an integrated set of

@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2006 Edgewall Software
+# Copyright (C) 2006-2009 Edgewall Software
 # All rights reserved.
 #
 # This software is licensed as described in the file COPYING, which
@@ -57,7 +57,7 @@ class StreamTestCase(unittest.TestCase):
         pickle.dump(xml, buf, 2)
         buf.seek(0)
         xml = pickle.load(buf)
-        self.assertEquals('<li>Foo</li>', xml.render())
+        self.assertEquals('<li>Foo</li>', xml.render(encoding=None))
 
 
 class MarkupTestCase(unittest.TestCase):
@@ -175,8 +175,24 @@ class AttrsTestCase(unittest.TestCase):
         self.assertEquals("Attrs([('attr1', 'foo'), ('attr2', 'bar')])",
                           repr(unpickled))
 
+    def test_non_ascii(self):
+        attrs_tuple = Attrs([("attr1", u"föö"), ("attr2", u"bär")]).totuple()
+        self.assertEqual(u'fööbär', attrs_tuple[1])
+
 
 class NamespaceTestCase(unittest.TestCase):
+
+    def test_repr(self):
+        self.assertEqual("Namespace('http://www.example.org/namespace')",
+                         repr(Namespace('http://www.example.org/namespace')))
+
+    def test_repr_eval(self):
+        ns = Namespace('http://www.example.org/namespace')
+        self.assertEqual(eval(repr(ns)), ns)
+
+    def test_repr_eval_non_ascii(self):
+        ns = Namespace(u'http://www.example.org/nämespäcé')
+        self.assertEqual(eval(repr(ns)), ns)
 
     def test_pickle(self):
         ns = Namespace('http://www.example.org/namespace')
@@ -184,7 +200,7 @@ class NamespaceTestCase(unittest.TestCase):
         pickle.dump(ns, buf, 2)
         buf.seek(0)
         unpickled = pickle.load(buf)
-        self.assertEquals('<Namespace "http://www.example.org/namespace">',
+        self.assertEquals("Namespace('http://www.example.org/namespace')",
                           repr(unpickled))
         self.assertEquals('http://www.example.org/namespace', unpickled.uri)
 
@@ -203,9 +219,17 @@ class QNameTestCase(unittest.TestCase):
         self.assertEquals('elem', unpickled.localname)
 
     def test_repr(self):
-        self.assertEqual("QName(u'elem')", repr(QName('elem')))
-        self.assertEqual("QName(u'http://www.example.org/namespace}elem')",
+        self.assertEqual("QName('elem')", repr(QName('elem')))
+        self.assertEqual("QName('http://www.example.org/namespace}elem')",
                          repr(QName('http://www.example.org/namespace}elem')))
+
+    def test_repr_eval(self):
+        qn = QName('elem')
+        self.assertEqual(eval(repr(qn)), qn)
+
+    def test_repr_eval_non_ascii(self):
+        qn = QName(u'élem')
+        self.assertEqual(eval(repr(qn)), qn)
 
     def test_leading_curly_brace(self):
         qname = QName('{http://www.example.org/namespace}elem')

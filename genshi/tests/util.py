@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2006 Edgewall Software
+# Copyright (C) 2006,2009 Edgewall Software
 # All rights reserved.
 #
 # This software is licensed as described in the file COPYING, which
@@ -29,8 +29,8 @@ class LRUCacheTestCase(unittest.TestCase):
         item_a = cache._dict['A']
         self.assertEqual('A', item_a.key)
         self.assertEqual(0, item_a.value)
-        self.assertEqual(None, item_a.previous)
-        self.assertEqual(None, item_a.next)
+        self.assertEqual(None, item_a.prv)
+        self.assertEqual(None, item_a.nxt)
 
         cache['B'] = 1
         self.assertEqual(2, len(cache))
@@ -40,12 +40,12 @@ class LRUCacheTestCase(unittest.TestCase):
         item_b = cache._dict['B']
         self.assertEqual('A', item_a.key)
         self.assertEqual(0, item_a.value)
-        self.assertEqual(item_b, item_a.previous)
-        self.assertEqual(None, item_a.next)
+        self.assertEqual(item_b, item_a.prv)
+        self.assertEqual(None, item_a.nxt)
         self.assertEqual('B', item_b.key)
         self.assertEqual(1, item_b.value)
-        self.assertEqual(None, item_b.previous)
-        self.assertEqual(item_a, item_b.next)
+        self.assertEqual(None, item_b.prv)
+        self.assertEqual(item_a, item_b.nxt)
 
         cache['C'] = 2
         self.assertEqual(2, len(cache))
@@ -55,12 +55,12 @@ class LRUCacheTestCase(unittest.TestCase):
         item_c = cache._dict['C']
         self.assertEqual('B', item_b.key)
         self.assertEqual(1, item_b.value)
-        self.assertEqual(item_c, item_b.previous)
-        self.assertEqual(None, item_b.next)
+        self.assertEqual(item_c, item_b.prv)
+        self.assertEqual(None, item_b.nxt)
         self.assertEqual('C', item_c.key)
         self.assertEqual(2, item_c.value)
-        self.assertEqual(None, item_c.previous)
-        self.assertEqual(item_b, item_c.next)
+        self.assertEqual(None, item_c.prv)
+        self.assertEqual(item_b, item_c.nxt)
 
     def test_getitem(self):
         cache = LRUCache(2)
@@ -76,12 +76,12 @@ class LRUCacheTestCase(unittest.TestCase):
         item_b = cache._dict['B']
         self.assertEqual('A', item_a.key)
         self.assertEqual(0, item_a.value)
-        self.assertEqual(None, item_a.previous)
-        self.assertEqual(item_b, item_a.next)
+        self.assertEqual(None, item_a.prv)
+        self.assertEqual(item_b, item_a.nxt)
         self.assertEqual('B', item_b.key)
         self.assertEqual(1, item_b.value)
-        self.assertEqual(item_a, item_b.previous)
-        self.assertEqual(None, item_b.next)
+        self.assertEqual(item_a, item_b.prv)
+        self.assertEqual(None, item_b.nxt)
 
 
 def suite():

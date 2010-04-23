@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2006-2008 Edgewall Software
+# Copyright (C) 2006-2009 Edgewall Software
 # All rights reserved.
 #
 # This software is licensed as described in the file COPYING, which
@@ -61,7 +61,7 @@ class NewTextTemplate(Template):
     ...  * ${'Item %d' % item}
     ... {% end %}
     ... ''')
-    >>> print tmpl.generate(name='Joe', items=[1, 2, 3]).render()
+    >>> print(tmpl.generate(name='Joe', items=[1, 2, 3]).render(encoding=None))
     Dear Joe,
     <BLANKLINE>
     <BLANKLINE>
@@ -86,7 +86,7 @@ class NewTextTemplate(Template):
     ...  * $item
     ... {% end %}\
     ... ''')
-    >>> print tmpl.generate(name='Joe', items=[1, 2, 3]).render()
+    >>> print(tmpl.generate(name='Joe', items=[1, 2, 3]).render(encoding=None))
     Dear Joe,
     <BLANKLINE>
     We have the following items for you:
@@ -106,7 +106,7 @@ class NewTextTemplate(Template):
     ...  * $item
     ... {% end %}\
     ... ''')
-    >>> print tmpl.generate(name='Joe', items=[1, 2, 3]).render()
+    >>> print(tmpl.generate(name='Joe', items=[1, 2, 3]).render(encoding=None))
     Dear Joe,
     <BLANKLINE>
     {# This is a comment #}
@@ -144,10 +144,10 @@ class NewTextTemplate(Template):
             raise ValueError('delimiers tuple must have exactly four elements')
         self._delims = delims
         self._directive_re = re.compile(self._DIRECTIVE_RE % tuple(
-            map(re.escape, delims)
+            [re.escape(d) for d in delims]
         ), re.DOTALL)
         self._escape_re = re.compile(self._ESCAPE_RE % tuple(
-            map(re.escape, delims[::2])
+            [re.escape(d) for d in delims[::2]]
         ))
     delimiters = property(_get_delims, _set_delims, """\
     The delimiters for directives and comments. This should be a four item tuple
@@ -169,7 +169,7 @@ class NewTextTemplate(Template):
 
         _escape_sub = self._escape_re.sub
         def _escape_repl(mo):
-            groups = filter(None, mo.groups()) 
+            groups = [g for g in mo.groups() if g]
             if not groups:
                 return ''
             return groups[0]
@@ -219,7 +219,7 @@ class NewTextTemplate(Template):
                 cls = self.get_directive(command)
                 if cls is None:
                     raise BadDirectiveError(command)
-                directive = cls, value, None, (self.filepath, lineno, 0)
+                directive = 0, cls, value, None, (self.filepath, lineno, 0)
                 dirmap[depth] = (directive, len(stream))
                 depth += 1
 
@@ -248,7 +248,7 @@ class OldTextTemplate(Template):
     ... 
     ... All the best,
     ... Foobar''')
-    >>> print tmpl.generate(name='Joe', items=[1, 2, 3]).render()
+    >>> print(tmpl.generate(name='Joe', items=[1, 2, 3]).render(encoding=None))
     Dear Joe,
     <BLANKLINE>
     We have the following items for you:
@@ -315,7 +315,7 @@ class OldTextTemplate(Template):
                 cls = self.get_directive(command)
                 if cls is None:
                     raise BadDirectiveError(command)
-                directive = cls, value, None, (self.filepath, lineno, 0)
+                directive = 0, cls, value, None, (self.filepath, lineno, 0)
                 dirmap[depth] = (directive, len(stream))
                 depth += 1
 

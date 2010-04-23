@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2006-2008 Edgewall Software
+# Copyright (C) 2006-2010 Edgewall Software
 # All rights reserved.
 #
 # This software is licensed as described in the file COPYING, which
@@ -120,7 +120,7 @@ class Code(object):
         return not self == other
 
     def __repr__(self):
-        return '%s(%r)' % (self.__class__.__name__, self.source)
+        return '%s(%r)' % (type(self).__name__, self.source)
 
 
 class Expression(Code):
@@ -229,7 +229,7 @@ class Undefined(object):
     False
     >>> list(foo)
     []
-    >>> print foo
+    >>> print(foo)
     undefined
     
     However, calling an undefined variable, or trying to access an attribute
@@ -266,7 +266,7 @@ class Undefined(object):
         return False
 
     def __repr__(self):
-        return '<%s %r>' % (self.__class__.__name__, self._name)
+        return '<%s %r>' % (type(self).__name__, self._name)
 
     def __str__(self):
         return 'undefined'
@@ -276,6 +276,10 @@ class Undefined(object):
         __traceback_hide__ = True
         raise UndefinedError(self._name, self._owner)
     __call__ = __getattr__ = __getitem__ = _die
+
+    # Hack around some behavior introduced in Python 2.6.2
+    # http://genshi.edgewall.org/ticket/324
+    __length_hint__ = None
 
 
 class LookupBase(object):
@@ -495,7 +499,7 @@ class TemplateASTTransformer(ASTTransformer):
                 names.add(node.asname or node.name)
             elif isinstance(node, _ast.Tuple):
                 for elt in node.elts:
-                    _process(node)
+                    _process(elt)
         if hasattr(node, 'args'):
             for arg in node.args:
                 _process(arg)
@@ -558,15 +562,13 @@ class TemplateASTTransformer(ASTTransformer):
     # GeneratorExp(expr elt, comprehension* generators)
     def visit_GeneratorExp(self, node):
         gens = []
-        # need to visit them in inverse order
-        for generator in node.generators[::-1]:
+        for generator in node.generators:
             # comprehension = (expr target, expr iter, expr* ifs)
             self.locals.append(set())
             gen = _new(_ast.comprehension, self.visit(generator.target),
-                            self.visit(generator.iter),
-                            [self.visit(if_) for if_ in generator.ifs])
+                       self.visit(generator.iter),
+                       [self.visit(if_) for if_ in generator.ifs])
             gens.append(gen)
-        gens.reverse()
 
         # use node.__class__ to make it reusable as ListComp
         ret = _new(node.__class__, self.visit(node.elt), gens)

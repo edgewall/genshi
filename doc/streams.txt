@@ -46,17 +46,17 @@ of the form ``(kind, data, pos)``, where:
 .. code-block:: pycon
 
   >>> for kind, data, pos in stream:
-  ...     print kind, `data`, pos
+  ...     print('%s %r %r' % (kind, data, pos))
   ... 
-  START (QName(u'p'), Attrs([(QName(u'class'), u'intro')])) (None, 1, 0)
+  START (QName('p'), Attrs([(QName('class'), u'intro')])) (None, 1, 0)
   TEXT u'Some text and ' (None, 1, 17)
-  START (QName(u'a'), Attrs([(QName(u'href'), u'http://example.org/')])) (None, 1, 31)
+  START (QName('a'), Attrs([(QName('href'), u'http://example.org/')])) (None, 1, 31)
   TEXT u'a link' (None, 1, 61)
-  END QName(u'a') (None, 1, 67)
+  END QName('a') (None, 1, 67)
   TEXT u'.' (None, 1, 71)
-  START (QName(u'br'), Attrs()) (None, 1, 72)
-  END QName(u'br') (None, 1, 77)
-  END QName(u'p') (None, 1, 77)
+  START (QName('br'), Attrs()) (None, 1, 72)
+  END QName('br') (None, 1, 77)
+  END QName('p') (None, 1, 77)
 
 
 Filtering
@@ -143,7 +143,7 @@ Here's the output from ``serialize()``:
 .. code-block:: pycon
 
   >>> for output in stream.serialize():
-  ...     print `output`
+  ...     print(repr(output))
   ... 
   <Markup u'<p class="intro">'>
   <Markup u'Some text and '>
@@ -158,7 +158,7 @@ And here's the output from ``render()``:
 
 .. code-block:: pycon
 
-  >>> print stream.render()
+  >>> print(stream.render())
   <p class="intro">Some text and <a href="http://example.org/">a link</a>.<br/></p>
 
 Both methods can be passed a ``method`` parameter that determines how exactly
@@ -167,7 +167,7 @@ custom serializer class:
 
 .. code-block:: pycon
 
-  >>> print stream.render('html')
+  >>> print(stream.render('html'))
   <p class="intro">Some text and <a href="http://example.org/">a link</a>.<br></p>
 
 Note how the `<br>` element isn't closed, which is the right thing to do for
@@ -183,14 +183,14 @@ directly:
 
   >>> from genshi.filters import HTMLSanitizer
   >>> from genshi.output import TextSerializer
-  >>> print ''.join(TextSerializer()(HTMLSanitizer()(stream)))
+  >>> print(''.join(TextSerializer()(HTMLSanitizer()(stream))))
   Some text and a link.
 
 The pipe operator allows a nicer syntax:
 
 .. code-block:: pycon
 
-  >>> print stream | HTMLSanitizer() | TextSerializer()
+  >>> print(stream | HTMLSanitizer() | TextSerializer())
   Some text and a link.
 
 
@@ -327,7 +327,7 @@ XPath can be used to extract a specific subset of the stream via the
   >>> substream = stream.select('a')
   >>> substream
   <genshi.core.Stream object at ...>
-  >>> print substream
+  >>> print(substream)
   <a href="http://example.org/">a link</a>
 
 Often, streams cannot be reused: in the above example, the sub-stream is based
@@ -341,11 +341,11 @@ in a ``list``:
   >>> substream = Stream(list(stream.select('a')))
   >>> substream
   <genshi.core.Stream object at ...>
-  >>> print substream
+  >>> print(substream)
   <a href="http://example.org/">a link</a>
-  >>> print substream.select('@href')
+  >>> print(substream.select('@href'))
   http://example.org/
-  >>> print substream.select('text()')
+  >>> print(substream.select('text()'))
   a link
 
 See `Using XPath in Genshi`_ for more information about the XPath support in
@@ -379,7 +379,7 @@ declarations):
 
 .. code-block:: python
 
-  START, (QName(u'p'), Attrs([(QName(u'class'), u'intro')])), pos
+  START, (QName('p'), Attrs([(QName('class'), u'intro')])), pos
 
 END
 ---
@@ -390,7 +390,7 @@ describing the qualified name of the tag:
 
 .. code-block:: python
 
-  END, QName(u'p'), pos
+  END, QName('p'), pos
 
 TEXT
 ----

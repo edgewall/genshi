@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2006-2008 Edgewall Software
+# Copyright (C) 2006-2009 Edgewall Software
 # All rights reserved.
 #
 # This software is licensed as described in the file COPYING, which
@@ -98,7 +98,7 @@ class Directive(object):
         expr = ''
         if getattr(self, 'expr', None) is not None:
             expr = ' "%s"' % self.expr.source
-        return '<%s%s>' % (self.__class__.__name__, expr)
+        return '<%s%s>' % (type(self).__name__, expr)
 
     @classmethod
     def _parse_expr(cls, expr, template, lineno=-1, offset=-1):
@@ -144,11 +144,11 @@ class AttrsDirective(Directive):
     >>> tmpl = MarkupTemplate('''<ul xmlns:py="http://genshi.edgewall.org/">
     ...   <li py:attrs="foo">Bar</li>
     ... </ul>''')
-    >>> print tmpl.generate(foo={'class': 'collapse'})
+    >>> print(tmpl.generate(foo={'class': 'collapse'}))
     <ul>
       <li class="collapse">Bar</li>
     </ul>
-    >>> print tmpl.generate(foo=[('class', 'collapse')])
+    >>> print(tmpl.generate(foo=[('class', 'collapse')]))
     <ul>
       <li class="collapse">Bar</li>
     </ul>
@@ -156,7 +156,7 @@ class AttrsDirective(Directive):
     If the value evaluates to ``None`` (or any other non-truth value), no
     attributes are added:
     
-    >>> print tmpl.generate(foo=None)
+    >>> print(tmpl.generate(foo=None))
     <ul>
       <li>Bar</li>
     </ul>
@@ -195,7 +195,7 @@ class ContentDirective(Directive):
     >>> tmpl = MarkupTemplate('''<ul xmlns:py="http://genshi.edgewall.org/">
     ...   <li py:content="bar">Hello</li>
     ... </ul>''')
-    >>> print tmpl.generate(bar='Bye')
+    >>> print(tmpl.generate(bar='Bye'))
     <ul>
       <li>Bye</li>
     </ul>
@@ -230,7 +230,7 @@ class DefDirective(Directive):
     ...   </p>
     ...   ${echo('Hi', name='you')}
     ... </div>''')
-    >>> print tmpl.generate(bar='Bye')
+    >>> print(tmpl.generate(bar='Bye'))
     <div>
       <p class="message">
         Hi, you!
@@ -246,7 +246,7 @@ class DefDirective(Directive):
     ...   </p>
     ...   ${helloworld()}
     ... </div>''')
-    >>> print tmpl.generate(bar='Bye')
+    >>> print(tmpl.generate(bar='Bye'))
     <div>
       <p class="message">
         Hello, world!
@@ -321,7 +321,7 @@ class DefDirective(Directive):
         return []
 
     def __repr__(self):
-        return '<%s "%s">' % (self.__class__.__name__, self.name)
+        return '<%s "%s">' % (type(self).__name__, self.name)
 
 
 class ForDirective(Directive):
@@ -332,7 +332,7 @@ class ForDirective(Directive):
     >>> tmpl = MarkupTemplate('''<ul xmlns:py="http://genshi.edgewall.org/">
     ...   <li py:for="item in items">${item}</li>
     ... </ul>''')
-    >>> print tmpl.generate(items=[1, 2, 3])
+    >>> print(tmpl.generate(items=[1, 2, 3]))
     <ul>
       <li>1</li><li>2</li><li>3</li>
     </ul>
@@ -373,7 +373,7 @@ class ForDirective(Directive):
             ctxt.pop()
 
     def __repr__(self):
-        return '<%s>' % self.__class__.__name__
+        return '<%s>' % type(self).__name__
 
 
 class IfDirective(Directive):
@@ -384,7 +384,7 @@ class IfDirective(Directive):
     >>> tmpl = MarkupTemplate('''<div xmlns:py="http://genshi.edgewall.org/">
     ...   <b py:if="foo">${bar}</b>
     ... </div>''')
-    >>> print tmpl.generate(foo=True, bar='Hello')
+    >>> print(tmpl.generate(foo=True, bar='Hello'))
     <div>
       <b>Hello</b>
     </div>
@@ -415,7 +415,7 @@ class MatchDirective(Directive):
     ...   </span>
     ...   <greeting name="Dude" />
     ... </div>''')
-    >>> print tmpl.generate()
+    >>> print(tmpl.generate())
     <div>
       <span>
         Hello Dude
@@ -452,7 +452,7 @@ class MatchDirective(Directive):
         return []
 
     def __repr__(self):
-        return '<%s "%s">' % (self.__class__.__name__, self.path.source)
+        return '<%s "%s">' % (type(self).__name__, self.path.source)
 
 
 class ReplaceDirective(Directive):
@@ -465,7 +465,7 @@ class ReplaceDirective(Directive):
     >>> tmpl = MarkupTemplate('''<div xmlns:py="http://genshi.edgewall.org/">
     ...   <span py:replace="bar">Hello</span>
     ... </div>''')
-    >>> print tmpl.generate(bar='Bye')
+    >>> print(tmpl.generate(bar='Bye'))
     <div>
       Bye
     </div>
@@ -476,7 +476,7 @@ class ReplaceDirective(Directive):
     >>> tmpl = MarkupTemplate('''<div xmlns:py="http://genshi.edgewall.org/">
     ...   <span py:content="bar" py:strip="">Hello</span>
     ... </div>''')
-    >>> print tmpl.generate(bar='Bye')
+    >>> print(tmpl.generate(bar='Bye'))
     <div>
       Bye
     </div>
@@ -504,7 +504,7 @@ class StripDirective(Directive):
     >>> tmpl = MarkupTemplate('''<div xmlns:py="http://genshi.edgewall.org/">
     ...   <div py:strip="True"><b>foo</b></div>
     ... </div>''')
-    >>> print tmpl.generate()
+    >>> print(tmpl.generate())
     <div>
       <b>foo</b>
     </div>
@@ -520,7 +520,7 @@ class StripDirective(Directive):
     ...   </div>
     ...   ${echo('foo')}
     ... </div>''')
-    >>> print tmpl.generate()
+    >>> print(tmpl.generate())
     <div>
         <b>foo</b>
     </div>
@@ -529,7 +529,7 @@ class StripDirective(Directive):
 
     def __call__(self, stream, directives, ctxt, **vars):
         def _generate():
-            if _eval_expr(self.expr, ctxt, vars):
+            if not self.expr or _eval_expr(self.expr, ctxt, vars):
                 stream.next() # skip start tag
                 previous = stream.next()
                 for event in stream:
@@ -539,13 +539,6 @@ class StripDirective(Directive):
                 for event in stream:
                     yield event
         return _apply_directives(_generate(), directives, ctxt, vars)
-
-    @classmethod
-    def attach(cls, template, stream, value, namespaces, pos):
-        if not value:
-            return None, stream[1:-1]
-        return super(StripDirective, cls).attach(template, stream, value,
-                                                 namespaces, pos)
 
 
 class ChooseDirective(Directive):
@@ -564,7 +557,7 @@ class ChooseDirective(Directive):
     ...   <span py:when="1 == 1">1</span>
     ...   <span py:otherwise="">2</span>
     ... </div>''')
-    >>> print tmpl.generate()
+    >>> print(tmpl.generate())
     <div>
       <span>1</span>
     </div>
@@ -578,7 +571,7 @@ class ChooseDirective(Directive):
     ...   <span py:when="1">1</span>
     ...   <span py:when="2">2</span>
     ... </div>''')
-    >>> print tmpl.generate()
+    >>> print(tmpl.generate())
     <div>
       <span>2</span>
     </div>
@@ -685,7 +678,7 @@ class WithDirective(Directive):
     >>> tmpl = MarkupTemplate('''<div xmlns:py="http://genshi.edgewall.org/">
     ...   <span py:with="y=7; z=x+10">$x $y $z</span>
     ... </div>''')
-    >>> print tmpl.generate(x=42)
+    >>> print(tmpl.generate(x=42))
     <div>
       <span>42 7 52</span>
     </div>
@@ -731,4 +724,4 @@ class WithDirective(Directive):
         ctxt.pop()
 
     def __repr__(self):
-        return '<%s>' % (self.__class__.__name__)
+        return '<%s>' % (type(self).__name__)

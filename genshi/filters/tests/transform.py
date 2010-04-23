@@ -544,29 +544,29 @@ class MapTest(unittest.TestCase):
     def test_map_element(self):
         self.assertEqual(
             self._map('foo'),
-            [(QName(u'foo'), Attrs([(QName(u'name'), u'foo'),
-                                    (QName(u'size'), u'100')])),
+            [(QName('foo'), Attrs([(QName('name'), u'foo'),
+                                   (QName('size'), u'100')])),
              u'FOO',
-             QName(u'foo')]
-            )
+             QName('foo')]
+        )
 
     def test_map_with_text_kind(self):
         self.assertEqual(
             self._map('.', TEXT),
             [u'ROOT', u'FOO', u'BAR']
-            )
+        )
 
     def test_map_with_root_and_end_kind(self):
         self.assertEqual(
             self._map('.', END),
-            [QName(u'foo'), QName(u'bar'), QName(u'root')]
-            )
+            [QName('foo'), QName('bar'), QName('root')]
+        )
 
     def test_map_with_attribute(self):
         self.assertEqual(
             self._map('foo/@name'),
-            [(QName(u'foo@*'), Attrs([('name', u'foo')]))]
-            )
+            [(QName('foo@*'), Attrs([('name', u'foo')]))]
+        )
 
 
 class SubstituteTest(unittest.TestCase):

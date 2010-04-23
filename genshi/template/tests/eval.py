@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2006-2008 Edgewall Software
+# Copyright (C) 2006-2010 Edgewall Software
 # All rights reserved.
 #
 # This software is licensed as described in the file COPYING, which
@@ -12,9 +12,11 @@
 # history and logs, available at http://genshi.edgewall.org/log/.
 
 import doctest
+import os
 import pickle
 from StringIO import StringIO
 import sys
+from tempfile import mkstemp
 import unittest
 
 from genshi.core import Markup
@@ -246,6 +248,11 @@ class ExpressionTestCase(unittest.TestCase):
         expr = Expression("filter(lambda x: x > 2, items)")
         self.assertEqual([3, 4], expr.evaluate(data))
 
+    def test_lambda_tuple_arg(self):
+        data = {'items': [(1, 2), (2, 1)]}
+        expr = Expression("filter(lambda (x, y): x > y, items)")
+        self.assertEqual([(2, 1)], expr.evaluate(data))
+
     def test_list_comprehension(self):
         expr = Expression("[n for n in numbers if n < 2]")
         self.assertEqual([0, 1], expr.evaluate({'numbers': range(5)}))
@@ -257,6 +264,14 @@ class ExpressionTestCase(unittest.TestCase):
         expr = Expression("[offset + n for n in numbers]")
         self.assertEqual([2, 3, 4, 5, 6],
                          expr.evaluate({'numbers': range(5), 'offset': 2}))
+
+        expr = Expression("[n for group in groups for n in group]")
+        self.assertEqual([0, 1, 0, 1, 2],
+                         expr.evaluate({'groups': [range(2), range(3)]}))
+
+        expr = Expression("[(a, b) for a in x for b in y]")
+        self.assertEqual([('x0', 'y0'), ('x0', 'y1'), ('x1', 'y0'), ('x1', 'y1')],
+                         expr.evaluate({'x': ['x0', 'x1'], 'y': ['y0', 'y1']}))
 
     def test_list_comprehension_with_getattr(self):
         items = [{'name': 'a', 'value': 1}, {'name': 'b', 'value': 2}]
@@ -279,6 +294,14 @@ class ExpressionTestCase(unittest.TestCase):
         expr = Expression("list(offset + n for n in numbers)")
         self.assertEqual([2, 3, 4, 5, 6],
                          expr.evaluate({'numbers': range(5), 'offset': 2}))
+
+        expr = Expression("list(n for group in groups for n in group)")
+        self.assertEqual([0, 1, 0, 1, 2],
+                         expr.evaluate({'groups': [range(2), range(3)]}))
+
+        expr = Expression("list((a, b) for a in x for b in y)")
+        self.assertEqual([('x0', 'y0'), ('x0', 'y1'), ('x1', 'y0'), ('x1', 'y1')],
+                         expr.evaluate({'x': ['x0', 'x1'], 'y': ['y0', 'y1']}))
 
     def test_generator_expression_with_getattr(self):
         items = [{'name': 'a', 'value': 1}, {'name': 'b', 'value': 2}]
@@ -570,6 +593,21 @@ x = doit()
         suite.execute(data)
         self.assertEqual(['foo', 'bar'], data['x'])
 
+    def test_def_with_decorator(self):
+        suite = Suite("""
+def lower(fun):
+    return lambda: fun().lower()
+
+@lower
+def say_hi():
+    return 'Hi!'
+
+result = say_hi()
+""")
+        data = {}
+        suite.execute(data)
+        self.assertEqual('hi!', data['result'])
+
     def test_delete(self):
         suite = Suite("""foo = 42
 del foo
@@ -621,7 +659,7 @@ x = create()
     def test_import_in_def(self):
         suite = Suite("""def fun():
     from itertools import ifilter
-    return ifilter(None, xrange(3))
+    return ifilter(None, range(3))
 """)
         data = Context()
         suite.execute(data)
@@ -766,6 +804,46 @@ assert f() == 42
         d = {'k': 'foo'}
         Suite("del d['k']").execute({'d': d})
         self.failIf('k' in d, repr(d))
+
+    if sys.version_info >= (2, 5):
+        def test_with_statement(self):
+            fd, path = mkstemp()
+            f = os.fdopen(fd, "w")
+            try:
+                f.write('foo\nbar\n')
+                f.seek(0)
+                f.close()
+
+                d = {'path': path}
+                suite = Suite("""from __future__ import with_statement
+lines = []
+with open(path) as file:
+    for line in file:
+        lines.append(line)
+""")
+                suite.execute(d)
+                self.assertEqual(['foo\n', 'bar\n'], d['lines'])
+            finally:
+                os.remove(path)
+
+        def test_yield_expression(self):
+            d = {}
+            suite = Suite("""results = []
+def counter(maximum):
+    i = 0
+    while i < maximum:
+        val = (yield i)
+        if val is not None:
+            i = val
+        else:
+            i += 1
+it = counter(5)
+results.append(it.next())
+results.append(it.send(3))
+results.append(it.next())
+""")
+            suite.execute(d)
+            self.assertEqual([0, 3, 4], d['results'])
 
 
 def suite():

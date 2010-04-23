@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2006-2008 Edgewall Software
+# Copyright (C) 2006-2009 Edgewall Software
 # All rights reserved.
 #
 # This software is licensed as described in the file COPYING, which
@@ -30,8 +30,8 @@
 ...       </item>
 ...   </items>
 ... </doc>''')
->>> print doc.select('items/item[@status="closed" and '
-...     '(@resolution="invalid" or not(@resolution))]/summary/text()')
+>>> print(doc.select('items/item[@status="closed" and '
+...     '(@resolution="invalid" or not(@resolution))]/summary/text()'))
 BarBaz
 
 Because the XPath engine operates on markup streams (as opposed to tree
@@ -40,9 +40,9 @@ structures), it only implements a subset of the full XPath 1.0 language.
 
 from collections import deque
 try:
+    reduce # builtin in Python < 3
+except NameError:
     from functools import reduce
-except ImportError:
-    pass # builtin in Python <= 2.5
 from math import ceil, floor
 import operator
 import re
@@ -263,9 +263,9 @@ class SimplePathStrategy(object):
 
         def nodes_equal(node1, node2):
             """Tests if two node tests are equal"""
-            if node1.__class__ is not node2.__class__:
+            if type(node1) is not type(node2):
                 return False
-            if node1.__class__ == LocalNameTest:
+            if type(node1) == LocalNameTest:
                 return node1.name == node2.name
             return True
 
@@ -278,7 +278,7 @@ class SimplePathStrategy(object):
                 return []
             pi = [0]
             s = 0
-            for i in xrange(1, len(f)):
+            for i in range(1, len(f)):
                 while s > 0 and not nodes_equal(f[s], f[i]):
                     s = pi[s-1]
                 if nodes_equal(f[s], f[i]):
@@ -537,7 +537,7 @@ class Path(object):
                     self.strategies.append(strategy_class(path))
                     break
             else:
-                raise NotImplemented, "This path is not implemented"
+                raise NotImplemented('No strategy found for path')
 
     def __repr__(self):
         paths = []
@@ -548,7 +548,7 @@ class Path(object):
                 for predicate in predicates:
                     steps[-1] += '[%s]' % predicate
             paths.append('/'.join(steps))
-        return '<%s "%s">' % (self.__class__.__name__, '|'.join(paths))
+        return '<%s "%s">' % (type(self).__name__, '|'.join(paths))
 
     def select(self, stream, namespaces=None, variables=None):
         """Returns a substream of the given stream that matches the path.
@@ -558,10 +558,10 @@ class Path(object):
         >>> from genshi.input import XML
         >>> xml = XML('<root><elem><child>Text</child></elem></root>')
         
-        >>> print Path('.//child').select(xml)
+        >>> print(Path('.//child').select(xml))
         <child>Text</child>
         
-        >>> print Path('.//child/text()').select(xml)
+        >>> print(Path('.//child/text()').select(xml))
         Text
         
         :param stream: the stream to select from
@@ -618,8 +618,8 @@ class Path(object):
         >>> namespaces, variables = {}, {}
         >>> for event in xml:
         ...     if test(event, namespaces, variables):
-        ...         print event[0], repr(event[1])
-        START (QName(u'child'), Attrs([(QName(u'id'), u'2')]))
+        ...         print('%s %r' % (event[0], event[1]))
+        START (QName('child'), Attrs([(QName('id'), u'2')]))
         
         :param ignore_context: if `True`, the path is interpreted like a pattern
                                in XSLT, meaning for example that it will match
@@ -667,9 +667,9 @@ class PathParser(object):
     def __init__(self, text, filename=None, lineno=-1):
         self.filename = filename
         self.lineno = lineno
-        self.tokens = filter(None, [dqstr or sqstr or number or token or name
-                                    for dqstr, sqstr, number, token, name in
-                                    self._tokenize(text)])
+        self.tokens = [t for t in [dqstr or sqstr or number or token or name
+                                   for dqstr, sqstr, number, token, name in
+                                   self._tokenize(text)] if t]
         self.pos = 0
 
     # Tokenizer
@@ -937,7 +937,7 @@ def as_long(value):
 def as_string(value):
     value = as_scalar(value)
     if value is False:
-        return u''
+        return ''
     return unicode(value)
 
 def as_bool(value):
@@ -1101,7 +1101,7 @@ class ConcatFunction(Function):
         for item in [expr(kind, data, pos, namespaces, variables)
                      for expr in self.exprs]:
             strings.append(as_string(item))
-        return u''.join(strings)
+        return ''.join(strings)
     def __repr__(self):
         return 'concat(%s)' % ', '.join([repr(expr) for expr in self.exprs])
 
@@ -1311,7 +1311,7 @@ class SubstringAfterFunction(Function):
         index = string1.find(string2)
         if index >= 0:
             return string1[index + len(string2):]
-        return u''
+        return ''
     def __repr__(self):
         return 'substring-after(%r, %r)' % (self.string1, self.string2)
 
@@ -1329,7 +1329,7 @@ class SubstringBeforeFunction(Function):
         index = string1.find(string2)
         if index >= 0:
             return string1[:index]
-        return u''
+        return ''
     def __repr__(self):
         return 'substring-after(%r, %r)' % (self.string1, self.string2)
 

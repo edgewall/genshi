@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2006-2008 Edgewall Software
+# Copyright (C) 2006-2010 Edgewall Software
 # All rights reserved.
 #
 # This software is licensed as described in the file COPYING, which
@@ -35,6 +35,7 @@ except ImportError:
 
 _speedup_available = False
 
+
 class optional_build_ext(build_ext):
     # This class allows C extension building to fail.
     def run(self):
@@ -52,18 +53,18 @@ class optional_build_ext(build_ext):
             self._unavailable(e)
 
     def _unavailable(self, exc):
-        print '*' * 70
-        print """WARNING:
+        print('*' * 70)
+        print("""WARNING:
 An optional C extension could not be compiled, speedups will not be
-available."""
-        print '*' * 70
-        print exc
+available.""")
+        print('*' * 70)
+        print(exc)
 
 
 if Feature:
     speedups = Feature(
-        "optionial C speed-enhancements",
-        standard = True,
+        "optional C speed-enhancements",
+        standard = False,
         ext_modules = [
             Extension('genshi._speedups', ['genshi/_speedups.c']),
         ],
@@ -87,7 +88,7 @@ if bdist_egg:
 
 setup(
     name = 'Genshi',
-    version = '0.6',
+    version = '0.7',
     description = 'A toolkit for generation of output for the web',
     long_description = \
 """Genshi is a Python library that provides an integrated set of

@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2006-2007 Edgewall Software
+# Copyright (C) 2006-2009 Edgewall Software
 # All rights reserved.
 #
 # This software is licensed as described in the file COPYING, which
@@ -16,17 +16,18 @@ sources.
 """
 
 from itertools import chain
-from xml.parsers import expat
+import htmlentitydefs as entities
 import HTMLParser as html
-import htmlentitydefs
 from StringIO import StringIO
+from xml.parsers import expat
 
 from genshi.core import Attrs, QName, Stream, stripentities
-from genshi.core import START, END, XML_DECL, DOCTYPE, TEXT, START_NS, END_NS, \
-                        START_CDATA, END_CDATA, PI, COMMENT
+from genshi.core import START, END, XML_DECL, DOCTYPE, TEXT, START_NS, \
+                        END_NS, START_CDATA, END_CDATA, PI, COMMENT
 
 __all__ = ['ET', 'ParseError', 'XMLParser', 'XML', 'HTMLParser', 'HTML']
 __docformat__ = 'restructuredtext en'
+
 
 def ET(element):
     """Convert a given ElementTree element to a markup stream.
@@ -79,16 +80,16 @@ class XMLParser(object):
     
     >>> parser = XMLParser(StringIO('<root id="2"><child>Foo</child></root>'))
     >>> for kind, data, pos in parser:
-    ...     print kind, data
-    START (QName(u'root'), Attrs([(QName(u'id'), u'2')]))
-    START (QName(u'child'), Attrs())
+    ...     print('%s %s' % (kind, data))
+    START (QName('root'), Attrs([(QName('id'), u'2')]))
+    START (QName('child'), Attrs())
     TEXT Foo
     END child
     END root
     """
 
     _entitydefs = ['<!ENTITY %s "&#%d;">' % (name, value) for name, value in
-                   htmlentitydefs.name2codepoint.items()]
+                   entities.name2codepoint.items()]
     _external_dtd = '\n'.join(_entitydefs)
 
     def __init__(self, source, filename=None, encoding=None):
@@ -237,7 +238,7 @@ class XMLParser(object):
         if text.startswith('&'):
             # deal with undefined entities
             try:
-                text = unichr(htmlentitydefs.name2codepoint[text[1:-1]])
+                text = unichr(entities.name2codepoint[text[1:-1]])
                 self._enqueue(TEXT, text)
             except KeyError:
                 filename, lineno, offset = self._getpos()
@@ -256,11 +257,11 @@ def XML(text):
     iterated over multiple times:
     
     >>> xml = XML('<doc><elem>Foo</elem><elem>Bar</elem></doc>')
-    >>> print xml
+    >>> print(xml)
     <doc><elem>Foo</elem><elem>Bar</elem></doc>
-    >>> print xml.select('elem')
+    >>> print(xml.select('elem'))
     <elem>Foo</elem><elem>Bar</elem>
-    >>> print xml.select('elem/text()')
+    >>> print(xml.select('elem/text()'))
     FooBar
     
     :param text: the XML source
@@ -280,9 +281,9 @@ class HTMLParser(html.HTMLParser, object):
     
     >>> parser = HTMLParser(StringIO('<UL compact><LI>Foo</UL>'))
     >>> for kind, data, pos in parser:
-    ...     print kind, data
-    START (QName(u'ul'), Attrs([(QName(u'compact'), u'compact')]))
-    START (QName(u'li'), Attrs())
+    ...     print('%s %s' % (kind, data))
+    START (QName('ul'), Attrs([(QName('compact'), u'compact')]))
+    START (QName('li'), Attrs())
     TEXT Foo
     END li
     END ul
@@ -387,7 +388,7 @@ class HTMLParser(html.HTMLParser, object):
 
     def handle_entityref(self, name):
         try:
-            text = unichr(htmlentitydefs.name2codepoint[name])
+            text = unichr(entities.name2codepoint[name])
         except KeyError:
             text = '&%s;' % name
         self._enqueue(TEXT, text)
@@ -409,11 +410,11 @@ def HTML(text, encoding='utf-8'):
     iterated over multiple times:
     
     >>> html = HTML('<body><h1>Foo</h1></body>')
-    >>> print html
+    >>> print(html)
     <body><h1>Foo</h1></body>
-    >>> print html.select('h1')
+    >>> print(html.select('h1'))
     <h1>Foo</h1>
-    >>> print html.select('h1/text()')
+    >>> print(html.select('h1/text()'))
     Foo
     
     :param text: the HTML source
@@ -422,6 +423,7 @@ def HTML(text, encoding='utf-8'):
                         fails
     """
     return Stream(list(HTMLParser(StringIO(text), encoding=encoding)))
+
 
 def _coalesce(stream):
     """Coalesces adjacent TEXT events into a single event."""
@@ -434,7 +436,7 @@ def _coalesce(stream):
                 textpos = pos
         else:
             if textbuf:
-                yield TEXT, u''.join(textbuf), textpos
+                yield TEXT, ''.join(textbuf), textpos
                 del textbuf[:]
                 textpos = None
             if kind:

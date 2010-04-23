@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2006-2008 Edgewall Software
+# Copyright (C) 2006-2010 Edgewall Software
 # All rights reserved.
 #
 # This software is licensed as described in the file COPYING, which
@@ -129,6 +129,15 @@ class TemplateLoader(object):
         self.callback = callback
         self._cache = LRUCache(max_cache_size)
         self._uptodate = {}
+        self._lock = threading.RLock()
+
+    def __getstate__(self):
+        state = self.__dict__.copy()
+        state['_lock'] = None
+        return state
+
+    def __setstate__(self, state):
+        self.__dict__ = state
         self._lock = threading.RLock()
 
     def load(self, filename, relative_to=None, cls=None, encoding=None):
@@ -308,9 +317,9 @@ class TemplateLoader(object):
         ...     app1 = lambda filename: ('app1', filename, None, None),
         ...     app2 = lambda filename: ('app2', filename, None, None)
         ... )
-        >>> print load('app1/foo.html')
+        >>> print(load('app1/foo.html'))
         ('app1', 'app1/foo.html', None, None)
-        >>> print load('app2/bar.html')
+        >>> print(load('app2/bar.html'))
         ('app2', 'app2/bar.html', None, None)
         
         :param delegates: mapping of path prefixes to loader functions
@@ -326,7 +335,7 @@ class TemplateLoader(object):
                         filename[len(prefix):].lstrip('/\\')
                     )
                     return filepath, filename, fileobj, uptodate
-            raise TemplateNotFound(filename, delegates.keys())
+            raise TemplateNotFound(filename, list(delegates.keys()))
         return _dispatch_by_prefix
 
 

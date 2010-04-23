@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2006-2008 Edgewall Software
+# Copyright (C) 2006-2010 Edgewall Software
 # All rights reserved.
 #
 # This software is licensed as described in the file COPYING, which
@@ -36,7 +36,7 @@ class MarkupTemplate(Template):
     >>> tmpl = MarkupTemplate('''<ul xmlns:py="http://genshi.edgewall.org/">
     ...   <li py:for="item in items">${item}</li>
     ... </ul>''')
-    >>> print tmpl.generate(items=[1, 2, 3])
+    >>> print(tmpl.generate(items=[1, 2, 3]))
     <ul>
       <li>1</li><li>2</li><li>3</li>
     </ul>
@@ -70,11 +70,8 @@ class MarkupTemplate(Template):
     def _init_filters(self):
         Template._init_filters(self)
         # Make sure the include filter comes after the match filter
-        if self.loader:
-            self.filters.remove(self._include)
-        self.filters += [self._match]
-        if self.loader:
-            self.filters.append(self._include)
+        self.filters.remove(self._include)
+        self.filters += [self._match, self._include]
 
     def _parse(self, source, encoding):
         if not isinstance(source, Stream):
@@ -131,7 +128,8 @@ class MarkupTemplate(Template):
                                                 self.filepath, pos[1])
                     args = dict([(name.localname, value) for name, value
                                  in attrs if not name.namespace])
-                    directives.append((cls, args, ns_prefix.copy(), pos))
+                    directives.append((factory.get_directive_index(cls), cls,
+                                       args, ns_prefix.copy(), pos))
                     strip = True
 
                 new_attrs = []
@@ -143,14 +141,14 @@ class MarkupTemplate(Template):
                                                     self.filepath, pos[1])
                         if type(value) is list and len(value) == 1:
                             value = value[0][1]
-                        directives.append((cls, value, ns_prefix.copy(),
-                                           pos))
+                        directives.append((factory.get_directive_index(cls),
+                                           cls, value, ns_prefix.copy(), pos))
                     else:
                         new_attrs.append((name, value))
                 new_attrs = Attrs(new_attrs)
 
                 if directives:
-                    directives.sort(self.compare_directives())
+                    directives.sort()
                     dirmap[(depth, tag)] = (directives, len(new_stream),
                                             strip)
 
@@ -245,7 +243,7 @@ class MarkupTemplate(Template):
                         cls = {
                             'xml': MarkupTemplate,
                             'text': NewTextTemplate
-                        }[parse or 'xml']
+                        }.get(parse) or self.__class__
                     except KeyError:
                         raise TemplateSyntaxError('Invalid value for "parse" '
                                                   'attribute of include',
@@ -311,10 +309,11 @@ class MarkupTemplate(Template):
         match_templates = ctxt._match_templates
 
         tail = []
-        def _strip(stream):
+        def _strip(stream, append=tail.append):
             depth = 1
+            next = stream.next
             while 1:
-                event = stream.next()
+                event = next()
                 if event[0] is START:
                     depth += 1
                 elif event[0] is END:
@@ -322,7 +321,7 @@ class MarkupTemplate(Template):
                 if depth > 0:
                     yield event
                 else:
-                    tail[:] = [event]
+                    append(event)
                     break
 
         for event in stream:
@@ -356,17 +355,19 @@ class MarkupTemplate(Template):
                         pre_end -= 1
                     inner = _strip(stream)
                     if pre_end > 0:
-                        inner = self._match(inner, ctxt, end=pre_end, **vars)
+                        inner = self._match(inner, ctxt, start=start,
+                                            end=pre_end, **vars)
                     content = self._include(chain([event], inner, tail), ctxt)
                     if 'not_buffered' not in hints:
                         content = list(content)
+                    content = Stream(content)
 
                     # Make the select() function available in the body of the
                     # match template
                     selected = [False]
                     def select(path):
                         selected[0] = True
-                        return Stream(content).select(path, namespaces, ctxt)
+                        return content.select(path, namespaces, ctxt)
                     vars = dict(select=select)
 
                     # Recursively process the output
@@ -387,7 +388,7 @@ class MarkupTemplate(Template):
                     # Let the remaining match templates know about the last
                     # event in the matched content, so they can update their
                     # internal state accordingly
-                    for test in [mt[0] for mt in match_templates]:
+                    for test in [mt[0] for mt in match_templates[idx + 1:]]:
                         test(tail[0], namespaces, ctxt, updateonly=True)
 
                     break

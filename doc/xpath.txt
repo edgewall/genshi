@@ -86,8 +86,8 @@ retrieve subsets of the stream:
   ...   </items>
   ... </doc>''')
 
-  >>> print doc.select('items/item[@status="closed" and '
-  ...     '(@resolution="invalid" or not(@resolution))]/summary/text()')
+  >>> print(doc.select('items/item[@status="closed" and '
+  ...     '(@resolution="invalid" or not(@resolution))]/summary/text()'))
   BarBaz
 
 

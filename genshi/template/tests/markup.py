@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2006-2008 Edgewall Software
+# Copyright (C) 2006-2009 Edgewall Software
 # All rights reserved.
 #
 # This software is licensed as described in the file COPYING, which
@@ -211,23 +211,23 @@ class MarkupTemplateTestCase(unittest.TestCase):
         Verify that a code block processing instruction with trailing space
         does not cause a syntax error (see ticket #127).
         """
-        MarkupTemplate(u"""<foo>
+        MarkupTemplate("""<foo>
           <?python
             bar = 42
           ?>
         </foo>""")
 
     def test_exec_import(self):
-        tmpl = MarkupTemplate(u"""<?python from datetime import timedelta ?>
+        tmpl = MarkupTemplate("""<?python from datetime import timedelta ?>
         <div xmlns:py="http://genshi.edgewall.org/">
           ${timedelta(days=2)}
         </div>""")
-        self.assertEqual(u"""<div>
+        self.assertEqual("""<div>
           2 days, 0:00:00
         </div>""", str(tmpl.generate()))
 
     def test_exec_def(self):
-        tmpl = MarkupTemplate(u"""
+        tmpl = MarkupTemplate("""
         <?python
         def foo():
             return 42
@@ -235,7 +235,7 @@ class MarkupTemplateTestCase(unittest.TestCase):
         <div xmlns:py="http://genshi.edgewall.org/">
           ${foo()}
         </div>""")
-        self.assertEqual(u"""<div>
+        self.assertEqual("""<div>
           42
         </div>""", str(tmpl.generate()))
 
@@ -277,7 +277,7 @@ class MarkupTemplateTestCase(unittest.TestCase):
             tmpl = loader.load('tmpl2.html')
             self.assertEqual("""<html>
                   <div>Included 0</div><div>Included 1</div><div>Included 2</div>
-                </html>""", tmpl.generate(name='tmpl1').render())
+                </html>""", tmpl.generate(name='tmpl1').render(encoding=None))
         finally:
             shutil.rmtree(dirname)
 
@@ -303,7 +303,7 @@ class MarkupTemplateTestCase(unittest.TestCase):
             tmpl = loader.load('tmpl2.html')
             self.assertEqual("""<html>
                   <div>Included</div>
-                </html>""", tmpl.generate(name='tmpl1').render())
+                </html>""", tmpl.generate(name='tmpl1').render(encoding=None))
         finally:
             shutil.rmtree(dirname)
 
@@ -332,7 +332,7 @@ class MarkupTemplateTestCase(unittest.TestCase):
             tmpl = loader.load('tmpl2.html')
             self.assertEqual("""<html>
                   <ul><li>1</li><li>2</li><li>3</li></ul>
-                </html>""", tmpl.generate().render())
+                </html>""", tmpl.generate().render(encoding=None))
         finally:
             shutil.rmtree(dirname)
 
@@ -358,7 +358,7 @@ class MarkupTemplateTestCase(unittest.TestCase):
             tmpl = loader.load('tmpl2.html')
             self.assertEqual("""<html>
                   <div>Included</div>
-                </html>""", tmpl.generate().render())
+                </html>""", tmpl.generate().render(encoding=None))
         finally:
             shutil.rmtree(dirname)
 
@@ -395,7 +395,7 @@ class MarkupTemplateTestCase(unittest.TestCase):
             tmpl = loader.load('tmpl2.html')
             self.assertEqual("""<html>
                   Missing
-                </html>""", tmpl.generate().render())
+                </html>""", tmpl.generate().render(encoding=None))
         finally:
             shutil.rmtree(dirname)
 
@@ -415,7 +415,7 @@ class MarkupTemplateTestCase(unittest.TestCase):
             tmpl = loader.load('tmpl2.html')
             self.assertEqual("""<html>
                     Missing
-                </html>""", tmpl.generate().render())
+                </html>""", tmpl.generate().render(encoding=None))
         finally:
             shutil.rmtree(dirname)
 
@@ -446,7 +446,7 @@ class MarkupTemplateTestCase(unittest.TestCase):
             tmpl = loader.load('tmpl3.html')
             self.assertEqual("""<html>
                       <div>Included</div>
-                </html>""", tmpl.generate().render())
+                </html>""", tmpl.generate().render(encoding=None))
         finally:
             shutil.rmtree(dirname)
 
@@ -471,7 +471,7 @@ class MarkupTemplateTestCase(unittest.TestCase):
             tmpl = loader.load('tmpl3.html')
             self.assertEqual("""<html>
                       Missing
-                </html>""", tmpl.generate().render())
+                </html>""", tmpl.generate().render(encoding=None))
         finally:
             shutil.rmtree(dirname)
 
@@ -500,7 +500,7 @@ class MarkupTemplateTestCase(unittest.TestCase):
             tmpl = loader.load('tmpl3.html')
             self.assertEqual("""<html>
                   <div>Included</div>
-                </html>""", tmpl.generate().render())
+                </html>""", tmpl.generate().render(encoding=None))
         finally:
             shutil.rmtree(dirname)
 
@@ -522,7 +522,7 @@ class MarkupTemplateTestCase(unittest.TestCase):
             tmpl = loader.load('tmpl2.html')
             self.assertEqual("""<html>
                     tmpl1.html not found
-                </html>""", tmpl.generate(debug=True).render())
+                </html>""", tmpl.generate(debug=True).render(encoding=None))
         finally:
             shutil.rmtree(dirname)
 
@@ -550,7 +550,7 @@ class MarkupTemplateTestCase(unittest.TestCase):
             self.assertEqual(7, len(tmpl.stream))
             self.assertEqual("""<html>
                   <div>Included</div>
-                </html>""", tmpl.generate().render())
+                </html>""", tmpl.generate().render(encoding=None))
         finally:
             shutil.rmtree(dirname)
 
@@ -576,7 +576,7 @@ class MarkupTemplateTestCase(unittest.TestCase):
             tmpl = loader.load('tmpl2.html')
             self.assertEqual("""<html>
                   <div>Included 0</div><div>Included 1</div><div>Included 2</div>
-                </html>""", tmpl.generate().render())
+                </html>""", tmpl.generate().render(encoding=None))
         finally:
             shutil.rmtree(dirname)
 
@@ -620,7 +620,7 @@ class MarkupTemplateTestCase(unittest.TestCase):
           <body>
             wakka wakka wakka
           </body>
-        </html>""", tmpl.generate().render())
+        </html>""", tmpl.generate().render(encoding=None))
 
     def test_with_in_match(self): 
         xml = ("""<html xmlns:py="http://genshi.edgewall.org/">
@@ -636,7 +636,7 @@ class MarkupTemplateTestCase(unittest.TestCase):
             <h1>bar</h1>
             <p>bar</p>
           </body>
-        </html>""", tmpl.generate().render())
+        </html>""", tmpl.generate().render(encoding=None))
 
     def test_nested_include_matches(self):
         # See ticket #157
@@ -688,7 +688,7 @@ class MarkupTemplateTestCase(unittest.TestCase):
   </div>
   </body>
 </html>
-""", tmpl.generate().render())
+""", tmpl.generate().render(encoding=None))
         finally:
             shutil.rmtree(dirname)
 
@@ -711,7 +711,7 @@ class MarkupTemplateTestCase(unittest.TestCase):
               <span>Foo</span>
               And some other stuff...
             </body>
-        </html>""", tmpl.generate().render())
+        </html>""", tmpl.generate().render(encoding=None))
 
     def test_match_without_select(self):
         # See <http://genshi.edgewall.org/ticket/243>
@@ -730,7 +730,7 @@ class MarkupTemplateTestCase(unittest.TestCase):
             <body>
               This replaces the other text.
             </body>
-        </html>""", tmpl.generate().render())
+        </html>""", tmpl.generate().render(encoding=None))
 
 
 def suite():

@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2008 Edgewall Software
+# Copyright (C) 2008-2009 Edgewall Software
 # All rights reserved.
 #
 # This software is licensed as described in the file COPYING, which
@@ -27,7 +27,7 @@ def _new(cls, *args, **kwargs):
     if ret._fields:
         for attr, value in zip(ret._fields, args):
             if attr in kwargs:
-                raise ValueError, 'Field set both in args and kwargs'
+                raise ValueError('Field set both in args and kwargs')
             setattr(ret, attr, value)
     for attr in kwargs:
         if (getattr(ret, '_fields', None) and attr in ret._fields) \
@@ -101,7 +101,7 @@ class ASTUpgrader(object):
                 return self._new(_ast.Tuple, elts, _ast.Store())
             else:
                 raise NotImplemented
-            
+
         args = []
         for arg in tab:
             if isinstance(arg, str):
@@ -111,7 +111,7 @@ class ASTUpgrader(object):
             else:
                 assert False, node.__class__
 
-        defaults = map(self.visit, node.defaults)
+        defaults = [self.visit(d) for d in node.defaults]
         return self._new(_ast.arguments, args, vararg, kwarg, defaults)
 
 
@@ -378,7 +378,7 @@ class ASTUpgrader(object):
     def visit_Const(self, node):
         if node.value is None: # appears in slices
             return None
-        elif isinstance(node.value, (str, unicode,)):
+        elif isinstance(node.value, basestring):
             return self._new(_ast.Str, node.value)
         else:
             return self._new(_ast.Num, node.value)
@@ -471,8 +471,7 @@ class ASTUpgrader(object):
         return self._new(_ast.Subscript, self.visit(node.expr), slice, ctx)
 
     def visit_Sliceobj(self, node):
-        a = node.nodes + [None]*(3 - len(node.nodes))
-        a = map(self.visit, a)
+        a = [self.visit(n) for n in node.nodes + [None]*(3 - len(node.nodes))]
         return self._new(_ast.Slice, a[0], a[1], a[2])
 
     def visit_Ellipsis(self, node):
@@ -497,8 +496,8 @@ class ASTUpgrader(object):
                 return False
             else:
                 return True
-        statements = [_check_del(self.visit(n)) for n in node.nodes]
-        return filter(_keep, statements)
+        return [s for s in [_check_del(self.visit(n)) for n in node.nodes]
+                if _keep(s)]
 
 
 def parse(source, mode):

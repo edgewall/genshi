@@ -33,6 +33,7 @@ Usage
 * `Templating Basics <templates.html>`_
 * `XML Template Language <xml-templates.html>`_
 * `Text Template Language <text-templates.html>`_
+* `Loading Templates <loader.html>`_
 * `Using Stream Filters <filters.html>`_
 * `Using XPath <xpath.html>`_
 * `Internationalization and Localization <i18n.html>`_

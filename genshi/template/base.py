@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2006-2008 Edgewall Software
+# Copyright (C) 2006-2010 Edgewall Software
 # All rights reserved.
 #
 # This software is licensed as described in the file COPYING, which
@@ -318,19 +318,9 @@ class DirectiveFactory(object):
     __metaclass__ = DirectiveFactoryMeta
 
     directives = []
-    """A list of `(name, cls)` tuples that define the set of directives
+    """A list of ``(name, cls)`` tuples that define the set of directives
     provided by this factory.
     """
-
-    def compare_directives(self):
-        """Return a function that takes two directive classes and compares
-        them to determine their relative ordering.
-        """
-        def _get_index(cls):
-            if cls in self._dir_order:
-                return self._dir_order.index(cls)
-            return 0
-        return lambda a, b: cmp(_get_index(a[0]), _get_index(b[0]))
 
     def get_directive(self, name):
         """Return the directive class for the given name.
@@ -340,6 +330,20 @@ class DirectiveFactory(object):
         :see: `Directive`
         """
         return self._dir_by_name.get(name)
+
+    def get_directive_index(self, dir_cls):
+        """Return a key for the given directive class that should be used to
+        sort it among other directives on the same `SUB` event.
+        
+        The default implementation simply returns the index of the directive in
+        the `directives` list.
+        
+        :param dir_cls: the directive class
+        :return: the sort key
+        """
+        if dir_cls in self._dir_order:
+            return self._dir_order.index(dir_cls)
+        return len(self._dir_order)
 
 
 class Template(DirectiveFactory):
@@ -392,6 +396,7 @@ class Template(DirectiveFactory):
         self.lookup = lookup
         self.allow_exec = allow_exec
         self._init_filters()
+        self._init_loader()
         self._module = None
         self._prepared = False
 
@@ -414,12 +419,24 @@ class Template(DirectiveFactory):
         self._init_filters()
 
     def __repr__(self):
-        return '<%s "%s">' % (self.__class__.__name__, self.filename)
+        return '<%s "%s">' % (type(self).__name__, self.filename)
 
     def _init_filters(self):
-        self.filters = [self._flatten]
-        if self.loader:
-            self.filters.append(self._include)
+        self.filters = [self._flatten, self._include]
+
+    def _init_loader(self):
+        if self.loader is None:
+            from genshi.template.loader import TemplateLoader
+            if self.filename:
+                if self.filepath != self.filename:
+                    basedir = os.path.normpath(self.filepath)[:-len(
+                        os.path.normpath(self.filename))
+                    ]
+                else:
+                    basedir = os.path.dirname(self.filename)
+            else:
+                basedir = '.'
+            self.loader = TemplateLoader([os.path.abspath(basedir)])
 
     @property
     def stream(self):
@@ -453,7 +470,7 @@ class Template(DirectiveFactory):
             if kind is SUB:
                 directives = []
                 substream = data[1]
-                for cls, value, namespaces, pos in data[0]:
+                for _, cls, value, namespaces, pos in sorted(data[0]):
                     directive, substream = cls.attach(self, substream, value,
                                                       namespaces, pos)
                     if directive:
@@ -542,55 +559,65 @@ class Template(DirectiveFactory):
 
     def _flatten(self, stream, ctxt, **vars):
         number_conv = self._number_conv
+        stack = []
+        push = stack.append
+        pop = stack.pop
+        stream = iter(stream)
 
-        for kind, data, pos in stream:
+        while 1:
+            for kind, data, pos in stream:
 
-            if kind is START and data[1]:
-                # Attributes may still contain expressions in start tags at
-                # this point, so do some evaluation
-                tag, attrs = data
-                new_attrs = []
-                for name, value in attrs:
-                    if type(value) is list: # this is an interpolated string
-                        values = [event[1]
-                            for event in self._flatten(value, ctxt, **vars)
-                            if event[0] is TEXT and event[1] is not None
-                        ]
-                        if not values:
-                            continue
-                        value = u''.join(values)
-                    new_attrs.append((name, value))
-                yield kind, (tag, Attrs(new_attrs)), pos
+                if kind is START and data[1]:
+                    # Attributes may still contain expressions in start tags at
+                    # this point, so do some evaluation
+                    tag, attrs = data
+                    new_attrs = []
+                    for name, value in attrs:
+                        if type(value) is list: # this is an interpolated string
+                            values = [event[1]
+                                for event in self._flatten(value, ctxt, **vars)
+                                if event[0] is TEXT and event[1] is not None
+                            ]
+                            if not values:
+                                continue
+                            value = ''.join(values)
+                        new_attrs.append((name, value))
+                    yield kind, (tag, Attrs(new_attrs)), pos
 
-            elif kind is EXPR:
-                result = _eval_expr(data, ctxt, vars)
-                if result is not None:
-                    # First check for a string, otherwise the iterable test
-                    # below succeeds, and the string will be chopped up into
-                    # individual characters
-                    if isinstance(result, basestring):
-                        yield TEXT, result, pos
-                    elif isinstance(result, (int, float, long)):
-                        yield TEXT, number_conv(result), pos
-                    elif hasattr(result, '__iter__'):
-                        for event in self._flatten(_ensure(result), ctxt,
-                                                   **vars):
-                            yield event
-                    else:
-                        yield TEXT, unicode(result), pos
+                elif kind is EXPR:
+                    result = _eval_expr(data, ctxt, vars)
+                    if result is not None:
+                        # First check for a string, otherwise the iterable test
+                        # below succeeds, and the string will be chopped up into
+                        # individual characters
+                        if isinstance(result, basestring):
+                            yield TEXT, result, pos
+                        elif isinstance(result, (int, float, long)):
+                            yield TEXT, number_conv(result), pos
+                        elif hasattr(result, '__iter__'):
+                            push(stream)
+                            stream = _ensure(result)
+                            break
+                        else:
+                            yield TEXT, unicode(result), pos
 
-            elif kind is EXEC:
-                _exec_suite(data, ctxt, vars)
+                elif kind is SUB:
+                    # This event is a list of directives and a list of nested
+                    # events to which those directives should be applied
+                    push(stream)
+                    stream = _apply_directives(data[1], data[0], ctxt, vars)
+                    break
 
-            elif kind is SUB:
-                # This event is a list of directives and a list of nested
-                # events to which those directives should be applied
-                substream = _apply_directives(data[1], data[0], ctxt, vars)
-                for event in self._flatten(substream, ctxt, **vars):
-                    yield event
+                elif kind is EXEC:
+                    _exec_suite(data, ctxt, vars)
+
+                else:
+                    yield kind, data, pos
 
             else:
-                yield kind, data, pos
+                if not stack:
+                    break
+                stream = pop()
 
     def _include(self, stream, ctxt, **vars):
         """Internal stream filter that performs inclusion of external
@@ -607,7 +634,7 @@ class Template(DirectiveFactory):
                                                                   **vars):
                         if subkind is TEXT:
                             parts.append(subdata)
-                    href = u''.join([x for x in parts if x is not None])
+                    href = ''.join([x for x in parts if x is not None])
                 try:
                     tmpl = self.loader.load(href, relative_to=event[2][0],
                                             cls=cls or self.__class__)

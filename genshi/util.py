@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2006-2007 Edgewall Software
+# Copyright (C) 2006-2009 Edgewall Software
 # All rights reserved.
 #
 # This software is licensed as described in the file COPYING, which
@@ -13,7 +13,7 @@
 
 """Various utility classes and functions."""
 
-import htmlentitydefs
+import htmlentitydefs as entities
 import re
 
 __docformat__ = 'restructuredtext en'
@@ -46,7 +46,7 @@ class LRUCache(dict):
     used:
     
     >>> for key in cache:
-    ...     print key
+    ...     print(key)
     D
     A
     C
@@ -59,7 +59,7 @@ class LRUCache(dict):
 
     class _Item(object):
         def __init__(self, key, value):
-            self.previous = self.next = None
+            self.prv = self.nxt = None
             self.key = key
             self.value = value
         def __repr__(self):
@@ -78,7 +78,7 @@ class LRUCache(dict):
         cur = self.head
         while cur:
             yield cur.key
-            cur = cur.next
+            cur = cur.nxt
 
     def __len__(self):
         return len(self._dict)
@@ -103,10 +103,10 @@ class LRUCache(dict):
         return repr(self._dict)
 
     def _insert_item(self, item):
-        item.previous = None
-        item.next = self.head
+        item.prv = None
+        item.nxt = self.head
         if self.head is not None:
-            self.head.previous = item
+            self.head.prv = item
         else:
             self.tail = item
         self.head = item
@@ -117,8 +117,8 @@ class LRUCache(dict):
             olditem = self._dict[self.tail.key]
             del self._dict[self.tail.key]
             if self.tail != self.head:
-                self.tail = self.tail.previous
-                self.tail.next = None
+                self.tail = self.tail.prv
+                self.tail.nxt = None
             else:
                 self.head = self.tail = None
 
@@ -126,16 +126,16 @@ class LRUCache(dict):
         if self.head == item:
             return
 
-        previous = item.previous
-        previous.next = item.next
-        if item.next is not None:
-            item.next.previous = previous
+        prv = item.prv
+        prv.nxt = item.nxt
+        if item.nxt is not None:
+            item.nxt.prv = prv
         else:
-            self.tail = previous
+            self.tail = prv
 
-        item.previous = None
-        item.next = self.head
-        self.head.previous = self.head = item
+        item.prv = None
+        item.nxt = self.head
+        self.head.prv = self.head = item
 
 
 def flatten(items):
@@ -158,9 +158,9 @@ def flatten(items):
             retval.append(item)
     return retval
 
+
 def plaintext(text, keeplinebreaks=True):
-    """Returns the text as a `unicode` string with all entities and tags
-    removed.
+    """Return the text with all entities and tags removed.
     
     >>> plaintext('<b>1 &lt; 2</b>')
     u'1 < 2'
@@ -179,8 +179,9 @@ def plaintext(text, keeplinebreaks=True):
     """
     text = stripentities(striptags(text))
     if not keeplinebreaks:
-        text = text.replace(u'\n', u' ')
+        text = text.replace('\n', ' ')
     return text
+
 
 _STRIPENTITIES_RE = re.compile(r'&(?:#((?:\d+)|(?:[xX][0-9a-fA-F]+));?|(\w+);)')
 def stripentities(text, keepxmlentities=False):
@@ -213,15 +214,16 @@ def stripentities(text, keepxmlentities=False):
         else: # character entity
             ref = match.group(2)
             if keepxmlentities and ref in ('amp', 'apos', 'gt', 'lt', 'quot'):
-                return u'&%s;' % ref
+                return '&%s;' % ref
             try:
-                return unichr(htmlentitydefs.name2codepoint[ref])
+                return unichr(entities.name2codepoint[ref])
             except KeyError:
                 if keepxmlentities:
-                    return u'&amp;%s;' % ref
+                    return '&amp;%s;' % ref
                 else:
                     return ref
     return _STRIPENTITIES_RE.sub(_replace_entity, text)
+
 
 _STRIPTAGS_RE = re.compile(r'(<!--.*?-->|<[^>]*>)')
 def striptags(text):
@@ -243,3 +245,30 @@ def striptags(text):
     :return: the text with tags removed
     """
     return _STRIPTAGS_RE.sub('', text)
+
+
+def stringrepr(string):
+    ascii = string.encode('ascii', 'backslashreplace')
+    quoted = "'" +  ascii.replace("'", "\\'") + "'"
+    if len(ascii) > len(string):
+        return 'u' + quoted
+    return quoted
+
+
+# Compatibility fallback implementations for older Python versions
+
+try:
+    all = all
+    any = any
+except NameError:
+    def any(S):
+        for x in S:
+            if x:
+               return True
+        return False
+
+    def all(S):
+        for x in S:
+            if not x:
+               return False
+        return True

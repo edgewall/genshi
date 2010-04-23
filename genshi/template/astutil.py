@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2008 Edgewall Software
+# Copyright (C) 2008-2010 Edgewall Software
 # All rights reserved.
 #
 # This software is licensed as described in the file COPYING, which
@@ -18,9 +18,6 @@ try:
 except ImportError:
     from genshi.template.ast24 import _ast, parse
 else:
-    if not hasattr(_ast, 'AST'):
-        from genshi.template.astgae import restore
-        restore(_ast)
     def parse(source, mode):
         return compile(source, '', mode, _ast.PyCF_ONLY_AST)
 
@@ -133,9 +130,14 @@ class ASTCodeGenerator(object):
             self._write('**' + node.kwarg)
 
     # FunctionDef(identifier name, arguments args,
-    #                           stmt* body, expr* decorators)
+    #                           stmt* body, expr* decorator_list)
     def visit_FunctionDef(self, node):
-        for decorator in getattr(node, 'decorators', ()):
+        decarators = ()
+        if hasattr(node, 'decorator_list'):
+            decorators = getattr(node, 'decorator_list')
+        else: # different name in earlier Python versions
+            decorators = getattr(node, 'decorators', ())
+        for decorator in decorators:
             self._new_line()
             self._write('@')
             self.visit(decorator)
@@ -654,7 +656,7 @@ class ASTCodeGenerator(object):
                     self._write(', ')
                     self.visit(dim)
             else:
-                raise NotImplemented, 'Slice type not implemented'
+                raise NotImplemented('Slice type not implemented')
         _process_slice(node.slice)
         self._write(']')
 
@@ -740,6 +742,7 @@ class ASTTransformer(object):
     visit_TryExcept = _clone
     visit_TryFinally = _clone
     visit_Assert = _clone
+    visit_ExceptHandler = _clone
 
     visit_Import = _clone
     visit_ImportFrom = _clone

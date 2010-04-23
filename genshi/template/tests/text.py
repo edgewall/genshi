@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2006-2008 Edgewall Software
+# Copyright (C) 2006-2009 Edgewall Software
 # All rights reserved.
 #
 # This software is licensed as described in the file COPYING, which
@@ -33,32 +33,35 @@ class OldTextTemplateTestCase(unittest.TestCase):
 
     def test_escaping(self):
         tmpl = OldTextTemplate('\\#escaped')
-        self.assertEqual('#escaped', str(tmpl.generate()))
+        self.assertEqual('#escaped', tmpl.generate().render(encoding=None))
 
     def test_comment(self):
         tmpl = OldTextTemplate('## a comment')
-        self.assertEqual('', str(tmpl.generate()))
+        self.assertEqual('', tmpl.generate().render(encoding=None))
 
     def test_comment_escaping(self):
         tmpl = OldTextTemplate('\\## escaped comment')
-        self.assertEqual('## escaped comment', str(tmpl.generate()))
+        self.assertEqual('## escaped comment',
+                         tmpl.generate().render(encoding=None))
 
     def test_end_with_args(self):
         tmpl = OldTextTemplate("""
         #if foo
           bar
         #end 'if foo'""")
-        self.assertEqual('\n', str(tmpl.generate(foo=False)))
+        self.assertEqual('\n', tmpl.generate(foo=False).render(encoding=None))
 
     def test_latin1_encoded(self):
         text = u'$foo\xf6$bar'.encode('iso-8859-1')
         tmpl = OldTextTemplate(text, encoding='iso-8859-1')
-        self.assertEqual(u'x\xf6y', unicode(tmpl.generate(foo='x', bar='y')))
+        self.assertEqual(u'x\xf6y',
+                         tmpl.generate(foo='x', bar='y').render(encoding=None))
 
     def test_unicode_input(self):
         text = u'$foo\xf6$bar'
         tmpl = OldTextTemplate(text)
-        self.assertEqual(u'x\xf6y', unicode(tmpl.generate(foo='x', bar='y')))
+        self.assertEqual(u'x\xf6y',
+                         tmpl.generate(foo='x', bar='y').render(encoding=None))
 
     def test_empty_lines1(self):
         tmpl = OldTextTemplate("""Your items:
@@ -71,7 +74,7 @@ class OldTextTemplateTestCase(unittest.TestCase):
           * 0
           * 1
           * 2
-""", tmpl.generate(items=range(3)).render())
+""", tmpl.generate(items=range(3)).render(encoding=None))
 
     def test_empty_lines2(self):
         tmpl = OldTextTemplate("""Your items:
@@ -88,7 +91,7 @@ class OldTextTemplateTestCase(unittest.TestCase):
 
           * 2
 
-""", tmpl.generate(items=range(3)).render())
+""", tmpl.generate(items=range(3)).render(encoding=None))
 
     def test_include(self):
         file1 = open(os.path.join(self.dirname, 'tmpl1.txt'), 'w')
@@ -110,7 +113,7 @@ class OldTextTemplateTestCase(unittest.TestCase):
         self.assertEqual("""----- Included data below this line -----
 Included
             ----- Included data above this line -----""",
-                         tmpl.generate().render())
+                         tmpl.generate().render(encoding=None))
 
 
 class NewTextTemplateTestCase(unittest.TestCase):
@@ -124,32 +127,36 @@ class NewTextTemplateTestCase(unittest.TestCase):
 
     def test_escaping(self):
         tmpl = NewTextTemplate('\\{% escaped %}')
-        self.assertEqual('{% escaped %}', str(tmpl.generate()))
+        self.assertEqual('{% escaped %}',
+                         tmpl.generate().render(encoding=None))
 
     def test_comment(self):
         tmpl = NewTextTemplate('{# a comment #}')
-        self.assertEqual('', str(tmpl.generate()))
+        self.assertEqual('', tmpl.generate().render(encoding=None))
 
     def test_comment_escaping(self):
         tmpl = NewTextTemplate('\\{# escaped comment #}')
-        self.assertEqual('{# escaped comment #}', str(tmpl.generate()))
+        self.assertEqual('{# escaped comment #}',
+                         tmpl.generate().render(encoding=None))
 
     def test_end_with_args(self):
         tmpl = NewTextTemplate("""
 {% if foo %}
   bar
 {% end 'if foo' %}""")
-        self.assertEqual('\n', str(tmpl.generate(foo=False)))
+        self.assertEqual('\n', tmpl.generate(foo=False).render(encoding=None))
 
     def test_latin1_encoded(self):
         text = u'$foo\xf6$bar'.encode('iso-8859-1')
         tmpl = NewTextTemplate(text, encoding='iso-8859-1')
-        self.assertEqual(u'x\xf6y', unicode(tmpl.generate(foo='x', bar='y')))
+        self.assertEqual(u'x\xf6y',
+                         tmpl.generate(foo='x', bar='y').render(encoding=None))
 
     def test_unicode_input(self):
         text = u'$foo\xf6$bar'
         tmpl = NewTextTemplate(text)
-        self.assertEqual(u'x\xf6y', unicode(tmpl.generate(foo='x', bar='y')))
+        self.assertEqual(u'x\xf6y',
+                         tmpl.generate(foo='x', bar='y').render(encoding=None))
 
     def test_empty_lines1(self):
         tmpl = NewTextTemplate("""Your items:
@@ -162,7 +169,7 @@ class NewTextTemplateTestCase(unittest.TestCase):
   * 0
   * 1
   * 2
-""", tmpl.generate(items=range(3)).render())
+""", tmpl.generate(items=range(3)).render(encoding=None))
 
     def test_empty_lines2(self):
         tmpl = NewTextTemplate("""Your items:
@@ -179,37 +186,37 @@ class NewTextTemplateTestCase(unittest.TestCase):
 
   * 2
 
-""", tmpl.generate(items=range(3)).render())
+""", tmpl.generate(items=range(3)).render(encoding=None))
 
     def test_exec_with_trailing_space(self):
         """
         Verify that a code block with trailing space does not cause a syntax
         error (see ticket #127).
         """
-        NewTextTemplate(u"""
+        NewTextTemplate("""
           {% python
             bar = 42
           $}
         """)
 
     def test_exec_import(self):
-        tmpl = NewTextTemplate(u"""{% python from datetime import timedelta %}
+        tmpl = NewTextTemplate("""{% python from datetime import timedelta %}
         ${timedelta(days=2)}
         """)
         self.assertEqual("""
         2 days, 0:00:00
-        """, str(tmpl.generate()))
+        """, tmpl.generate().render(encoding=None))
 
     def test_exec_def(self):
-        tmpl = NewTextTemplate(u"""{% python
+        tmpl = NewTextTemplate("""{% python
         def foo():
             return 42
         %}
         ${foo()}
         """)
-        self.assertEqual(u"""
+        self.assertEqual("""
         42
-        """, str(tmpl.generate()))
+        """, tmpl.generate().render(encoding=None))
 
     def test_include(self):
         file1 = open(os.path.join(self.dirname, 'tmpl1.txt'), 'w')
@@ -230,7 +237,8 @@ class NewTextTemplateTestCase(unittest.TestCase):
         tmpl = loader.load('tmpl2.txt', cls=NewTextTemplate)
         self.assertEqual("""----- Included data below this line -----
 Included
------ Included data above this line -----""", tmpl.generate().render())
+----- Included data above this line -----""",
+                         tmpl.generate().render(encoding=None))
 
     def test_include_expr(self):
          file1 = open(os.path.join(self.dirname, 'tmpl1.txt'), 'w')
@@ -251,7 +259,8 @@ Included
          tmpl = loader.load('tmpl2.txt', cls=NewTextTemplate)
          self.assertEqual("""----- Included data below this line -----
     Included
-    ----- Included data above this line -----""", tmpl.generate().render())
+    ----- Included data above this line -----""",
+                          tmpl.generate().render(encoding=None))
 
 
 def suite():

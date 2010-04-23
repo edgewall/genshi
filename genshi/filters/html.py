@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2006-2008 Edgewall Software
+# Copyright (C) 2006-2009 Edgewall Software
 # All rights reserved.
 #
 # This software is licensed as described in the file COPYING, which
@@ -13,6 +13,10 @@
 
 """Implementation of a number of stream filters."""
 
+try:
+    any
+except NameError:
+    from genshi.util import any
 import re
 
 from genshi.core import Attrs, QName, stripentities
@@ -30,7 +34,7 @@ class HTMLFormFiller(object):
     ...   <p><input type="text" name="foo" /></p>
     ... </form>''')
     >>> filler = HTMLFormFiller(data={'foo': 'bar'})
-    >>> print html | filler
+    >>> print(html | filler)
     <form>
       <p><input type="text" name="foo" value="bar"/></p>
     </form>
@@ -39,7 +43,7 @@ class HTMLFormFiller(object):
     #       (if not in a multiple-select)
     # TODO: only apply to elements in the XHTML namespace (or no namespace)?
 
-    def __init__(self, name=None, id=None, data=None):
+    def __init__(self, name=None, id=None, data=None, passwords=False):
         """Create the filter.
         
         :param name: The name of the form that should be populated. If this
@@ -51,12 +55,17 @@ class HTMLFormFiller(object):
         :param data: The dictionary of form values, where the keys are the names
                      of the form fields, and the values are the values to fill
                      in.
+        :param passwords: Whether password input fields should be populated.
+                          This is off by default for security reasons (for
+                          example, a password may end up in the browser cache)
+        :note: Changed in 0.5.2: added the `passwords` option
         """
         self.name = name
         self.id = id
         if data is None:
             data = {}
         self.data = data
+        self.passwords = passwords
 
     def __call__(self, stream):
         """Apply the filter to the given stream.
@@ -83,7 +92,7 @@ class HTMLFormFiller(object):
 
                 elif in_form:
                     if tagname == 'input':
-                        type = attrs.get('type')
+                        type = attrs.get('type', '').lower()
                         if type in ('checkbox', 'radio'):
                             name = attrs.get('name')
                             if name and name in self.data:
@@ -95,7 +104,7 @@ class HTMLFormFiller(object):
                                         checked = declval in [unicode(v) for v
                                                               in value]
                                     else:
-                                        checked = bool(filter(None, value))
+                                        checked = any(value)
                                 else:
                                     if declval:
                                         checked = declval == unicode(value)
@@ -105,14 +114,17 @@ class HTMLFormFiller(object):
                                     attrs |= [(QName('checked'), 'checked')]
                                 elif 'checked' in attrs:
                                     attrs -= 'checked'
-                        elif type in (None, 'hidden', 'text'):
+                        elif type in ('', 'hidden', 'text') \
+                                or type == 'password' and self.passwords:
                             name = attrs.get('name')
                             if name and name in self.data:
                                 value = self.data[name]
                                 if isinstance(value, (list, tuple)):
                                     value = value[0]
                                 if value is not None:
-                                    attrs |= [(QName('value'), unicode(value))]
+                                    attrs |= [
+                                        (QName('value'), unicode(value))
+                                    ]
                     elif tagname == 'select':
                         name = attrs.get('name')
                         if name in self.data:
@@ -187,7 +199,7 @@ class HTMLSanitizer(object):
     
     >>> from genshi import HTML
     >>> html = HTML('<div><script>alert(document.cookie)</script></div>')
-    >>> print html | HTMLSanitizer()
+    >>> print(html | HTMLSanitizer())
     <div/>
     
     The default set of safe tags and attributes can be modified when the filter
@@ -196,20 +208,24 @@ class HTMLSanitizer(object):
     
     >>> html = HTML('<div style="background: #000"></div>')
     >>> sanitizer = HTMLSanitizer(safe_attrs=HTMLSanitizer.SAFE_ATTRS | set(['style']))
-    >>> print html | sanitizer
+    >>> print(html | sanitizer)
     <div style="background: #000"/>
     
     Note that even in this case, the filter *does* attempt to remove dangerous
     constructs from style attributes:
 
     >>> html = HTML('<div style="background: url(javascript:void); color: #000"></div>')
-    >>> print html | sanitizer
+    >>> print(html | sanitizer)
     <div style="color: #000"/>
     
     This handles HTML entities, unicode escapes in CSS and Javascript text, as
     well as a lot of other things. However, the style tag is still excluded by
     default because it is very hard for such sanitizing to be completely safe,
     especially considering how much error recovery current web browsers perform.
+    
+    It also does some basic filtering of CSS properties that may be used for
+    typical phishing attacks. For more sophisticated filtering, this class
+    provides a couple of hooks that can be overridden in sub-classes.
     
     :warn: Note that this special processing of CSS is currently only applied to
            style attributes, **not** style elements.
@@ -274,7 +290,7 @@ class HTMLSanitizer(object):
                 if waiting_for:
                     continue
                 tag, attrs = data
-                if tag not in self.safe_tags:
+                if not self.is_safe_elem(tag, attrs):
                     waiting_for = tag
                     continue
 
@@ -309,6 +325,43 @@ class HTMLSanitizer(object):
                 if not waiting_for:
                     yield kind, data, pos
 
+    def is_safe_css(self, propname, value):
+        """Determine whether the given css property declaration is to be
+        considered safe for inclusion in the output.
+        
+        :param propname: the CSS property name
+        :param value: the value of the property
+        :return: whether the property value should be considered safe
+        :rtype: bool
+        :since: version 0.6
+        """
+        if propname == 'position':
+            return False
+        if propname.startswith('margin') and '-' in value:
+            # Negative margins can be used for phishing
+            return False
+        return True
+
+    def is_safe_elem(self, tag, attrs):
+        """Determine whether the given element should be considered safe for
+        inclusion in the output.
+        
+        :param tag: the tag name of the element
+        :type tag: QName
+        :param attrs: the element attributes
+        :type attrs: Attrs
+        :return: whether the element should be considered safe
+        :rtype: bool
+        :since: version 0.6
+        """
+        if tag not in self.safe_tags:
+            return False
+        if tag.localname == 'input':
+            input_type = attrs.get('type', '').lower()
+            if input_type == 'password':
+                return False
+        return True
+
     def is_safe_uri(self, uri):
         """Determine whether the given URI is to be considered safe for
         inclusion in the output.
@@ -327,6 +380,8 @@ class HTMLSanitizer(object):
         :rtype: `bool`
         :since: version 0.4.3
         """
+        if '#' in uri:
+            uri = uri.split('#', 1)[0] # Strip out the fragment identifier
         if ':' not in uri:
             return True # This is a relative URI
         chars = [char for char in uri.split(':', 1)[0] if char.isalnum()]
@@ -363,14 +418,20 @@ class HTMLSanitizer(object):
         """
         decls = []
         text = self._strip_css_comments(self._replace_unicode_escapes(text))
-        for decl in filter(None, text.split(';')):
+        for decl in text.split(';'):
             decl = decl.strip()
             if not decl:
                 continue
+            try:
+                propname, value = decl.split(':', 1)
+            except ValueError:
+                continue
+            if not self.is_safe_css(propname.strip().lower(), value.strip()):
+                continue
             is_evil = False
-            if 'expression' in decl:
+            if 'expression' in value:
                 is_evil = True
-            for match in re.finditer(r'url\s*\(([^)]+)', decl):
+            for match in re.finditer(r'url\s*\(([^)]+)', value):
                 if not self.is_safe_uri(match.group(1)):
                     is_evil = True
                     break

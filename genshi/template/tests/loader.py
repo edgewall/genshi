@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2006-2008 Edgewall Software
+# Copyright (C) 2006-2010 Edgewall Software
 # All rights reserved.
 #
 # This software is licensed as described in the file COPYING, which
@@ -58,7 +58,7 @@ class TemplateLoaderTestCase(unittest.TestCase):
         tmpl = loader.load('tmpl2.html')
         self.assertEqual("""<html>
               <div>Included</div>
-            </html>""", tmpl.generate().render())
+            </html>""", tmpl.generate().render(encoding=None))
 
     def test_relative_include_subdir(self):
         os.mkdir(os.path.join(self.dirname, 'sub'))
@@ -80,7 +80,7 @@ class TemplateLoaderTestCase(unittest.TestCase):
         tmpl = loader.load('tmpl2.html')
         self.assertEqual("""<html>
               <div>Included</div>
-            </html>""", tmpl.generate().render())
+            </html>""", tmpl.generate().render(encoding=None))
 
     def test_relative_include_parentdir(self):
         file1 = open(os.path.join(self.dirname, 'tmpl1.html'), 'w')
@@ -102,7 +102,7 @@ class TemplateLoaderTestCase(unittest.TestCase):
         tmpl = loader.load('sub/tmpl2.html')
         self.assertEqual("""<html>
               <div>Included</div>
-            </html>""", tmpl.generate().render())
+            </html>""", tmpl.generate().render(encoding=None))
 
     def test_relative_include_samesubdir(self):
         file1 = open(os.path.join(self.dirname, 'tmpl1.html'), 'w')
@@ -130,7 +130,7 @@ class TemplateLoaderTestCase(unittest.TestCase):
         tmpl = loader.load('sub/tmpl2.html')
         self.assertEqual("""<html>
               <div>Included sub/tmpl1.html</div>
-            </html>""", tmpl.generate().render())
+            </html>""", tmpl.generate().render(encoding=None))
 
     def test_relative_include_without_search_path(self):
         file1 = open(os.path.join(self.dirname, 'tmpl1.html'), 'w')
@@ -151,7 +151,51 @@ class TemplateLoaderTestCase(unittest.TestCase):
         tmpl = loader.load(os.path.join(self.dirname, 'tmpl2.html'))
         self.assertEqual("""<html>
               <div>Included</div>
-            </html>""", tmpl.generate().render())
+            </html>""", tmpl.generate().render(encoding=None))
+
+    def test_relative_include_without_loader(self):
+        file1 = open(os.path.join(self.dirname, 'tmpl1.html'), 'w')
+        try:
+            file1.write("""<div>Included</div>""")
+        finally:
+            file1.close()
+
+        file2 = open(os.path.join(self.dirname, 'tmpl2.html'), 'w')
+        try:
+            file2.write("""<html xmlns:xi="http://www.w3.org/2001/XInclude">
+              <xi:include href="tmpl1.html" />
+            </html>""")
+        finally:
+            file2.close()
+
+        tmpl = MarkupTemplate("""<html xmlns:xi="http://www.w3.org/2001/XInclude">
+              <xi:include href="tmpl1.html" />
+            </html>""", os.path.join(self.dirname, 'tmpl2.html'), 'tmpl2.html')
+        self.assertEqual("""<html>
+              <div>Included</div>
+            </html>""", tmpl.generate().render(encoding=None))
+
+    def test_relative_include_without_loader_relative(self):
+        file1 = open(os.path.join(self.dirname, 'tmpl1.html'), 'w')
+        try:
+            file1.write("""<div>Included</div>""")
+        finally:
+            file1.close()
+
+        file2 = open(os.path.join(self.dirname, 'tmpl2.html'), 'w')
+        try:
+            file2.write("""<html xmlns:xi="http://www.w3.org/2001/XInclude">
+              <xi:include href="tmpl1.html" />
+            </html>""")
+        finally:
+            file2.close()
+
+        tmpl = MarkupTemplate("""<html xmlns:xi="http://www.w3.org/2001/XInclude">
+              <xi:include href="tmpl1.html" />
+            </html>""", filename=os.path.join(self.dirname, 'tmpl2.html'))
+        self.assertEqual("""<html>
+              <div>Included</div>
+            </html>""", tmpl.generate().render(encoding=None))
 
     def test_relative_include_without_search_path_nested(self):
         file1 = open(os.path.join(self.dirname, 'tmpl1.html'), 'w')
@@ -182,7 +226,7 @@ class TemplateLoaderTestCase(unittest.TestCase):
               <div>
               <div>Included</div>
             </div>
-            </html>""", tmpl.generate().render())
+            </html>""", tmpl.generate().render(encoding=None))
 
     def test_relative_include_from_inmemory_template(self):
         file1 = open(os.path.join(self.dirname, 'tmpl1.html'), 'w')
@@ -198,7 +242,7 @@ class TemplateLoaderTestCase(unittest.TestCase):
 
         self.assertEqual("""<html>
           <div>Included</div>
-        </html>""", tmpl2.generate().render())
+        </html>""", tmpl2.generate().render(encoding=None))
 
     def test_relative_absolute_template_preferred(self):
         file1 = open(os.path.join(self.dirname, 'tmpl1.html'), 'w')
@@ -227,7 +271,7 @@ class TemplateLoaderTestCase(unittest.TestCase):
                                                         'tmpl2.html')))
         self.assertEqual("""<html>
               <div>Included from sub</div>
-            </html>""", tmpl.generate().render())
+            </html>""", tmpl.generate().render(encoding=None))
 
     def test_abspath_caching(self):
         abspath = os.path.join(self.dirname, 'abs')
@@ -258,7 +302,7 @@ class TemplateLoaderTestCase(unittest.TestCase):
         tmpl1 = loader.load(os.path.join(abspath, 'tmpl1.html'))
         self.assertEqual("""<html>
               <div>Included from searchpath.</div>
-            </html>""", tmpl1.generate().render())
+            </html>""", tmpl1.generate().render(encoding=None))
         assert 'tmpl2.html' in loader._cache
 
     def test_abspath_include_caching_without_search_path(self):
@@ -295,11 +339,11 @@ class TemplateLoaderTestCase(unittest.TestCase):
         tmpl1 = loader.load(os.path.join(self.dirname, 'tmpl1.html'))
         self.assertEqual("""<html>
               <div>Included</div>
-            </html>""", tmpl1.generate().render())
+            </html>""", tmpl1.generate().render(encoding=None))
         tmpl2 = loader.load(os.path.join(self.dirname, 'sub', 'tmpl1.html'))
         self.assertEqual("""<html>
               <div>Included from sub</div>
-            </html>""", tmpl2.generate().render())
+            </html>""", tmpl2.generate().render(encoding=None))
         assert 'tmpl2.html' not in loader._cache
 
     def test_load_with_default_encoding(self):
@@ -341,13 +385,13 @@ class TemplateLoaderTestCase(unittest.TestCase):
         tmpl = loader.load('tmpl.html')
         self.assertEqual("""<html>
               <p>Hello, hello</p>
-            </html>""", tmpl.generate().render())
+            </html>""", tmpl.generate().render(encoding=None))
 
         # Make sure the filter is only added once
         tmpl = loader.load('tmpl.html')
         self.assertEqual("""<html>
               <p>Hello, hello</p>
-            </html>""", tmpl.generate().render())
+            </html>""", tmpl.generate().render(encoding=None))
 
     def test_prefix_delegation_to_directories(self):
         """
@@ -393,7 +437,7 @@ class TemplateLoaderTestCase(unittest.TestCase):
         tmpl = loader.load('sub1/tmpl1.html')
         self.assertEqual("""<html>
               <div>Included foo</div> from sub1
-            </html>""", tmpl.generate().render())
+            </html>""", tmpl.generate().render(encoding=None))
 
     def test_prefix_delegation_to_directories_with_subdirs(self):
         """
@@ -449,7 +493,7 @@ class TemplateLoaderTestCase(unittest.TestCase):
               <div>Included foo</div> from sub1
               <div>tmpl2</div> from sub1
               <div>bar/tmpl3</div> from sub1
-            </html>""", tmpl.generate().render())
+            </html>""", tmpl.generate().render(encoding=None))
 
 
 def suite():

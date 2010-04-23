@@ -181,7 +181,7 @@ def inline(template):
             w.unshift()
 
         else:
-            raise NotImplementedError
+            raise NotImplementedError, '%r not supported' % d.tagname
 
         yield w()
 
@@ -287,7 +287,7 @@ if __name__ == '__main__':
         return x*x
  ?>
  <body>
-    <h1 py:def="sayhi(name='world')" py:strip="">
+    <h1 py:def="sayhi(name='world')">
       Hello, $name!
     </h1>
     ${sayhi()}

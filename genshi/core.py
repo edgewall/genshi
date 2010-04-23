@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2006-2008 Edgewall Software
+# Copyright (C) 2006-2009 Edgewall Software
 # All rights reserved.
 #
 # This software is licensed as described in the file COPYING, which
@@ -14,13 +14,13 @@
 """Core classes for markup processing."""
 
 try:
+    reduce # builtin in Python < 3
+except NameError:
     from functools import reduce
-except ImportError:
-    pass # builtin in Python <= 2.5
 from itertools import chain
 import operator
 
-from genshi.util import plaintext, stripentities, striptags
+from genshi.util import plaintext, stripentities, striptags, stringrepr
 
 __all__ = ['Stream', 'Markup', 'escape', 'unescape', 'Attrs', 'Namespace',
            'QName']
@@ -93,7 +93,7 @@ class Stream(object):
         
         >>> from genshi.input import HTML
         >>> html = HTML('''<p onclick="alert('Whoa')">Hello, world!</p>''')
-        >>> print html
+        >>> print(html)
         <p onclick="alert('Whoa')">Hello, world!</p>
         
         A filter such as the HTML sanitizer can be applied to that stream using
@@ -101,7 +101,7 @@ class Stream(object):
         
         >>> from genshi.filters import HTMLSanitizer
         >>> sanitizer = HTMLSanitizer()
-        >>> print html | sanitizer
+        >>> print(html | sanitizer)
         <p>Hello, world!</p>
         
         Filters can be any function that accepts and produces a stream (where
@@ -112,14 +112,14 @@ class Stream(object):
         ...         if kind is TEXT:
         ...             data = data.upper()
         ...         yield kind, data, pos
-        >>> print html | sanitizer | uppercase
+        >>> print(html | sanitizer | uppercase)
         <p>HELLO, WORLD!</p>
         
         Serializers can also be used with this notation:
         
         >>> from genshi.output import TextSerializer
         >>> output = TextSerializer()
-        >>> print html | sanitizer | uppercase | output
+        >>> print(html | sanitizer | uppercase | output)
         HELLO, WORLD!
         
         Commonly, serializers should be used at the end of the "pipeline";
@@ -188,9 +188,9 @@ class Stream(object):
         
         >>> from genshi import HTML
         >>> stream = HTML('<doc><elem>foo</elem><elem>bar</elem></doc>')
-        >>> print stream.select('elem')
+        >>> print(stream.select('elem'))
         <elem>foo</elem><elem>bar</elem>
-        >>> print stream.select('elem/text()')
+        >>> print(stream.select('elem/text()'))
         foobar
         
         Note that the outermost element of the stream becomes the *context
@@ -198,13 +198,13 @@ class Stream(object):
         not match anything in the example above, because it only tests against
         child elements of the outermost element:
         
-        >>> print stream.select('doc')
+        >>> print(stream.select('doc'))
         <BLANKLINE>
         
         You can use the "." expression to match the context node itself
         (although that usually makes little sense):
         
-        >>> print stream.select('.')
+        >>> print(stream.select('.'))
         <doc><elem>foo</elem><elem>bar</elem></doc>
         
         :param path: a string containing the XPath expression
@@ -264,6 +264,7 @@ START_CDATA = Stream.START_CDATA
 END_CDATA = Stream.END_CDATA
 PI = Stream.PI
 COMMENT = Stream.COMMENT
+
 
 def _ensure(stream):
     """Ensure that every item on the stream is actually a markup event."""
@@ -353,6 +354,20 @@ class Attrs(tuple):
             if attr == name:
                 return True
 
+    def __getitem__(self, i):
+        """Return an item or slice of the attributes list.
+        
+        >>> attrs = Attrs([('href', '#'), ('title', 'Foo')])
+        >>> attrs[1]
+        ('title', 'Foo')
+        >>> attrs[1:]
+        Attrs([('title', 'Foo')])
+        """
+        items = tuple.__getitem__(self, i)
+        if type(i) is slice:
+            return Attrs(items)
+        return items
+
     def __getslice__(self, i, j):
         """Return a slice of the attributes list.
         
@@ -412,12 +427,12 @@ class Attrs(tuple):
         attributes joined together.
         
         >>> Attrs([('href', '#'), ('title', 'Foo')]).totuple()
-        ('TEXT', u'#Foo', (None, -1, -1))
+        ('TEXT', '#Foo', (None, -1, -1))
         
         :return: a `TEXT` event
         :rtype: `tuple`
         """
-        return TEXT, u''.join([x[1] for x in self]), (None, -1, -1)
+        return TEXT, ''.join([x[1] for x in self]), (None, -1, -1)
 
 
 class Markup(unicode):
@@ -427,10 +442,10 @@ class Markup(unicode):
     __slots__ = []
 
     def __add__(self, other):
-        return Markup(unicode(self) + unicode(escape(other)))
+        return Markup(unicode.__add__(self, escape(other)))
 
     def __radd__(self, other):
-        return Markup(unicode(escape(other)) + unicode(self))
+        return Markup(unicode.__add__(escape(other), self))
 
     def __mod__(self, args):
         if isinstance(args, dict):
@@ -442,13 +457,11 @@ class Markup(unicode):
         return Markup(unicode.__mod__(self, args))
 
     def __mul__(self, num):
-        return Markup(unicode(self) * num)
-
-    def __rmul__(self, num):
-        return Markup(num * unicode(self))
+        return Markup(unicode.__mul__(self, num))
+    __rmul__ = __mul__
 
     def __repr__(self):
-        return '<%s %r>' % (self.__class__.__name__, unicode(self))
+        return "<%s %s>" % (type(self).__name__, unicode.__repr__(self))
 
     def join(self, seq, escape_quotes=True):
         """Return a `Markup` object which is the concatenation of the strings
@@ -465,7 +478,7 @@ class Markup(unicode):
         :rtype: `Markup`
         :see: `escape`
         """
-        return Markup(unicode(self).join([escape(item, quotes=escape_quotes)
+        return Markup(unicode.join(self, [escape(item, quotes=escape_quotes)
                                           for item in seq]))
 
     @classmethod
@@ -496,9 +509,9 @@ class Markup(unicode):
         if hasattr(text, '__html__'):
             return Markup(text.__html__())
 
-        text = unicode(text).replace('&', '&amp;') \
-                            .replace('<', '&lt;') \
-                            .replace('>', '&gt;')
+        text = text.replace('&', '&amp;') \
+                   .replace('<', '&lt;') \
+                   .replace('>', '&gt;')
         if quotes:
             text = text.replace('"', '&#34;')
         return cls(text)
@@ -514,7 +527,7 @@ class Markup(unicode):
         :see: `genshi.core.unescape`
         """
         if not self:
-            return u''
+            return ''
         return unicode(self).replace('&#34;', '"') \
                             .replace('&gt;', '>') \
                             .replace('&lt;', '<') \
@@ -549,7 +562,9 @@ try:
 except ImportError:
     pass # just use the Python implementation
 
+
 escape = Markup.escape
+
 
 def unescape(text):
     """Reverse-escapes &, <, >, and \" and returns a `unicode` object.
@@ -583,7 +598,7 @@ class Namespace(object):
     
     >>> html = Namespace('http://www.w3.org/1999/xhtml')
     >>> html
-    <Namespace "http://www.w3.org/1999/xhtml">
+    Namespace('http://www.w3.org/1999/xhtml')
     >>> html.uri
     u'http://www.w3.org/1999/xhtml'
     
@@ -591,7 +606,7 @@ class Namespace(object):
     that namespace:
     
     >>> html.body
-    QName(u'http://www.w3.org/1999/xhtml}body')
+    QName('http://www.w3.org/1999/xhtml}body')
     >>> html.body.localname
     u'body'
     >>> html.body.namespace
@@ -601,7 +616,7 @@ class Namespace(object):
     attribute names that are not valid Python identifiers:
     
     >>> html['body']
-    QName(u'http://www.w3.org/1999/xhtml}body')
+    QName('http://www.w3.org/1999/xhtml}body')
     
     A `Namespace` object can also be used to test whether a specific `QName`
     belongs to that namespace using the ``in`` operator:
@@ -641,14 +656,14 @@ class Namespace(object):
         return self.uri == other
 
     def __getitem__(self, name):
-        return QName(self.uri + u'}' + name)
+        return QName(self.uri + '}' + name)
     __getattr__ = __getitem__
 
     def __hash__(self):
         return hash(self.uri)
 
     def __repr__(self):
-        return '<Namespace "%s">' % self.uri
+        return '%s(%s)' % (type(self).__name__, stringrepr(self.uri))
 
     def __str__(self):
         return self.uri.encode('utf-8')
@@ -671,14 +686,14 @@ class QName(unicode):
     
     >>> qname = QName('foo')
     >>> qname
-    QName(u'foo')
+    QName('foo')
     >>> qname.localname
     u'foo'
     >>> qname.namespace
     
     >>> qname = QName('http://www.w3.org/1999/xhtml}body')
     >>> qname
-    QName(u'http://www.w3.org/1999/xhtml}body')
+    QName('http://www.w3.org/1999/xhtml}body')
     >>> qname.localname
     u'body'
     >>> qname.namespace
@@ -696,9 +711,9 @@ class QName(unicode):
         if type(qname) is cls:
             return qname
 
-        parts = qname.lstrip(u'{').split(u'}', 1)
+        parts = qname.lstrip('{').split('}', 1)
         if len(parts) > 1:
-            self = unicode.__new__(cls, u'{%s' % qname)
+            self = unicode.__new__(cls, '{%s' % qname)
             self.namespace, self.localname = map(unicode, parts)
         else:
             self = unicode.__new__(cls, qname)
@@ -709,4 +724,4 @@ class QName(unicode):
         return (self.lstrip('{'),)
 
     def __repr__(self):
-        return 'QName(%s)' % unicode.__repr__(self.lstrip('{'))
+        return '%s(%s)' % (type(self).__name__, stringrepr(self.lstrip('{')))

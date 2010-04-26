@@ -180,8 +180,51 @@ def inline(template):
                 yield line
             w.unshift()
 
+        elif isinstance(d, StripDirective):
+            if not d.expr:
+                stream = stream[1:-2]
+                for line in _apply(rest, stream):
+                    yield line
+            else:
+                yield w('strip.append(e[%d].evaluate(ctxt))',
+                        index['E'][d.expr])
+                yield w('if not strip[-1]:')
+                w.shift()
+                for line in _generate([stream[0]]):
+                    yield line
+                w.unshift()
+                for line in _apply(rest, stream[1:-2]):
+                    yield line
+                yield w('if not strip[-1]:')
+                w.shift()
+                for line in _generate([stream[-1]]):
+                    yield line
+                w.unshift()
+                yield w('strip.pop(-1)')
+
+        elif isinstance(d, WithDirective):
+            yield w('push({%s})' % ','.join([
+                '%r: e[%d].evaluate(ctxt)' % (
+                    name[0][0].id,
+                    index['E'][expr]
+                ) for name, expr in d.vars
+            ]))
+            for line in _apply(rest, stream):
+                yield line
+            yield w('pop()')
+
+        elif isinstance(d, ContentDirective):
+            for line in _generate([stream[0]]):
+                yield line
+            yield w('for v in e[%d].evaluate(ctxt): yield v', index['E'][d.expr])
+            for line in _generate([stream[-1]]):
+                yield line
+
+        elif isinstance(d, ReplaceDirective):
+            yield w('for v in e[%d].evaluate(ctxt): yield v', index['E'][d.expr])
+
         else:
-            raise NotImplementedError, '%r not supported' % d.tagname
+            raise NotImplementedError, '%r directive not supported' % d.tagname
 
         yield w()
 
@@ -259,6 +302,7 @@ def inline(template):
             ', '.join(['f=_F'] + ['%s=_%s' % (n.lower(), n) for n in index]))
     w.shift()
     yield w('push = ctxt.push; pop = ctxt.pop')
+    yield w('strip = []')
     yield w()
 
     # Define macro functions
@@ -287,14 +331,15 @@ if __name__ == '__main__':
         return x*x
  ?>
  <body>
-    <h1 py:def="sayhi(name='world')">
+    <h1 py:def="sayhi(name='world')" py:strip="1">
       Hello, $name!
     </h1>
     ${sayhi()}
     <ul py:if="items">
       <li py:for="idx, item in enumerate(items)"
-          class="${idx % 2 and 'odd' or 'even'}">
-        <span py:replace="item + 1">NUM</span>
+          class="${idx % 2 and 'odd' or 'even'}"
+          py:with="num=item + 1">
+        <span py:replace="num">NUM</span>
       </li>
     </ul>
  </body>

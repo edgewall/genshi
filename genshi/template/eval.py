@@ -78,7 +78,7 @@ class Code(object):
         else:
             assert isinstance(source, _ast.AST), \
                 'Expected string or AST node, but got %r' % source
-            self.source = '?'
+            self.source = ASTCodeGenerator(source).code.strip()
             if self.mode == 'eval':
                 node = _ast.Expression()
                 node.body = source

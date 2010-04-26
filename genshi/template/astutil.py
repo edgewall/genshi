@@ -33,9 +33,9 @@ class ASTCodeGenerator(object):
     """
     def __init__(self, tree):
         self.lines_info = []
-        self.line_info = None
+        self.line_info = []
         self.code = ''
-        self.line = None
+        self.line = ''
         self.last = None
         self.indent = 0
         self.blame_stack = []

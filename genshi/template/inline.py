@@ -13,7 +13,7 @@
 
 import imp
 
-from genshi.core import Attrs, Stream, _ensure, START, END, TEXT
+from genshi.core import Attrs, Stream, QName, _ensure, START, END, TEXT
 from genshi.template.astutil import _ast
 from genshi.template.base import EXEC, EXPR, SUB
 from genshi.template.directives import *
@@ -54,6 +54,20 @@ def _expand(obj, pos):
             yield TEXT, unicode(obj), pos
 
 
+def _expand_attrs(obj):
+    if obj:
+        if isinstance(obj, Stream):
+            try:
+                obj = iter(obj).next()
+            except StopIteration:
+                obj = []
+        elif not isinstance(obj, list): # assume it's a dict
+            obj = obj.items()
+        return [(QName(name), unicode(val).strip()) for name, val
+                in obj if val is not None]
+    return []
+
+
 def _expand_text(obj):
     if obj is not None:
         if isinstance(obj, basestring):
@@ -87,7 +101,7 @@ def inline(template):
                                     'END_CDATA, END_NS, DOCTYPE, TEXT')
     yield w('from genshi.path import Path')
     yield w('from genshi.template.eval import Expression, Suite')
-    yield w('from genshi.template.inline import _expand, _expand_text')
+    yield w('from genshi.template.inline import _expand, _expand_attrs, _expand_text')
     yield w()
 
     def _declare_vars(stream):
@@ -149,9 +163,9 @@ def inline(template):
                         w.unshift()
 
     # Recursively apply directives
-    def _apply(directives, stream):
+    def _apply(directives, stream, **kwargs):
         if not directives:
-            for line in _generate(stream):
+            for line in _generate(stream, **kwargs):
                 yield line
             return
 
@@ -190,14 +204,14 @@ def inline(template):
                         index['E'][d.expr])
                 yield w('if not strip[-1]:')
                 w.shift()
-                for line in _generate([stream[0]]):
+                for line in _generate([stream[0]], **kwargs):
                     yield line
                 w.unshift()
                 for line in _apply(rest, stream[1:-2]):
                     yield line
                 yield w('if not strip[-1]:')
                 w.shift()
-                for line in _generate([stream[-1]]):
+                for line in _generate([stream[-1]], **kwargs):
                     yield line
                 w.unshift()
                 yield w('strip.pop(-1)')
@@ -214,14 +228,18 @@ def inline(template):
             yield w('pop()')
 
         elif isinstance(d, ContentDirective):
-            for line in _generate([stream[0]]):
+            for line in _generate([stream[0]], **kwargs):
                 yield line
             yield w('for v in e[%d].evaluate(ctxt): yield v', index['E'][d.expr])
-            for line in _generate([stream[-1]]):
+            for line in _generate([stream[-1]], **kwargs):
                 yield line
 
         elif isinstance(d, ReplaceDirective):
             yield w('for v in e[%d].evaluate(ctxt): yield v', index['E'][d.expr])
+
+        elif isinstance(d, AttrsDirective):
+            for line in _apply(rest, stream, attrs_expr=d.expr):
+                yield line
 
         else:
             raise NotImplementedError, '%r directive not supported' % d.tagname
@@ -229,7 +247,7 @@ def inline(template):
         yield w()
 
     # Generate code for the given template stream
-    def _generate(stream):
+    def _generate(stream, attrs_expr=None):
         for kind, data, pos in stream:
 
             if kind is EXPR:
@@ -263,10 +281,13 @@ def inline(template):
                         ))
                     w.unshift()
                     yield w(']) if av]')
-                    yield w('yield START, (q[%d], a[%d] | at), (f, %d, %d)', qn, at,
+                    yield w('yield START, (q[%d], a[%d] | at%s), (f, %d, %d)', qn, at,
+                            attrs_expr and ' | _expand_attrs(e[%d].evaluate(ctxt))' % index['E'][attrs_expr] or '',
                             *pos[1:])
                 else:
-                    yield w('yield START, (q[%d], a[%d]), (f, %d, %d)', qn, at, *pos[1:])
+                    yield w('yield START, (q[%d], a[%d]%s), (f, %d, %d)', qn, at,
+                        attrs_expr and ' | _expand_attrs(e[%d].evaluate(ctxt))' % index['E'][attrs_expr] or '',
+                        *pos[1:])
 
             elif kind is END:
                 yield w('yield END, q[%d], (f, %d, %d)', index['Q'][data], *pos[1:])
@@ -339,7 +360,7 @@ if __name__ == '__main__':
       <li py:for="idx, item in enumerate(items)"
           class="${idx % 2 and 'odd' or 'even'}"
           py:with="num=item + 1">
-        <span py:replace="num">NUM</span>
+        <span py:if="num % 2" py:replace="num">NUM</span>
       </li>
     </ul>
  </body>

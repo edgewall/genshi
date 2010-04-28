@@ -175,9 +175,10 @@ class AttrsDirective(Directive):
                         attrs = []
                 elif not isinstance(attrs, list): # assume it's a dict
                     attrs = attrs.items()
-                attrib -= [name for name, val in attrs if val is None]
-                attrib |= [(QName(name), unicode(val).strip()) for name, val
-                           in attrs if val is not None]
+                attrib |= [
+                    (QName(n), v is not None and unicode(v).strip() or None)
+                    for n, v in attrs
+                ]
             yield kind, (tag, attrib), pos
             for event in stream:
                 yield event

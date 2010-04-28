@@ -379,14 +379,19 @@ class Attrs(tuple):
 
     def __or__(self, attrs):
         """Return a new instance that contains the attributes in `attrs` in
-        addition to any already existing attributes.
+        addition to any already existing attributes. Any attributes in the new
+        set that have a value of `None` are removed.
         
         :return: a new instance with the merged attributes
         :rtype: `Attrs`
         """
-        repl = dict([(an, av) for an, av in attrs if an in self])
-        return Attrs([(sn, repl.get(sn, sv)) for sn, sv in self] +
-                     [(an, av) for an, av in attrs if an not in self])
+        remove = set([an for an, av in attrs if av is None])
+        replace = dict([(an, av) for an, av in attrs
+                        if an in self and av is not None])
+        return Attrs([(sn, replace.get(sn, sv)) for sn, sv in self
+                      if sn not in remove] +
+                     [(an, av) for an, av in attrs
+                      if an not in self and an not in remove])
 
     def __repr__(self):
         if not self:
@@ -507,7 +512,7 @@ class Markup(unicode):
         if type(text) is cls:
             return text
         if hasattr(text, '__html__'):
-            return Markup(text.__html__())
+            return cls(text.__html__())
 
         text = text.replace('&', '&amp;') \
                    .replace('<', '&lt;') \

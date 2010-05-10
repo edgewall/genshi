@@ -183,9 +183,10 @@ class HTMLFormFiller(object):
                     no_option_value = False
                     option_start = option_value = None
                     option_text = []
-                elif tagname == 'textarea':
+                elif in_textarea and tagname == 'textarea':
                     if textarea_value:
                         yield TEXT, unicode(textarea_value), pos
+                        textarea_value = None
                     in_textarea = False
                 yield kind, data, pos
 

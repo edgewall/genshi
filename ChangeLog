@@ -1,3 +1,11 @@
+Version 0.6.1
+http://svn.edgewall.org/repos/genshi/tags/0.6.1/
+(???, from branches/stable/0.6.x)
+
+ * Fix for error in how `HTMLFormFiller` would handle `textarea` elements if
+   no value was not supplied form them.
+
+
 Version 0.6
 http://svn.edgewall.org/repos/genshi/tags/0.6.0/
 (Apr 22 2010, from branches/stable/0.6.x)

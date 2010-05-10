@@ -92,6 +92,28 @@ class HTMLFormFillerTestCase(unittest.TestCase):
           <textarea name="foo">bar</textarea>
         </p></form>""", html.render())
 
+    def test_fill_textarea_multiple(self):
+        # Ensure that the subsequent textarea doesn't get the data from the
+        # first
+        html = HTML("""<form><p>
+          <textarea name="foo"></textarea>
+          <textarea name="bar"></textarea>
+        </p></form>""") | HTMLFormFiller(data={'foo': 'Some text'})
+        self.assertEquals("""<form><p>
+          <textarea name="foo">Some text</textarea>
+          <textarea name="bar"/>
+        </p></form>""", html.render())
+
+    def test_fill_textarea_preserve_original(self):
+        html = HTML("""<form><p>
+          <textarea name="foo"></textarea>
+          <textarea name="bar">Original value</textarea>
+        </p></form>""") | HTMLFormFiller(data={'foo': 'Some text'})
+        self.assertEquals("""<form><p>
+          <textarea name="foo">Some text</textarea>
+          <textarea name="bar">Original value</textarea>
+        </p></form>""", html.render())
+
     def test_fill_input_checkbox_no_value(self):
         html = HTML("""<form><p>
           <input type="checkbox" name="foo" />

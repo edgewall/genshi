@@ -114,7 +114,7 @@ class HTMLFormFillerTestCase(unittest.TestCase):
           <textarea name="bar">Original value</textarea>
         </p></form>""", html.render())
 
-    def test_fill_input_checkbox_no_value(self):
+    def test_fill_input_checkbox_single_value_auto_no_value(self):
         html = HTML("""<form><p>
           <input type="checkbox" name="foo" />
         </p></form>""") | HTMLFormFiller()
@@ -195,6 +195,22 @@ class HTMLFormFillerTestCase(unittest.TestCase):
         self.assertEquals("""<form><p>
           <input type="radio" name="foo" value="1"/>
         </p></form>""", (html | HTMLFormFiller(data={'foo': ['2']})).render())
+
+    def test_fill_input_radio_empty_string(self):
+        html = HTML("""<form><p>
+          <input type="radio" name="foo" value="" />
+        </p></form>""")
+        self.assertEquals("""<form><p>
+          <input type="radio" name="foo" value="" checked="checked"/>
+        </p></form>""", (html | HTMLFormFiller(data={'foo': ''})).render())
+
+    def test_fill_input_radio_multi_empty_string(self):
+        html = HTML("""<form><p>
+          <input type="radio" name="foo" value="" />
+        </p></form>""")
+        self.assertEquals("""<form><p>
+          <input type="radio" name="foo" value="" checked="checked"/>
+        </p></form>""", (html | HTMLFormFiller(data={'foo': ['']})).render())
 
     def test_fill_select_no_value_auto(self):
         html = HTML("""<form><p>

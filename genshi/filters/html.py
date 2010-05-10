@@ -100,13 +100,13 @@ class HTMLFormFiller(object):
                                 declval = attrs.get('value')
                                 checked = False
                                 if isinstance(value, (list, tuple)):
-                                    if declval:
+                                    if declval is not None:
                                         checked = declval in [unicode(v) for v
                                                               in value]
                                     else:
                                         checked = any(value)
                                 else:
-                                    if declval:
+                                    if declval is not None:
                                         checked = declval == unicode(value)
                                     elif type == 'checkbox':
                                         checked = bool(value)

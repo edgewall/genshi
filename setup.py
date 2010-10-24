@@ -41,7 +41,8 @@ class optional_build_ext(build_ext):
     def run(self):
         try:
             build_ext.run(self)
-        except DistutilsPlatformError, e:
+        except DistutilsPlatformError:
+            _etype, e, _tb = sys.exc_info()
             self._unavailable(e)
 
     def build_extension(self, ext):
@@ -49,7 +50,8 @@ class optional_build_ext(build_ext):
             build_ext.build_extension(self, ext)
             global _speedup_available
             _speedup_available = True
-        except CCompilerError, e:
+        except CCompilerError:
+            _etype, e, _tb = sys.exc_info()
             self._unavailable(e)
 
     def _unavailable(self, exc):
@@ -86,6 +88,25 @@ if bdist_egg:
     cmdclass['bdist_egg'] = my_bdist_egg
 
 
+# Use 2to3 if we're running under Python 3 (with Distribute)
+extra = {}
+if sys.version_info >= (3,):
+    extra['use_2to3'] = True
+    extra['convert_2to3_doctests'] = []
+    extra['use_2to3_fixers'] = ['fixes']
+    # include tests for python3 setup.py test
+    packages = [
+        'genshi', 'genshi.filters', 'genshi.template',
+        'genshi.tests', 'genshi.filters.tests',
+        'genshi.template.tests',
+        'genshi.template.tests.templates',
+    ]
+    # Install genshi template tests
+    extra['include_package_data'] = True
+else:
+    packages = ['genshi', 'genshi.filters', 'genshi.template']
+
+
 setup(
     name = 'Genshi',
     version = '0.7',
@@ -108,13 +129,14 @@ feature is a template language, which is heavily inspired by Kid.""",
         'License :: OSI Approved :: BSD License',
         'Operating System :: OS Independent',
         'Programming Language :: Python',
+        'Programming Language :: Python :: 3',
         'Topic :: Internet :: WWW/HTTP :: Dynamic Content',
         'Topic :: Software Development :: Libraries :: Python Modules',
         'Topic :: Text Processing :: Markup :: HTML',
         'Topic :: Text Processing :: Markup :: XML'
     ],
     keywords = ['python.templating.engines'],
-    packages = ['genshi', 'genshi.filters', 'genshi.template'],
+    packages = packages,
     test_suite = 'genshi.tests.suite',
 
     extras_require = {
@@ -132,5 +154,7 @@ feature is a template language, which is heavily inspired by Kid.""",
     """,
 
     features = {'speedups': speedups},
-    cmdclass = cmdclass
+    cmdclass = cmdclass,
+
+    **extra
 )

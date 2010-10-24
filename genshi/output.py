@@ -27,7 +27,7 @@ __all__ = ['encode', 'get_serializer', 'DocType', 'XMLSerializer',
 __docformat__ = 'restructuredtext en'
 
 
-def encode(iterator, method='xml', encoding='utf-8', out=None):
+def encode(iterator, method='xml', encoding=None, out=None):
     """Encode serializer output into a string.
     
     :param iterator: the iterator returned from serializing a stream (basically

@@ -14,10 +14,17 @@
 #include <Python.h>
 #include <structmember.h>
 
-#if PY_VERSION_HEX < 0x02050000 && !defined(PY_SSIZE_T_MIN)
-typedef int Py_ssize_t;
-#define PY_SSIZE_T_MAX INT_MAX
-#define PY_SSIZE_T_MIN INT_MIN
+#if PY_MAJOR_VERSION > 2
+#   define IS_PY3K
+#elif PY_VERSION_HEX < 0x02050000 && !defined(PY_SSIZE_T_MIN)
+    typedef int Py_ssize_t;
+#   define PY_SSIZE_T_MAX INT_MAX
+#   define PY_SSIZE_T_MIN INT_MIN
+#endif
+
+/* We only use Unicode Strings in this module */
+#ifndef IS_PY3K
+#   define PyObject_Str PyObject_Unicode
 #endif
 
 static PyObject *amp1, *amp2, *lt1, *lt2, *gt1, *gt2, *qt1, *qt2;
@@ -73,7 +80,7 @@ escape(PyObject *text, int quotes)
         Py_DECREF(args);
         return ret;
     }
-    in = (PyUnicodeObject *) PyObject_Unicode(text);
+    in = (PyUnicodeObject *) PyObject_Str(text);
     if (in == NULL) {
         return NULL;
     }
@@ -390,11 +397,11 @@ Markup_mul(PyObject *self, PyObject *num)
     PyObject *unicode, *result, *args;
 
     if (PyObject_TypeCheck(self, &MarkupType)) {
-        unicode = PyObject_Unicode(self);
+        unicode = PyObject_Str(self);
         if (unicode == NULL) return NULL;
         result = PyNumber_Multiply(unicode, num);
     } else { // __rmul__
-        unicode = PyObject_Unicode(num);
+        unicode = PyObject_Str(num);
         if (unicode == NULL) return NULL;
         result = PyNumber_Multiply(unicode, self);
     }
@@ -418,9 +425,13 @@ Markup_repr(PyObject *self)
 {
     PyObject *format, *result, *args;
 
+#ifdef IS_PY3K
+    format = PyUnicode_FromString("<Markup %r>");
+#else
     format = PyString_FromString("<Markup %r>");
+#endif
     if (format == NULL) return NULL;
-    result = PyObject_Unicode(self);
+    result = PyObject_Str(self);
     if (result == NULL) {
         Py_DECREF(format);
         return NULL;
@@ -432,7 +443,11 @@ Markup_repr(PyObject *self)
         return NULL;
     }
     PyTuple_SET_ITEM(args, 0, result);
+#ifdef IS_PY3K
+    result = PyUnicode_Format(format, args);
+#else
     result = PyString_Format(format, args);
+#endif
     Py_DECREF(format);
     Py_DECREF(args);
     return result;
@@ -553,13 +568,19 @@ static PyNumberMethods Markup_as_number = {
     Markup_add, /*nb_add*/
     0, /*nb_subtract*/
     Markup_mul, /*nb_multiply*/
+#ifndef IS_PY3K
     0, /*nb_divide*/
+#endif
     Markup_mod, /*nb_remainder*/
 };
 
 PyTypeObject MarkupType = {
+#ifdef IS_PY3K
+    PyVarObject_HEAD_INIT(NULL, 0)
+#else
     PyObject_HEAD_INIT(NULL)
     0,
+#endif
     "genshi._speedups.Markup",
     sizeof(MarkupObject),
     0,
@@ -567,7 +588,11 @@ PyTypeObject MarkupType = {
     0,          /*tp_print*/
     0,          /*tp_getattr*/
     0,          /*tp_setattr*/
+#ifdef IS_PY3K
+    0,          /*tp_reserved*/
+#else
     0,          /*tp_compare*/
+#endif
     Markup_repr, /*tp_repr*/
     &Markup_as_number, /*tp_as_number*/
     0,          /*tp_as_sequence*/
@@ -580,7 +605,14 @@ PyTypeObject MarkupType = {
     0,          /*tp_setattro*/
     0,          /*tp_as_buffer*/
 
+#ifdef IS_PY3K
+    Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE | Py_TPFLAGS_UNICODE_SUBCLASS, /*tp_flags*/
+#elif defined(Py_TPFLAGS_UNICODE_SUBCLASS)
+    Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE | Py_TPFLAGS_CHECKTYPES | Py_TPFLAGS_UNICODE_SUBCLASS, /*tp_flags*/
+#else
     Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE | Py_TPFLAGS_CHECKTYPES, /*tp_flags*/
+#endif
+
     Markup__doc__,/*tp_doc*/
 
     0,          /*tp_traverse*/
@@ -616,8 +648,25 @@ PyTypeObject MarkupType = {
     0           /*tp_weaklist*/
 };
 
+#ifdef IS_PY3K
+struct PyModuleDef module_def = {
+    PyModuleDef_HEAD_INIT, /*m_base*/
+    "_speedups",           /*m_name*/
+    NULL,                  /*m_doc*/
+    -1,                    /*m_size*/
+    NULL,                  /*m_methods*/
+    NULL,                  /*m_reload*/
+    NULL,                  /*m_traverse*/
+    NULL,                  /*m_clear*/
+    NULL                   /*m_free*/
+};
+
+PyObject *
+PyInit__speedups(void)
+#else
 PyMODINIT_FUNC
 init_speedups(void)
+#endif
 {
     PyObject *module;
 
@@ -626,11 +675,23 @@ init_speedups(void)
     MarkupType.tp_base = &PyUnicode_Type;
 
     if (PyType_Ready(&MarkupType) < 0)
+#ifdef IS_PY3K
+        return NULL;
+#else
         return;
+#endif
 
     init_constants();
 
+#ifdef IS_PY3K
+    module = PyModule_Create(&module_def);
+#else
     module = Py_InitModule("_speedups", NULL);
+#endif
     Py_INCREF(&MarkupType);
     PyModule_AddObject(module, "Markup", (PyObject *) &MarkupType);
+
+#ifdef IS_PY3K
+    return module;
+#endif
 }

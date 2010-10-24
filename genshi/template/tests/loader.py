@@ -347,7 +347,7 @@ class TemplateLoaderTestCase(unittest.TestCase):
         assert 'tmpl2.html' not in loader._cache
 
     def test_load_with_default_encoding(self):
-        f = open(os.path.join(self.dirname, 'tmpl.html'), 'w')
+        f = open(os.path.join(self.dirname, 'tmpl.html'), 'wb')
         try:
             f.write(u'<div>\xf6</div>'.encode('iso-8859-1'))
         finally:
@@ -356,7 +356,7 @@ class TemplateLoaderTestCase(unittest.TestCase):
         loader.load('tmpl.html')
 
     def test_load_with_explicit_encoding(self):
-        f = open(os.path.join(self.dirname, 'tmpl.html'), 'w')
+        f = open(os.path.join(self.dirname, 'tmpl.html'), 'wb')
         try:
             f.write(u'<div>\xf6</div>'.encode('iso-8859-1'))
         finally:

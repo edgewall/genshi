@@ -622,13 +622,13 @@ class WhenDirective(Directive):
         if not info:
             raise TemplateRuntimeError('"when" directives can only be used '
                                        'inside a "choose" directive',
-                                       self.filename, *stream.next()[2][1:])
+                                       self.filename, *(stream.next())[2][1:])
         if info[0]:
             return []
         if not self.expr and not info[1]:
             raise TemplateRuntimeError('either "choose" or "when" directive '
                                        'must have a test expression',
-                                       self.filename, *stream.next()[2][1:])
+                                       self.filename, *(stream.next())[2][1:])
         if info[1]:
             value = info[2]
             if self.expr:
@@ -661,7 +661,7 @@ class OtherwiseDirective(Directive):
         if not info:
             raise TemplateRuntimeError('an "otherwise" directive can only be '
                                        'used inside a "choose" directive',
-                                       self.filename, *stream.next()[2][1:])
+                                       self.filename, *(stream.next())[2][1:])
         if info[0]:
             return []
         info[0] = True

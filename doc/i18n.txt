@@ -120,7 +120,7 @@ directive namespace in all markup templates that use them. For example:
 .. code-block:: genshi
 
   <html xmlns:py="http://genshi.edgewall.org/"
-        xmlns:i18n="http://genshi.edgewall.org/i18n/">
+        xmlns:i18n="http://genshi.edgewall.org/i18n">
     …
   </html>
 

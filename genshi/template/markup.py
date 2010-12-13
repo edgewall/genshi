@@ -308,8 +308,7 @@ class MarkupTemplate(Template):
         """
         match_templates = ctxt._match_templates
 
-        tail = []
-        def _strip(stream, append=tail.append):
+        def _strip(stream, append):
             depth = 1
             next = stream.next
             while 1:
@@ -353,7 +352,8 @@ class MarkupTemplate(Template):
                     pre_end = idx + 1
                     if 'match_once' not in hints and 'not_recursive' in hints:
                         pre_end -= 1
-                    inner = _strip(stream)
+                    tail = []
+                    inner = _strip(stream, tail.append)
                     if pre_end > 0:
                         inner = self._match(inner, ctxt, start=start,
                                             end=pre_end, **vars)

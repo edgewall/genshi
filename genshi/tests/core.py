@@ -236,6 +236,13 @@ class QNameTestCase(unittest.TestCase):
         self.assertEquals('http://www.example.org/namespace', qname.namespace)
         self.assertEquals('elem', qname.localname)
 
+    def test_curly_brace_equality(self):
+        qname1 = QName('{http://www.example.org/namespace}elem')
+        qname2 = QName('http://www.example.org/namespace}elem')
+        self.assertEqual(qname1.namespace, qname2.namespace)
+        self.assertEqual(qname1.localname, qname2.localname)
+        self.assertEqual(qname1, qname2)
+
 
 def suite():
     suite = unittest.TestSuite()

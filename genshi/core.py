@@ -716,7 +716,8 @@ class QName(unicode):
         if type(qname) is cls:
             return qname
 
-        parts = qname.lstrip('{').split('}', 1)
+        qname = qname.lstrip('{')
+        parts = qname.split('}', 1)
         if len(parts) > 1:
             self = unicode.__new__(cls, '{%s' % qname)
             self.namespace, self.localname = map(unicode, parts)

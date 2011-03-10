@@ -732,6 +732,30 @@ class MarkupTemplateTestCase(unittest.TestCase):
             </body>
         </html>""", tmpl.generate().render(encoding=None))
 
+    def test_match_tail_handling(self): 
+        # See <http://genshi.edgewall.org/ticket/399> 
+        xml = ("""<rhyme xmlns:py="http://genshi.edgewall.org/">
+          <py:match path="*[@type]">
+            ${select('.')}
+          </py:match>
+
+          <lines>
+            <first type="one">fish</first>
+            <second type="two">fish</second>
+            <third type="red">fish</third>
+            <fourth type="blue">fish</fourth>
+          </lines>
+        </rhyme>""") 
+        tmpl = MarkupTemplate(xml, filename='test.html') 
+        self.assertEqual("""<rhyme>
+          <lines>
+            <first type="one">fish</first>
+            <second type="two">fish</second>
+            <third type="red">fish</third>
+            <fourth type="blue">fish</fourth>
+          </lines>
+        </rhyme>""", tmpl.generate().render(encoding=None)) 
+
 
 def suite():
     suite = unittest.TestSuite()

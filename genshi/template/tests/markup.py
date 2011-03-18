@@ -15,11 +15,11 @@ import doctest
 import os
 import pickle
 import shutil
-from StringIO import StringIO
 import sys
 import tempfile
 import unittest
 
+from genshi.compat import BytesIO, StringIO
 from genshi.core import Markup
 from genshi.input import XML
 from genshi.template.base import BadDirectiveError, TemplateSyntaxError
@@ -43,7 +43,7 @@ class MarkupTemplateTestCase(unittest.TestCase):
     def test_pickle(self):
         stream = XML('<root>$var</root>')
         tmpl = MarkupTemplate(stream)
-        buf = StringIO()
+        buf = BytesIO()
         pickle.dump(tmpl, buf, 2)
         buf.seek(0)
         unpickled = pickle.load(buf)

@@ -1137,8 +1137,8 @@ class WithDirectiveTestCase(unittest.TestCase):
           <py:with vars="x = x * 2; y = x / 2;">${x} ${y}</py:with>
         </div>""")
         self.assertEqual("""<div>
-          84 42
-        </div>""", tmpl.generate(x=42).render(encoding=None))
+          84 %s
+        </div>""" % (84 / 2), tmpl.generate(x=42).render(encoding=None))
 
     def test_semicolon_escape(self):
         tmpl = MarkupTemplate("""<div xmlns:py="http://genshi.edgewall.org/">

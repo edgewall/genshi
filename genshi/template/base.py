@@ -15,9 +15,9 @@
 
 from collections import deque
 import os
-from StringIO import StringIO
 import sys
 
+from genshi.compat import StringIO, BytesIO
 from genshi.core import Attrs, Stream, StreamEventKind, START, TEXT, _ensure
 from genshi.input import ParseError
 
@@ -398,10 +398,11 @@ class Template(DirectiveFactory):
         self._init_loader()
         self._prepared = False
 
-        if isinstance(source, basestring):
-            source = StringIO(source)
-        else:
-            source = source
+        if not isinstance(source, Stream) and not hasattr(source, 'read'):
+            if isinstance(source, unicode):
+                source = StringIO(source)
+            else:
+                source = BytesIO(source)
         try:
             self._stream = self._parse(source, encoding)
         except ParseError, e:

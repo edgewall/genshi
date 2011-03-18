@@ -7,6 +7,31 @@ Upgrading Genshi
    :depth: 2
 .. sectnum::
 
+----------------------------------------------
+Upgrading from Genshi 0.6.x to the py3k branch
+----------------------------------------------
+
+The most noticable API change in the Genshi py3k branch is that the
+default encoding in numerous places is now None (i.e. unicode) instead
+of UTF-8. This change was made in order to ease the transition to Python 3
+where strings are unicode strings by default.
+
+If your application relies on the default UTF-8 encoding a simple way to
+have it work both with Genshi 0.6.x and the py3k branch is to specify the
+encoding explicitly in calls to the following classes, methods and functions:
+
+* genshi.HTML
+* genshi.Stream.render
+* genshi.input.HTMLParser
+* genshi.template.MarkupTemplate
+* genshi.template.TemplateLoader
+* genshi.template.TextTemplate (and genshi.template.NewTextTemplate)
+* genshi.template.OldTextTemplate
+
+Whether you explicitly specify UTF-8 or explicitly specify None (unicode) is
+a matter of personal taste, although working with unicode may make porting
+your own application to Python 3 easier.
+
 
 ------------------------------------
 Upgrading from Genshi 0.5.x to 0.6.x

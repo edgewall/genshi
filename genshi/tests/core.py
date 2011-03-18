@@ -13,37 +13,34 @@
 
 import doctest
 import pickle
-from StringIO import StringIO
-try:
-    from cStringIO import StringIO as cStringIO
-except ImportError:
-    cStringIO = StringIO
 import unittest
 
 from genshi import core
 from genshi.core import Markup, Attrs, Namespace, QName, escape, unescape
 from genshi.input import XML, ParseError
+from genshi.compat import StringIO, BytesIO
 
 
 class StreamTestCase(unittest.TestCase):
 
     def test_render_utf8(self):
         xml = XML('<li>Über uns</li>')
-        self.assertEqual('<li>Über uns</li>', xml.render())
+        self.assertEqual(u'<li>Über uns</li>'.encode('utf-8'), xml.render(encoding='utf-8'))
 
     def test_render_unicode(self):
         xml = XML('<li>Über uns</li>')
+        self.assertEqual(u'<li>Über uns</li>', xml.render())
         self.assertEqual(u'<li>Über uns</li>', xml.render(encoding=None))
 
     def test_render_ascii(self):
         xml = XML('<li>Über uns</li>')
-        self.assertEqual('<li>&#220;ber uns</li>', xml.render(encoding='ascii'))
+        self.assertEqual(u'<li>&#220;ber uns</li>'.encode('ascii'), xml.render(encoding='ascii'))
 
     def test_render_output_stream_utf8(self):
         xml = XML('<li>Über uns</li>')
-        strio = cStringIO()
-        self.assertEqual(None, xml.render(out=strio))
-        self.assertEqual('<li>Über uns</li>', strio.getvalue())
+        strio = BytesIO()
+        self.assertEqual(None, xml.render(encoding='utf-8', out=strio))
+        self.assertEqual(u'<li>Über uns</li>'.encode('utf-8'), strio.getvalue())
 
     def test_render_output_stream_unicode(self):
         xml = XML('<li>Über uns</li>')
@@ -53,7 +50,7 @@ class StreamTestCase(unittest.TestCase):
 
     def test_pickle(self):
         xml = XML('<li>Foo</li>')
-        buf = StringIO()
+        buf = BytesIO()
         pickle.dump(xml, buf, 2)
         buf.seek(0)
         xml = pickle.load(buf)
@@ -63,8 +60,9 @@ class StreamTestCase(unittest.TestCase):
 class MarkupTestCase(unittest.TestCase):
 
     def test_new_with_encoding(self):
-        markup = Markup('Döner', encoding='utf-8')
-        self.assertEquals("<Markup u'D\\xf6ner'>", repr(markup))
+        markup = Markup(u'Döner'.encode('utf-8'), encoding='utf-8')
+        # mimic Markup.__repr__ when constructing output for Python 2/3 compatibility
+        self.assertEquals("<Markup %r>" % u'D\u00f6ner', repr(markup))
 
     def test_repr(self):
         markup = Markup('foo')
@@ -158,7 +156,7 @@ class MarkupTestCase(unittest.TestCase):
 
     def test_pickle(self):
         markup = Markup('foo')
-        buf = StringIO()
+        buf = BytesIO()
         pickle.dump(markup, buf, 2)
         buf.seek(0)
         self.assertEquals("<Markup u'foo'>", repr(pickle.load(buf)))
@@ -168,7 +166,7 @@ class AttrsTestCase(unittest.TestCase):
 
     def test_pickle(self):
         attrs = Attrs([("attr1", "foo"), ("attr2", "bar")])
-        buf = StringIO()
+        buf = BytesIO()
         pickle.dump(attrs, buf, 2)
         buf.seek(0)
         unpickled = pickle.load(buf)
@@ -196,7 +194,7 @@ class NamespaceTestCase(unittest.TestCase):
 
     def test_pickle(self):
         ns = Namespace('http://www.example.org/namespace')
-        buf = StringIO()
+        buf = BytesIO()
         pickle.dump(ns, buf, 2)
         buf.seek(0)
         unpickled = pickle.load(buf)
@@ -209,7 +207,7 @@ class QNameTestCase(unittest.TestCase):
 
     def test_pickle(self):
         qname = QName('http://www.example.org/namespace}elem')
-        buf = StringIO()
+        buf = BytesIO()
         pickle.dump(qname, buf, 2)
         buf.seek(0)
         unpickled = pickle.load(buf)

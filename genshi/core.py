@@ -17,6 +17,7 @@ try:
     reduce # builtin in Python < 3
 except NameError:
     from functools import reduce
+import sys
 from itertools import chain
 import operator
 
@@ -92,7 +93,7 @@ class Stream(object):
         Assume the following stream produced by the `HTML` function:
         
         >>> from genshi.input import HTML
-        >>> html = HTML('''<p onclick="alert('Whoa')">Hello, world!</p>''')
+        >>> html = HTML('''<p onclick="alert('Whoa')">Hello, world!</p>''', encoding='utf-8')
         >>> print(html)
         <p onclick="alert('Whoa')">Hello, world!</p>
         
@@ -153,7 +154,7 @@ class Stream(object):
         """
         return reduce(operator.or_, (self,) + filters)
 
-    def render(self, method=None, encoding='utf-8', out=None, **kwargs):
+    def render(self, method=None, encoding=None, out=None, **kwargs):
         """Return a string representation of the stream.
         
         Any additional keyword arguments are passed to the serializer, and thus
@@ -187,7 +188,7 @@ class Stream(object):
         XPath expression.
         
         >>> from genshi import HTML
-        >>> stream = HTML('<doc><elem>foo</elem><elem>bar</elem></doc>')
+        >>> stream = HTML('<doc><elem>foo</elem><elem>bar</elem></doc>', encoding='utf-8')
         >>> print(stream.select('elem'))
         <elem>foo</elem><elem>bar</elem>
         >>> print(stream.select('elem/text()'))
@@ -667,8 +668,13 @@ class Namespace(object):
     def __hash__(self):
         return hash(self.uri)
 
-    def __repr__(self):
-        return '%s(%s)' % (type(self).__name__, stringrepr(self.uri))
+    if sys.version_info[0] == 2:
+        # Only use stringrepr in python 2
+        def __repr__(self):
+            return '%s(%s)' % (type(self).__name__, stringrepr(self.uri))
+    else:
+        def __repr__(self):
+            return '%s(%r)' % (type(self).__name__, self.uri)
 
     def __str__(self):
         return self.uri.encode('utf-8')
@@ -729,5 +735,10 @@ class QName(unicode):
     def __getnewargs__(self):
         return (self.lstrip('{'),)
 
-    def __repr__(self):
-        return '%s(%s)' % (type(self).__name__, stringrepr(self.lstrip('{')))
+    if sys.version_info[0] == 2:
+        # Only use stringrepr in python 2
+        def __repr__(self):
+            return '%s(%s)' % (type(self).__name__, stringrepr(self.lstrip('{')))
+    else:
+        def __repr__(self):
+            return '%s(%r)' % (type(self).__name__, self.lstrip('{'))

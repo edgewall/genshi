@@ -356,7 +356,7 @@ class XHTMLSerializerTestCase(unittest.TestCase):
         </div>""", output)
 
     def test_html5_doctype(self):
-        stream = HTML('<html></html>')
+        stream = HTML(u'<html></html>')
         output = stream.render(XHTMLSerializer, doctype=DocType.HTML5,
                                encoding=None)
         self.assertEqual('<!DOCTYPE html>\n<html></html>', output)
@@ -427,7 +427,7 @@ class HTMLSerializerTestCase(unittest.TestCase):
         </style>""", output)
 
     def test_html5_doctype(self):
-        stream = HTML('<html></html>')
+        stream = HTML(u'<html></html>')
         output = stream.render(HTMLSerializer, doctype=DocType.HTML5,
                                encoding=None)
         self.assertEqual('<!DOCTYPE html>\n<html></html>', output)

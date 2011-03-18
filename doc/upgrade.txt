@@ -7,17 +7,19 @@ Upgrading Genshi
    :depth: 2
 .. sectnum::
 
-----------------------------------------------
-Upgrading from Genshi 0.6.x to the py3k branch
-----------------------------------------------
+------------------------------------------------------
+Upgrading from Genshi 0.6.x to the development version
+------------------------------------------------------
 
-The most noticable API change in the Genshi py3k branch is that the
+The Genshi development version now supports both Python 2 and Python 3.
+
+The most noticable API change in the Genshi development version is that the
 default encoding in numerous places is now None (i.e. unicode) instead
 of UTF-8. This change was made in order to ease the transition to Python 3
 where strings are unicode strings by default.
 
 If your application relies on the default UTF-8 encoding a simple way to
-have it work both with Genshi 0.6.x and the py3k branch is to specify the
+have it work both with Genshi 0.6.x and the development version is to specify the
 encoding explicitly in calls to the following classes, methods and functions:
 
 * genshi.HTML

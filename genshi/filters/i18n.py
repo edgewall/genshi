@@ -33,6 +33,7 @@ from genshi.template.eval import _ast
 from genshi.template.base import DirectiveFactory, EXPR, SUB, _apply_directives
 from genshi.template.directives import Directive, StripDirective
 from genshi.template.markup import MarkupTemplate, EXEC
+from genshi.compat import IS_PYTHON2
 
 __all__ = ['Translator', 'extract']
 __docformat__ = 'restructuredtext en'
@@ -288,8 +289,7 @@ class ChooseDirective(ExtractableI18NDirective):
     also need to pass a name for those parameters. Consider the following
     examples:
     
-    >>> tmpl = MarkupTemplate('''\
-        <html xmlns:i18n="http://genshi.edgewall.org/i18n">
+    >>> tmpl = MarkupTemplate('''<html xmlns:i18n="http://genshi.edgewall.org/i18n">
     ...   <div i18n:choose="num; num">
     ...     <p i18n:singular="">There is $num coin</p>
     ...     <p i18n:plural="">There are $num coins</p>
@@ -301,8 +301,7 @@ class ChooseDirective(ExtractableI18NDirective):
     [(2, 'ngettext', (u'There is %(num)s coin',
                       u'There are %(num)s coins'), [])]
 
-    >>> tmpl = MarkupTemplate('''\
-        <html xmlns:i18n="http://genshi.edgewall.org/i18n">
+    >>> tmpl = MarkupTemplate('''<html xmlns:i18n="http://genshi.edgewall.org/i18n">
     ...   <div i18n:choose="num; num">
     ...     <p i18n:singular="">There is $num coin</p>
     ...     <p i18n:plural="">There are $num coins</p>
@@ -324,8 +323,7 @@ class ChooseDirective(ExtractableI18NDirective):
 
     When used as a element and not as an attribute:
 
-    >>> tmpl = MarkupTemplate('''\
-        <html xmlns:i18n="http://genshi.edgewall.org/i18n">
+    >>> tmpl = MarkupTemplate('''<html xmlns:i18n="http://genshi.edgewall.org/i18n">
     ...   <i18n:choose numeral="num" params="num">
     ...     <p i18n:singular="">There is $num coin</p>
     ...     <p i18n:plural="">There are $num coins</p>
@@ -492,8 +490,7 @@ class DomainDirective(I18NDirective):
     another i18n domain(catalog) to translate from.
     
     >>> from genshi.filters.tests.i18n import DummyTranslations
-    >>> tmpl = MarkupTemplate('''\
-        <html xmlns:i18n="http://genshi.edgewall.org/i18n">
+    >>> tmpl = MarkupTemplate('''<html xmlns:i18n="http://genshi.edgewall.org/i18n">
     ...   <p i18n:msg="">Bar</p>
     ...   <div i18n:domain="foo">
     ...     <p i18n:msg="">FooBar</p>
@@ -663,11 +660,19 @@ class Translator(DirectiveFactory):
             if ctxt:
                 ctxt['_i18n.gettext'] = gettext
         else:
-            gettext = self.translate.ugettext
-            ngettext = self.translate.ungettext
+            if IS_PYTHON2:
+                gettext = self.translate.ugettext
+                ngettext = self.translate.ungettext
+            else:
+                gettext = self.translate.gettext
+                ngettext = self.translate.ngettext
             try:
-                dgettext = self.translate.dugettext
-                dngettext = self.translate.dungettext
+                if IS_PYTHON2:
+                    dgettext = self.translate.dugettext
+                    dngettext = self.translate.dungettext
+                else:
+                    dgettext = self.translate.dgettext
+                    dngettext = self.translate.dngettext
             except AttributeError:
                 dgettext = lambda _, y: gettext(y)
                 dngettext = lambda _, s, p, n: ngettext(s, p, n)
@@ -678,6 +683,8 @@ class Translator(DirectiveFactory):
                 ctxt['_i18n.dngettext'] = dngettext
 
         if ctxt and ctxt.get('_i18n.domain'):
+            # TODO: This can cause infinite recursion if dgettext is defined
+            #       via the AttributeError case above!
             gettext = lambda msg: dgettext(ctxt.get('_i18n.domain'), msg)
 
         for kind, data, pos in stream:
@@ -1168,7 +1175,9 @@ def extract_from_code(code, gettext_functions):
                 and node.func.id in gettext_functions:
             strings = []
             def _add(arg):
-                if isinstance(arg, _ast.Str) and isinstance(arg.s, basestring):
+                if isinstance(arg, _ast.Str) and isinstance(arg.s, unicode):
+                    strings.append(arg.s)
+                elif isinstance(arg, _ast.Str):
                     strings.append(unicode(arg.s, 'utf-8'))
                 elif arg:
                     strings.append(None)

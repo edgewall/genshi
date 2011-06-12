@@ -239,6 +239,9 @@ class XMLSerializer(object):
         for filter_ in self.filters:
             stream = filter_(stream)
         for kind, data, pos in stream:
+            if kind is TEXT and isinstance(data, Markup):
+                yield data
+                continue
             cached = _get((kind, data))
             if cached is not None:
                 yield cached
@@ -345,6 +348,9 @@ class XHTMLSerializer(XMLSerializer):
         for filter_ in self.filters:
             stream = filter_(stream)
         for kind, data, pos in stream:
+            if kind is TEXT and isinstance(data, Markup):
+                yield data
+                continue
             cached = _get((kind, data))
             if cached is not None:
                 yield cached
@@ -467,6 +473,9 @@ class HTMLSerializer(XHTMLSerializer):
         for filter_ in self.filters:
             stream = filter_(stream)
         for kind, data, _ in stream:
+            if kind is TEXT and isinstance(data, Markup):
+                yield data
+                continue
             output = _get((kind, data))
             if output is not None:
                 yield output
@@ -658,6 +667,9 @@ class NamespaceFlattener(object):
         _gen_prefix = _gen_prefix().next
 
         for kind, data, pos in stream:
+            if kind is TEXT and isinstance(data, Markup):
+                yield kind, data, pos
+                continue
             output = _get((kind, data))
             if output is not None:
                 yield kind, output, pos

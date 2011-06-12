@@ -79,6 +79,30 @@ def get_serializer(method='xml', **kwargs):
     return method(**kwargs)
 
 
+def _prepare_cache(use_cache=True):
+    """Prepare a private token serialization cache.
+
+    :param use_cache: boolean indicating whether a real cache should
+                      be used or not. If not, the returned functions
+                      are no-ops.
+
+    :return: emit and get functions, for storing and retrieving
+             serialized values from the cache.
+    """
+    cache = {}
+    if use_cache:
+        def _emit(kind, input, output):
+            cache[kind, input] = output
+            return output
+        _get = cache.get
+    else:
+        def _emit(kind, input, output):
+            return output
+        def _get(key):
+            pass
+    return _emit, _get, cache
+
+
 class DocType(object):
     """Defines a number of commonly used DOCTYPE declarations as constants."""
 
@@ -204,27 +228,20 @@ class XMLSerializer(object):
             self.filters.append(DocTypeInserter(doctype))
         self.cache = cache
 
+    def _prepare_cache(self):
+        return _prepare_cache(self.cache)[:2]
+
     def __call__(self, stream):
         have_decl = have_doctype = False
         in_cdata = False
-
-        cache = {}
-        cache_get = cache.get
-        if self.cache:
-            def _emit(kind, input, output):
-                cache[kind, input] = output
-                return output
-        else:
-            def _emit(kind, input, output):
-                return output
+        _emit, _get = self._prepare_cache()
 
         for filter_ in self.filters:
             stream = filter_(stream)
         for kind, data, pos in stream:
-            cached = cache_get((kind, data))
+            cached = _get((kind, data))
             if cached is not None:
                 yield cached
-
             elif kind is START or kind is EMPTY:
                 tag, attrib = data
                 buf = ['<', tag]
@@ -323,21 +340,12 @@ class XHTMLSerializer(XMLSerializer):
         drop_xml_decl = self.drop_xml_decl
         have_decl = have_doctype = False
         in_cdata = False
-
-        cache = {}
-        cache_get = cache.get
-        if self.cache:
-            def _emit(kind, input, output):
-                cache[kind, input] = output
-                return output
-        else:
-            def _emit(kind, input, output):
-                return output
+        _emit, _get = self._prepare_cache()
 
         for filter_ in self.filters:
             stream = filter_(stream)
         for kind, data, pos in stream:
-            cached = cache_get((kind, data))
+            cached = _get((kind, data))
             if cached is not None:
                 yield cached
 
@@ -454,21 +462,12 @@ class HTMLSerializer(XHTMLSerializer):
         noescape_elems = self._NOESCAPE_ELEMS
         have_doctype = False
         noescape = False
-
-        cache = {}
-        cache_get = cache.get
-        if self.cache:
-            def _emit(kind, input, output):
-                cache[kind, input] = output
-                return output
-        else:
-            def _emit(kind, input, output):
-                return output
+        _emit, _get = self._prepare_cache()
 
         for filter_ in self.filters:
             stream = filter_(stream)
         for kind, data, _ in stream:
-            output = cache_get((kind, data))
+            output = _get((kind, data))
             if output is not None:
                 yield output
                 if (kind is START or kind is EMPTY) \
@@ -626,18 +625,9 @@ class NamespaceFlattener(object):
         self.cache = cache
 
     def __call__(self, stream):
-        cache = {}
-        cache_get = cache.get
-        if self.cache:
-            def _emit(kind, input, output, pos):
-                cache[kind, input] = output
-                return kind, output, pos
-        else:
-            def _emit(kind, input, output, pos):
-                return output
-
         prefixes = dict([(v, [k]) for k, v in self.prefixes.items()])
         namespaces = {XML_NAMESPACE.uri: ['xml']}
+        _emit, _get, cache = _prepare_cache(self.cache)
         def _push_ns(prefix, uri):
             namespaces.setdefault(uri, []).append(prefix)
             prefixes.setdefault(prefix, []).append(uri)
@@ -668,7 +658,7 @@ class NamespaceFlattener(object):
         _gen_prefix = _gen_prefix().next
 
         for kind, data, pos in stream:
-            output = cache_get((kind, data))
+            output = _get((kind, data))
             if output is not None:
                 yield kind, output, pos
 
@@ -701,7 +691,8 @@ class NamespaceFlattener(object):
                             attrname = '%s:%s' % (prefix, attrname)
                     new_attrs.append((attrname, value))
 
-                yield _emit(kind, data, (tagname, Attrs(ns_attrs + new_attrs)), pos)
+                data = _emit(kind, data, (tagname, Attrs(ns_attrs + new_attrs)))
+                yield kind, data, pos
                 del ns_attrs[:]
 
             elif kind is END:
@@ -711,7 +702,7 @@ class NamespaceFlattener(object):
                     prefix = namespaces[tagns][-1]
                     if prefix:
                         tagname = '%s:%s' % (prefix, tagname)
-                yield _emit(kind, data, tagname, pos)
+                yield kind, _emit(kind, data, tagname), pos
 
             elif kind is START_NS:
                 prefix, uri = data

@@ -354,6 +354,7 @@ class Attrs(tuple):
         for attr, _ in self:
             if attr == name:
                 return True
+        return False
 
     def __getitem__(self, i):
         """Return an item or slice of the attributes list.

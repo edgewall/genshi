@@ -201,7 +201,12 @@ Markup_escape(PyTypeObject* type, PyObject *args, PyObject *kwds)
         return NULL;
     }
     if (PyObject_Not(text)) {
-        return type->tp_new(type, args, NULL);
+        args = PyTuple_New(0);
+        if (args == NULL)
+            return NULL;
+        text = type->tp_new(type, args, NULL);
+        Py_DECREF(args);
+        return text;
     }
     if (PyObject_TypeCheck(text, type)) {
         Py_INCREF(text);

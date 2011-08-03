@@ -84,6 +84,11 @@ class MarkupTestCase(unittest.TestCase):
         assert type(markup) is Markup
         self.assertEquals(string, unescape(markup))
 
+    def test_Markup_escape_None_noquotes(self):
+        markup = Markup.escape(None, False)
+        assert type(markup) is Markup
+        self.assertEquals('', markup)
+
     def test_add_str(self):
         markup = Markup('<b>foo</b>') + '<br/>'
         assert type(markup) is Markup

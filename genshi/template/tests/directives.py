@@ -1005,6 +1005,27 @@ class MatchDirectiveTestCase(unittest.TestCase):
           </body>
         </html>""", tmpl.generate().render())
 
+    def test_match_multiple_times3(self):
+        # See http://genshi.edgewall.org/ticket/370#comment:12
+        tmpl = MarkupTemplate("""<?xml version="1.0"?>
+          <root xmlns:py="http://genshi.edgewall.org/">
+            <py:match path="foo/bar">
+              <zzzzz/>
+            </py:match>
+            <foo>
+              <bar/>
+              <bar/>
+            </foo>
+            <bar/>
+          </root>""")
+        self.assertEqual("""<?xml version="1.0"?>\n<root>
+            <foo>
+              <zzzzz/>
+              <zzzzz/>
+            </foo>
+            <bar/>
+          </root>""", tmpl.generate().render())
+
     # FIXME
     #def test_match_after_step(self):
     #    tmpl = MarkupTemplate("""<div xmlns:py="http://genshi.edgewall.org/">

@@ -385,10 +385,11 @@ class MarkupTemplate(Template):
                         for event in content:
                             pass
 
-                    # Let the remaining match templates know about the last
-                    # event in the matched content, so they can update their
+                    # Let this match template and the remaining match
+                    # templates know about the last event in the
+                    # matched content, so they can update their
                     # internal state accordingly
-                    for test in [mt[0] for mt in match_templates[idx + 1:]]:
+                    for test in [mt[0] for mt in match_templates[idx:]]:
                         test(tail[0], namespaces, ctxt, updateonly=True)
 
                     break

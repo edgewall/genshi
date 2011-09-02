@@ -230,7 +230,7 @@ class HTMLSanitizer(object):
     
     :warn: Note that this special processing of CSS is currently only applied to
            style attributes, **not** style elements.
-    " """
+    """
 
     SAFE_TAGS = frozenset(['a', 'abbr', 'acronym', 'address', 'area', 'b',
         'big', 'blockquote', 'br', 'button', 'caption', 'center', 'cite',

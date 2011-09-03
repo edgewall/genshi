@@ -948,8 +948,17 @@ class MessageBuffer(object):
         self.values = {}
         self.depth = 1
         self.order = 1
+        self._prev_order = None
         self.stack = [0]
         self.subdirectives = {}
+
+    def _add_event(self, order, event):
+        if order == self._prev_order:
+            self.events[order][-1].append(event)
+        else:
+            self._prev_order = order
+            self.events.setdefault(order, [])
+            self.events[order].append([event])
 
     def append(self, kind, data, pos):
         """Append a stream event to the buffer.
@@ -965,17 +974,17 @@ class MessageBuffer(object):
             subdirectives, substream = data
             # Store the directives that should be applied after translation
             self.subdirectives.setdefault(order, []).extend(subdirectives)
-            self.events.setdefault(order, []).append((SUB_START, None, pos))
+            self._add_event(order, (SUB_START, None, pos))
             for skind, sdata, spos in substream:
                 self.append(skind, sdata, spos)
-            self.events.setdefault(order, []).append((SUB_END, None, pos))
+            self._add_event(order, (SUB_END, None, pos))
         elif kind is TEXT:
             if '[' in data or ']' in data:
                 # Quote [ and ] if it ain't us adding it, ie, if the user is
                 # using those chars in his templates, escape them
                 data = data.replace('[', '\[').replace(']', '\]')
             self.string.append(data)
-            self.events.setdefault(self.stack[-1], []).append((kind, data, pos))
+            self._add_event(self.stack[-1], (kind, data, pos))
         elif kind is EXPR:
             if self.params:
                 param = self.params.pop(0)
@@ -992,20 +1001,19 @@ class MessageBuffer(object):
                                                      'In-memory Template'),
                                     pos[1]))
             self.string.append('%%(%s)s' % param)
-            self.events.setdefault(self.stack[-1], []).append((kind, data, pos))
+            self._add_event(self.stack[-1], (kind, data, pos))
             self.values[param] = (kind, data, pos)
         else:
             if kind is START: 
                 self.string.append('[%d:' % self.order)
                 self.stack.append(self.order)
-                self.events.setdefault(self.stack[-1],
-                                       []).append((kind, data, pos))
+                self._add_event(self.stack[-1], (kind, data, pos))
                 self.depth += 1
                 self.order += 1
             elif kind is END:
                 self.depth -= 1
                 if self.depth:
-                    self.events[self.stack[-1]].append((kind, data, pos))
+                    self._add_event(self.stack[-1], (kind, data, pos))
                     self.string.append(']')
                     self.stack.pop()
 
@@ -1040,10 +1048,7 @@ class MessageBuffer(object):
 
         while parts:
             order, string = parts.pop(0)
-            if len(parts_counter[order]) == 1:
-                events = self.events[order]
-            else:
-                events = [self.events[order].pop(0)]
+            events = self.events[order].pop(0)
             parts_counter[order].pop()
 
             for event in events:

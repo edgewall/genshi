@@ -35,6 +35,7 @@ except ImportError:
 
 _speedup_available = False
 
+is_pypy = hasattr(sys, 'pypy_version_info')
 
 class optional_build_ext(build_ext):
     # This class allows C extension building to fail.
@@ -66,7 +67,7 @@ available.""")
 if Feature:
     speedups = Feature(
         "optional C speed-enhancements",
-        standard = False,
+        standard = not is_pypy,
         ext_modules = [
             Extension('genshi._speedups', ['genshi/_speedups.c']),
         ],

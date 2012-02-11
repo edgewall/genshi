@@ -283,7 +283,7 @@ class TemplateLoader(object):
         """
         def _load_from_directory(filename):
             filepath = os.path.join(path, filename)
-            fileobj = open(filepath, 'rbU')
+            fileobj = open(filepath, 'rU')
             mtime = os.path.getmtime(filepath)
             def _uptodate():
                 return mtime == os.path.getmtime(filepath)

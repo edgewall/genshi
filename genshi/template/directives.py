@@ -378,13 +378,13 @@ class ForDirective(Directive):
 
         assign = self.assign
         scope = {}
+        ctxt.push(scope)
         stream = list(stream)
         for item in iterable:
             assign(scope, item)
-            ctxt.push(scope)
             for event in _apply_directives(stream, directives, ctxt, vars):
                 yield event
-            ctxt.pop()
+        ctxt.pop()
 
     def __repr__(self):
         return '<%s>' % type(self).__name__

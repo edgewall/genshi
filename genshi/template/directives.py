@@ -13,7 +13,7 @@
 
 """Implementation of the various template directives."""
 
-from genshi.core import QName, Stream
+from genshi.core import QName, Stream, ATTRS
 from genshi.path import Path
 from genshi.template.base import TemplateRuntimeError, TemplateSyntaxError, \
                                  EXPR, _apply_directives, _eval_expr
@@ -183,9 +183,11 @@ class AttrsDirective(Directive):
             if attrs:
                 if isinstance(attrs, Stream):
                     try:
-                        attrs = iter(attrs).next()
+                        attr_kind, attr_data, _pos = iter(attrs).next()
                     except StopIteration:
-                        attrs = []
+                        attr_kind, attr_data = ATTRS, {}
+                    assert attr_kind == ATTRS
+                    attrs = attr_data
                 elif not isinstance(attrs, list): # assume it's a dict
                     attrs = attrs.items()
                 attrib |= [

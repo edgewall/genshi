@@ -28,7 +28,8 @@ import re
 from types import FunctionType
 
 from genshi.core import Attrs, Namespace, QName, START, END, TEXT, \
-                        XML_NAMESPACE, _ensure, StreamEventKind
+                        XML_NAMESPACE, _text_to_stream, \
+                        StreamEventKind
 from genshi.template.eval import _ast
 from genshi.template.base import DirectiveFactory, EXPR, SUB, _apply_directives
 from genshi.template.directives import Directive, StripDirective
@@ -717,7 +718,7 @@ class Translator(DirectiveFactory):
                             newval = gettext(value)
                     else:
                         newval = list(
-                            self(_ensure(value), ctxt, translate_text=False)
+                            self(value, ctxt, translate_text=False)
                         )
                     if newval != value:
                         value = newval
@@ -916,13 +917,19 @@ class Translator(DirectiveFactory):
 
     def _extract_attrs(self, event, gettext_functions, search_text):
         for name, value in event[1][1]:
-            if search_text and isinstance(value, basestring):
-                if name in self.include_attrs:
-                    text = value.strip()
-                    if text:
-                        yield event[2][1], None, text, []
+            if isinstance(value, basestring):
+                if search_text:
+                    if name in self.include_attrs:
+                        text = value.strip()
+                        if text:
+                            yield event[2][1], None, text, []
+                else:
+                    for message in self.extract(_text_to_stream(value),
+                                                gettext_functions,
+                                                search_text=False):
+                        yield message
             else:
-                for message in self.extract(_ensure(value), gettext_functions,
+                for message in self.extract(value, gettext_functions,
                                             search_text=False):
                     yield message
 

@@ -17,7 +17,7 @@ import unittest
 
 from genshi import HTML
 from genshi.builder import Element
-from genshi.core import START, END, TEXT, QName, Attrs
+from genshi.core import START, END, TEXT, QName, Attrs, _text_event
 from genshi.filters.transform import Transformer, StreamBuffer, ENTER, EXIT, \
                                      OUTSIDE, INSIDE, ATTR, BREAK
 import genshi.filters.transform
@@ -737,7 +737,7 @@ class ReplaceTest(unittest.TestCase, ContentTestMixin):
         count = [0]
         def content():
             count[0] += 1
-            yield '%2i.' % count[0]
+            yield _text_event('%2i.' % count[0])
         self.assertEqual(
             self._apply('*', content),
             [(None, START, u'root'),
@@ -841,7 +841,7 @@ class BeforeTest(unittest.TestCase, ContentTestMixin):
         count = [0]
         def content():
             count[0] += 1
-            yield '%2i.' % count[0]
+            yield _text_event('%2i.' % count[0])
         self.assertEqual(
             self._apply('foo/text()', content),
             [(None, 'START', u'root'),
@@ -950,7 +950,7 @@ class AfterTest(unittest.TestCase, ContentTestMixin):
         count = [0]
         def content():
             count[0] += 1
-            yield '%2i.' % count[0]
+            yield _text_event('%2i.' % count[0])
         self.assertEqual(
             self._apply('foo/text()', content),
             [(None, 'START', u'root'),
@@ -1056,7 +1056,7 @@ class PrependTest(unittest.TestCase, ContentTestMixin):
         count = [0]
         def content():
             count[0] += 1
-            yield '%2i.' % count[0]
+            yield _text_event('%2i.' % count[0])
         self.assertEqual(
             self._apply('foo', content),
             [(None, 'START', u'root'),
@@ -1162,7 +1162,7 @@ class AppendTest(unittest.TestCase, ContentTestMixin):
         count = [0]
         def content():
             count[0] += 1
-            yield '%2i.' % count[0]
+            yield _text_event('%2i.' % count[0])
         self.assertEqual(
             self._apply('foo', content),
             [(None, 'START', u'root'),

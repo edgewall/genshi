@@ -107,7 +107,7 @@ class Stream(object):
         
         Filters can be any function that accepts and produces a stream (where
         a stream is anything that iterates over events):
-        
+
         >>> def uppercase(stream):
         ...     for kind, data, pos in stream:
         ...         if kind is TEXT:
@@ -130,7 +130,13 @@ class Stream(object):
         :return: the filtered stream
         :rtype: `Stream`
         """
-        return Stream(_ensure(function(self)), serializer=self.serializer)
+        # TODO: this is horribly slow because is has to guess whether
+        #       the function passed in is something that produces stream
+        #       events or something that produces a sequence of strings.
+        #       Sequences of strings are converted back to a sequence of
+        #       stream events (and then back to text when rendered).
+        events = _possible_text_iterator_to_stream(function(self))
+        return Stream(events, serializer=self.serializer)
 
     def filter(self, *filters):
         """Apply filters to the stream.
@@ -242,7 +248,7 @@ class Stream(object):
         from genshi.output import get_serializer
         if method is None:
             method = self.serializer or 'xml'
-        return get_serializer(method, **kwargs)(_ensure(self))
+        return get_serializer(method, **kwargs)(self)
 
     def __str__(self):
         return self.render()
@@ -267,26 +273,30 @@ PI = Stream.PI
 COMMENT = Stream.COMMENT
 
 
-def _ensure(stream):
-    """Ensure that every item on the stream is actually a markup event."""
-    stream = iter(stream)
-    event = stream.next()
+def _text_event(text):
+    return (TEXT, unicode(text), (None, -1, -1))
+
+
+def _text_to_stream(text):
+    yield _text_event(text)
+
+
+def _possible_text_iterator_to_stream(textiter_or_stream):
+    it = iter(textiter_or_stream)
+    event = it.next()
 
     # Check whether the iterable is a real markup event stream by examining the
     # first item it yields; if it's not we'll need to do some conversion
-    if type(event) is not tuple or len(event) != 3:
-        for event in chain([event], stream):
-            if hasattr(event, 'totuple'):
-                event = event.totuple()
-            else:
-                event = TEXT, unicode(event), (None, -1, -1)
-            yield event
+    if type(event) is not tuple:
+        yield TEXT, unicode(event), (None, -1, -1)
+        for event in it:
+            yield TEXT, unicode(event), (None, -1, -1)
         return
 
     # This looks like a markup event stream, so we'll just pass it through
     # unchanged
     yield event
-    for event in stream:
+    for event in it:
         yield event
 
 
@@ -343,6 +353,8 @@ class Attrs(tuple):
     Attrs([('href', 'http://example.org/')])
     """
     __slots__ = []
+
+    ATTRS = StreamEventKind('ATTRS')
 
     def __contains__(self, name):
         """Return whether the list includes an attribute with the specified
@@ -427,19 +439,33 @@ class Attrs(tuple):
                 return value
         return default
 
-    def totuple(self):
+    def toevent(self):
         """Return the attributes as a markup event.
         
-        The returned event is a `TEXT` event, the data is the value of all
-        attributes joined together.
+        The returned event is an `ATTRS` event, the data is the Attr object.
+
+        >>> a = Attrs([('href', '#'), ('title', 'Foo')])
+        >>> a.toevent()
+        ('ATTRS', Attrs([('href', '#'), ('title', 'Foo')]), (None, -1, -1))
         
-        >>> Attrs([('href', '#'), ('title', 'Foo')]).totuple()
-        ('TEXT', '#Foo', (None, -1, -1))
-        
-        :return: a `TEXT` event
+        :return: an `ATTR` event
         :rtype: `tuple`
         """
-        return TEXT, ''.join([x[1] for x in self]), (None, -1, -1)
+        return self.ATTRS, self, (None, -1, -1)
+
+    def concatenate_values(self):
+        """Return the values of the attributes concatenated into a string.
+
+        >>> a = Attrs([('href', '#'), ('title', 'Foo')])
+        >>> a.concatenate_values()
+        '#Foo'
+
+        :return: the concatenated attribute values
+        :rtype: `str`
+        """
+        return ''.join([x[1] for x in self])
+
+ATTRS = Attrs.ATTRS
 
 
 class Markup(unicode):

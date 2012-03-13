@@ -52,7 +52,8 @@ import re
 import sys
 
 from genshi.builder import Element
-from genshi.core import Stream, Attrs, QName, TEXT, START, END, _ensure, Markup
+from genshi.core import Stream, Attrs, QName, TEXT, START, END, \
+                        _text_to_stream, Markup
 from genshi.path import Path
 
 __all__ = ['Transformer', 'StreamBuffer', 'InjectorTransformation', 'ENTER',
@@ -1060,7 +1061,9 @@ class InjectorTransformation(object):
         content = self.content
         if hasattr(content, '__call__'):
             content = content()
-        for event in _ensure(content):
+        if isinstance(content, basestring):
+            content = _text_to_stream(content)
+        for event in content:
             yield None, event
 
 

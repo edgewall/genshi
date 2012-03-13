@@ -593,6 +593,10 @@ class Path(object):
                             yield subevent
                             test(subevent, ns, vs, updateonly=True)
                 elif result:
+                    # check for Attrs and wrap them in an ATTRS event
+                    # if found
+                    if hasattr(result, 'toevent'):
+                        result = result.toevent()
                     yield result
         return Stream(_generate(),
                       serializer=getattr(stream, 'serializer', None))

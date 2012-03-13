@@ -179,8 +179,9 @@ class AttrsTestCase(unittest.TestCase):
                           repr(unpickled))
 
     def test_non_ascii(self):
-        attrs_tuple = Attrs([("attr1", u"föö"), ("attr2", u"bär")]).totuple()
-        self.assertEqual(u'fööbär', attrs_tuple[1])
+        attrs = Attrs([("attr1", u"föö"), ("attr2", u"bär")])
+        value = attrs.concatenate_values()
+        self.assertEqual(u'fööbär', value)
 
 
 class NamespaceTestCase(unittest.TestCase):

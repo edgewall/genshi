@@ -18,7 +18,8 @@ import os
 import sys
 
 from genshi.compat import StringIO, BytesIO
-from genshi.core import Attrs, Stream, StreamEventKind, START, TEXT, _ensure
+from genshi.core import (Attrs, Stream, StreamEventKind, START, TEXT,
+                         _possible_text_iterator_to_stream)
 from genshi.input import ParseError
 
 __all__ = ['Context', 'DirectiveFactory', 'Template', 'TemplateError',
@@ -586,7 +587,7 @@ class Template(DirectiveFactory):
                             yield TEXT, number_conv(result), pos
                         elif hasattr(result, '__iter__'):
                             push(stream)
-                            stream = _ensure(result)
+                            stream = _possible_text_iterator_to_stream(result)
                             break
                         else:
                             yield TEXT, unicode(result), pos

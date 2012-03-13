@@ -115,22 +115,35 @@ class Directive(object):
                                       offset + (err.offset or 0))
 
 
+def _names(node):
+    if isinstance(node, _ast.Tuple):
+        return tuple([_names(child) for child in node.elts])
+    elif isinstance(node, _ast.Name):
+        return node.id
+
+
+def _assign(data, value, names):
+    for idx in range(len(names)):
+        name = names[idx]
+        if type(name) is tuple:
+            _assign(data, value[idx], name)
+        else:
+            data[name] = value[idx]
+
+
 def _assignment(ast):
     """Takes the AST representation of an assignment, and returns a
     function that applies the assignment of a given value to a dictionary.
     """
-    def _names(node):
-        if isinstance(node, _ast.Tuple):
-            return tuple([_names(child) for child in node.elts])
-        elif isinstance(node, _ast.Name):
-            return node.id
-    def _assign(data, value, names=_names(ast)):
-        if type(names) is tuple:
-            for idx in range(len(names)):
-                _assign(data, value[idx], names[idx])
-        else:
+    names = _names(ast)
+    if type(names) is tuple:
+        def _slow_assign(data, value):
+            _assign(data, value, names=names)
+        return _slow_assign
+    else:
+        def _fast_assign(data, value):
             data[names] = value
-    return _assign
+        return _fast_assign
 
 
 class AttrsDirective(Directive):

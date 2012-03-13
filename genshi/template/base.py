@@ -545,7 +545,7 @@ class Template(DirectiveFactory):
 
         stream = self.stream
         for filter_ in self.filters:
-            stream = filter_(iter(stream), ctxt, **vars)
+            stream = filter_(stream, ctxt, **vars)
         return Stream(stream, self.serializer)
 
     def _flatten(self, stream, ctxt, **vars):

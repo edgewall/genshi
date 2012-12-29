@@ -368,6 +368,13 @@ def StyleSanitizer():
 
 class HTMLSanitizerTestCase(unittest.TestCase):
 
+    def assert_parse_error_or_equal(self, expected, exploit):
+        try:
+            html = HTML(exploit)
+        except ParseError:
+            return
+        self.assertEquals(expected, (html | HTMLSanitizer()).render())
+
     def test_sanitize_unchanged(self):
         html = HTML(u'<a href="#">fo<br />o</a>')
         self.assertEquals('<a href="#">fo<br/>o</a>',
@@ -408,9 +415,11 @@ class HTMLSanitizerTestCase(unittest.TestCase):
         self.assertEquals('', (html | HTMLSanitizer()).render())
         html = HTML(u'<SCRIPT SRC="http://example.com/"></SCRIPT>')
         self.assertEquals('', (html | HTMLSanitizer()).render())
-        self.assertRaises(ParseError, HTML, u'<SCR\0IPT>alert("foo")</SCR\0IPT>')
-        self.assertRaises(ParseError, HTML,
-                          u'<SCRIPT&XYZ SRC="http://example.com/"></SCRIPT>')
+        src = u'<SCR\0IPT>alert("foo")</SCR\0IPT>'
+        self.assert_parse_error_or_equal('&lt;SCR\x00IPT&gt;alert("foo")', src)
+        src = u'<SCRIPT&XYZ SRC="http://example.com/"></SCRIPT>'
+        self.assert_parse_error_or_equal('&lt;SCRIPT&amp;XYZ; '
+                                         'SRC="http://example.com/"&gt;', src)
 
     def test_sanitize_remove_onclick_attr(self):
         html = HTML(u'<div onclick=\'alert("foo")\' />')
@@ -481,8 +490,8 @@ class HTMLSanitizerTestCase(unittest.TestCase):
         html = HTML(u'<IMG SRC=\'JaVaScRiPt:alert("foo")\'>')
         self.assertEquals('<img/>', (html | HTMLSanitizer()).render())
         # Grave accents (not parsed)
-        self.assertRaises(ParseError, HTML,
-                          u'<IMG SRC=`javascript:alert("RSnake says, \'foo\'")`>')
+        src = u'<IMG SRC=`javascript:alert("RSnake says, \'foo\'")`>'
+        self.assert_parse_error_or_equal('<img/>', src)
         # Protocol encoded using UTF-8 numeric entities
         html = HTML(u'<IMG SRC=\'&#106;&#97;&#118;&#97;&#115;&#99;&#114;&#105;'
                     '&#112;&#116;&#58;alert("foo")\'>')

@@ -859,6 +859,29 @@ results.append(next(it))
             suite.execute(d)
             self.assertEqual([0, 3, 4], d['results'])
 
+    if sys.version_info >= (3, 3):
+        def test_with_statement_with_multiple_items(self):
+            fd, path = mkstemp()
+            f = os.fdopen(fd, "w")
+            try:
+                f.write('foo\n')
+                f.seek(0)
+                f.close()
+
+                d = {'path': path}
+                suite = Suite("""from __future__ import with_statement
+lines = []
+with open(path) as file1, open(path) as file2:
+    for line in file1:
+        lines.append(line)
+    for line in file2:
+        lines.append(line)
+""")
+                suite.execute(d)
+                self.assertEqual(['foo\n', 'foo\n'], d['lines'])
+            finally:
+                os.remove(path)
+
 
 def suite():
     suite = unittest.TestSuite()

@@ -588,7 +588,7 @@ x = smash(foo='abc', bar='def')
 """)
         data = {}
         suite.execute(data)
-        self.assertEqual(['fooabc', 'bardef'], data['x'])
+        self.assertEqual(['bardef', 'fooabc'], sorted(data['x']))
 
     def test_def_nested(self):
         suite = Suite("""

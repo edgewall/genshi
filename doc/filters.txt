@@ -99,7 +99,7 @@ be used for various kinds of abuse, such as cross-site scripting (XSS) attacks:
   >>> from genshi.filters import HTMLSanitizer
   >>> from genshi.input import HTML
   
-  >>> html = HTML("""<div>
+  >>> html = HTML(u"""<div>
   ...   <p>Innocent looking text.</p>
   ...   <script>alert("Danger: " + document.cookie)</script>
   ... </div>""")
@@ -126,7 +126,7 @@ dangerous URL scheme (such as ``javascript:``) are also stripped out:
   >>> from genshi.filters import HTMLSanitizer
   >>> from genshi.input import HTML
   
-  >>> html = HTML("""<div>
+  >>> html = HTML(u"""<div>
   ...   <br style="background: url(javascript:alert(document.cookie); color: #000" />
   ... </div>""")
   >>> sanitize = HTMLSanitizer(safe_attrs=HTMLSanitizer.SAFE_ATTRS | set(['style']))
@@ -157,7 +157,7 @@ attach a variety of transformations to the parts that match:
   >>> from genshi.filters import Transformer
   >>> from genshi.input import HTML
   
-  >>> html = HTML('''<html>
+  >>> html = HTML(u'''<html>
   ...   <head><title>Some Title</title></head>
   ...   <body>
   ...     Some <em>body</em> text.

@@ -253,6 +253,13 @@ bar</elem>'''
         self.assertEqual((Stream.TEXT, "'"), events[1][:2])
         self.assertEqual((Stream.END, 'span'), events[2][:2])
 
+    def test_multibyte_character_on_chunk_boundary(self):
+        text = u'a' * ((4 * 1024) - 1) + u'\xe6'
+        events = list(HTMLParser(BytesIO(text.encode('utf-8')),
+                                 encoding='utf-8'))
+        self.assertEqual(1, len(events))
+        self.assertEqual((Stream.TEXT, text), events[0][:2])
+
 
 def suite():
     suite = unittest.TestSuite()

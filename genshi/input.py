@@ -16,6 +16,7 @@ sources.
 """
 
 from itertools import chain
+import codecs
 import htmlentitydefs as entities
 import HTMLParser as html
 from xml.parsers import expat
@@ -317,22 +318,23 @@ class HTMLParser(html.HTMLParser, object):
         :raises ParseError: if the HTML text is not well formed
         """
         def _generate():
+            if self.encoding:
+                reader = codecs.getreader(self.encoding)
+                source = reader(self.source)
+            else:
+                source = self.source
             try:
                 bufsize = 4 * 1024 # 4K
                 done = False
                 while 1:
                     while not done and len(self._queue) == 0:
-                        data = self.source.read(bufsize)
+                        data = source.read(bufsize)
                         if not data: # end of data
                             self.close()
                             done = True
                         else:
                             if not isinstance(data, unicode):
-                                # bytes
-                                if self.encoding:
-                                    data = data.decode(self.encoding)
-                                else:
-                                    raise UnicodeError("source returned bytes, but no encoding specified")
+                                raise UnicodeError("source returned bytes, but no encoding specified")
                             self.feed(data)
                     for kind, data, pos in self._queue:
                         yield kind, data, pos
@@ -432,7 +434,10 @@ def HTML(text, encoding=None):
                         fails
     """
     if isinstance(text, unicode):
-        return Stream(list(HTMLParser(StringIO(text), encoding=encoding)))
+        # If it's unicode text the encoding should be set to None.
+        # The option to pass in an incorrect encoding is for ease
+        # of writing doctests that work in both Python 2.x and 3.x.
+        return Stream(list(HTMLParser(StringIO(text), encoding=None)))
     return Stream(list(HTMLParser(BytesIO(text), encoding=encoding)))
 
 

@@ -1,11 +1,30 @@
 Version 0.6.1
 http://svn.edgewall.org/repos/genshi/tags/0.6.1/
-(???, from branches/stable/0.6.x)
+(Dec 30 2012, from branches/stable/0.6.x)
 
+ * Security fix to enhance sanitizing of CSS in style attributes. Genshi's
+   `HTMLSanitizer` disallows style attributes by default (this remains
+   unchanged) and warns against such attacks in its documentation, but
+   the provided CSS santizing is now less lacking (see #455).
  * Fix for error in how `HTMLFormFiller` would handle `textarea` elements if
    no value was not supplied form them.
  * The `HTMLFormFiller` now correctly handles check boxes and radio buttons
    with an empty `value` attribute.
+ * Template `Context` objects now have a `.copy` method.
+ * Added a simple `tox.ini` file for using tox to test against multiple
+   verions of Python.
+ * Fix for bug in `QName` comparison (see #413).
+ * Fix for bug in handling of trailing events in match template matches
+   (see #399).
+ * Fix i18n namespace declaration in documentation (see #400).
+ * Fix for bug in caching of events in serializers by no longer caching
+   `(TEXT, Markup)` events (see #429).
+ * Fix handling of `None` by `Markup.escape` in `_speedups.c` (see #439).
+ * Fix handling of internal state by match templates (relevant when multiple
+   templates match the same part of the stream, see #370).
+ * Fix handling of multiple events between or on either side of start and end
+   tags in translated messages (see #404).
+ * Fix test failures caused by changes in HTMLParser in Python 2.7 (see #501).
 
 
 Version 0.6

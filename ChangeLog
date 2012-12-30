@@ -1,3 +1,14 @@
+Version 0.7
+http://svn.edgewall.org/repos/genshi/tags/0.7.0/
+(Dec 30 2012, from branches/stable/0.7.x)
+
+ * Add support for Python 3.1, 3.2 and 3.3 (via 2to3) and for PyPy. The
+   majority of the coding was done in a sprint run by the Cape Town Python
+   Users Group with financial assistance from the Python Software Foundation.
+ * Default input and output encodings changed from UTF-8 to None (i.e. unicode
+   strings).
+
+
 Version 0.6.1
 http://svn.edgewall.org/repos/genshi/tags/0.6.1/
 (Dec 30 2012, from branches/stable/0.6.x)

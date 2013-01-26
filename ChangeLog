@@ -1,9 +1,16 @@
 Version 0.7.1
 http://svn.edgewall.org/repos/genshi/tags/0.7.1/
-(???, from branches/stable/0.7.x)
+(Jan 26 2013, from branches/stable/0.7.x)
 
- * ???
-
+ * Fix infinite loop in interplotation lexing that was introduced by a change
+   in Python 2.7's tokenizer (see #540).
+ * Fix handling of processing instructions without data (see #368).
+ * Always include test packages (otherwise the source distribution files
+   become Python version dependent, see #539).
+ * Fix text template test failures that were occurring on Windows.
+ * Remove a couple of unnecessarily checks for unicode in template parsing.
+ * Skip Mako benchmarks if Mako isn't installed (rather than failing
+   completely).
 
 Version 0.7
 http://svn.edgewall.org/repos/genshi/tags/0.7.0/

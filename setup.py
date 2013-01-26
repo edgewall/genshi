@@ -95,17 +95,18 @@ if sys.version_info >= (3,):
     extra['use_2to3'] = True
     extra['convert_2to3_doctests'] = []
     extra['use_2to3_fixers'] = ['fixes']
-    # include tests for python3 setup.py test
-    packages = [
-        'genshi', 'genshi.filters', 'genshi.template',
-        'genshi.tests', 'genshi.filters.tests',
-        'genshi.template.tests',
-        'genshi.template.tests.templates',
-    ]
     # Install genshi template tests
     extra['include_package_data'] = True
-else:
-    packages = ['genshi', 'genshi.filters', 'genshi.template']
+
+
+# include tests for python3 setup.py test (needed when creating
+# source distributions on python2 too so that they work on python3)
+packages = [
+    'genshi', 'genshi.filters', 'genshi.template',
+    'genshi.tests', 'genshi.filters.tests',
+    'genshi.template.tests',
+    'genshi.template.tests.templates',
+]
 
 
 setup(

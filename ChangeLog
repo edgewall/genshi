@@ -1,8 +1,10 @@
 Version 0.6.2
 http://svn.edgewall.org/repos/genshi/tags/0.6.2/
-(???, from branches/stable/0.6.x)
+(Jan 26 2013, from branches/stable/0.6.x)
 
- * ???
+ * Fix infinite loop in interplotation lexing that was introduced by a change
+   in Python 2.7's tokenizer (see #540).
+ * Fix handling of processing instructions without data (see #368).
 
 
 Version 0.6.1

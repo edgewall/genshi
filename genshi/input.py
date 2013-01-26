@@ -401,9 +401,14 @@ class HTMLParser(html.HTMLParser, object):
         self._enqueue(TEXT, text)
 
     def handle_pi(self, data):
-        target, data = data.split(None, 1)
         if data.endswith('?'):
             data = data[:-1]
+        try:
+            target, data = data.split(None, 1)
+        except ValueError:
+            # PI with no data
+            target = data
+            data = ''
         self._enqueue(PI, (target.strip(), data.strip()))
 
     def handle_comment(self, text):

@@ -177,6 +177,25 @@ bar</elem>'''
         self.assertEqual('php', target)
         self.assertEqual('echo "Foobar"', data)
 
+    def test_processing_instruction_no_data_1(self):
+        text = u'<?foo ?>'
+        events = list(HTMLParser(StringIO(text)))
+        kind, (target, data), pos = events[0]
+        self.assertEqual(Stream.PI, kind)
+        self.assertEqual('foo', target)
+        self.assertEqual('', data)
+
+    def test_processing_instruction_no_data_2(self):
+        text = u'<?experiment>...<?/experiment>'
+        events = list(HTMLParser(StringIO(text)))
+        kind, (target, data), pos = events[0]
+        self.assertEqual(Stream.PI, kind)
+        self.assertEqual('experiment', target)
+        self.assertEqual('', data)
+        kind, (target, data), pos = events[2]
+        self.assertEqual('/experiment', target)
+        self.assertEqual('', data)
+
     def test_xmldecl(self):
         text = '<?xml version="1.0" ?><root />'
         events = list(XMLParser(StringIO(text)))

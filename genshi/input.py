@@ -366,9 +366,7 @@ class HTMLParser(html.HTMLParser, object):
         fixed_attrib = []
         for name, value in attrib: # Fixup minimized attributes
             if value is None:
-                value = unicode(name)
-            elif not isinstance(value, unicode):
-                value = value.decode(self.encoding, 'replace')
+                value = name
             fixed_attrib.append((QName(name), stripentities(value)))
 
         self._enqueue(START, (QName(tag), Attrs(fixed_attrib)))
@@ -386,8 +384,6 @@ class HTMLParser(html.HTMLParser, object):
                     break
 
     def handle_data(self, text):
-        if not isinstance(text, unicode):
-            text = text.decode(self.encoding, 'replace')
         self._enqueue(TEXT, text)
 
     def handle_charref(self, name):

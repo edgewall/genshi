@@ -40,7 +40,11 @@ def genshi_text(dirname, verbose=False):
     return render
 
 def mako(dirname, verbose=False):
-    from mako.lookup import TemplateLookup
+    try:
+        from mako.lookup import TemplateLookup
+    except ImportError:
+        print>>sys.stderr, 'Mako not installed, skipping'
+        return lambda: None
     lookup = TemplateLookup(directories=[dirname], filesystem_checks=False)
     template = lookup.get_template('template.html')
     def render():

@@ -111,7 +111,7 @@ packages = [
 
 setup(
     name = 'Genshi',
-    version = '0.7.1',
+    version = '0.7',
     description = 'A toolkit for generation of output for the web',
     long_description = \
 """Genshi is a Python library that provides an integrated set of

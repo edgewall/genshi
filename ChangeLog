@@ -1,24 +1,25 @@
 Version 0.8
 http://svn.edgewall.org/repos/genshi/tags/0.8.0/
-(???, from branches/stable/0.8.x)
+(???, from branches/stable/0.7.x)
 
  * ???
 
-
 Version 0.7
 http://svn.edgewall.org/repos/genshi/tags/0.7.0/
-(Dec 30 2012, from branches/stable/0.7.x)
+(Jan 27 2013, from branches/stable/0.7.x)
 
  * Add support for Python 3.1, 3.2 and 3.3 (via 2to3) and for PyPy. The
    majority of the coding was done in a sprint run by the Cape Town Python
    Users Group with financial assistance from the Python Software Foundation.
  * Default input and output encodings changed from UTF-8 to None (i.e. unicode
    strings).
+ * Skip Mako benchmarks if Mako isn't installed (rather than failing
+   completely).
 
 
 Version 0.6.1
 http://svn.edgewall.org/repos/genshi/tags/0.6.1/
-(Dec 30 2012, from branches/stable/0.6.x)
+(Jan 27 2012, from branches/stable/0.6.x)
 
  * Security fix to enhance sanitizing of CSS in style attributes. Genshi's
    `HTMLSanitizer` disallows style attributes by default (this remains
@@ -43,6 +44,10 @@ http://svn.edgewall.org/repos/genshi/tags/0.6.1/
  * Fix handling of multiple events between or on either side of start and end
    tags in translated messages (see #404).
  * Fix test failures caused by changes in HTMLParser in Python 2.7 (see #501).
+ * Fix infinite loop in interplotation lexing that was introduced by a change
+   in Python 2.7's tokenizer (see #540).
+ * Fix handling of processing instructions without data (see #368).
+ * Updated MANIFEST.in so as not to rely on build from Subersion 1.6.
 
 
 Version 0.6

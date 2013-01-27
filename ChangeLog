@@ -1,15 +1,6 @@
-Version 0.6.2
-http://svn.edgewall.org/repos/genshi/tags/0.6.2/
-(Jan 26 2013, from branches/stable/0.6.x)
-
- * Fix infinite loop in interplotation lexing that was introduced by a change
-   in Python 2.7's tokenizer (see #540).
- * Fix handling of processing instructions without data (see #368).
-
-
 Version 0.6.1
 http://svn.edgewall.org/repos/genshi/tags/0.6.1/
-(Dec 30 2012, from branches/stable/0.6.x)
+(Jan 27 2013, from branches/stable/0.6.x)
 
  * Security fix to enhance sanitizing of CSS in style attributes. Genshi's
    `HTMLSanitizer` disallows style attributes by default (this remains
@@ -34,6 +25,10 @@ http://svn.edgewall.org/repos/genshi/tags/0.6.1/
  * Fix handling of multiple events between or on either side of start and end
    tags in translated messages (see #404).
  * Fix test failures caused by changes in HTMLParser in Python 2.7 (see #501).
+ * Fix infinite loop in interplotation lexing that was introduced by a change
+   in Python 2.7's tokenizer (see #540).
+ * Fix handling of processing instructions without data (see #368).
+ * Updated MANIFEST.in so as not to rely on build from Subersion 1.6.
 
 
 Version 0.6

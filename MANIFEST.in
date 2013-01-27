@@ -1,6 +1,12 @@
-exclude doc/2000ft.graffle
+include ChangeLog
+include COPYING
+recursive-include genshi *.py *.c *.txt *.html
+recursive-include scripts *.py
+recursive-include fixes *.py
+recursive-include examples *
+recursive-include doc *.html *.css *.txt *.png *.gif *.py *.ini COPYING
 recursive-exclude doc/logo.lineform *
-include doc/api/*.*
-include doc/*.html
+exclude doc/2000ft.graffle
+global-exclude *.pyc
 include fixes/*.*
 recursive-include genshi/template/tests/templates *.html *.txt

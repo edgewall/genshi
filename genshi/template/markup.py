@@ -230,7 +230,8 @@ class MarkupTemplate(Template):
 
             elif kind is END:
                 if fallbacks and data == xinclude_ns['fallback']:
-                    assert streams.pop() is fallbacks[-1]
+                    fallback_stream = streams.pop()
+                    assert fallback_stream is fallbacks[-1]
                 elif data == xinclude_ns['include']:
                     fallback = None
                     if len(fallbacks) == len(includes):

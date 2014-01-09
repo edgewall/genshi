@@ -1041,7 +1041,13 @@ class MessageBuffer(object):
 
         while parts:
             order, string = parts.pop(0)
-            events = self.events[order].pop(0)
+            events = self.events[order]
+            if events:
+                events = events.pop(0)
+            else:
+                # create a dummy empty text event so any remaining
+                # part of the translation can be processed.
+                events = [(TEXT, "", (None, -1, -1))]
             parts_counter[order].pop()
 
             for event in events:

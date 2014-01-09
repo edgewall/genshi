@@ -928,6 +928,18 @@ class MsgDirectiveTestCase(unittest.TestCase):
           """</p></html>""",
           tmpl.generate(first="FIRST", second="SECOND").render())
 
+    def test_translate_i18n_msg_ticket_404_regression(self):
+        tmpl = MarkupTemplate("""<html xmlns:py="http://genshi.edgewall.org/"
+            xmlns:i18n="http://genshi.edgewall.org/i18n">
+          <h1 i18n:msg="name">text <a>$name</a></h1>
+        </html>""")
+        gettext = lambda s: u'head [1:%(name)s] tail'
+        translator = Translator(gettext)
+        translator.setup(tmpl)
+        self.assertEqual("""<html>
+          <h1>head <a>NAME</a> tail</h1>
+        </html>""", tmpl.generate(name='NAME').render())
+
 
 class ChooseDirectiveTestCase(unittest.TestCase):
 

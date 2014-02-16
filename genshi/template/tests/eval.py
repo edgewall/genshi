@@ -590,6 +590,29 @@ x = smash(foo='abc', bar='def')
         suite.execute(data)
         self.assertEqual(['bardef', 'fooabc'], sorted(data['x']))
 
+    if not IS_PYTHON2:
+        def test_def_kwonlyarg(self):
+            suite = Suite("""
+def kwonly(*args, k):
+    return k
+x = kwonly(k="foo")
+""")
+            data = {}
+            suite.execute(data)
+            self.assertEqual("foo", data['x'])
+
+        def test_def_kwonlyarg_with_default(self):
+            suite = Suite("""
+def kwonly(*args, k="bar"):
+    return k
+x = kwonly(k="foo")
+y = kwonly()
+""")
+            data = {}
+            suite.execute(data)
+            self.assertEqual("foo", data['x'])
+            self.assertEqual("bar", data['y'])
+
     def test_def_nested(self):
         suite = Suite("""
 def doit():

@@ -514,6 +514,9 @@ class TemplateASTTransformer(ASTTransformer):
         if hasattr(node, 'args'):
             for arg in node.args:
                 self._process(names, arg)
+            if hasattr(node, 'kwonlyargs'):
+                for arg in node.kwonlyargs:
+                    self._process(names, arg)
             if hasattr(node, 'vararg'):
                 self._process(names, node.vararg)
             if hasattr(node, 'kwarg'):

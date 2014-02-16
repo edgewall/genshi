@@ -111,32 +111,35 @@ class ASTCodeGenerator(object):
     # arguments = (arg* args, arg? vararg, arg* kwonlyargs, expr* kw_defaults,
     #              arg? kwarg, expr* defaults)
     def visit_arguments(self, node):
-        first = True
-        no_default_count = len(node.args) - len(node.defaults)
-        for i, arg in enumerate(node.args):
-            if not first:
-                self._write(', ')
+        def write_possible_comma():
+            if _first[0]:
+                _first[0] = False
             else:
-                first = False
-            self.visit(arg)
-            if i >= no_default_count:
-                self._write('=')
-                self.visit(node.defaults[i - no_default_count])
+                self._write(', ')
+        _first = [True]
+
+        def write_args(args, defaults):
+            no_default_count = len(args) - len(defaults)
+            for i, arg in enumerate(args):
+                write_possible_comma()
+                self.visit(arg)
+                default_idx = i - no_default_count
+                if default_idx >= 0 and defaults[default_idx] is not None:
+                    self._write('=')
+                    self.visit(defaults[i - no_default_count])
+
+        write_args(node.args, node.defaults)
         if getattr(node, 'vararg', None):
-            if not first:
-                self._write(', ')
-            else:
-                first = False
+            write_possible_comma()
             self._write('*')
             if isstring(node.vararg):
                 self._write(node.vararg)
             else:
                 self.visit(node.vararg)
+        if getattr(node, 'kwonlyargs', None):
+            write_args(node.kwonlyargs, node.kw_defaults)
         if getattr(node, 'kwarg', None):
-            if not first:
-                self._write(', ')
-            else:
-                first = False
+            write_possible_comma()
             self._write('**')
             if isstring(node.kwarg):
                 self._write(node.kwarg)

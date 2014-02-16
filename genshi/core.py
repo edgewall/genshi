@@ -664,7 +664,13 @@ class Namespace(object):
 
     def __getitem__(self, name):
         return QName(self.uri + '}' + name)
-    __getattr__ = __getitem__
+
+    def __getattr__(self, name):
+        # work around for pickle bug in Python 3.4
+        # see http://bugs.python.org/issue16251
+        if name == "__getnewargs_ex__":
+            raise AttributeError("%r has no attribute %r" % (type(self), name))
+        return self.__getitem__(name)
 
     def __hash__(self):
         return hash(self.uri)

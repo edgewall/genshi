@@ -35,6 +35,15 @@ else:
                 'Python 2 compatibility function. Not usable in Python 3.')
 
 
+# We need to test if an object is an instance of a string type in places
+
+if IS_PYTHON2:
+    def isstring(obj):
+        return isinstance(obj, basestring)
+else:
+    def isstring(obj):
+        return isinstance(obj, str)
+
 # We need to differentiate between StringIO and BytesIO in places
 
 if IS_PYTHON2:
@@ -112,4 +121,3 @@ except NameError:
             if not x:
                 return False
         return True
-

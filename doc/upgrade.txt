@@ -7,11 +7,11 @@ Upgrading Genshi
    :depth: 2
 .. sectnum::
 
-------------------------------------------------------
-Upgrading from Genshi 0.6.x to the development version
-------------------------------------------------------
+-------------------------------------------
+Upgrading from Genshi 0.6.x to Genshi 0.7.x
+-------------------------------------------
 
-The Genshi development version now supports both Python 2 and Python 3.
+Genshi 0.7.x now supports both Python 2 and Python 3.
 
 The most noticable API change in the Genshi development version is that the
 default encoding in numerous places is now None (i.e. unicode) instead

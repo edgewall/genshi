@@ -65,9 +65,13 @@ available.""")
 
 
 if Feature:
+    # Optional C extension module for speeding up Genshi:
+    # Not activated by default on:
+    # - PyPy (where it harms performance)
+    # - CPython >= 3.3 (the new Unicode C API is not supported yet)
     speedups = Feature(
         "optional C speed-enhancements",
-        standard = not is_pypy,
+        standard = not is_pypy and sys.version_info < (3, 3),
         ext_modules = [
             Extension('genshi._speedups', ['genshi/_speedups.c']),
         ],

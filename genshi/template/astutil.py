@@ -21,7 +21,7 @@ else:
     def parse(source, mode):
         return compile(source, '', mode, _ast.PyCF_ONLY_AST)
 
-from genshi.compat import IS_PYTHON2
+from genshi.compat import IS_PYTHON2, isstring
 
 __docformat__ = 'restructuredtext en'
 
@@ -103,32 +103,48 @@ class ASTCodeGenerator(object):
         self._new_line()
         return self.visit(node.body)
 
+    # Python < 3.4
     # arguments = (expr* args, identifier? vararg,
     #              identifier? kwarg, expr* defaults)
+    #
+    # Python >= 3.4
+    # arguments = (arg* args, arg? vararg, arg* kwonlyargs, expr* kw_defaults,
+    #              arg? kwarg, expr* defaults)
     def visit_arguments(self, node):
-        first = True
-        no_default_count = len(node.args) - len(node.defaults)
-        for i, arg in enumerate(node.args):
-            if not first:
-                self._write(', ')
+        def write_possible_comma():
+            if _first[0]:
+                _first[0] = False
             else:
-                first = False
-            self.visit(arg)
-            if i >= no_default_count:
-                self._write('=')
-                self.visit(node.defaults[i - no_default_count])
+                self._write(', ')
+        _first = [True]
+
+        def write_args(args, defaults):
+            no_default_count = len(args) - len(defaults)
+            for i, arg in enumerate(args):
+                write_possible_comma()
+                self.visit(arg)
+                default_idx = i - no_default_count
+                if default_idx >= 0 and defaults[default_idx] is not None:
+                    self._write('=')
+                    self.visit(defaults[i - no_default_count])
+
+        write_args(node.args, node.defaults)
         if getattr(node, 'vararg', None):
-            if not first:
-                self._write(', ')
+            write_possible_comma()
+            self._write('*')
+            if isstring(node.vararg):
+                self._write(node.vararg)
             else:
-                first = False
-            self._write('*' + node.vararg)
+                self.visit(node.vararg)
+        if getattr(node, 'kwonlyargs', None):
+            write_args(node.kwonlyargs, node.kw_defaults)
         if getattr(node, 'kwarg', None):
-            if not first:
-                self._write(', ')
+            write_possible_comma()
+            self._write('**')
+            if isstring(node.kwarg):
+                self._write(node.kwarg)
             else:
-                first = False
-            self._write('**' + node.kwarg)
+                self.visit(node.kwarg)
 
     if not IS_PYTHON2:
         # In Python 3 arguments get a special node
@@ -724,6 +740,17 @@ class ASTCodeGenerator(object):
     def visit_Name(self, node):
         self._write(node.id)
 
+    # NameConstant(singleton value)
+    def visit_NameConstant(self, node):
+        if node.value is None:
+            self._write('None')
+        elif node.value is True:
+            self._write('True')
+        elif node.value is False:
+            self._write('False')
+        else:
+            raise Exception("Unknown NameConstant %r" % (node.value,))
+
     # List(expr* elts, expr_context ctx)
     def visit_List(self, node):
         self._write('[')
@@ -829,6 +856,7 @@ class ASTTransformer(object):
     visit_Attribute = _clone
     visit_Subscript = _clone
     visit_Name = _clone
+    visit_NameConstant = _clone
     visit_List = _clone
     visit_Tuple = _clone
 

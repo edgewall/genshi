@@ -368,12 +368,16 @@ def StyleSanitizer():
 
 class HTMLSanitizerTestCase(unittest.TestCase):
 
-    def assert_parse_error_or_equal(self, expected, exploit):
+    def assert_parse_error_or_equal(self, expected, exploit,
+                                    allow_strip=False):
         try:
             html = HTML(exploit)
         except ParseError:
             return
-        self.assertEquals(expected, (html | HTMLSanitizer()).render())
+        sanitized_html = (html | HTMLSanitizer()).render()
+        if not sanitized_html and allow_strip:
+            return
+        self.assertEquals(expected, sanitized_html)
 
     def test_sanitize_unchanged(self):
         html = HTML(u'<a href="#">fo<br />o</a>')
@@ -416,10 +420,12 @@ class HTMLSanitizerTestCase(unittest.TestCase):
         html = HTML(u'<SCRIPT SRC="http://example.com/"></SCRIPT>')
         self.assertEquals('', (html | HTMLSanitizer()).render())
         src = u'<SCR\0IPT>alert("foo")</SCR\0IPT>'
-        self.assert_parse_error_or_equal('&lt;SCR\x00IPT&gt;alert("foo")', src)
+        self.assert_parse_error_or_equal('&lt;SCR\x00IPT&gt;alert("foo")', src,
+                                         allow_strip=True)
         src = u'<SCRIPT&XYZ SRC="http://example.com/"></SCRIPT>'
         self.assert_parse_error_or_equal('&lt;SCRIPT&amp;XYZ; '
-                                         'SRC="http://example.com/"&gt;', src)
+                                         'SRC="http://example.com/"&gt;', src,
+                                         allow_strip=True)
 
     def test_sanitize_remove_onclick_attr(self):
         html = HTML(u'<div onclick=\'alert("foo")\' />')

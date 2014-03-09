@@ -24,7 +24,8 @@ from genshi.template.astutil import ASTTransformer, ASTCodeGenerator, \
 from genshi.template.base import TemplateRuntimeError
 from genshi.util import flatten
 
-from genshi.compat import get_code_params, build_code_chunk, IS_PYTHON2
+from genshi.compat import get_code_params, build_code_chunk, isstring, \
+                          IS_PYTHON2
 
 __all__ = ['Code', 'Expression', 'Suite', 'LenientLookup', 'StrictLookup',
            'Undefined', 'UndefinedError']
@@ -495,28 +496,34 @@ class TemplateASTTransformer(ASTTransformer):
     def __init__(self):
         self.locals = [CONSTANTS]
 
+    def _process(self, names, node):
+        if not IS_PYTHON2 and isinstance(node, _ast.arg):
+            names.add(node.arg)
+        elif isstring(node):
+            names.add(node)
+        elif isinstance(node, _ast.Name):
+            names.add(node.id)
+        elif isinstance(node, _ast.alias):
+            names.add(node.asname or node.name)
+        elif isinstance(node, _ast.Tuple):
+            for elt in node.elts:
+                self._process(names, elt)
+
     def _extract_names(self, node):
         names = set()
-        def _process(node):
-            if not IS_PYTHON2 and isinstance(node, _ast.arg):
-                names.add(node.arg)
-            if isinstance(node, _ast.Name):
-                names.add(node.id)
-            elif isinstance(node, _ast.alias):
-                names.add(node.asname or node.name)
-            elif isinstance(node, _ast.Tuple):
-                for elt in node.elts:
-                    _process(elt)
         if hasattr(node, 'args'):
             for arg in node.args:
-                _process(arg)
+                self._process(names, arg)
+            if hasattr(node, 'kwonlyargs'):
+                for arg in node.kwonlyargs:
+                    self._process(names, arg)
             if hasattr(node, 'vararg'):
-                names.add(node.vararg)
+                self._process(names, node.vararg)
             if hasattr(node, 'kwarg'):
-                names.add(node.kwarg)
+                self._process(names, node.kwarg)
         elif hasattr(node, 'names'):
             for elt in node.names:
-                _process(elt)
+                self._process(names, elt)
         return names
 
     def visit_Str(self, node):

@@ -452,8 +452,7 @@ class Template(DirectiveFactory):
     @property
     def stream(self):
         if not self._prepared:
-            self._stream = list(self._prepare(self._stream))
-            self._prepared = True
+            self._prepare_self()
         return self._stream
 
     def _parse(self, source, encoding):
@@ -470,12 +469,19 @@ class Template(DirectiveFactory):
         """
         raise NotImplementedError
 
-    def _prepare(self, stream):
+    def _prepare_self(self, inlined=None):
+        if not self._prepared:
+            self._stream = list(self._prepare(self._stream, inlined))
+            self._prepared = True
+
+    def _prepare(self, stream, inlined):
         """Call the `attach` method of every directive found in the template.
         
         :param stream: the event stream of the template
         """
         from genshi.template.loader import TemplateNotFound
+        if inlined is None:
+            inlined = set((self.filepath,))
 
         for kind, data, pos in stream:
             if kind is SUB:
@@ -486,7 +492,7 @@ class Template(DirectiveFactory):
                                                       namespaces, pos)
                     if directive:
                         directives.append(directive)
-                substream = self._prepare(substream)
+                substream = self._prepare(substream, inlined)
                 if directives:
                     yield kind, (directives, list(substream)), pos
                 else:
@@ -495,27 +501,42 @@ class Template(DirectiveFactory):
             else:
                 if kind is INCLUDE:
                     href, cls, fallback = data
-                    if isinstance(href, basestring) and \
-                            not getattr(self.loader, 'auto_reload', True):
+                    tmpl_inlined = False
+                    if (isinstance(href, basestring) and
+                            not getattr(self.loader, 'auto_reload', True)):
                         # If the path to the included template is static, and
                         # auto-reloading is disabled on the template loader,
-                        # the template is inlined into the stream
+                        # the template is inlined into the stream provided it
+                        # is not already in the stack of templates being
+                        # processed.
+                        tmpl = None
                         try:
                             tmpl = self.loader.load(href, relative_to=pos[0],
                                                     cls=cls or self.__class__)
-                            for event in tmpl.stream:
-                                yield event
                         except TemplateNotFound:
                             if fallback is None:
                                 raise
-                            for event in self._prepare(fallback):
+                        if tmpl is not None:
+                            if tmpl.filepath not in inlined:
+                                inlined.add(tmpl.filepath)
+                                tmpl._prepare_self(inlined)
+                                for event in tmpl.stream:
+                                    yield event
+                                inlined.discard(tmpl.filepath)
+                                tmpl_inlined = True
+                        else:
+                            for event in self._prepare(fallback, inlined):
                                 yield event
+                            tmpl_inlined = True
+                    if tmpl_inlined:
                         continue
-                    elif fallback:
+                    if fallback:
                         # Otherwise the include is performed at run time
-                        data = href, cls, list(self._prepare(fallback))
-
-                yield kind, data, pos
+                        data = href, cls, list(
+                            self._prepare(fallback, inlined))
+                    yield kind, data, pos
+                else:
+                    yield kind, data, pos
 
     def generate(self, *args, **kwargs):
         """Apply the template to the given context data.

@@ -171,6 +171,19 @@ class NewTextTemplateTestCase(unittest.TestCase):
   * 2
 """, tmpl.generate(items=range(3)).render(encoding=None))
 
+    def test_empty_lines1_with_crlf(self):
+        tmpl = NewTextTemplate('Your items:\r\n'
+'\r\n'
+'{% for item in items %}\\\r\n'
+'  * ${item}\r\n'
+'{% end %}')
+
+        self.assertEqual('Your items:\r\n'
+'\r\n'
+'  * 0\r\n'
+'  * 1\r\n'
+'  * 2\r\n', tmpl.generate(items=range(3)).render(encoding=None))
+
     def test_empty_lines2(self):
         tmpl = NewTextTemplate("""Your items:
 
@@ -187,6 +200,22 @@ class NewTextTemplateTestCase(unittest.TestCase):
   * 2
 
 """, tmpl.generate(items=range(3)).render(encoding=None))
+
+    def test_empty_lines2_with_crlf(self):
+        tmpl = NewTextTemplate('Your items:\r\n'
+'\r\n'
+'{% for item in items %}\\\r\n'
+'  * ${item}\r\n'
+'\r\n'
+'{% end %}')
+        self.assertEqual('Your items:\r\n'
+'\r\n'
+'  * 0\r\n'
+'\r\n'
+'  * 1\r\n'
+'\r\n'
+'  * 2\r\n'
+'\r\n', tmpl.generate(items=range(3)).render(encoding=None))
 
     def test_exec_with_trailing_space(self):
         """

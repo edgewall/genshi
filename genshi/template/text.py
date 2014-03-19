@@ -128,7 +128,7 @@ class NewTextTemplate(Template):
     serializer = 'text'
 
     _DIRECTIVE_RE = r'((?<!\\)%s\s*(\w+)\s*(.*?)\s*%s|(?<!\\)%s.*?%s)'
-    _ESCAPE_RE = r'\\\n|\\(\\)|\\(%s)|\\(%s)'
+    _ESCAPE_RE = r'\\\n|\\\r\n|\\(\\)|\\(%s)|\\(%s)'
 
     def __init__(self, source, filepath=None, filename=None, loader=None,
                  encoding=None, lookup='strict', allow_exec=False,

@@ -284,10 +284,10 @@ class MarkupTemplate(Template):
 
             yield kind, data, pos
 
-    def _prepare(self, stream):
-        return Template._prepare(self,
-            self._extract_includes(self._interpolate_attrs(stream))
-        )
+    def _prepare(self, stream, inlined=None):
+        return Template._prepare(
+            self, self._extract_includes(self._interpolate_attrs(stream)),
+            inlined=inlined)
 
     def add_directives(self, namespace, factory):
         """Register a custom `DirectiveFactory` for a given namespace.

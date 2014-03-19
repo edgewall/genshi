@@ -316,7 +316,9 @@ class XHTMLSerializer(XMLSerializer):
                               'param'])
     _BOOLEAN_ATTRS = frozenset(['selected', 'checked', 'compact', 'declare',
                                 'defer', 'disabled', 'ismap', 'multiple',
-                                'nohref', 'noresize', 'noshade', 'nowrap'])
+                                'nohref', 'noresize', 'noshade', 'nowrap',
+                                'autofocus', 'readonly', 'required',
+                                'formnovalidate'])
     _PRESERVE_SPACE = frozenset([
         QName('pre'), QName('http://www.w3.org/1999/xhtml}pre'),
         QName('textarea'), QName('http://www.w3.org/1999/xhtml}textarea')

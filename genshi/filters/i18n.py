@@ -607,7 +607,8 @@ class Translator(DirectiveFactory):
         QName('style'), QName('http://www.w3.org/1999/xhtml}style')
     ])
     INCLUDE_ATTRS = frozenset([
-        'abbr', 'alt', 'label', 'prompt', 'standby', 'summary', 'title'
+        'abbr', 'alt', 'label', 'prompt', 'standby', 'summary', 'title',
+        'placeholder',
     ])
     NAMESPACE = I18N_NAMESPACE
 

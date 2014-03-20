@@ -14,6 +14,7 @@
 import doctest
 import unittest
 
+from genshi.core import Attrs, QName
 from genshi.input import XML
 from genshi.path import Path, PathParser, PathSyntaxError, GenericStrategy, \
                         SingleStepStrategy, SimplePathStrategy
@@ -629,6 +630,25 @@ class PathTestCase(unittest.TestCase):
         self._test_eval('//d/descendant::b/descendant::b/descendant::b'
                               '/descendant::b/descendant::c', input=xml,
                               output='')
+
+    def test_attr_selection(self):
+        xml = XML('<root><foo bar="abc"></foo></root>')
+        path = Path('foo/@bar')
+        result = path.select(xml)
+        self.assertEqual(list(result), [
+            Attrs([(QName('bar'), u'abc')])
+        ])
+
+    def test_attr_selection_with_namespace(self):
+        xml = XML(
+            '<root xmlns:ns1="http://example.com">'
+            '<foo ns1:bar="abc"></foo>'
+            '</root>')
+        path = Path('foo/@ns1:bar')
+        result = path.select(xml, namespaces={'ns1': 'http://example.com'})
+        self.assertEqual(list(result), [
+            Attrs([(QName('http://example.com}bar'), u'abc')])
+        ])
 
     def _test_support(self, strategy_class, text):
         path = PathParser(text, None, -1).parse()[0]

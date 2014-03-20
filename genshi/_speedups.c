@@ -242,38 +242,34 @@ static PyObject *
 Markup_join(PyObject *self, PyObject *args, PyObject *kwds)
 {
     static char *kwlist[] = {"seq", "escape_quotes", 0};
-    PyObject *seq = NULL, *seq2, *tmp, *tmp2;
+    PyObject *seq = NULL, *seq2, *it, *tmp, *tmp2;
     char quotes = 1;
-    Py_ssize_t n;
-    int i;
 
     if (!PyArg_ParseTupleAndKeywords(args, kwds, "O|b", kwlist, &seq, &quotes)) {
         return NULL;
     }
-    if (!PySequence_Check(seq)) {
+    it = PyObject_GetIter(seq);
+    if (it == NULL)
         return NULL;
-    }
-    n = PySequence_Size(seq);
-    if (n < 0) {
-        return NULL;
-    }
-    seq2 = PyTuple_New(n);
+    seq2 = PyList_New(0);
     if (seq2 == NULL) {
+        Py_DECREF(it);
         return NULL;
     }
-    for (i = 0; i < n; i++) {
-        tmp = PySequence_GetItem(seq, i);
-        if (tmp == NULL) {
-            Py_DECREF(seq2);
-            return NULL;
-        }
+    while ((tmp = PyIter_Next(it))) {
         tmp2 = escape(tmp, quotes);
         if (tmp2 == NULL) {
             Py_DECREF(seq2);
+            Py_DECREF(it);
             return NULL;
         }
-        PyTuple_SET_ITEM(seq2, i, tmp2);
+        PyList_Append(seq2, tmp2);
         Py_DECREF(tmp);
+    }
+    Py_DECREF(it);
+    if (PyErr_Occurred()) {
+        Py_DECREF(seq2);
+        return NULL;
     }
     tmp = PyUnicode_Join(self, seq2);
     Py_DECREF(seq2);

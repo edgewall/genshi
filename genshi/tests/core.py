@@ -139,6 +139,11 @@ class MarkupTestCase(unittest.TestCase):
         assert type(markup) is Markup
         self.assertEquals('foo<br />&lt;bar /&gt;<br /><baz />', markup)
 
+    def test_join_over_iter(self):
+        items = ['foo', '<bar />', Markup('<baz />')]
+        markup = Markup('<br />').join(i for i in items)
+        self.assertEquals('foo<br />&lt;bar /&gt;<br /><baz />', markup)
+
     def test_stripentities_all(self):
         markup = Markup('&amp; &#106;').stripentities()
         assert type(markup) is Markup

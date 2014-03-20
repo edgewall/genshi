@@ -1008,7 +1008,7 @@ class QualifiedNameTest(object):
         qname = QName('%s}%s' % (namespaces.get(self.prefix), self.name))
         if kind is START:
             if self.principal_type is ATTRIBUTE and qname in data[1]:
-                return Attrs([(self.name, data[1].get(self.name))])
+                return Attrs([(qname, data[1].get(qname))])
             else:
                 return data[0] == qname
     def __repr__(self):

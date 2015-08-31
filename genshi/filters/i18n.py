@@ -1194,8 +1194,10 @@ def extract_from_code(code, gettext_functions):
                 elif arg:
                     strings.append(None)
             [_add(arg) for arg in node.args]
-            _add(node.starargs)
-            _add(node.kwargs)
+            if hasattr(node, 'starargs'):
+                _add(node.starargs)
+            if hasattr(node, 'kwargs'):
+                _add(node.kwargs)
             if len(strings) == 1:
                 strings = strings[0]
             else:

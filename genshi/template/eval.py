@@ -600,6 +600,11 @@ class TemplateASTTransformer(ASTTransformer):
         finally:
             self.locals.pop()
 
+    # Only used in Python 3.5+
+    def visit_Starred(self, node):
+        node.value = self.visit(node.value)
+        return node
+
     def visit_Name(self, node):
         # If the name refers to a local inside a lambda, list comprehension, or
         # generator expression, leave it alone

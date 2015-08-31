@@ -151,6 +151,10 @@ class ASTCodeGenerator(object):
         def visit_arg(self, node):
             self._write(node.arg)
 
+    def visit_Starred(self, node):
+        self._write('*')
+        self.visit(node.value)
+
     # FunctionDef(identifier name, arguments args,
     #                           stmt* body, expr* decorator_list)
     def visit_FunctionDef(self, node):
@@ -664,9 +668,13 @@ class ASTCodeGenerator(object):
             if not first:
                 self._write(', ')
             first = False
-            # keyword = (identifier arg, expr value)
-            self._write(keyword.arg)
-            self._write('=')
+            if not keyword.arg:
+                # Python 3.5+ star-star args
+                self._write('**')
+            else:
+                # keyword = (identifier arg, expr value)
+                self._write(keyword.arg)
+                self._write('=')
             self.visit(keyword.value)
         if getattr(node, 'starargs', None):
             if not first:

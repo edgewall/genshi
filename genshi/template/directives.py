@@ -266,7 +266,7 @@ class DefDirective(Directive):
         if isinstance(ast, _ast.Call):
             self.name = ast.func.id
             for arg in ast.args:
-                if isinstance(arg, _ast.Starred):
+                if hasattr(_ast, 'Starred') and isinstance(arg, _ast.Starred):
                     # Python 3.5+
                     self.star_args = arg.value.id
                 else:

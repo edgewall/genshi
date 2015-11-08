@@ -9,3 +9,10 @@ python:
   - "pypy"
 script:
   - "python setup.py test"
+deploy:
+  provider: pypi
+  user: ...
+  password: ...
+  distributions: "sdist bdist_wheel"
+  on:
+    tags: true

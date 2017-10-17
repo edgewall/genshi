@@ -982,7 +982,7 @@ class MessageBuffer(object):
         elif kind is TEXT:
             if '[' in data or ']' in data:
                 # Quote [ and ] if it ain't us adding it, ie, if the user is
-                # using those chars in his templates, escape them
+                # using those chars in their templates, escape them
                 data = data.replace('[', '\[').replace(']', '\]')
             self.string.append(data)
             self._add_event(self.stack[-1], (kind, data, pos))

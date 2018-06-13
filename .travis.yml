@@ -11,8 +11,8 @@ script:
   - "python setup.py test"
 deploy:
   provider: pypi
-  user: ...
-  password: ...
+  user: jaraco
+  password: 1nhCBZdbwKMDxLQYKX1yFO+wAuSnRN8kKDqC1oFi02xtMHc9bIEb1blRNRZoyokXcNH4rUSm7OKbH0ILQ0/lGF+aN1gxqYbywhVXcOyJ56KmqFq625MRAY2dMbw4vor69nP+kGBd5sJL78OGFKLep1DAKEoGV2sfbe8rf8Mrqvc=
   distributions: "sdist bdist_wheel"
   on:
     tags: true

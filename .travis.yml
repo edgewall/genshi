@@ -9,6 +9,11 @@ python:
   - "3.6"
   - "3.7"
   - "pypy"
+matrix:
+  allow_failures:
+    - python: "3.5"
+    - python: "3.6"
+    - python: "3.7"
 script:
   - "python setup.py test"
 deploy:
@@ -20,4 +25,4 @@ deploy:
   distributions: "sdist bdist_wheel"
   on:
     tags: true
-    python: "3.7"
+    python: "3.4"

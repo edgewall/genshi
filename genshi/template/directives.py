@@ -266,13 +266,21 @@ class DefDirective(Directive):
         if isinstance(ast, _ast.Call):
             self.name = ast.func.id
             for arg in ast.args:
-                # only names
-                self.args.append(arg.id)
+                if hasattr(_ast, 'Starred') and isinstance(arg, _ast.Starred):
+                    # Python 3.5+
+                    self.star_args = arg.value.id
+                else:
+                    # only names
+                    self.args.append(arg.id)
             for kwd in ast.keywords:
-                self.args.append(kwd.arg)
-                exp = Expression(kwd.value, template.filepath,
-                                 lineno, lookup=template.lookup)
-                self.defaults[kwd.arg] = exp
+                if kwd.arg is None:
+                    # Python 3.5+
+                    self.dstar_args = kwd.value.id
+                else:
+                    self.args.append(kwd.arg)
+                    exp = Expression(kwd.value, template.filepath,
+                                     lineno, lookup=template.lookup)
+                    self.defaults[kwd.arg] = exp
             if getattr(ast, 'starargs', None):
                 self.star_args = ast.starargs.id
             if getattr(ast, 'kwargs', None):

@@ -982,7 +982,7 @@ class MessageBuffer(object):
         elif kind is TEXT:
             if '[' in data or ']' in data:
                 # Quote [ and ] if it ain't us adding it, ie, if the user is
-                # using those chars in his templates, escape them
+                # using those chars in their templates, escape them
                 data = data.replace('[', '\[').replace(']', '\]')
             self.string.append(data)
             self._add_event(self.stack[-1], (kind, data, pos))
@@ -1194,8 +1194,10 @@ def extract_from_code(code, gettext_functions):
                 elif arg:
                     strings.append(None)
             [_add(arg) for arg in node.args]
-            _add(node.starargs)
-            _add(node.kwargs)
+            if hasattr(node, 'starargs'):
+                _add(node.starargs)
+            if hasattr(node, 'kwargs'):
+                _add(node.kwargs)
             if len(strings) == 1:
                 strings = strings[0]
             else:

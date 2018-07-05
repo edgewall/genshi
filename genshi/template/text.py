@@ -100,7 +100,7 @@ class NewTextTemplate(Template):
 
     >>> tmpl = NewTextTemplate('''Dear $name,
     ... 
-    ... \{# This is a comment #}
+    ... \\{# This is a comment #}
     ... We have the following items for you:
     ... {% for item in items %}\
     ...  * $item

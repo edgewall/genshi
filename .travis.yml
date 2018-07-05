@@ -7,13 +7,13 @@ python:
   - "3.4"
   - "3.5"
   - "3.6"
-  - "3.7"
+  - "3.7-dev"  # replace with 3.7 once this is available easily
+  - "nightly"
   - "pypy"
+  - "pypy3"
 matrix:
   allow_failures:
-    - python: "3.5"
-    - python: "3.6"
-    - python: "3.7"
+    - python: "nightly"
 script:
   - "python setup.py test"
 deploy:
@@ -25,4 +25,4 @@ deploy:
   distributions: "sdist bdist_wheel"
   on:
     tags: true
-    python: "3.4"
+    python: "3.6"

@@ -9,8 +9,7 @@ matrix:
     - { python: "3.5" }
     - { python: "3.6" }
     - { python: "3.7", dist: xenial, sudo: true }  # Python 3.7+ requires Xenial
-    - { python: "nightly", dist: xenial, sudo: true }  # Python 3.7+ requires Xenial
-    - { python: "pypy" }
+    - { python: "pypy2" }
     - { python: "pypy3" }
   allow_failures:
     - python: "nightly"

@@ -1,17 +1,16 @@
 language: python
-python:
-  - "2.6"
-  - "2.7"
-  - "3.2"
-  - "3.3"
-  - "3.4"
-  - "3.5"
-  - "3.6"
-  - "3.7-dev"  # replace with 3.7 once this is available easily
-  - "nightly"
-  - "pypy"
-  - "pypy3"
 matrix:
+  include:
+    - { python: "2.6" }
+    - { python: "2.7" }
+    - { python: "3.2" }
+    - { python: "3.3" }
+    - { python: "3.4" }
+    - { python: "3.5" }
+    - { python: "3.6" }
+    - { python: "3.7", dist: xenial, sudo: true }  # Python 3.7+ requires Xenial
+    - { python: "pypy" }
+    - { python: "pypy3" }
   allow_failures:
     - python: "nightly"
 script:

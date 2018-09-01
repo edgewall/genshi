@@ -115,7 +115,7 @@ packages = [
 
 setup(
     name = 'Genshi',
-    version = '0.7',
+    version = '0.7.1',
     description = 'A toolkit for generation of output for the web',
     long_description = \
 """Genshi is a Python library that provides an integrated set of
@@ -153,7 +153,7 @@ feature is a template language, which is heavily inspired by Kid.""",
     entry_points = """
     [babel.extractors]
     genshi = genshi.filters.i18n:extract[i18n]
-    
+
     [python.templating.engines]
     genshi = genshi.template.plugin:MarkupTemplateEnginePlugin[plugin]
     genshi-markup = genshi.template.plugin:MarkupTemplateEnginePlugin[plugin]

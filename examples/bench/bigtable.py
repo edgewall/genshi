@@ -10,6 +10,8 @@ import sys
 import timeit
 from StringIO import StringIO
 from genshi.builder import tag
+from genshi.filters.i18n import Translator
+from genshi.filters.tests.i18n import DummyTranslations
 from genshi.template import MarkupTemplate, NewTextTemplate
 
 try:
@@ -56,6 +58,17 @@ genshi_tmpl = MarkupTemplate("""
 </table>
 """)
 
+genshi_tmpl_i18n = MarkupTemplate("""
+<table xmlns:py="http://genshi.edgewall.org/"
+       xmlns:i18n="http://genshi.edgewall.org/i18n">
+<tr py:for="row in table">
+<td py:for="c in row.values()">${c}</td>
+</tr>
+</table>
+""")
+t = Translator(DummyTranslations())
+t.setup(genshi_tmpl_i18n)
+
 genshi_tmpl2 = MarkupTemplate("""
 <table xmlns:py="http://genshi.edgewall.org/">$table</table>
 """)
@@ -101,6 +114,11 @@ if MakoTemplate:
 def test_genshi():
     """Genshi template"""
     stream = genshi_tmpl.generate(table=table)
+    stream.render('html', strip_whitespace=False)
+
+def test_genshi_i18n():
+    """Genshi template w/ i18n"""
+    stream = genshi_tmpl_i18n.generate(table=table)
     stream.render('html', strip_whitespace=False)
 
 def test_genshi_text():
@@ -167,7 +185,7 @@ if et:
         et.tostring(_table)
 
 if cet:
-    def test_cet(): 
+    def test_cet():
         """cElementTree"""
         _table = cet.Element('table')
         for row in table:
@@ -196,7 +214,7 @@ if neo_cgi:
 
 
 def run(which=None, number=10):
-    tests = ['test_builder', 'test_genshi', 'test_genshi_text',
+    tests = ['test_builder', 'test_genshi', 'test_genshi_i18n', 'test_genshi_text',
              'test_genshi_builder', 'test_mako', 'test_kid', 'test_kid_et',
              'test_et', 'test_cet', 'test_clearsilver', 'test_django']
 

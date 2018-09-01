@@ -1,3 +1,21 @@
+Version 0.7.1
+https://github.com/edgewall/genshi/tags/0.7.1/
+(Sep 1 2018, from branches/stable/0.7.x)
+
+ * Add support for Python 3.5, 3.6 and 3.7.
+ * Move to GitHub and Travis CI.
+ * Add support for iterator arguments to _speedups Markup.join implementation so that it matches
+   the Python implementation (fixes #574).
+ * Add HTML5 input placeholder attribute to list of translatable attributes (fixes #577).
+ * Add missing boolean attributes to XHTML and HTML serializers (fixes #570).
+ * Fix infinite recursion in template inlining (fixes #584).
+ * Support slash escaped of CRLF newlines (fixes #569).
+ * Disable the speedups C extension on CPython >= 3.3 since Genshi doesn't support the new Unicode
+   C API yet.
+ * Fix handling of case where a translation has text after a closing tag (fixes #566).
+ * Fix assert with side-effect in xi:fallback directive processing (see #565).
+
+
 Version 0.7
 http://svn.edgewall.org/repos/genshi/tags/0.7.0/
 (Jan 27 2013, from branches/stable/0.7.x)
@@ -66,8 +84,8 @@ http://svn.edgewall.org/repos/genshi/tags/0.6.0/
  * `for` loops in template code blocks no longer establish their own locals
    scope, meaning you can now access variables assigned in the loop outside
    of the loop, just as you can in regular Python code (ticket #259).
- * Import statements inside function definitions in template code blocks no 
-   longer result in an UndefinedError when the imported name is accessed 
+ * Import statements inside function definitions in template code blocks no
+   longer result in an UndefinedError when the imported name is accessed
    (ticket #276).
  * Fixed handling of relative URLs with fragment identifiers containing colons
    in the `HTMLSanitizer` (ticket #274).
@@ -284,7 +302,7 @@ http://svn.edgewall.org/repos/genshi/tags/0.4.0/
  * The template loader now uses a LRU cache to limit the number of cached
    templates to a configurable maximum. Also, a race condition in the template
    loader was fixed by adding locking.
- * A new filter (genshi.filters.HTMLFormFiller) was added, which can populate 
+ * A new filter (genshi.filters.HTMLFormFiller) was added, which can populate
    HTML forms based on a dictionary of values.
  * The set of permitted tag and attribute names for the HTMLSanitizer can now
    be configured per instance.
@@ -310,7 +328,7 @@ http://svn.edgewall.org/repos/genshi/tags/0.4.0/
  * Improve handling of incorrectly nested tags in the HTML parser.
  * Template includes can now be nested inside fallback content.
  * Expressions can now contain dict literals (ticket #37).
- * It is now possible to have one or more escaped dollar signs in front of a 
+ * It is now possible to have one or more escaped dollar signs in front of a
    full expression (ticket #92).
  * The `Markup` class is now available by default in template expressions
    (ticket #67).
@@ -354,7 +372,7 @@ Version 0.3.5
 http://svn.edgewall.org/repos/genshi/tags/0.3.5/
 (Nov 22 2006, from branches/stable/0.3.x)
 
- * Fix XPath traversal in match templates. Previously, `div/p` would be treated 
+ * Fix XPath traversal in match templates. Previously, `div/p` would be treated
    the same as `div//p`, i.e. it would match all descendants and not just the
    immediate children.
  * Preserve whitespace in HTML `<pre>` elements also when they contain child

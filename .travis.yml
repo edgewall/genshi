@@ -17,7 +17,7 @@ script:
   - "python setup.py test"
 deploy:
   provider: pypi
-  server: https://test.pypi.org
+  server: https://pypi.org
   user: edgewall-org
   password:
     secure: "W86OIU/V9PbXdERXbR1vTOw/GvxoNyn5gt7n52TGqjI1BcklX1t31uPgBnf0wmlp/kY9vMbOYhuqUWpBhbMKMBY6zOuNnCV0H5vynZ/nWefSBK6Fqyl2zTsdLYfzUKAIPBldYcaiJMZ6eD++ujVsgWN6XglP7jYogqjJFxxNf6s="

@@ -25,7 +25,7 @@ from genshi.template.base import TemplateRuntimeError
 from genshi.util import flatten
 
 from genshi.compat import get_code_params, build_code_chunk, isstring, \
-                          IS_PYTHON2
+                          IS_PYTHON2, _ast_Str
 
 __all__ = ['Code', 'Expression', 'Suite', 'LenientLookup', 'StrictLookup',
            'Undefined', 'UndefinedError']
@@ -531,7 +531,7 @@ class TemplateASTTransformer(ASTTransformer):
             try: # If the string is ASCII, return a `str` object
                 node.s.decode('ascii')
             except ValueError: # Otherwise return a `unicode` object
-                return _new(_ast.Str, node.s.decode('utf-8'))
+                return _new(_ast_Str, node.s.decode('utf-8'))
         return node
 
     def visit_ClassDef(self, node):
@@ -556,7 +556,7 @@ class TemplateASTTransformer(ASTTransformer):
                 node = _new(_ast.Expr, _new(_ast.Call,
                     _new(_ast.Name, '_star_import_patch'), [
                         _new(_ast.Name, '__data__'),
-                        _new(_ast.Str, node.module)
+                        _new(_ast_Str, node.module)
                     ], (), ()))
             return node
         if len(self.locals) > 1:
@@ -613,7 +613,7 @@ class TemplateASTTransformer(ASTTransformer):
             # Otherwise, translate the name ref into a context lookup
             name = _new(_ast.Name, '_lookup_name', _ast.Load())
             namearg = _new(_ast.Name, '__data__', _ast.Load())
-            strarg = _new(_ast.Str, node.id)
+            strarg = _new(_ast_Str, node.id)
             node = _new(_ast.Call, name, [namearg, strarg], [])
         elif isinstance(node.ctx, _ast.Store):
             if len(self.locals) > 1:
@@ -632,7 +632,7 @@ class ExpressionASTTransformer(TemplateASTTransformer):
             return ASTTransformer.visit_Attribute(self, node)
 
         func = _new(_ast.Name, '_lookup_attr', _ast.Load())
-        args = [self.visit(node.value), _new(_ast.Str, node.attr)]
+        args = [self.visit(node.value), _new(_ast_Str, node.attr)]
         return _new(_ast.Call, func, args, [])
 
     def visit_Subscript(self, node):

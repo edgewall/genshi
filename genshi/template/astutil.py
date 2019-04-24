@@ -21,7 +21,7 @@ else:
     def parse(source, mode):
         return compile(source, '', mode, _ast.PyCF_ONLY_AST)
 
-from genshi.compat import IS_PYTHON2, isstring
+from genshi.compat import IS_PYTHON2, isstring, _ast_Ellipsis
 
 __docformat__ = 'restructuredtext en'
 
@@ -705,6 +705,10 @@ class ASTCodeGenerator(object):
     def visit_Str(self, node):
         self._write(repr(node.s))
 
+    # Constant(object value)
+    def visit_Constant(self, node):
+        self._write(repr(node.value))
+
     if not IS_PYTHON2:
         # Bytes(bytes s)
         def visit_Bytes(self, node):
@@ -721,7 +725,7 @@ class ASTCodeGenerator(object):
         self.visit(node.value)
         self._write('[')
         def _process_slice(node):
-            if isinstance(node, _ast.Ellipsis):
+            if isinstance(node, _ast_Ellipsis):
                 self._write('...')
             elif isinstance(node, _ast.Slice):
                 if getattr(node, 'lower', 'None'):

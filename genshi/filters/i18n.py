@@ -33,7 +33,7 @@ from genshi.template.eval import _ast
 from genshi.template.base import DirectiveFactory, EXPR, SUB, _apply_directives
 from genshi.template.directives import Directive, StripDirective
 from genshi.template.markup import MarkupTemplate, EXEC
-from genshi.compat import IS_PYTHON2
+from genshi.compat import IS_PYTHON2, _ast_Str
 
 __all__ = ['Translator', 'extract']
 __docformat__ = 'restructuredtext en'
@@ -1187,10 +1187,11 @@ def extract_from_code(code, gettext_functions):
                 and node.func.id in gettext_functions:
             strings = []
             def _add(arg):
-                if isinstance(arg, _ast.Str) and isinstance(arg.s, unicode):
-                    strings.append(arg.s)
-                elif isinstance(arg, _ast.Str):
-                    strings.append(unicode(arg.s, 'utf-8'))
+                if isinstance(arg, _ast_Str) \
+                        and isinstance(arg.value, unicode):
+                    strings.append(arg.value)
+                elif isinstance(arg, _ast_Str):
+                    strings.append(unicode(arg.value, 'utf-8'))
                 elif arg:
                     strings.append(None)
             [_add(arg) for arg in node.args]

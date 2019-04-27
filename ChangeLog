@@ -5,6 +5,13 @@ http://svn.edgewall.org/repos/genshi/tags/0.8.0/
  * ???
 
 
+Version 0.7.2
+https://github.com/edgewall/genshi/releases/tag/0.7.2
+(Apr 27 2019, from branches/stable/0.7.x)
+
+ * Add support for Python 3.8.
+
+
 Version 0.7.1
 https://github.com/edgewall/genshi/releases/tag/0.7.1
 (Sep 1 2018, from branches/stable/0.7.x)

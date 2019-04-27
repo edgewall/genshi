@@ -13,6 +13,7 @@
 
 """Various Python version compatibility classes and functions."""
 
+import _ast
 import sys
 from types import CodeType
 
@@ -95,6 +96,17 @@ else:
                         code.co_code, code.co_consts, code.co_names,
                         code.co_varnames, filename, name, lineno,
                         code.co_lnotab, (), ())
+
+
+# In Python 3.8, Str and Ellipsis was replaced by Constant
+
+try:
+    _ast_Ellipsis = _ast.Ellipsis
+    _ast_Str = _ast.Str
+    _ast.Str.value = property(lambda self: self.s)
+except AttributeError:
+    _ast_Ellipsis = _ast_Str = _ast.Constant
+
 
 # Compatibility fallback implementations for Python < 2.6
 

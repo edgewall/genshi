@@ -103,9 +103,10 @@ else:
 try:
     _ast_Ellipsis = _ast.Ellipsis
     _ast_Str = _ast.Str
-    _ast.Str.value = property(lambda self: self.s)
+    _ast_Str_value = lambda obj: obj.s
 except AttributeError:
     _ast_Ellipsis = _ast_Str = _ast.Constant
+    _ast_Str_value = lambda obj: obj.value
 
 
 # Compatibility fallback implementations for Python < 2.6

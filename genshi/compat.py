@@ -85,17 +85,26 @@ if IS_PYTHON2:
                         lineno, code.co_lnotab, (), ())
 else:
     def get_code_params(code):
-        return (code.co_nlocals, code.co_kwonlyargcount, code.co_stacksize,
-                code.co_flags, code.co_code, code.co_consts, code.co_names,
-                code.co_varnames, code.co_filename, code.co_name,
-                code.co_firstlineno, code.co_lnotab, (), ())
+        params = [code.co_nlocals, code.co_kwonlyargcount, code.co_stacksize,
+                  code.co_flags, code.co_code, code.co_consts, code.co_names,
+                  code.co_varnames, code.co_filename, code.co_name,
+                  code.co_firstlineno, code.co_lnotab, (), ()]
+        if hasattr(code, "co_posonlyargcount"):
+            # PEP 570 added "positional only arguments"
+            params.insert(1, code.co_posonlyargcount)
+        return tuple(params)
+
 
     def build_code_chunk(code, filename, name, lineno):
-        return CodeType(0, code.co_nlocals, code.co_kwonlyargcount,
-                        code.co_stacksize, code.co_flags | 0x0040,
-                        code.co_code, code.co_consts, code.co_names,
-                        code.co_varnames, filename, name, lineno,
-                        code.co_lnotab, (), ())
+        params =  [0, code.co_nlocals, code.co_kwonlyargcount,
+                  code.co_stacksize, code.co_flags | 0x0040,
+                  code.co_code, code.co_consts, code.co_names,
+                  code.co_varnames, filename, name, lineno,
+                  code.co_lnotab, (), ()]
+        if hasattr(code, "co_posonlyargcount"):
+            # PEP 570 added "positional only arguments"
+            params.insert(2, code.co_posonlyargcount)
+        return CodeType(*params)
 
 
 # In Python 3.8, Str and Ellipsis was replaced by Constant

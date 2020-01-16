@@ -125,8 +125,7 @@ feature is a template language, which is heavily inspired by Kid.""",
     author = 'Edgewall Software',
     author_email = 'info@edgewall.org',
     license = 'BSD',
-    url = 'http://genshi.edgewall.org/',
-    download_url = 'http://genshi.edgewall.org/wiki/Download',
+    url = 'https://github.com/edgewall/genshi',
 
     classifiers = [
         'Development Status :: 4 - Beta',

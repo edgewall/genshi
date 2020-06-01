@@ -16,7 +16,7 @@
 import htmlentitydefs as entities
 import re
 
-from compat import any, all, stringrepr
+from .compat import any, all, stringrepr
 
 __docformat__ = 'restructuredtext en'
 

@@ -13,6 +13,8 @@
 
 """Implementation of the various template directives."""
 
+import six
+
 from genshi.core import QName, Stream
 from genshi.path import Path
 from genshi.template.base import TemplateRuntimeError, TemplateSyntaxError, \
@@ -35,6 +37,7 @@ class DirectiveMeta(type):
         return type.__new__(cls, name, bases, d)
 
 
+@six.add_metaclass(DirectiveMeta)
 class Directive(object):
     """Abstract base class for template directives.
     
@@ -53,7 +56,6 @@ class Directive(object):
     described above, and can only be applied programmatically (for example by
     template filters).
     """
-    __metaclass__ = DirectiveMeta
     __slots__ = ['expr']
 
     def __init__(self, value, template=None, namespaces=None, lineno=-1,

@@ -17,6 +17,8 @@ from collections import deque
 import os
 import sys
 
+import six
+
 from genshi.compat import StringIO, BytesIO
 from genshi.core import Attrs, Stream, StreamEventKind, START, TEXT, _ensure
 from genshi.input import ParseError
@@ -321,12 +323,12 @@ class DirectiveFactoryMeta(type):
         return type.__new__(cls, name, bases, d)
 
 
+@six.add_metaclass(DirectiveFactoryMeta)
 class DirectiveFactory(object):
     """Base for classes that provide a set of template directives.
     
     :since: version 0.6
     """
-    __metaclass__ = DirectiveFactoryMeta
 
     directives = []
     """A list of ``(name, cls)`` tuples that define the set of directives

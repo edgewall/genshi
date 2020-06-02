@@ -268,7 +268,7 @@ def _ensure(stream):
     """Ensure that every item on the stream is actually a markup event."""
     stream = iter(stream)
     try:
-        event = stream.next()
+        event = next(stream)
     except StopIteration:
         return
 

@@ -115,7 +115,7 @@ class PushBackStream(object):
                 yield peek
             else:
                 try:
-                    event = self.stream.next()
+                    event = next(self.stream)
                     yield event
                 except StopIteration:
                     if self.peek is None:
@@ -730,7 +730,7 @@ class SelectTransformation(object):
         variables = {}
         test = self.path.test()
         stream = iter(stream)
-        next = stream.next
+        _next = lambda: next(stream)
         for mark, event in stream:
             if mark is None:
                 yield mark, event
@@ -743,7 +743,7 @@ class SelectTransformation(object):
                     yield ENTER, event
                     depth = 1
                     while depth > 0:
-                        mark, subevent = next()
+                        mark, subevent = _next()
                         if subevent[0] is START:
                             depth += 1
                         elif subevent[0] is END:

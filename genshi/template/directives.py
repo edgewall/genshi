@@ -167,12 +167,12 @@ class AttrsDirective(Directive):
 
     def __call__(self, stream, directives, ctxt, **vars):
         def _generate():
-            kind, (tag, attrib), pos  = stream.next()
+            kind, (tag, attrib), pos  = next(stream)
             attrs = _eval_expr(self.expr, ctxt, vars)
             if attrs:
                 if isinstance(attrs, Stream):
                     try:
-                        attrs = iter(attrs).next()
+                        attrs = next(iter(attrs))
                     except StopIteration:
                         attrs = []
                 elif not isinstance(attrs, list): # assume it's a dict
@@ -539,8 +539,8 @@ class StripDirective(Directive):
     def __call__(self, stream, directives, ctxt, **vars):
         def _generate():
             if not self.expr or _eval_expr(self.expr, ctxt, vars):
-                stream.next() # skip start tag
-                previous = stream.next()
+                next(stream) # skip start tag
+                previous = next(stream)
                 for event in stream:
                     yield previous
                     previous = event
@@ -632,13 +632,13 @@ class WhenDirective(Directive):
         if not info:
             raise TemplateRuntimeError('"when" directives can only be used '
                                        'inside a "choose" directive',
-                                       self.filename, *(stream.next())[2][1:])
+                                       self.filename, *(next(stream))[2][1:])
         if info[0]:
             return []
         if not self.expr and not info[1]:
             raise TemplateRuntimeError('either "choose" or "when" directive '
                                        'must have a test expression',
-                                       self.filename, *(stream.next())[2][1:])
+                                       self.filename, *(next(stream))[2][1:])
         if info[1]:
             value = info[2]
             if self.expr:
@@ -671,7 +671,7 @@ class OtherwiseDirective(Directive):
         if not info:
             raise TemplateRuntimeError('an "otherwise" directive can only be '
                                        'used inside a "choose" directive',
-                                       self.filename, *(stream.next())[2][1:])
+                                       self.filename, *(next(stream))[2][1:])
         if info[0]:
             return []
         info[0] = True

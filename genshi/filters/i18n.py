@@ -159,12 +159,12 @@ class MsgDirective(ExtractableI18NDirective):
 
         def _generate():
             msgbuf = MessageBuffer(self)
-            previous = stream.next()
+            previous = next(stream)
             if previous[0] is START:
                 yield previous
             else:
                 msgbuf.append(*previous)
-            previous = stream.next()
+            previous = next(stream)
             for kind, data, pos in stream:
                 msgbuf.append(*previous)
                 previous = kind, data, pos
@@ -184,13 +184,13 @@ class MsgDirective(ExtractableI18NDirective):
         strip = False
 
         stream = iter(stream)
-        previous = stream.next()
+        previous = next(stream)
         if previous[0] is START:
             for message in translator._extract_attrs(previous,
                                                      gettext_functions,
                                                      search_text=search_text):
                 yield message
-            previous = stream.next()
+            previous = next(stream)
             strip = True
         for event in stream:
             if event[0] is START:
@@ -214,14 +214,14 @@ class ChooseBranchDirective(I18NDirective):
         msgbuf = MessageBuffer(self)
         stream = _apply_directives(stream, directives, ctxt, vars)
 
-        previous = stream.next()
+        previous = next(stream)
         if previous[0] is START:
             yield previous
         else:
             msgbuf.append(*previous)
 
         try:
-            previous = stream.next()
+            previous = next(stream)
         except StopIteration:
             # For example <i18n:singular> or <i18n:plural> directives
             yield MSGBUF, (), -1 # the place holder for msgbuf output
@@ -242,7 +242,7 @@ class ChooseBranchDirective(I18NDirective):
     def extract(self, translator, stream, gettext_functions=GETTEXT_FUNCTIONS,
                 search_text=True, comment_stack=None, msgbuf=None):
         stream = iter(stream)
-        previous = stream.next()
+        previous = next(stream)
 
         if previous[0] is START:
             # skip the enclosing element
@@ -250,7 +250,7 @@ class ChooseBranchDirective(I18NDirective):
                                                      gettext_functions,
                                                      search_text=search_text):
                 yield message
-            previous = stream.next()
+            previous = next(stream)
 
         for event in stream:
             if previous[0] is START:
@@ -423,7 +423,7 @@ class ChooseDirective(ExtractableI18NDirective):
                 search_text=True, comment_stack=None):
         strip = False
         stream = iter(stream)
-        previous = stream.next()
+        previous = next(stream)
 
         if previous[0] is START:
             # skip the enclosing element
@@ -431,7 +431,7 @@ class ChooseDirective(ExtractableI18NDirective):
                                                      gettext_functions,
                                                      search_text=search_text):
                 yield message
-            previous = stream.next()
+            previous = next(stream)
             strip = True
 
         singular_msgbuf = MessageBuffer(self)

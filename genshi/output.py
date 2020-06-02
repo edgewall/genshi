@@ -666,7 +666,8 @@ class NamespaceFlattener(object):
             while 1:
                 val += 1
                 yield 'ns%d' % val
-        _gen_prefix = _gen_prefix().next
+        _prefix_generator = _gen_prefix()
+        _gen_prefix = lambda: next(_prefix_generator)
 
         for kind, data, pos in stream:
             if kind is TEXT and isinstance(data, Markup):

@@ -311,9 +311,8 @@ class MarkupTemplate(Template):
 
         def _strip(stream, append):
             depth = 1
-            next = stream.next
             while 1:
-                event = next()
+                event = next(stream)
                 if event[0] is START:
                     depth += 1
                 elif event[0] is END:

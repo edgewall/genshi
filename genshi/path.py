@@ -576,7 +576,7 @@ class Path(object):
             variables = {}
         stream = iter(stream)
         def _generate(stream=stream, ns=namespaces, vs=variables):
-            next = stream.next
+            _next = lambda: next(stream)
             test = self.test()
             for event in stream:
                 result = test(event, ns, vs)
@@ -585,7 +585,7 @@ class Path(object):
                     if event[0] is START:
                         depth = 1
                         while depth > 0:
-                            subevent = next()
+                            subevent = _next()
                             if subevent[0] is START:
                                 depth += 1
                             elif subevent[0] is END:

@@ -864,7 +864,7 @@ with open(path) as file:
 
         def test_yield_expression(self):
             d = {}
-            suite = Suite("""from genshi.compat import next
+            suite = Suite("""
 results = []
 def counter(maximum):
     i = 0

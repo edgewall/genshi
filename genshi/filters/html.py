@@ -13,10 +13,6 @@
 
 """Implementation of a number of stream filters."""
 
-try:
-    any
-except NameError:
-    from genshi.util import any
 import re
 
 from genshi.core import Attrs, QName, stripentities

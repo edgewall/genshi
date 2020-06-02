@@ -118,28 +118,3 @@ except AttributeError:
     _ast_Str_value = lambda obj: obj.value
 
 
-# Compatibility fallback implementations for Python < 2.6
-
-try:
-    next = next
-except NameError:
-    def next(iterator):
-        return iterator.next()
-
-# Compatibility fallback implementations for Python < 2.5
-
-try:
-    all = all
-    any = any
-except NameError:
-    def any(S):
-        for x in S:
-            if x:
-                return True
-        return False
-
-    def all(S):
-        for x in S:
-            if not x:
-                return False
-        return True

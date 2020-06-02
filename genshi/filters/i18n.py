@@ -18,10 +18,6 @@ templates.
 :note: Directives support added since version 0.6
 """
 
-try:
-    any
-except NameError:
-    from genshi.util import any
 from gettext import NullTranslations
 import os
 import re

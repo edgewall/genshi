@@ -11,6 +11,7 @@
 # individuals. For the exact contribution history, see the revision
 # history and logs, available at http://genshi.edgewall.org/log/.
 
+from __future__ import print_function
 
 try:
     from os import times
@@ -61,23 +62,23 @@ def spell(t):
 
 def test_paths_in_streams(exprs, streams, test_strategies=False):
     for expr in exprs:
-        print "Testing path %r" % expr
+        print("Testing path %r" % expr)
         for stream, sname in streams:
-            print '\tRunning on "%s" example:' % sname
+            print('\tRunning on "%s" example:' % sname)
 
             path = Path(expr)
             def f():
                 for e in path.select(stream):
                     pass
             t = spell(benchmark(f))
-            print "\t\tselect:\t\t%s" % t
+            print("\t\tselect:\t\t%s" % t)
 
             def f():
                 path = Path(expr)
                 for e in path.select(stream):
                     pass
             t = spell(benchmark(f))
-            print "\t\tinit + select:\t%s" % t
+            print("\t\tinit + select:\t%s" % t)
 
             if test_strategies and len(path.paths) == 1:
                 from genshi.path import GenericStrategy, SingleStepStrategy, \
@@ -88,13 +89,13 @@ def test_paths_in_streams(exprs, streams, test_strategies=False):
                 for strategy in strategies:
                     if not strategy.supports(path.paths[0]):
                         continue
-                    print "\t\t%s Strategy"%strategy.__name__
+                    print("\t\t%s Strategy"%strategy.__name__)
                     fp = FakePath(strategy(path.paths[0]))
                     def f():
                         for e in fp.select(stream):
                             pass
                     t = spell(benchmark(f))
-                    print "\t\t\tselect:\t\t%s"%t
+                    print("\t\t\tselect:\t\t%s"%t)
 
 
 def test_documents(test_strategies=False):

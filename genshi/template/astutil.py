@@ -13,17 +13,14 @@
 
 """Support classes for generating code from abstract syntax trees."""
 
-try:
-    import _ast
-except ImportError:
-    from genshi.template.ast24 import _ast, parse
-else:
-    def parse(source, mode):
-        return compile(source, '', mode, _ast.PyCF_ONLY_AST)
+import _ast
 
 from genshi.compat import IS_PYTHON2, isstring, _ast_Ellipsis
 
 __docformat__ = 'restructuredtext en'
+
+def parse(source, mode):
+    return compile(source, '', mode, _ast.PyCF_ONLY_AST)
 
 
 class ASTCodeGenerator(object):

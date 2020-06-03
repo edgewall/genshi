@@ -526,7 +526,7 @@ class HTMLSanitizer(object):
         def _repl(match):
             t = match.group(1)
             if t:
-                return unichr(int(t, 16))
+                return six.unichr(int(t, 16))
             t = match.group(2)
             if t == '\\':
                 return r'\\'

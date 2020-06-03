@@ -17,6 +17,8 @@ import re
 
 from six.moves import html_entities as entities
 
+import six
+
 from .compat import stringrepr
 
 __docformat__ = 'restructuredtext en'
@@ -213,13 +215,13 @@ def stripentities(text, keepxmlentities=False):
                 ref = int(ref[1:], 16)
             else:
                 ref = int(ref, 10)
-            return unichr(ref)
+            return six.unichr(ref)
         else: # character entity
             ref = match.group(2)
             if keepxmlentities and ref in ('amp', 'apos', 'gt', 'lt', 'quot'):
                 return '&%s;' % ref
             try:
-                return unichr(entities.name2codepoint[ref])
+                return six.unichr(entities.name2codepoint[ref])
             except KeyError:
                 if keepxmlentities:
                     return '&amp;%s;' % ref

@@ -68,6 +68,8 @@ returns an object of type `Fragment`:
 Hello, <em>world</em>!
 """
 
+import six
+
 from genshi.compat import numeric_types
 from genshi.core import Attrs, Markup, Namespace, QName, Stream, \
                         START, END, TEXT
@@ -108,7 +110,7 @@ class Fragment(object):
         return str(self.generate())
 
     def __unicode__(self):
-        return unicode(self.generate())
+        return six.text_type(self.generate())
 
     def __html__(self):
         return Markup(self.generate())
@@ -119,7 +121,7 @@ class Fragment(object):
         :param node: the node to append; can be an `Element`, `Fragment`, or a
                      `Stream`, or a Python string or number
         """
-        simple_types = (Stream, Element, basestring) + numeric_types
+        simple_types = (Stream, Element) + six.string_types + numeric_types
         if isinstance(node, simple_types):
             # For objects of a known/primitive type, we avoid the check for
             # whether it is iterable for better performance
@@ -142,8 +144,8 @@ class Fragment(object):
                 for event in child:
                     yield event
             else:
-                if not isinstance(child, basestring):
-                    child = unicode(child)
+                if not isinstance(child, six.string_types):
+                    child = six.text_type(child)
                 yield TEXT, child, (None, -1, -1)
 
     def generate(self):
@@ -160,7 +162,7 @@ def _kwargs_to_attrs(kwargs):
     for name, value in kwargs.items():
         name = name.rstrip('_').replace('_', '-')
         if value is not None and name not in names:
-            attrs.append((QName(name), unicode(value)))
+            attrs.append((QName(name), six.text_type(value)))
             names.add(name)
     return Attrs(attrs)
 

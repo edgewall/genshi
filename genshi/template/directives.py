@@ -178,7 +178,7 @@ class AttrsDirective(Directive):
                 elif not isinstance(attrs, list): # assume it's a dict
                     attrs = attrs.items()
                 attrib |= [
-                    (QName(n), v is not None and unicode(v).strip() or None)
+                    (QName(n), v is not None and six.text_type(v).strip() or None)
                     for n, v in attrs
                 ]
             yield kind, (tag, attrib), pos

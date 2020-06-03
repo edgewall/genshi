@@ -939,7 +939,7 @@ def as_string(value):
     value = as_scalar(value)
     if value is False:
         return ''
-    return unicode(value)
+    return six.text_type(value)
 
 def as_bool(value):
     return bool(as_scalar(value))

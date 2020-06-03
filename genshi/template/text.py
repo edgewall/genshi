@@ -28,6 +28,8 @@ new syntax to remain compatible with future Genshi releases.
 
 import re
 
+import six
+
 from genshi.core import TEXT
 from genshi.template.base import BadDirectiveError, Template, \
                                  TemplateSyntaxError, EXEC, INCLUDE, SUB
@@ -162,7 +164,7 @@ class NewTextTemplate(Template):
         depth = 0
 
         source = source.read()
-        if not isinstance(source, unicode):
+        if not isinstance(source, six.text_type):
             source = source.decode(encoding or 'utf-8', 'replace')
         offset = 0
         lineno = 1
@@ -279,7 +281,7 @@ class OldTextTemplate(Template):
         depth = 0
 
         source = source.read()
-        if not isinstance(source, unicode):
+        if not isinstance(source, six.text_type):
             source = source.decode(encoding or 'utf-8', 'replace')
         offset = 0
         lineno = 1

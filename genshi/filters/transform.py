@@ -33,7 +33,7 @@ the ``<head>`` of the input document:
 ...  </body>
 ... </html>''',
 ... encoding='utf-8')
->>> print(html | Transformer('body/em').map(unicode.upper, TEXT)
+>>> print(html | Transformer('body/em').map(six.text_type.upper, TEXT)
 ...                                    .unwrap().wrap(tag.u))
 <html>
   <head><title>Some Title</title></head>
@@ -50,6 +50,8 @@ box, but custom transformations can be added easily.
 
 import re
 import sys
+
+import six
 
 from genshi.builder import Element
 from genshi.core import Stream, Attrs, QName, TEXT, START, END, _ensure, Markup
@@ -625,10 +627,11 @@ class Transformer(object):
         """Applies a function to the ``data`` element of events of ``kind`` in
         the selection.
 
+        >>> import six
         >>> html = HTML('<html><head><title>Some Title</title></head>'
         ...               '<body>Some <em>body</em> text.</body></html>',
         ...             encoding='utf-8')
-        >>> print(html | Transformer('head/title').map(unicode.upper, TEXT))
+        >>> print(html | Transformer('head/title').map(six.text_type.upper, TEXT))
         <html><head><title>SOME TITLE</title></head><body>Some <em>body</em>
         text.</body></html>
 
@@ -764,7 +767,7 @@ class SelectTransformation(object):
                 yield OUTSIDE, result
             elif result:
                 # XXX Assume everything else is "text"?
-                yield None, (TEXT, unicode(result), (None, -1, -1))
+                yield None, (TEXT, six.text_type(result), (None, -1, -1))
             else:
                 yield None, event
 
@@ -990,7 +993,7 @@ class SubstituteTransformation(object):
         :param replace: Replacement pattern.
         :param count: Number of replacements to make in each text fragment.
         """
-        if isinstance(pattern, basestring):
+        if isinstance(pattern, six.string_types):
             self.pattern = re.compile(pattern)
         else:
             self.pattern = pattern

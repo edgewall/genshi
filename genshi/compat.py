@@ -40,12 +40,8 @@ else:
 
 # We need to test if an object is an instance of a string type in places
 
-if IS_PYTHON2:
-    def isstring(obj):
-        return isinstance(obj, basestring)
-else:
-    def isstring(obj):
-        return isinstance(obj, str)
+def isstring(obj):
+    return isinstance(obj, six.string_types)
 
 # We need to differentiate between StringIO and BytesIO in places
 

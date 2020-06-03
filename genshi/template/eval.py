@@ -18,6 +18,8 @@ import __builtin__
 from textwrap import dedent
 from types import CodeType
 
+import six
+
 from genshi.core import Markup
 from genshi.template.astutil import ASTTransformer, ASTCodeGenerator, \
                                     _ast, parse
@@ -77,8 +79,12 @@ class Code(object):
         self._globals = lookup.globals
 
     def __getstate__(self):
-        state = {'source': self.source, 'ast': self.ast,
-                 'lookup': self._globals.im_self}
+        if hasattr(self._globals, '__self__'):
+            # Python 3
+            lookup_fn = self._globals.__self__
+        else:
+            lookup_fn = self._globals.im_self
+        state = {'source': self.source, 'ast': self.ast, 'lookup': lookup_fn}
         state['code'] = get_code_params(self.code)
         return state
 
@@ -174,7 +180,7 @@ class Suite(Code):
         """
         __traceback_hide__ = 'before_and_this'
         _globals = self._globals(data)
-        exec self.code in _globals, data
+        six.exec_(self.code, _globals, data)
 
 
 UNDEFINED = object()
@@ -242,8 +248,10 @@ class Undefined(object):
     def __iter__(self):
         return iter([])
 
-    def __nonzero__(self):
+    def __bool__(self):
         return False
+    # Python 2
+    __nonzero__ = __bool__
 
     def __repr__(self):
         return '<%s %r>' % (type(self).__name__, self._name)

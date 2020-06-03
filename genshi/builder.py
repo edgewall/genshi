@@ -68,6 +68,7 @@ returns an object of type `Fragment`:
 Hello, <em>world</em>!
 """
 
+from genshi.compat import numeric_types
 from genshi.core import Attrs, Markup, Namespace, QName, Stream, \
                         START, END, TEXT
 
@@ -118,7 +119,8 @@ class Fragment(object):
         :param node: the node to append; can be an `Element`, `Fragment`, or a
                      `Stream`, or a Python string or number
         """
-        if isinstance(node, (Stream, Element, basestring, int, float, long)):
+        simple_types = (Stream, Element, basestring) + numeric_types
+        if isinstance(node, simple_types):
             # For objects of a known/primitive type, we avoid the check for
             # whether it is iterable for better performance
             self.children.append(node)

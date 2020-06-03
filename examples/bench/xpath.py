@@ -33,7 +33,7 @@ def benchmark(f, acurate_time=1):
     runs = 1
     while True:
         start_time = time_func()
-        for _ in xrange(runs):
+        for _ in range(runs):
             f()
         dt = time_func() - start_time
         if dt >= acurate_time:

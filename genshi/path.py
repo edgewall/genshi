@@ -45,6 +45,9 @@ import operator
 import re
 from itertools import chain
 
+import six
+
+from genshi.compat import IS_PYTHON2
 from genshi.core import Stream, Attrs, Namespace, QName
 from genshi.core import START, END, TEXT, START_NS, END_NS, COMMENT, PI, \
                         START_CDATA, END_CDATA
@@ -929,7 +932,8 @@ def as_float(value):
     return float(as_scalar(value))
 
 def as_long(value):
-    return long(as_scalar(value))
+    long_cls = long if IS_PYTHON2 else int
+    return long_cls(as_scalar(value))
 
 def as_string(value):
     value = as_scalar(value)

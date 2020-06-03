@@ -17,9 +17,11 @@ import _ast
 import sys
 from types import CodeType
 
+import six
 
 IS_PYTHON2 = (sys.version_info[0] == 2)
 
+numeric_types = (float, ) + six.integer_types
 
 # This function should only be called in Python 2, and will fail in Python 3
 

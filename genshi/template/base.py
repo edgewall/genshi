@@ -19,7 +19,7 @@ import sys
 
 import six
 
-from genshi.compat import StringIO, BytesIO
+from genshi.compat import numeric_types, StringIO, BytesIO
 from genshi.core import Attrs, Stream, StreamEventKind, START, TEXT, _ensure
 from genshi.input import ParseError
 
@@ -605,7 +605,7 @@ class Template(DirectiveFactory):
                         # individual characters
                         if isinstance(result, basestring):
                             yield TEXT, result, pos
-                        elif isinstance(result, (int, float, long)):
+                        elif isinstance(result, numeric_types):
                             yield TEXT, number_conv(result), pos
                         elif hasattr(result, '__iter__'):
                             push(stream)

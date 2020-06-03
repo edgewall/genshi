@@ -82,10 +82,10 @@ class ExpressionTestCase(unittest.TestCase):
     def test_num_literal(self):
         self.assertEqual(42, Expression("42").evaluate({}))
         if IS_PYTHON2:
-            self.assertEqual(42L, Expression("42L").evaluate({}))
+            self.assertEqual(42, Expression("42L").evaluate({}))
         self.assertEqual(.42, Expression(".42").evaluate({}))
         if IS_PYTHON2:
-            self.assertEqual(07, Expression("07").evaluate({}))
+            self.assertEqual(7, Expression("07").evaluate({}))
         self.assertEqual(0xF2, Expression("0xF2").evaluate({}))
         self.assertEqual(0XF2, Expression("0XF2").evaluate({}))
 

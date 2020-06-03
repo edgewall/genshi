@@ -521,11 +521,11 @@ class HTMLSanitizerTestCase(unittest.TestCase):
         self.assertEquals('<img/>', (html | HTMLSanitizer()).render())
 
     def test_sanitize_expression(self):
-        html = HTML(ur'<div style="top:expression(alert())">XSS</div>')
+        html = HTML(u'<div style="top:expression(alert())">XSS</div>')
         self.assertEqual('<div>XSS</div>', unicode(html | StyleSanitizer()))
 
     def test_capital_expression(self):
-        html = HTML(ur'<div style="top:EXPRESSION(alert())">XSS</div>')
+        html = HTML(u'<div style="top:EXPRESSION(alert())">XSS</div>')
         self.assertEqual('<div>XSS</div>', unicode(html | StyleSanitizer()))
 
     def test_sanitize_url_with_javascript(self):
@@ -539,17 +539,16 @@ class HTMLSanitizerTestCase(unittest.TestCase):
         self.assertEqual('<div>XSS</div>', unicode(html | StyleSanitizer()))
 
     def test_sanitize_unicode_escapes(self):
-        html = HTML(ur'<div style="top:exp\72 ess\000069 on(alert())">'
-                    ur'XSS</div>')
+        html = HTML(u'<div style="top:exp\\72 ess\\000069 on(alert())">'
+                    u'XSS</div>')
         self.assertEqual('<div>XSS</div>', unicode(html | StyleSanitizer()))
 
     def test_sanitize_backslash_without_hex(self):
-        html = HTML(ur'<div style="top:e\xp\ression(alert())">XSS</div>')
+        html = HTML(u'<div style="top:e\\xp\\ression(alert())">XSS</div>')
         self.assertEqual('<div>XSS</div>', unicode(html | StyleSanitizer()))
-        html = HTML(ur'<div style="top:e\\xp\\ression(alert())">XSS</div>')
-        self.assertEqual(r'<div style="top:e\\xp\\ression(alert())">'
-                         'XSS</div>',
-                         unicode(html | StyleSanitizer()))
+        input_str = u'<div style="top:e\\\\xp\\\\ression(alert())">XSS</div>'
+        html = HTML(input_str)
+        self.assertEqual(input_str, unicode(html | StyleSanitizer()))
 
     def test_sanitize_unsafe_props(self):
         html = HTML(u'<div style="POSITION:RELATIVE">XSS</div>')

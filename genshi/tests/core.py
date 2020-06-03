@@ -18,7 +18,7 @@ import unittest
 from genshi import core
 from genshi.core import Markup, Attrs, Namespace, QName, escape, unescape
 from genshi.input import XML, ParseError
-from genshi.compat import StringIO, BytesIO
+from genshi.compat import StringIO, BytesIO, IS_PYTHON2
 
 
 class StreamTestCase(unittest.TestCase):
@@ -66,7 +66,8 @@ class MarkupTestCase(unittest.TestCase):
 
     def test_repr(self):
         markup = Markup('foo')
-        self.assertEquals("<Markup u'foo'>", repr(markup))
+        expected_foo = "u'foo'" if IS_PYTHON2 else "'foo'"
+        self.assertEquals("<Markup %s>" % expected_foo, repr(markup))
 
     def test_escape(self):
         markup = escape('<b>"&"</b>')
@@ -169,7 +170,8 @@ class MarkupTestCase(unittest.TestCase):
         buf = BytesIO()
         pickle.dump(markup, buf, 2)
         buf.seek(0)
-        self.assertEquals("<Markup u'foo'>", repr(pickle.load(buf)))
+        expected_foo = "u'foo'" if IS_PYTHON2 else "'foo'"
+        self.assertEquals("<Markup %s>" % expected_foo, repr(pickle.load(buf)))
 
 
 class AttrsTestCase(unittest.TestCase):

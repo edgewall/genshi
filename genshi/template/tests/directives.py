@@ -16,6 +16,7 @@ import re
 import sys
 import unittest
 
+from genshi.compat import IS_PYTHON2
 from genshi.template import directives, MarkupTemplate, TextTemplate, \
                             TemplateRuntimeError, TemplateSyntaxError
 
@@ -496,7 +497,8 @@ class ForDirectiveTestCase(unittest.TestCase):
             while frame.tb_next:
                 frame = frame.tb_next
                 frames.append(frame)
-            self.assertEqual("<Expression u'iter(foo)'>",
+            expected_iter_str = "u'iter(foo)'" if IS_PYTHON2 else "'iter(foo)'"
+            self.assertEqual("<Expression %s>" % expected_iter_str,
                              frames[-1].tb_frame.f_code.co_name)
             self.assertEqual('test.html',
                              frames[-1].tb_frame.f_code.co_filename)

@@ -13,10 +13,7 @@
 
 """Core classes for markup processing."""
 
-try:
-    reduce # builtin in Python < 3
-except NameError:
-    from functools import reduce
+from functools import reduce
 import sys
 from itertools import chain
 import operator

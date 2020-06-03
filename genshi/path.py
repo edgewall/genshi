@@ -39,10 +39,7 @@ structures), it only implements a subset of the full XPath 1.0 language.
 """
 
 from collections import deque
-try:
-    reduce # builtin in Python < 3
-except NameError:
-    from functools import reduce
+from functools import reduce
 from math import ceil, floor
 import operator
 import re

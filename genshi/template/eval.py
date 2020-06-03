@@ -13,12 +13,11 @@
 
 """Support for "safe" evaluation of Python expressions."""
 
-import __builtin__
-
 from textwrap import dedent
 from types import CodeType
 
 import six
+from six.moves import builtins
 
 from genshi.core import Markup
 from genshi.template.astutil import ASTTransformer, ASTCodeGenerator, \
@@ -468,7 +467,7 @@ def _new(class_, *args, **kwargs):
     return ret
 
 
-BUILTINS = __builtin__.__dict__.copy()
+BUILTINS = builtins.__dict__.copy()
 BUILTINS.update({'Markup': Markup, 'Undefined': Undefined})
 CONSTANTS = frozenset(['False', 'True', 'None', 'NotImplemented', 'Ellipsis'])
 

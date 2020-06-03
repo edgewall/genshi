@@ -13,8 +13,9 @@
 
 """Various utility classes and functions."""
 
-import htmlentitydefs as entities
 import re
+
+from six.moves import html_entities as entities
 
 from .compat import stringrepr
 

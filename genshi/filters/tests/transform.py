@@ -24,6 +24,7 @@ from genshi.core import START, END, TEXT, QName, Attrs
 from genshi.filters.transform import Transformer, StreamBuffer, ENTER, EXIT, \
                                      OUTSIDE, INSIDE, ATTR, BREAK
 import genshi.filters.transform
+from genshi.tests.test_utils import doctest_suite
 
 
 FOO = '<root>ROOT<foo name="foo">FOO</foo></root>'
@@ -1493,7 +1494,7 @@ def suite():
                  MapTest, SubstituteTest, RenameTest, ReplaceTest, BeforeTest,
                  AfterTest, PrependTest, AppendTest, AttrTest, CopyTest, CutTest):
         suite.addTest(unittest.makeSuite(test, 'test'))
-    suite.addTest(doctest.DocTestSuite(
+    suite.addTest(doctest_suite(
         genshi.filters.transform, optionflags=doctest.NORMALIZE_WHITESPACE,
         extraglobs={'HTML': HTML, 'tag': tag, 'Markup': Markup}))
     return suite

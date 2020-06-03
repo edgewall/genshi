@@ -19,6 +19,7 @@ import six
 from genshi.input import HTML, ParseError
 from genshi.filters.html import HTMLFormFiller, HTMLSanitizer
 from genshi.template import MarkupTemplate
+from genshi.tests.test_utils import doctest_suite
 
 class HTMLFormFillerTestCase(unittest.TestCase):
 
@@ -613,7 +614,7 @@ class HTMLSanitizerTestCase(unittest.TestCase):
 
 def suite():
     suite = unittest.TestSuite()
-    suite.addTest(doctest.DocTestSuite(HTMLFormFiller.__module__))
+    suite.addTest(doctest_suite(HTMLFormFiller.__module__))
     suite.addTest(unittest.makeSuite(HTMLFormFillerTestCase, 'test'))
     suite.addTest(unittest.makeSuite(HTMLSanitizerTestCase, 'test'))
     return suite

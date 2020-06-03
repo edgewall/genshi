@@ -23,6 +23,7 @@ from genshi.template import MarkupTemplate, Context
 from genshi.filters.i18n import Translator, extract
 from genshi.input import HTML
 from genshi.compat import IS_PYTHON2, StringIO
+from genshi.tests.test_utils import doctest_suite
 
 
 class DummyTranslations(NullTranslations):
@@ -2008,7 +2009,7 @@ class ExtractTestCase(unittest.TestCase):
 
 def suite():
     suite = unittest.TestSuite()
-    suite.addTest(doctest.DocTestSuite(Translator.__module__))
+    suite.addTest(doctest_suite(Translator.__module__))
     suite.addTest(unittest.makeSuite(TranslatorTestCase, 'test'))
     suite.addTest(unittest.makeSuite(MsgDirectiveTestCase, 'test'))
     suite.addTest(unittest.makeSuite(ChooseDirectiveTestCase, 'test'))

@@ -72,7 +72,7 @@ class CommentDirective(I18NDirective):
     >>> translator = Translator()
     >>> translator.setup(tmpl)
     >>> list(translator.extract(tmpl.stream))
-    [(2, None, u'Foo', [u'As in Foo Bar'])]
+    [(2, None, 'Foo', ['As in Foo Bar'])]
     """
     __slots__ = ['comment']
 
@@ -97,7 +97,7 @@ class MsgDirective(ExtractableI18NDirective):
     >>> translator = Translator()
     >>> translator.setup(tmpl)
     >>> list(translator.extract(tmpl.stream))
-    [(2, None, u'[1:Foo]\n    [2:Bar]', []), (6, None, u'Foo [1:bar]!', [])]
+    [(2, None, '[1:Foo]\n    [2:Bar]', []), (6, None, 'Foo [1:bar]!', [])]
     >>> print(tmpl.generate().render())
     <html>
       <div><p>Foo</p>
@@ -114,8 +114,8 @@ class MsgDirective(ExtractableI18NDirective):
     ... </html>''')
     >>> translator.setup(tmpl)
     >>> list(translator.extract(tmpl.stream)) #doctest: +NORMALIZE_WHITESPACE
-    [(2, None, u'[1:First Name: %(fname)s]\n    [2:Last Name: %(lname)s]', []),
-    (6, None, u'Foo [1:bar]!', [])]
+    [(2, None, '[1:First Name: %(fname)s]\n    [2:Last Name: %(lname)s]', []),
+    (6, None, 'Foo [1:bar]!', [])]
 
     >>> tmpl = MarkupTemplate('''<html xmlns:i18n="http://genshi.edgewall.org/i18n">
     ...   <div i18n:msg="fname, lname">
@@ -296,8 +296,8 @@ class ChooseDirective(ExtractableI18NDirective):
     >>> translator = Translator()
     >>> translator.setup(tmpl)
     >>> list(translator.extract(tmpl.stream)) #doctest: +NORMALIZE_WHITESPACE
-    [(2, 'ngettext', (u'There is %(num)s coin',
-                      u'There are %(num)s coins'), [])]
+    [(2, 'ngettext', ('There is %(num)s coin',
+                      'There are %(num)s coins'), [])]
 
     >>> tmpl = MarkupTemplate('''<html xmlns:i18n="http://genshi.edgewall.org/i18n">
     ...   <div i18n:choose="num; num">
@@ -329,8 +329,8 @@ class ChooseDirective(ExtractableI18NDirective):
     ... </html>''')
     >>> translator.setup(tmpl)
     >>> list(translator.extract(tmpl.stream)) #doctest: +NORMALIZE_WHITESPACE
-    [(2, 'ngettext', (u'There is %(num)s coin',
-                      u'There are %(num)s coins'), [])]
+    [(2, 'ngettext', ('There is %(num)s coin',
+                      'There are %(num)s coins'), [])]
     """
     __slots__ = ['numeral', 'params', 'lineno']
 
@@ -791,10 +791,10 @@ class Translator(DirectiveFactory):
         ... </html>''', filename='example.html')
         >>> for line, func, msg, comments in Translator().extract(tmpl.stream):
         ...    print('%d, %r, %r' % (line, func, msg))
-        3, None, u'Example'
-        6, None, u'Example'
-        7, '_', u'Hello, %(name)s'
-        8, 'ngettext', (u'You have %d item', u'You have %d items', None)
+        3, None, 'Example'
+        6, None, 'Example'
+        7, '_', 'Hello, %(name)s'
+        8, 'ngettext', ('You have %d item', 'You have %d items', None)
         
         :param stream: the event stream to extract strings from; can be a
                        regular stream or a template stream
@@ -1168,12 +1168,12 @@ def extract_from_code(code, gettext_functions):
     >>> from genshi.template.eval import Expression
     >>> expr = Expression('_("Hello")')
     >>> list(extract_from_code(expr, GETTEXT_FUNCTIONS))
-    [('_', u'Hello')]
+    [('_', 'Hello')]
     
     >>> expr = Expression('ngettext("You have %(num)s item", '
     ...                            '"You have %(num)s items", num)')
     >>> list(extract_from_code(expr, GETTEXT_FUNCTIONS))
-    [('ngettext', (u'You have %(num)s item', u'You have %(num)s items', None))]
+    [('ngettext', ('You have %(num)s item', 'You have %(num)s items', None))]
     
     :param code: the `Code` object
     :type code: `genshi.template.eval.Code`

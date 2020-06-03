@@ -623,12 +623,12 @@ class NamespaceFlattener(object):
     ... </doc>''')
     >>> for kind, data, pos in NamespaceFlattener()(xml):
     ...     print('%s %r' % (kind, data))
-    START (u'doc', Attrs([('xmlns', u'NS1'), (u'xmlns:two', u'NS2')]))
-    TEXT u'\n  '
-    START (u'two:item', Attrs())
-    END u'two:item'
-    TEXT u'\n'
-    END u'doc'
+    START ('doc', Attrs([('xmlns', 'NS1'), ('xmlns:two', 'NS2')]))
+    TEXT '\n  '
+    START ('two:item', Attrs())
+    END 'two:item'
+    TEXT '\n'
+    END 'doc'
     """
 
     def __init__(self, prefixes=None, cache=True):

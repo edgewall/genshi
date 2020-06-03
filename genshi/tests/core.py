@@ -19,6 +19,7 @@ from genshi import core
 from genshi.core import Markup, Attrs, Namespace, QName, escape, unescape
 from genshi.input import XML, ParseError
 from genshi.compat import StringIO, BytesIO, IS_PYTHON2
+from genshi.tests.test_utils import doctest_suite
 
 
 class StreamTestCase(unittest.TestCase):
@@ -261,7 +262,7 @@ def suite():
     suite.addTest(unittest.makeSuite(NamespaceTestCase, 'test'))
     suite.addTest(unittest.makeSuite(AttrsTestCase, 'test'))
     suite.addTest(unittest.makeSuite(QNameTestCase, 'test'))
-    suite.addTest(doctest.DocTestSuite(core))
+    suite.addTest(doctest_suite(core))
     return suite
 
 if __name__ == '__main__':

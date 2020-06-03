@@ -476,7 +476,7 @@ class HTMLSanitizer(object):
         ...   background: url(javascript:alert("foo"));
         ...   color: #000;
         ... ''')
-        [u'color: #000']
+        ['color: #000']
         
         Also, the proprietary Internet Explorer function ``expression()`` is
         always stripped:
@@ -486,7 +486,7 @@ class HTMLSanitizer(object):
         ...   color: #000;
         ...   width: e/**/xpression(alert("foo"));
         ... ''')
-        [u'background: #fff', u'color: #000']
+        ['background: #fff', 'color: #000']
         
         :param text: the CSS text; this is expected to be `unicode` and to not
                      contain any character or numeric references

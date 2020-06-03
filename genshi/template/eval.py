@@ -222,13 +222,13 @@ class Undefined(object):
     >>> try:
     ...     foo('bar')
     ... except UndefinedError as e:
-    ...     print e.msg
+    ...     print(e.msg)
     "foo" not defined
 
     >>> try:
     ...     foo.bar
     ... except UndefinedError as e:
-    ...     print e.msg
+    ...     print(e.msg)
     "foo" not defined
     
     :see: `LenientLookup`
@@ -377,7 +377,7 @@ class StrictLookup(LookupBase):
     >>> try:
     ...     expr.evaluate({})
     ... except UndefinedError as e:
-    ...     print e.msg
+    ...     print(e.msg)
     "nothing" not defined
     
     The same happens when a non-existing attribute or item is accessed on an
@@ -387,7 +387,7 @@ class StrictLookup(LookupBase):
     >>> try:
     ...     expr.evaluate({'something': dict()})
     ... except UndefinedError as e:
-    ...     print e.msg
+    ...     print(e.msg)
     {} has no member named "nil"
     """
 

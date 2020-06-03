@@ -334,29 +334,31 @@ class ExpressionTestCase(unittest.TestCase):
 
     def test_slice(self):
         expr = Expression("numbers[0:2]")
-        self.assertEqual([0, 1], expr.evaluate({'numbers': range(5)}))
+        self.assertEqual([0, 1], expr.evaluate({'numbers': list(range(5))}))
 
     def test_slice_with_vars(self):
         expr = Expression("numbers[start:end]")
-        self.assertEqual([0, 1], expr.evaluate({'numbers': range(5), 'start': 0,
-                                                'end': 2}))
+        res = expr.evaluate({'numbers': list(range(5)), 'start': 0, 'end': 2})
+        self.assertEqual([0, 1], res)
 
     def test_slice_copy(self):
         expr = Expression("numbers[:]")
-        self.assertEqual([0, 1, 2, 3, 4], expr.evaluate({'numbers': range(5)}))
+        res = expr.evaluate({'numbers': list(range(5))})
+        self.assertEqual([0, 1, 2, 3, 4], res)
 
     def test_slice_stride(self):
         expr = Expression("numbers[::stride]")
-        self.assertEqual([0, 2, 4], expr.evaluate({'numbers': range(5),
-                                                   'stride': 2}))
+        res = expr.evaluate({'numbers': list(range(5)), 'stride': 2})
+        self.assertEqual([0, 2, 4], res)
 
     def test_slice_negative_start(self):
         expr = Expression("numbers[-1:]")
-        self.assertEqual([4], expr.evaluate({'numbers': range(5)}))
+        self.assertEqual([4], expr.evaluate({'numbers': list(range(5))}))
 
     def test_slice_negative_end(self):
         expr = Expression("numbers[:-1]")
-        self.assertEqual([0, 1, 2, 3], expr.evaluate({'numbers': range(5)}))
+        res = expr.evaluate({'numbers': list(range(5))})
+        self.assertEqual([0, 1, 2, 3], res)
 
     def test_access_undefined(self):
         expr = Expression("nothing", filename='index.html', lineno=50,

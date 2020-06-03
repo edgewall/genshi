@@ -108,7 +108,7 @@ class Directive(object):
         try:
             return expr and Expression(expr, template.filepath, lineno,
                                        lookup=template.lookup) or None
-        except SyntaxError, err:
+        except SyntaxError as err:
             err.msg += ' in expression "%s" of "%s" directive' % (expr,
                                                                   cls.tagname)
             raise TemplateSyntaxError(err, template.filepath, lineno,
@@ -706,7 +706,7 @@ class WithDirective(Directive):
                 self.vars.append(([_assignment(n) for n in node.targets],
                                   Expression(node.value, template.filepath,
                                              lineno, lookup=template.lookup)))
-        except SyntaxError, err:
+        except SyntaxError as err:
             err.msg += ' in expression "%s" of "%s" directive' % (value,
                                                                   self.tagname)
             raise TemplateSyntaxError(err, template.filepath, lineno,

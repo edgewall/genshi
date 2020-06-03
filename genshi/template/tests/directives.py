@@ -487,7 +487,7 @@ class ForDirectiveTestCase(unittest.TestCase):
         try:
             list(tmpl.generate(foo=12))
             self.fail('Expected TemplateRuntimeError')
-        except TypeError, e:
+        except TypeError as e:
             assert (str(e) == "iteration over non-sequence" or
                     str(e) == "'int' object is not iterable")
             exc_type, exc_value, exc_traceback = sys.exc_info()
@@ -513,7 +513,7 @@ class ForDirectiveTestCase(unittest.TestCase):
               </py:for>
             </doc>""", filename='test.html').generate()
             self.fail('ExpectedTemplateSyntaxError')
-        except TemplateSyntaxError, e:
+        except TemplateSyntaxError as e:
             self.assertEqual('test.html', e.filename)
             if sys.version_info[:2] > (2,4):
                 self.assertEqual(2, e.lineno)
@@ -1050,7 +1050,7 @@ class ContentDirectiveTestCase(unittest.TestCase):
               <py:content foo="">Foo</py:content>
             </doc>""", filename='test.html').generate()
             self.fail('Expected TemplateSyntaxError')
-        except TemplateSyntaxError, e:
+        except TemplateSyntaxError as e:
             self.assertEqual('test.html', e.filename)
             self.assertEqual(2, e.lineno)
 
@@ -1068,7 +1068,7 @@ class ReplaceDirectiveTestCase(unittest.TestCase):
               <elem py:replace="">Foo</elem>
             </doc>""", filename='test.html').generate()
             self.fail('Expected TemplateSyntaxError')
-        except TemplateSyntaxError, e:
+        except TemplateSyntaxError as e:
             self.assertEqual('test.html', e.filename)
             self.assertEqual(2, e.lineno)
 

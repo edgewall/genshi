@@ -164,7 +164,7 @@ class XMLParser(object):
                     self._queue = []
                     if done:
                         break
-            except expat.ExpatError, e:
+            except expat.ExpatError as e:
                 msg = str(e)
                 raise ParseError(msg, self.filename, e.lineno, e.offset)
         return Stream(_generate()).filter(_coalesce)
@@ -345,7 +345,7 @@ class HTMLParser(html.HTMLParser, object):
                         for tag in open_tags:
                             yield END, QName(tag), pos
                         break
-            except html.HTMLParseError, e:
+            except html.HTMLParseError as e:
                 msg = '%s: line %d, column %d' % (e.msg, e.lineno, e.offset)
                 raise ParseError(msg, self.filename, e.lineno, e.offset)
         return Stream(_generate()).filter(_coalesce)

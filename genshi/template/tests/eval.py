@@ -416,7 +416,7 @@ class ExpressionTestCase(unittest.TestCase):
         try:
             expr.evaluate({})
             self.fail('Expected UndefinedError')
-        except UndefinedError, e:
+        except UndefinedError as e:
             exc_type, exc_value, exc_traceback = sys.exc_info()
             frame = exc_traceback.tb_next
             frames = []
@@ -439,7 +439,7 @@ class ExpressionTestCase(unittest.TestCase):
         try:
             expr.evaluate({'something': Something()})
             self.fail('Expected UndefinedError')
-        except UndefinedError, e:
+        except UndefinedError as e:
             self.assertEqual('<Something> has no member named "nil"', str(e))
             exc_type, exc_value, exc_traceback = sys.exc_info()
             search_string = "<Expression 'something.nil'>"
@@ -463,7 +463,7 @@ class ExpressionTestCase(unittest.TestCase):
         try:
             expr.evaluate({'something': Something()})
             self.fail('Expected UndefinedError')
-        except UndefinedError, e:
+        except UndefinedError as e:
             self.assertEqual('<Something> has no member named "nil"', str(e))
             exc_type, exc_value, exc_traceback = sys.exc_info()
             search_string = '''<Expression 'something["nil"]'>'''

@@ -83,7 +83,7 @@ class MarkupTemplateTestCase(unittest.TestCase):
         xml = '<p xmlns:py="http://genshi.edgewall.org/" py:do="nothing" />'
         try:
             tmpl = MarkupTemplate(xml, filename='test.html')
-        except BadDirectiveError, e:
+        except BadDirectiveError as e:
             self.assertEqual('test.html', e.filename)
             self.assertEqual(1, e.lineno)
 
@@ -92,7 +92,7 @@ class MarkupTemplateTestCase(unittest.TestCase):
         try:
             tmpl = MarkupTemplate(xml, filename='test.html').generate()
             self.fail('Expected TemplateSyntaxError')
-        except TemplateSyntaxError, e:
+        except TemplateSyntaxError as e:
             self.assertEqual('test.html', e.filename)
             self.assertEqual(1, e.lineno)
 
@@ -103,7 +103,7 @@ class MarkupTemplateTestCase(unittest.TestCase):
         try:
             tmpl = MarkupTemplate(xml, filename='test.html')
             self.fail('Expected TemplateSyntaxError')
-        except TemplateSyntaxError, e:
+        except TemplateSyntaxError as e:
             self.assertEqual('test.html', e.filename)
             self.assertEqual(2, e.lineno)
 
@@ -116,7 +116,7 @@ class MarkupTemplateTestCase(unittest.TestCase):
         try:
             tmpl = MarkupTemplate(xml, filename='test.html')
             self.fail('Expected TemplateSyntaxError')
-        except TemplateSyntaxError, e:
+        except TemplateSyntaxError as e:
             self.assertEqual('test.html', e.filename)
             self.assertEqual(3, e.lineno)
 
@@ -619,7 +619,7 @@ class MarkupTemplateTestCase(unittest.TestCase):
             tmpl = MarkupTemplate(xml, filename='test.html',
                                   allow_exec=False)
             self.fail('Expected SyntaxError')
-        except TemplateSyntaxError, e:
+        except TemplateSyntaxError as e:
             pass
 
     def test_allow_exec_true(self): 

@@ -93,7 +93,7 @@ class MarkupTemplate(Template):
                 try:
                     suite = Suite(data[1], self.filepath, pos[1],
                                   lookup=self.lookup)
-                except SyntaxError, err:
+                except SyntaxError as err:
                     raise TemplateSyntaxError(err, self.filepath,
                                               pos[1] + (err.lineno or 1) - 1,
                                               pos[2] + (err.offset or 0))

@@ -131,7 +131,7 @@ class InterpolateTestCase(unittest.TestCase):
     def test_interpolate_full_mismatched_brackets(self):
         try:
             list(interpolate('${{1:2}'))
-        except TemplateSyntaxError, e:
+        except TemplateSyntaxError as e:
             pass
         else:
             self.fail('Expected TemplateSyntaxError')

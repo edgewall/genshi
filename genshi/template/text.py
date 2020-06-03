@@ -201,7 +201,7 @@ class NewTextTemplate(Template):
                 try:
                     suite = Suite(value, self.filepath, lineno,
                                   lookup=self.lookup)
-                except SyntaxError, err:
+                except SyntaxError as err:
                     raise TemplateSyntaxError(err, self.filepath,
                                               lineno + (err.lineno or 1) - 1)
                 pos = (self.filename, lineno, 0)

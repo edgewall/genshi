@@ -216,13 +216,13 @@ class Undefined(object):
     
     >>> try:
     ...     foo('bar')
-    ... except UndefinedError, e:
+    ... except UndefinedError as e:
     ...     print e.msg
     "foo" not defined
 
     >>> try:
     ...     foo.bar
-    ... except UndefinedError, e:
+    ... except UndefinedError as e:
     ...     print e.msg
     "foo" not defined
     
@@ -310,7 +310,7 @@ class LookupBase(object):
             key = key[0]
         try:
             return obj[key]
-        except (AttributeError, KeyError, IndexError, TypeError), e:
+        except (AttributeError, KeyError, IndexError, TypeError) as e:
             if isinstance(key, basestring):
                 val = getattr(obj, key, UNDEFINED)
                 if val is UNDEFINED:
@@ -369,7 +369,7 @@ class StrictLookup(LookupBase):
     >>> expr = Expression('nothing', lookup='strict')
     >>> try:
     ...     expr.evaluate({})
-    ... except UndefinedError, e:
+    ... except UndefinedError as e:
     ...     print e.msg
     "nothing" not defined
     
@@ -379,7 +379,7 @@ class StrictLookup(LookupBase):
     >>> expr = Expression('something.nil', lookup='strict')
     >>> try:
     ...     expr.evaluate({'something': dict()})
-    ... except UndefinedError, e:
+    ... except UndefinedError as e:
     ...     print e.msg
     {} has no member named "nil"
     """

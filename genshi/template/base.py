@@ -417,7 +417,7 @@ class Template(DirectiveFactory):
                 source = BytesIO(source)
         try:
             self._stream = self._parse(source, encoding)
-        except ParseError, e:
+        except ParseError as e:
             raise TemplateSyntaxError(e.msg, self.filepath, e.lineno, e.offset)
 
     def __getstate__(self):

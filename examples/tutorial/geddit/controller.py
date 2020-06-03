@@ -35,7 +35,7 @@ class Root(object):
                 link = Link(**data)
                 self.data[link.id] = link
                 raise cherrypy.HTTPRedirect('/')
-            except Invalid, e:
+            except Invalid as e:
                 errors = e.unpack_errors()
         else:
             errors = {}
@@ -69,7 +69,7 @@ class Root(object):
                     raise cherrypy.HTTPRedirect('/info/%s' % link.id)
                 return template.render('_comment.html', comment=comment,
                                        num=len(link.comments))
-            except Invalid, e:
+            except Invalid as e:
                 errors = e.unpack_errors()
         else:
             errors = {}

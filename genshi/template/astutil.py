@@ -320,11 +320,11 @@ class ASTCodeGenerator(object):
             self.visit(statement)
         self._change_indent(-1)
 
-    if IS_PYTHON2:
-        # Raise(expr? type, expr? inst, expr? tback)
-        def visit_Raise(self, node):
-            self._new_line()
-            self._write('raise')
+    # Raise(expr? type, expr? inst, expr? tback)
+    def visit_Raise(self, node):
+        self._new_line()
+        self._write('raise')
+        if IS_PYTHON2:
             if not node.type:
                 return
             self._write(' ')
@@ -337,11 +337,7 @@ class ASTCodeGenerator(object):
                 return
             self._write(', ')
             self.visit(node.tback)
-    else:
-        # Raise(expr? exc from expr? cause)
-        def visit_Raise(self, node):
-            self._new_line()
-            self._write('raise')
+        else:
             if not node.exc:
                 return
             self._write(' ')

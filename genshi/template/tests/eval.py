@@ -843,30 +843,29 @@ assert f() == 42
         Suite("del d['k']").execute({'d': d})
         self.failIf('k' in d, repr(d))
 
-    if sys.version_info >= (2, 5):
-        def test_with_statement(self):
-            fd, path = mkstemp()
-            f = os.fdopen(fd, "w")
-            try:
-                f.write('foo\nbar\n')
-                f.seek(0)
-                f.close()
+    def test_with_statement(self):
+        fd, path = mkstemp()
+        f = os.fdopen(fd, "w")
+        try:
+            f.write('foo\nbar\n')
+            f.seek(0)
+            f.close()
 
-                d = {'path': path}
-                suite = Suite("""from __future__ import with_statement
+            d = {'path': path}
+            suite = Suite("""from __future__ import with_statement
 lines = []
 with open(path) as file:
     for line in file:
         lines.append(line)
 """)
-                suite.execute(d)
-                self.assertEqual(['foo\n', 'bar\n'], d['lines'])
-            finally:
-                os.remove(path)
+            suite.execute(d)
+            self.assertEqual(['foo\n', 'bar\n'], d['lines'])
+        finally:
+            os.remove(path)
 
-        def test_yield_expression(self):
-            d = {}
-            suite = Suite("""
+    def test_yield_expression(self):
+        d = {}
+        suite = Suite("""
 results = []
 def counter(maximum):
     i = 0
@@ -881,8 +880,8 @@ results.append(next(it))
 results.append(it.send(3))
 results.append(next(it))
 """)
-            suite.execute(d)
-            self.assertEqual([0, 3, 4], d['results'])
+        suite.execute(d)
+        self.assertEqual([0, 3, 4], d['results'])
 
     if sys.version_info >= (3, 3):
         def test_with_statement_with_multiple_items(self):

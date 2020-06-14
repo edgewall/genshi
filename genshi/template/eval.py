@@ -32,28 +32,6 @@ __all__ = ['Code', 'Expression', 'Suite', 'LenientLookup', 'StrictLookup',
 __docformat__ = 'restructuredtext en'
 
 
-# Check for a Python 2.4 bug in the eval loop
-has_star_import_bug = False
-try:
-    class _FakeMapping(object):
-        __getitem__ = __setitem__ = lambda *a: None
-    exec 'from sys import *' in {}, _FakeMapping()
-except SystemError:
-    has_star_import_bug = True
-del _FakeMapping
-
-
-def _star_import_patch(mapping, modname):
-    """This function is used as helper if a Python version with a broken
-    star-import opcode is in use.
-    """
-    module = __import__(modname, None, None, ['__all__'])
-    if hasattr(module, '__all__'):
-        members = module.__all__
-    else:
-        members = [x for x in module.__dict__ if not x.startswith('_')]
-    mapping.update([(name, getattr(module, name)) for name in members])
-
 
 class Code(object):
     """Abstract base class for the `Expression` and `Suite` classes."""
@@ -297,7 +275,6 @@ class LookupBase(object):
             '_lookup_name': cls.lookup_name,
             '_lookup_attr': cls.lookup_attr,
             '_lookup_item': cls.lookup_item,
-            '_star_import_patch': _star_import_patch,
             'UndefinedError': UndefinedError,
         }
 
@@ -550,14 +527,6 @@ class TemplateASTTransformer(ASTTransformer):
 
     def visit_ImportFrom(self, node):
         if [a.name for a in node.names] == ['*']:
-            if has_star_import_bug:
-                # This is a Python 2.4 bug. Only if we have a broken Python
-                # version do we need to apply this hack
-                node = _new(_ast.Expr, _new(_ast.Call,
-                    _new(_ast.Name, '_star_import_patch'), [
-                        _new(_ast.Name, '__data__'),
-                        _new(_ast_Str, node.module)
-                    ], (), ()))
             return node
         if len(self.locals) > 1:
             self.locals[-1].update(self._extract_names(node))

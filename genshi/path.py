@@ -537,7 +537,7 @@ class Path(object):
                     self.strategies.append(strategy_class(path))
                     break
             else:
-                raise NotImplemented('No strategy found for path')
+                raise NotImplementedError('No strategy found for path')
 
     def __repr__(self):
         paths = []

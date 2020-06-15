@@ -13,7 +13,12 @@
 
 """Various Python version compatibility classes and functions."""
 
-import _ast
+try:
+    # in Python 3.9 the "_ast" module does not provide "Index" anymore but
+    # "ast" does.
+    import ast
+except ImportError:
+    import _ast as ast
 import sys
 from types import CodeType
 
@@ -108,11 +113,11 @@ else:
 # In Python 3.8, Str and Ellipsis was replaced by Constant
 
 try:
-    _ast_Ellipsis = _ast.Ellipsis
-    _ast_Str = _ast.Str
+    _ast_Ellipsis = ast.Ellipsis
+    _ast_Str = ast.Str
     _ast_Str_value = lambda obj: obj.s
 except AttributeError:
-    _ast_Ellipsis = _ast_Str = _ast.Constant
+    _ast_Ellipsis = _ast_Str = ast.Constant
     _ast_Str_value = lambda obj: obj.value
 
 

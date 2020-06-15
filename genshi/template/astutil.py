@@ -13,9 +13,7 @@
 
 """Support classes for generating code from abstract syntax trees."""
 
-import _ast
-
-from genshi.compat import IS_PYTHON2, isstring, _ast_Ellipsis
+from genshi.compat import ast as _ast, IS_PYTHON2, isstring, _ast_Ellipsis
 
 __docformat__ = 'restructuredtext en'
 

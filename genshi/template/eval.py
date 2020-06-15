@@ -20,13 +20,12 @@ import six
 from six.moves import builtins
 
 from genshi.core import Markup
-from genshi.template.astutil import ASTTransformer, ASTCodeGenerator, \
-                                    _ast, parse
+from genshi.template.astutil import ASTTransformer, ASTCodeGenerator, parse
 from genshi.template.base import TemplateRuntimeError
 from genshi.util import flatten
 
-from genshi.compat import get_code_params, build_code_chunk, isstring, \
-                          IS_PYTHON2, _ast_Str
+from genshi.compat import ast as _ast, get_code_params, build_code_chunk, \
+                          isstring, IS_PYTHON2, _ast_Str
 
 __all__ = ['Code', 'Expression', 'Suite', 'LenientLookup', 'StrictLookup',
            'Undefined', 'UndefinedError']

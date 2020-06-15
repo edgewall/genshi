@@ -27,11 +27,10 @@ import six
 
 from genshi.core import Attrs, Namespace, QName, START, END, TEXT, \
                         XML_NAMESPACE, _ensure, StreamEventKind
-from genshi.template.eval import _ast
 from genshi.template.base import DirectiveFactory, EXPR, SUB, _apply_directives
 from genshi.template.directives import Directive, StripDirective
 from genshi.template.markup import MarkupTemplate, EXEC
-from genshi.compat import IS_PYTHON2, _ast_Str, _ast_Str_value
+from genshi.compat import ast, IS_PYTHON2, _ast_Str, _ast_Str_value
 
 __all__ = ['Translator', 'extract']
 __docformat__ = 'restructuredtext en'
@@ -1181,7 +1180,7 @@ def extract_from_code(code, gettext_functions):
     :since: version 0.5
     """
     def _walk(node):
-        if isinstance(node, _ast.Call) and isinstance(node.func, _ast.Name) \
+        if isinstance(node, ast.Call) and isinstance(node.func, ast.Name) \
                 and node.func.id in gettext_functions:
             strings = []
             def _add(arg):
@@ -1209,7 +1208,7 @@ def extract_from_code(code, gettext_functions):
                 if isinstance(child, list):
                     for elem in child:
                         children.append(elem)
-                elif isinstance(child, _ast.AST):
+                elif isinstance(child, ast.AST):
                     children.append(child)
             for child in children:
                 for funcname, strings in _walk(child):

@@ -120,4 +120,12 @@ except AttributeError:
     _ast_Ellipsis = _ast_Str = ast.Constant
     _ast_Str_value = lambda obj: obj.value
 
+class _DummyASTItem(object):
+    pass
+try:
+    _ast_Constant = ast.Constant
+except AttributeError:
+    # Python 2
+    _ast_Constant = _DummyASTItem
+
 

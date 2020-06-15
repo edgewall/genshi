@@ -9,6 +9,7 @@ matrix:
     - { python: "3.8" }
     - { python: "pypy" }
     - { python: "pypy3" }
+    - { python: "nightly" }
   allow_failures:
     - python: "nightly"
 script:

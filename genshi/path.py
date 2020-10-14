@@ -272,7 +272,7 @@ class SimplePathStrategy(object):
         def calculate_pi(f):
             """KMP prefix calculation for table"""
             # the indexes in prefix table are shifted by one
-            # in comparision with common implementations
+            # in comparison with common implementations
             # pi[i] = NORMAL_PI[i + 1]
             if len(f) == 0:
                 return []

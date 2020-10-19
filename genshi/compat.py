@@ -17,9 +17,11 @@ import _ast
 import sys
 from types import CodeType
 
+import six
 
 IS_PYTHON2 = (sys.version_info[0] == 2)
 
+numeric_types = (float, ) + six.integer_types
 
 # This function should only be called in Python 2, and will fail in Python 3
 
@@ -38,12 +40,8 @@ else:
 
 # We need to test if an object is an instance of a string type in places
 
-if IS_PYTHON2:
-    def isstring(obj):
-        return isinstance(obj, basestring)
-else:
-    def isstring(obj):
-        return isinstance(obj, str)
+def isstring(obj):
+    return isinstance(obj, six.string_types)
 
 # We need to differentiate between StringIO and BytesIO in places
 
@@ -118,28 +116,3 @@ except AttributeError:
     _ast_Str_value = lambda obj: obj.value
 
 
-# Compatibility fallback implementations for Python < 2.6
-
-try:
-    next = next
-except NameError:
-    def next(iterator):
-        return iterator.next()
-
-# Compatibility fallback implementations for Python < 2.5
-
-try:
-    all = all
-    any = any
-except NameError:
-    def any(S):
-        for x in S:
-            if x:
-                return True
-        return False
-
-    def all(S):
-        for x in S:
-            if not x:
-                return False
-        return True

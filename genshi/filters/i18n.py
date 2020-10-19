@@ -18,14 +18,12 @@ templates.
 :note: Directives support added since version 0.6
 """
 
-try:
-    any
-except NameError:
-    from genshi.util import any
 from gettext import NullTranslations
 import os
 import re
 from types import FunctionType
+
+import six
 
 from genshi.core import Attrs, Namespace, QName, START, END, TEXT, \
                         XML_NAMESPACE, _ensure, StreamEventKind
@@ -74,7 +72,7 @@ class CommentDirective(I18NDirective):
     >>> translator = Translator()
     >>> translator.setup(tmpl)
     >>> list(translator.extract(tmpl.stream))
-    [(2, None, u'Foo', [u'As in Foo Bar'])]
+    [(2, None, 'Foo', ['As in Foo Bar'])]
     """
     __slots__ = ['comment']
 
@@ -99,7 +97,7 @@ class MsgDirective(ExtractableI18NDirective):
     >>> translator = Translator()
     >>> translator.setup(tmpl)
     >>> list(translator.extract(tmpl.stream))
-    [(2, None, u'[1:Foo]\n    [2:Bar]', []), (6, None, u'Foo [1:bar]!', [])]
+    [(2, None, '[1:Foo]\n    [2:Bar]', []), (6, None, 'Foo [1:bar]!', [])]
     >>> print(tmpl.generate().render())
     <html>
       <div><p>Foo</p>
@@ -116,8 +114,8 @@ class MsgDirective(ExtractableI18NDirective):
     ... </html>''')
     >>> translator.setup(tmpl)
     >>> list(translator.extract(tmpl.stream)) #doctest: +NORMALIZE_WHITESPACE
-    [(2, None, u'[1:First Name: %(fname)s]\n    [2:Last Name: %(lname)s]', []),
-    (6, None, u'Foo [1:bar]!', [])]
+    [(2, None, '[1:First Name: %(fname)s]\n    [2:Last Name: %(lname)s]', []),
+    (6, None, 'Foo [1:bar]!', [])]
 
     >>> tmpl = MarkupTemplate('''<html xmlns:i18n="http://genshi.edgewall.org/i18n">
     ...   <div i18n:msg="fname, lname">
@@ -163,12 +161,12 @@ class MsgDirective(ExtractableI18NDirective):
 
         def _generate():
             msgbuf = MessageBuffer(self)
-            previous = stream.next()
+            previous = next(stream)
             if previous[0] is START:
                 yield previous
             else:
                 msgbuf.append(*previous)
-            previous = stream.next()
+            previous = next(stream)
             for kind, data, pos in stream:
                 msgbuf.append(*previous)
                 previous = kind, data, pos
@@ -188,13 +186,13 @@ class MsgDirective(ExtractableI18NDirective):
         strip = False
 
         stream = iter(stream)
-        previous = stream.next()
+        previous = next(stream)
         if previous[0] is START:
             for message in translator._extract_attrs(previous,
                                                      gettext_functions,
                                                      search_text=search_text):
                 yield message
-            previous = stream.next()
+            previous = next(stream)
             strip = True
         for event in stream:
             if event[0] is START:
@@ -218,14 +216,14 @@ class ChooseBranchDirective(I18NDirective):
         msgbuf = MessageBuffer(self)
         stream = _apply_directives(stream, directives, ctxt, vars)
 
-        previous = stream.next()
+        previous = next(stream)
         if previous[0] is START:
             yield previous
         else:
             msgbuf.append(*previous)
 
         try:
-            previous = stream.next()
+            previous = next(stream)
         except StopIteration:
             # For example <i18n:singular> or <i18n:plural> directives
             yield MSGBUF, (), -1 # the place holder for msgbuf output
@@ -246,7 +244,7 @@ class ChooseBranchDirective(I18NDirective):
     def extract(self, translator, stream, gettext_functions=GETTEXT_FUNCTIONS,
                 search_text=True, comment_stack=None, msgbuf=None):
         stream = iter(stream)
-        previous = stream.next()
+        previous = next(stream)
 
         if previous[0] is START:
             # skip the enclosing element
@@ -254,7 +252,7 @@ class ChooseBranchDirective(I18NDirective):
                                                      gettext_functions,
                                                      search_text=search_text):
                 yield message
-            previous = stream.next()
+            previous = next(stream)
 
         for event in stream:
             if previous[0] is START:
@@ -298,8 +296,8 @@ class ChooseDirective(ExtractableI18NDirective):
     >>> translator = Translator()
     >>> translator.setup(tmpl)
     >>> list(translator.extract(tmpl.stream)) #doctest: +NORMALIZE_WHITESPACE
-    [(2, 'ngettext', (u'There is %(num)s coin',
-                      u'There are %(num)s coins'), [])]
+    [(2, 'ngettext', ('There is %(num)s coin',
+                      'There are %(num)s coins'), [])]
 
     >>> tmpl = MarkupTemplate('''<html xmlns:i18n="http://genshi.edgewall.org/i18n">
     ...   <div i18n:choose="num; num">
@@ -331,8 +329,8 @@ class ChooseDirective(ExtractableI18NDirective):
     ... </html>''')
     >>> translator.setup(tmpl)
     >>> list(translator.extract(tmpl.stream)) #doctest: +NORMALIZE_WHITESPACE
-    [(2, 'ngettext', (u'There is %(num)s coin',
-                      u'There are %(num)s coins'), [])]
+    [(2, 'ngettext', ('There is %(num)s coin',
+                      'There are %(num)s coins'), [])]
     """
     __slots__ = ['numeral', 'params', 'lineno']
 
@@ -427,7 +425,7 @@ class ChooseDirective(ExtractableI18NDirective):
                 search_text=True, comment_stack=None):
         strip = False
         stream = iter(stream)
-        previous = stream.next()
+        previous = next(stream)
 
         if previous[0] is START:
             # skip the enclosing element
@@ -435,7 +433,7 @@ class ChooseDirective(ExtractableI18NDirective):
                                                      gettext_functions,
                                                      search_text=search_text):
                 yield message
-            previous = stream.next()
+            previous = next(stream)
             strip = True
 
         singular_msgbuf = MessageBuffer(self)
@@ -703,7 +701,7 @@ class Translator(DirectiveFactory):
             if kind is START:
                 tag, attrs = data
                 if tag in self.ignore_tags or \
-                        isinstance(attrs.get(xml_lang), basestring):
+                        isinstance(attrs.get(xml_lang), six.string_types):
                     skip += 1
                     yield kind, data, pos
                     continue
@@ -713,7 +711,7 @@ class Translator(DirectiveFactory):
 
                 for name, value in attrs:
                     newval = value
-                    if isinstance(value, basestring):
+                    if isinstance(value, six.string_types):
                         if translate_attrs and name in include_attrs:
                             newval = gettext(value)
                     else:
@@ -732,7 +730,7 @@ class Translator(DirectiveFactory):
             elif translate_text and kind is TEXT:
                 text = data.strip()
                 if text:
-                    data = data.replace(text, unicode(gettext(text)))
+                    data = data.replace(text, six.text_type(gettext(text)))
                 yield kind, data, pos
 
             elif kind is SUB:
@@ -793,10 +791,10 @@ class Translator(DirectiveFactory):
         ... </html>''', filename='example.html')
         >>> for line, func, msg, comments in Translator().extract(tmpl.stream):
         ...    print('%d, %r, %r' % (line, func, msg))
-        3, None, u'Example'
-        6, None, u'Example'
-        7, '_', u'Hello, %(name)s'
-        8, 'ngettext', (u'You have %d item', u'You have %d items', None)
+        3, None, 'Example'
+        6, None, 'Example'
+        7, '_', 'Hello, %(name)s'
+        8, 'ngettext', ('You have %d item', 'You have %d items', None)
         
         :param stream: the event stream to extract strings from; can be a
                        regular stream or a template stream
@@ -830,7 +828,7 @@ class Translator(DirectiveFactory):
             if kind is START and not skip:
                 tag, attrs = data
                 if tag in self.ignore_tags or \
-                        isinstance(attrs.get(xml_lang), basestring):
+                        isinstance(attrs.get(xml_lang), six.string_types):
                     skip += 1
                     continue
 
@@ -917,7 +915,7 @@ class Translator(DirectiveFactory):
 
     def _extract_attrs(self, event, gettext_functions, search_text):
         for name, value in event[1][1]:
-            if search_text and isinstance(value, basestring):
+            if search_text and isinstance(value, six.string_types):
                 if name in self.include_attrs:
                     text = value.strip()
                     if text:
@@ -1170,12 +1168,12 @@ def extract_from_code(code, gettext_functions):
     >>> from genshi.template.eval import Expression
     >>> expr = Expression('_("Hello")')
     >>> list(extract_from_code(expr, GETTEXT_FUNCTIONS))
-    [('_', u'Hello')]
+    [('_', 'Hello')]
     
     >>> expr = Expression('ngettext("You have %(num)s item", '
     ...                            '"You have %(num)s items", num)')
     >>> list(extract_from_code(expr, GETTEXT_FUNCTIONS))
-    [('ngettext', (u'You have %(num)s item', u'You have %(num)s items', None))]
+    [('ngettext', ('You have %(num)s item', 'You have %(num)s items', None))]
     
     :param code: the `Code` object
     :type code: `genshi.template.eval.Code`
@@ -1188,10 +1186,10 @@ def extract_from_code(code, gettext_functions):
             strings = []
             def _add(arg):
                 if isinstance(arg, _ast_Str) \
-                        and isinstance(_ast_Str_value(arg), unicode):
+                        and isinstance(_ast_Str_value(arg), six.text_type):
                     strings.append(_ast_Str_value(arg))
                 elif isinstance(arg, _ast_Str):
-                    strings.append(unicode(_ast_Str_value(arg), 'utf-8'))
+                    strings.append(six.text_type(_ast_Str_value(arg), 'utf-8'))
                 elif arg:
                     strings.append(None)
             [_add(arg) for arg in node.args]
@@ -1232,22 +1230,22 @@ def extract(fileobj, keywords, comment_tags, options):
     :rtype: ``iterator``
     """
     template_class = options.get('template_class', MarkupTemplate)
-    if isinstance(template_class, basestring):
+    if isinstance(template_class, six.string_types):
         module, clsname = template_class.split(':', 1)
         template_class = getattr(__import__(module, {}, {}, [clsname]), clsname)
     encoding = options.get('encoding', None)
 
     extract_text = options.get('extract_text', True)
-    if isinstance(extract_text, basestring):
+    if isinstance(extract_text, six.string_types):
         extract_text = extract_text.lower() in ('1', 'on', 'yes', 'true')
 
     ignore_tags = options.get('ignore_tags', Translator.IGNORE_TAGS)
-    if isinstance(ignore_tags, basestring):
+    if isinstance(ignore_tags, six.string_types):
         ignore_tags = ignore_tags.split()
     ignore_tags = [QName(tag) for tag in ignore_tags]
 
     include_attrs = options.get('include_attrs', Translator.INCLUDE_ATTRS)
-    if isinstance(include_attrs, basestring):
+    if isinstance(include_attrs, six.string_types):
         include_attrs = include_attrs.split()
     include_attrs = [QName(attr) for attr in include_attrs]
 

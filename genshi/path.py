@@ -39,15 +39,15 @@ structures), it only implements a subset of the full XPath 1.0 language.
 """
 
 from collections import deque
-try:
-    reduce # builtin in Python < 3
-except NameError:
-    from functools import reduce
+from functools import reduce
 from math import ceil, floor
 import operator
 import re
 from itertools import chain
 
+import six
+
+from genshi.compat import IS_PYTHON2
 from genshi.core import Stream, Attrs, Namespace, QName
 from genshi.core import START, END, TEXT, START_NS, END_NS, COMMENT, PI, \
                         START_CDATA, END_CDATA
@@ -576,7 +576,7 @@ class Path(object):
             variables = {}
         stream = iter(stream)
         def _generate(stream=stream, ns=namespaces, vs=variables):
-            next = stream.next
+            _next = lambda: next(stream)
             test = self.test()
             for event in stream:
                 result = test(event, ns, vs)
@@ -585,7 +585,7 @@ class Path(object):
                     if event[0] is START:
                         depth = 1
                         while depth > 0:
-                            subevent = next()
+                            subevent = _next()
                             if subevent[0] is START:
                                 depth += 1
                             elif subevent[0] is END:
@@ -619,7 +619,7 @@ class Path(object):
         >>> for event in xml:
         ...     if test(event, namespaces, variables):
         ...         print('%s %r' % (event[0], event[1]))
-        START (QName('child'), Attrs([(QName('id'), u'2')]))
+        START (QName('child'), Attrs([(QName('id'), '2')]))
         
         :param ignore_context: if `True`, the path is interpreted like a pattern
                                in XSLT, meaning for example that it will match
@@ -932,13 +932,14 @@ def as_float(value):
     return float(as_scalar(value))
 
 def as_long(value):
-    return long(as_scalar(value))
+    long_cls = long if IS_PYTHON2 else int
+    return long_cls(as_scalar(value))
 
 def as_string(value):
     value = as_scalar(value)
     if value is False:
         return ''
-    return unicode(value)
+    return six.text_type(value)
 
 def as_bool(value):
     return bool(as_scalar(value))

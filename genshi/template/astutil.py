@@ -13,17 +13,14 @@
 
 """Support classes for generating code from abstract syntax trees."""
 
-try:
-    import _ast
-except ImportError:
-    from genshi.template.ast24 import _ast, parse
-else:
-    def parse(source, mode):
-        return compile(source, '', mode, _ast.PyCF_ONLY_AST)
+import _ast
 
 from genshi.compat import IS_PYTHON2, isstring, _ast_Ellipsis
 
 __docformat__ = 'restructuredtext en'
+
+def parse(source, mode):
+    return compile(source, '', mode, _ast.PyCF_ONLY_AST)
 
 
 class ASTCodeGenerator(object):
@@ -323,11 +320,11 @@ class ASTCodeGenerator(object):
             self.visit(statement)
         self._change_indent(-1)
 
-    if IS_PYTHON2:
-        # Raise(expr? type, expr? inst, expr? tback)
-        def visit_Raise(self, node):
-            self._new_line()
-            self._write('raise')
+    # Raise(expr? type, expr? inst, expr? tback)
+    def visit_Raise(self, node):
+        self._new_line()
+        self._write('raise')
+        if IS_PYTHON2:
             if not node.type:
                 return
             self._write(' ')
@@ -340,11 +337,7 @@ class ASTCodeGenerator(object):
                 return
             self._write(', ')
             self.visit(node.tback)
-    else:
-        # Raise(expr? exc from expr? cause)
-        def visit_Raise(self, node):
-            self._new_line()
-            self._write('raise')
+        else:
             if not node.exc:
                 return
             self._write(' ')

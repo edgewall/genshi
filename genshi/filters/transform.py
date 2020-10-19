@@ -33,7 +33,7 @@ the ``<head>`` of the input document:
 ...  </body>
 ... </html>''',
 ... encoding='utf-8')
->>> print(html | Transformer('body/em').map(unicode.upper, TEXT)
+>>> print(html | Transformer('body/em').map(six.text_type.upper, TEXT)
 ...                                    .unwrap().wrap(tag.u))
 <html>
   <head><title>Some Title</title></head>
@@ -50,6 +50,8 @@ box, but custom transformations can be added easily.
 
 import re
 import sys
+
+import six
 
 from genshi.builder import Element
 from genshi.core import Stream, Attrs, QName, TEXT, START, END, _ensure, Markup
@@ -115,7 +117,7 @@ class PushBackStream(object):
                 yield peek
             else:
                 try:
-                    event = self.stream.next()
+                    event = next(self.stream)
                     yield event
                 except StopIteration:
                     if self.peek is None:
@@ -239,11 +241,11 @@ class Transformer(object):
         >>> html = HTML('<body>Some <em>test</em> text</body>', encoding='utf-8')
         >>> print(html | Transformer().select('.//em').trace())
         (None, ('START', (QName('body'), Attrs()), (None, 1, 0)))
-        (None, ('TEXT', u'Some ', (None, 1, 6)))
+        (None, ('TEXT', 'Some ', (None, 1, 6)))
         ('ENTER', ('START', (QName('em'), Attrs()), (None, 1, 11)))
-        ('INSIDE', ('TEXT', u'test', (None, 1, 15)))
+        ('INSIDE', ('TEXT', 'test', (None, 1, 15)))
         ('EXIT', ('END', QName('em'), (None, 1, 19)))
-        (None, ('TEXT', u' text', (None, 1, 24)))
+        (None, ('TEXT', ' text', (None, 1, 24)))
         (None, ('END', QName('body'), (None, 1, 29)))
         <body>Some <em>test</em> text</body>
 
@@ -263,11 +265,11 @@ class Transformer(object):
         >>> html = HTML('<body>Some <em>test</em> text</body>', encoding='utf-8')
         >>> print(html | Transformer('//em').invert().trace())
         ('OUTSIDE', ('START', (QName('body'), Attrs()), (None, 1, 0)))
-        ('OUTSIDE', ('TEXT', u'Some ', (None, 1, 6)))
+        ('OUTSIDE', ('TEXT', 'Some ', (None, 1, 6)))
         (None, ('START', (QName('em'), Attrs()), (None, 1, 11)))
-        (None, ('TEXT', u'test', (None, 1, 15)))
+        (None, ('TEXT', 'test', (None, 1, 15)))
         (None, ('END', QName('em'), (None, 1, 19)))
-        ('OUTSIDE', ('TEXT', u' text', (None, 1, 24)))
+        ('OUTSIDE', ('TEXT', ' text', (None, 1, 24)))
         ('OUTSIDE', ('END', QName('body'), (None, 1, 29)))
         <body>Some <em>test</em> text</body>
 
@@ -283,11 +285,11 @@ class Transformer(object):
         >>> html = HTML('<body>Some <em>test</em> text</body>', encoding='utf-8')
         >>> print(html | Transformer('//em').end().trace())
         ('OUTSIDE', ('START', (QName('body'), Attrs()), (None, 1, 0)))
-        ('OUTSIDE', ('TEXT', u'Some ', (None, 1, 6)))
+        ('OUTSIDE', ('TEXT', 'Some ', (None, 1, 6)))
         ('OUTSIDE', ('START', (QName('em'), Attrs()), (None, 1, 11)))
-        ('OUTSIDE', ('TEXT', u'test', (None, 1, 15)))
+        ('OUTSIDE', ('TEXT', 'test', (None, 1, 15)))
         ('OUTSIDE', ('END', QName('em'), (None, 1, 19)))
-        ('OUTSIDE', ('TEXT', u' text', (None, 1, 24)))
+        ('OUTSIDE', ('TEXT', ' text', (None, 1, 24)))
         ('OUTSIDE', ('END', QName('body'), (None, 1, 29)))
         <body>Some <em>test</em> text</body>
 
@@ -482,7 +484,7 @@ class Transformer(object):
         ...     print(attrs)
         ...     return attrs.get(name)
         >>> print(html | Transformer('body/em').attr('class', print_attr))
-        Attrs([(QName('class'), u'before')])
+        Attrs([(QName('class'), 'before')])
         Attrs()
         <html><head><title>Some Title</title></head><body>Some <em
         class="before">body</em> <em>text</em>.</body></html>
@@ -625,10 +627,11 @@ class Transformer(object):
         """Applies a function to the ``data`` element of events of ``kind`` in
         the selection.
 
+        >>> import six
         >>> html = HTML('<html><head><title>Some Title</title></head>'
         ...               '<body>Some <em>body</em> text.</body></html>',
         ...             encoding='utf-8')
-        >>> print(html | Transformer('head/title').map(unicode.upper, TEXT))
+        >>> print(html | Transformer('head/title').map(six.text_type.upper, TEXT))
         <html><head><title>SOME TITLE</title></head><body>Some <em>body</em>
         text.</body></html>
 
@@ -681,11 +684,11 @@ class Transformer(object):
         >>> html = HTML('<body>Some <em>test</em> text</body>', encoding='utf-8')
         >>> print(html | Transformer('em').trace())
         (None, ('START', (QName('body'), Attrs()), (None, 1, 0)))
-        (None, ('TEXT', u'Some ', (None, 1, 6)))
+        (None, ('TEXT', 'Some ', (None, 1, 6)))
         ('ENTER', ('START', (QName('em'), Attrs()), (None, 1, 11)))
-        ('INSIDE', ('TEXT', u'test', (None, 1, 15)))
+        ('INSIDE', ('TEXT', 'test', (None, 1, 15)))
         ('EXIT', ('END', QName('em'), (None, 1, 19)))
-        (None, ('TEXT', u' text', (None, 1, 24)))
+        (None, ('TEXT', ' text', (None, 1, 24)))
         (None, ('END', QName('body'), (None, 1, 29)))
         <body>Some <em>test</em> text</body>
 
@@ -730,7 +733,7 @@ class SelectTransformation(object):
         variables = {}
         test = self.path.test()
         stream = iter(stream)
-        next = stream.next
+        _next = lambda: next(stream)
         for mark, event in stream:
             if mark is None:
                 yield mark, event
@@ -743,7 +746,7 @@ class SelectTransformation(object):
                     yield ENTER, event
                     depth = 1
                     while depth > 0:
-                        mark, subevent = next()
+                        mark, subevent = _next()
                         if subevent[0] is START:
                             depth += 1
                         elif subevent[0] is END:
@@ -764,7 +767,7 @@ class SelectTransformation(object):
                 yield OUTSIDE, result
             elif result:
                 # XXX Assume everything else is "text"?
-                yield None, (TEXT, unicode(result), (None, -1, -1))
+                yield None, (TEXT, six.text_type(result), (None, -1, -1))
             else:
                 yield None, event
 
@@ -990,7 +993,7 @@ class SubstituteTransformation(object):
         :param replace: Replacement pattern.
         :param count: Number of replacements to make in each text fragment.
         """
-        if isinstance(pattern, basestring):
+        if isinstance(pattern, six.string_types):
             self.pattern = re.compile(pattern)
         else:
             self.pattern = pattern

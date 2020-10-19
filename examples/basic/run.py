@@ -1,6 +1,8 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
+from __future__ import print_function
+
 import os
 import sys
 import time
@@ -13,13 +15,13 @@ def test():
 
     start = time.clock()
     tmpl = loader.load('test.html')
-    print ' --> parse stage: %.4f ms' % ((time.clock() - start) * 1000)
+    print(' --> parse stage: %.4f ms' % ((time.clock() - start) * 1000))
 
     data = dict(hello='<world>', skin='default', hey='ZYX', bozz=None,
                 items=['Number %d' % num for num in range(1, 15)],
                 prefix='#')
 
-    print tmpl.generate(**data).render(method='html')
+    print(tmpl.generate(**data).render(method='html'))
 
     times = []
     for i in range(1000):
@@ -28,10 +30,10 @@ def test():
         times.append(time.clock() - start)
         sys.stdout.write('.')
         sys.stdout.flush()
-    print
+    print()
 
-    print ' --> render stage: %s ms (average)' % (
-          (sum(times) / len(times) * 1000))
+    print(' --> render stage: %s ms (average)' % (
+          (sum(times) / len(times) * 1000)))
 
 if __name__ == '__main__':
     if '-p' in sys.argv:

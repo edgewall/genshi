@@ -19,6 +19,7 @@ from genshi.core import Attrs, Markup, QName, Stream
 from genshi.input import HTML, XML
 from genshi.output import DocType, XMLSerializer, XHTMLSerializer, \
                           HTMLSerializer, EmptyTagFilter
+from genshi.tests.test_utils import doctest_suite
 
 
 class XMLSerializerTestCase(unittest.TestCase):
@@ -474,7 +475,7 @@ def suite():
     suite.addTest(unittest.makeSuite(XHTMLSerializerTestCase, 'test'))
     suite.addTest(unittest.makeSuite(HTMLSerializerTestCase, 'test'))
     suite.addTest(unittest.makeSuite(EmptyTagFilterTestCase, 'test'))
-    suite.addTest(doctest.DocTestSuite(XMLSerializer.__module__))
+    suite.addTest(doctest_suite(XMLSerializer.__module__))
     return suite
 
 if __name__ == '__main__':

@@ -482,24 +482,24 @@ class ExpressionTestCase(unittest.TestCase):
 
     def test_getitem_with_constant_string(self):
         data = dict(dict={'some': 'thing'})
-        Expression("dict['some']").evaluate(data)
+        self.assertEqual('thing', Expression("dict['some']").evaluate(data))
 
     def test_array_indices(self):
         data = dict(items=[1, 2, 3])
-        Expression('items[0]').evaluate(data)
-        Expression('items[-1]').evaluate(data)
+        self.assertEqual(1, Expression('items[0]').evaluate(data))
+        self.assertEqual(3, Expression('items[-1]').evaluate(data))
 
     def test_item_access_for_attributes(self):
         class MyClass(object):
             myattr = 'Bar'
         data = {'mine': MyClass(), 'key': 'myattr'}
-        Expression('mine.myattr').evaluate(data)
-        Expression('mine["myattr"]').evaluate(data)
-        Expression('mine[key]').evaluate(data)
+        self.assertEqual('Bar', Expression('mine.myattr').evaluate(data))
+        self.assertEqual('Bar', Expression('mine["myattr"]').evaluate(data))
+        self.assertEqual('Bar', Expression('mine[key]').evaluate(data))
 
     def test_function_in_item_access(self):
         data = dict(values={'foo': 'bar'})
-        Expression('values[str("foo")]').evaluate(data)
+        self.assertEqual('bar', Expression('values[str("foo")]').evaluate(data))
 
 
 class SuiteTestCase(unittest.TestCase):

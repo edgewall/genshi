@@ -732,8 +732,10 @@ class ASTCodeGenerator(object):
                 if getattr(node, 'step', None):
                     self._write(':')
                     self.visit(node.step)
-            elif isinstance(node, (_ast.Index, _ast_Constant)):
+            elif isinstance(node, _ast.Index):
                 self.visit(node.value)
+            elif isinstance(node, _ast_Constant):
+                self.visit_Constant(node)
             elif isinstance(node, _ast.UnaryOp):
                 self.visit_UnaryOp(node)
             elif isinstance(node, _ast.ExtSlice):

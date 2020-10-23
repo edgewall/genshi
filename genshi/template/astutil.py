@@ -81,7 +81,7 @@ class ASTCodeGenerator(object):
             info = True
         except AttributeError:
             info = False
-        if isinstance(node, (str, int)):
+        if isinstance(node, (bool, bytes, float, int, str)):
             # something['foo'] just returns 'foo' as str in Python 3.9 while
             # Python 3.8 and earlier returned a Constant().
             node = _ast_Constant(node)

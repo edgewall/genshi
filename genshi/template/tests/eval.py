@@ -496,6 +496,7 @@ class ExpressionTestCase(unittest.TestCase):
         self.assertEqual('baz', Expression('values[2.5]').evaluate(data))
         self.assertEqual('quooox', Expression('values[42]').evaluate(data))
         self.assertEqual('foobar', Expression('values[b"foo"]').evaluate(data))
+        self.assertEqual('quox', Expression('values[None]').evaluate(data))
 
     def test_array_indices(self):
         data = dict(items=[1, 2, 3])

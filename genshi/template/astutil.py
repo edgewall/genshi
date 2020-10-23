@@ -775,7 +775,12 @@ class ASTCodeGenerator(object):
     def visit_Tuple(self, node):
         self._write('(')
         for elt in node.elts:
-            self.visit(elt)
+            # In Python 3.9 simple types (which includes NoneType) are
+            # represented by their value in "subscription" expressions.
+            # However self.visit() returns None if elt is None leading to
+            # invalid generated code. So we deal with the special case here.
+            # Example code triggering this: value[None]
+            self.visit(elt) if (elt is not None) else self._write('None')
             self._write(', ')
         self._write(')')
 

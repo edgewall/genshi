@@ -5,6 +5,17 @@ http://svn.edgewall.org/repos/genshi/tags/0.8.0/
  * ???
 
 
+Version 0.7.4
+https://github.com/edgewall/genshi/releases/tag/0.7.4
+(Nov 3 2020, from branches/stable/0.7.x)
+
+ * Add support for deprecation of ast classes slice, Index and ExtSlice in
+   Python 3.9. See https://bugs.python.org/issue34822 for details of the
+   changes.
+ * Update the project URL in setup.py to point to GitHub.
+ * Remove use of 2to3 for generating Python 3 compatible code.
+
+
 Version 0.7.3
 https://github.com/edgewall/genshi/releases/tag/0.7.3
 (May 27 2019, from branches/stable/0.7.x)

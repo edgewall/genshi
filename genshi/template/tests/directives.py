@@ -16,6 +16,7 @@ import re
 import sys
 import unittest
 
+from genshi.compat import IS_PYTHON2
 from genshi.template import directives, MarkupTemplate, TextTemplate, \
                             TemplateRuntimeError, TemplateSyntaxError
 
@@ -487,7 +488,7 @@ class ForDirectiveTestCase(unittest.TestCase):
         try:
             list(tmpl.generate(foo=12))
             self.fail('Expected TemplateRuntimeError')
-        except TypeError, e:
+        except TypeError as e:
             assert (str(e) == "iteration over non-sequence" or
                     str(e) == "'int' object is not iterable")
             exc_type, exc_value, exc_traceback = sys.exc_info()
@@ -496,7 +497,8 @@ class ForDirectiveTestCase(unittest.TestCase):
             while frame.tb_next:
                 frame = frame.tb_next
                 frames.append(frame)
-            self.assertEqual("<Expression u'iter(foo)'>",
+            expected_iter_str = "u'iter(foo)'" if IS_PYTHON2 else "'iter(foo)'"
+            self.assertEqual("<Expression %s>" % expected_iter_str,
                              frames[-1].tb_frame.f_code.co_name)
             self.assertEqual('test.html',
                              frames[-1].tb_frame.f_code.co_filename)
@@ -513,7 +515,7 @@ class ForDirectiveTestCase(unittest.TestCase):
               </py:for>
             </doc>""", filename='test.html').generate()
             self.fail('ExpectedTemplateSyntaxError')
-        except TemplateSyntaxError, e:
+        except TemplateSyntaxError as e:
             self.assertEqual('test.html', e.filename)
             if sys.version_info[:2] > (2,4):
                 self.assertEqual(2, e.lineno)
@@ -1050,7 +1052,7 @@ class ContentDirectiveTestCase(unittest.TestCase):
               <py:content foo="">Foo</py:content>
             </doc>""", filename='test.html').generate()
             self.fail('Expected TemplateSyntaxError')
-        except TemplateSyntaxError, e:
+        except TemplateSyntaxError as e:
             self.assertEqual('test.html', e.filename)
             self.assertEqual(2, e.lineno)
 
@@ -1068,7 +1070,7 @@ class ReplaceDirectiveTestCase(unittest.TestCase):
               <elem py:replace="">Foo</elem>
             </doc>""", filename='test.html').generate()
             self.fail('Expected TemplateSyntaxError')
-        except TemplateSyntaxError, e:
+        except TemplateSyntaxError as e:
             self.assertEqual('test.html', e.filename)
             self.assertEqual(2, e.lineno)
 

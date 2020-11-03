@@ -13,13 +13,20 @@
 
 """Various Python version compatibility classes and functions."""
 
-import _ast
+try:
+    # in Python 3.9 the "_ast" module does not provide "Index" anymore but
+    # "ast" does.
+    import ast
+except ImportError:
+    import _ast as ast
 import sys
 from types import CodeType
 
+import six
 
 IS_PYTHON2 = (sys.version_info[0] == 2)
 
+numeric_types = (float, ) + six.integer_types
 
 # This function should only be called in Python 2, and will fail in Python 3
 
@@ -38,12 +45,8 @@ else:
 
 # We need to test if an object is an instance of a string type in places
 
-if IS_PYTHON2:
-    def isstring(obj):
-        return isinstance(obj, basestring)
-else:
-    def isstring(obj):
-        return isinstance(obj, str)
+def isstring(obj):
+    return isinstance(obj, six.string_types)
 
 # We need to differentiate between StringIO and BytesIO in places
 
@@ -110,36 +113,19 @@ else:
 # In Python 3.8, Str and Ellipsis was replaced by Constant
 
 try:
-    _ast_Ellipsis = _ast.Ellipsis
-    _ast_Str = _ast.Str
+    _ast_Ellipsis = ast.Ellipsis
+    _ast_Str = ast.Str
     _ast_Str_value = lambda obj: obj.s
 except AttributeError:
-    _ast_Ellipsis = _ast_Str = _ast.Constant
+    _ast_Ellipsis = _ast_Str = ast.Constant
     _ast_Str_value = lambda obj: obj.value
 
-
-# Compatibility fallback implementations for Python < 2.6
-
+class _DummyASTItem(object):
+    pass
 try:
-    next = next
-except NameError:
-    def next(iterator):
-        return iterator.next()
+    _ast_Constant = ast.Constant
+except AttributeError:
+    # Python 2
+    _ast_Constant = _DummyASTItem
 
-# Compatibility fallback implementations for Python < 2.5
 
-try:
-    all = all
-    any = any
-except NameError:
-    def any(S):
-        for x in S:
-            if x:
-                return True
-        return False
-
-    def all(S):
-        for x in S:
-            if not x:
-                return False
-        return True

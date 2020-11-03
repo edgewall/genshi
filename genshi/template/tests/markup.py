@@ -19,6 +19,8 @@ import sys
 import tempfile
 import unittest
 
+import six
+
 from genshi.compat import BytesIO, StringIO
 from genshi.core import Markup
 from genshi.input import XML
@@ -83,7 +85,7 @@ class MarkupTemplateTestCase(unittest.TestCase):
         xml = '<p xmlns:py="http://genshi.edgewall.org/" py:do="nothing" />'
         try:
             tmpl = MarkupTemplate(xml, filename='test.html')
-        except BadDirectiveError, e:
+        except BadDirectiveError as e:
             self.assertEqual('test.html', e.filename)
             self.assertEqual(1, e.lineno)
 
@@ -92,7 +94,7 @@ class MarkupTemplateTestCase(unittest.TestCase):
         try:
             tmpl = MarkupTemplate(xml, filename='test.html').generate()
             self.fail('Expected TemplateSyntaxError')
-        except TemplateSyntaxError, e:
+        except TemplateSyntaxError as e:
             self.assertEqual('test.html', e.filename)
             self.assertEqual(1, e.lineno)
 
@@ -103,7 +105,7 @@ class MarkupTemplateTestCase(unittest.TestCase):
         try:
             tmpl = MarkupTemplate(xml, filename='test.html')
             self.fail('Expected TemplateSyntaxError')
-        except TemplateSyntaxError, e:
+        except TemplateSyntaxError as e:
             self.assertEqual('test.html', e.filename)
             self.assertEqual(2, e.lineno)
 
@@ -116,7 +118,7 @@ class MarkupTemplateTestCase(unittest.TestCase):
         try:
             tmpl = MarkupTemplate(xml, filename='test.html')
             self.fail('Expected TemplateSyntaxError')
-        except TemplateSyntaxError, e:
+        except TemplateSyntaxError as e:
             self.assertEqual('test.html', e.filename)
             self.assertEqual(3, e.lineno)
 
@@ -196,7 +198,7 @@ class MarkupTemplateTestCase(unittest.TestCase):
         </div>""".encode('iso-8859-1'), encoding='iso-8859-1')
         self.assertEqual(u"""<?xml version="1.0" encoding="iso-8859-1"?>\n<div>
           \xf6
-        </div>""", unicode(tmpl.generate()))
+        </div>""", six.text_type(tmpl.generate()))
 
     def test_latin1_encoded_explicit_encoding(self):
         tmpl = MarkupTemplate(u"""<div xmlns:py="http://genshi.edgewall.org/">
@@ -204,7 +206,7 @@ class MarkupTemplateTestCase(unittest.TestCase):
         </div>""".encode('iso-8859-1'), encoding='iso-8859-1')
         self.assertEqual(u"""<div>
           \xf6
-        </div>""", unicode(tmpl.generate()))
+        </div>""", six.text_type(tmpl.generate()))
 
     def test_exec_with_trailing_space(self):
         """
@@ -619,7 +621,7 @@ class MarkupTemplateTestCase(unittest.TestCase):
             tmpl = MarkupTemplate(xml, filename='test.html',
                                   allow_exec=False)
             self.fail('Expected SyntaxError')
-        except TemplateSyntaxError, e:
+        except TemplateSyntaxError as e:
             pass
 
     def test_allow_exec_true(self): 

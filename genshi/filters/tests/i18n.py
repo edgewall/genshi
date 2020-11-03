@@ -16,11 +16,14 @@ import doctest
 from gettext import NullTranslations
 import unittest
 
+import six
+
 from genshi.core import Attrs
 from genshi.template import MarkupTemplate, Context
 from genshi.filters.i18n import Translator, extract
 from genshi.input import HTML
 from genshi.compat import IS_PYTHON2, StringIO
+from genshi.tests.test_utils import doctest_suite
 
 
 class DummyTranslations(NullTranslations):
@@ -46,7 +49,7 @@ class DummyTranslations(NullTranslations):
             if tmsg is missing:
                 if self._fallback:
                     return self._fallback.ugettext(message)
-                return unicode(message)
+                return six.text_type(message)
             return tmsg
     else:
         def gettext(self, message):
@@ -55,7 +58,7 @@ class DummyTranslations(NullTranslations):
             if tmsg is missing:
                 if self._fallback:
                     return self._fallback.gettext(message)
-                return unicode(message)
+                return six.text_type(message)
             return tmsg
 
     if IS_PYTHON2:
@@ -2006,7 +2009,7 @@ class ExtractTestCase(unittest.TestCase):
 
 def suite():
     suite = unittest.TestSuite()
-    suite.addTest(doctest.DocTestSuite(Translator.__module__))
+    suite.addTest(doctest_suite(Translator.__module__))
     suite.addTest(unittest.makeSuite(TranslatorTestCase, 'test'))
     suite.addTest(unittest.makeSuite(MsgDirectiveTestCase, 'test'))
     suite.addTest(unittest.makeSuite(ChooseDirectiveTestCase, 'test'))

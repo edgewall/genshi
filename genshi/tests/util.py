@@ -15,6 +15,7 @@ import doctest
 import unittest
 
 from genshi import util
+from genshi.tests.test_utils import doctest_suite
 from genshi.util import LRUCache
 
 
@@ -86,7 +87,7 @@ class LRUCacheTestCase(unittest.TestCase):
 
 def suite():
     suite = unittest.TestSuite()
-    suite.addTest(doctest.DocTestSuite(util))
+    suite.addTest(doctest_suite(util))
     suite.addTest(unittest.makeSuite(LRUCacheTestCase, 'test'))
     return suite
 

@@ -93,12 +93,8 @@ if bdist_egg:
     cmdclass['bdist_egg'] = my_bdist_egg
 
 
-# Use 2to3 if we're running under Python 3 (with Distribute)
 extra = {}
 if sys.version_info >= (3,):
-    extra['use_2to3'] = True
-    extra['convert_2to3_doctests'] = []
-    extra['use_2to3_fixers'] = ['fixes']
     # Install genshi template tests
     extra['include_package_data'] = True
 
@@ -125,8 +121,7 @@ feature is a template language, which is heavily inspired by Kid.""",
     author = 'Edgewall Software',
     author_email = 'info@edgewall.org',
     license = 'BSD',
-    url = 'http://genshi.edgewall.org/',
-    download_url = 'http://genshi.edgewall.org/wiki/Download',
+    url = 'https://github.com/edgewall/genshi',
 
     classifiers = [
         'Development Status :: 4 - Beta',
@@ -146,6 +141,7 @@ feature is a template language, which is heavily inspired by Kid.""",
     packages = packages,
     test_suite = 'genshi.tests.suite',
 
+    install_requires = ['six'],
     extras_require = {
         'i18n': ['Babel>=0.8'],
         'plugin': ['setuptools>=0.6a2']

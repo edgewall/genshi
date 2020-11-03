@@ -20,13 +20,12 @@ import six
 from six.moves import builtins
 
 from genshi.core import Markup
-from genshi.template.astutil import ASTTransformer, ASTCodeGenerator, \
-                                    _ast, parse
+from genshi.template.astutil import ASTTransformer, ASTCodeGenerator, parse
 from genshi.template.base import TemplateRuntimeError
 from genshi.util import flatten
 
-from genshi.compat import get_code_params, build_code_chunk, isstring, \
-                          IS_PYTHON2, _ast_Str
+from genshi.compat import ast as _ast, _ast_Constant, get_code_params, \
+                          build_code_chunk, isstring, IS_PYTHON2, _ast_Str
 
 __all__ = ['Code', 'Expression', 'Suite', 'LenientLookup', 'StrictLookup',
            'Undefined', 'UndefinedError']
@@ -613,12 +612,20 @@ class ExpressionASTTransformer(TemplateASTTransformer):
 
     def visit_Subscript(self, node):
         if not isinstance(node.ctx, _ast.Load) or \
-                not isinstance(node.slice, _ast.Index):
+                not isinstance(node.slice, (_ast.Index, _ast_Constant, _ast.Name, _ast.Call)):
             return ASTTransformer.visit_Subscript(self, node)
+
+        # Before Python 3.9 "foo[key]" wrapped the load of "key" in
+        # "ast.Index(ast.Name(...))"
+        if isinstance(node.slice, (_ast.Name, _ast.Call)):
+            slice_value = node.slice
+        else:
+            slice_value = node.slice.value
+
 
         func = _new(_ast.Name, '_lookup_item', _ast.Load())
         args = [
             self.visit(node.value),
-            _new(_ast.Tuple, (self.visit(node.slice.value),), _ast.Load())
+            _new(_ast.Tuple, (self.visit(slice_value),), _ast.Load())
         ]
         return _new(_ast.Call, func, args, [])

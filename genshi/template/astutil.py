@@ -13,9 +13,8 @@
 
 """Support classes for generating code from abstract syntax trees."""
 
-import _ast
-
-from genshi.compat import IS_PYTHON2, isstring, _ast_Ellipsis
+from genshi.compat import ast as _ast, _ast_Constant, IS_PYTHON2, isstring, \
+                          _ast_Ellipsis
 
 __docformat__ = 'restructuredtext en'
 
@@ -82,6 +81,10 @@ class ASTCodeGenerator(object):
             info = True
         except AttributeError:
             info = False
+        if isinstance(node, (bool, bytes, float, int, str)):
+            # something['foo'] just returns 'foo' as str in Python 3.9 while
+            # Python 3.8 and earlier returned a Constant().
+            node = _ast_Constant(node)
         visitor = getattr(self, 'visit_%s' % node.__class__.__name__, None)
         if visitor is None:
             raise Exception('Unhandled node type %r' % type(node))
@@ -731,13 +734,17 @@ class ASTCodeGenerator(object):
                     self.visit(node.step)
             elif isinstance(node, _ast.Index):
                 self.visit(node.value)
+            elif isinstance(node, _ast_Constant):
+                self.visit_Constant(node)
+            elif isinstance(node, _ast.UnaryOp):
+                self.visit_UnaryOp(node)
             elif isinstance(node, _ast.ExtSlice):
                 self.visit(node.dims[0])
                 for dim in node.dims[1:]:
                     self._write(', ')
                     self.visit(dim)
             else:
-                raise NotImplemented('Slice type not implemented')
+                raise NotImplementedError('Slice type not implemented')
         _process_slice(node.slice)
         self._write(']')
 
@@ -768,7 +775,12 @@ class ASTCodeGenerator(object):
     def visit_Tuple(self, node):
         self._write('(')
         for elt in node.elts:
-            self.visit(elt)
+            # In Python 3.9 simple types (which includes NoneType) are
+            # represented by their value in "subscription" expressions.
+            # However self.visit() returns None if elt is None leading to
+            # invalid generated code. So we deal with the special case here.
+            # Example code triggering this: value[None]
+            self.visit(elt) if (elt is not None) else self._write('None')
             self._write(', ')
         self._write(')')
 

@@ -480,6 +480,41 @@ class ExpressionTestCase(unittest.TestCase):
             self.assertEqual('index.html', code.co_filename)
             self.assertEqual(50, frame.tb_lineno)
 
+    def test_getitem_with_constant_string(self):
+        data = dict(dict={'some': 'thing'})
+        self.assertEqual('thing', Expression("dict['some']").evaluate(data))
+
+    def test_getitem_with_simple_index(self):
+        data = dict(values={
+            True: 'bar',
+            2.5: 'baz',
+            None: 'quox',
+            42: 'quooox',
+            b'foo': 'foobar'
+        })
+        self.assertEqual('bar', Expression('values[True]').evaluate(data))
+        self.assertEqual('baz', Expression('values[2.5]').evaluate(data))
+        self.assertEqual('quooox', Expression('values[42]').evaluate(data))
+        self.assertEqual('foobar', Expression('values[b"foo"]').evaluate(data))
+        self.assertEqual('quox', Expression('values[None]').evaluate(data))
+
+    def test_array_indices(self):
+        data = dict(items=[1, 2, 3])
+        self.assertEqual(1, Expression('items[0]').evaluate(data))
+        self.assertEqual(3, Expression('items[-1]').evaluate(data))
+
+    def test_item_access_for_attributes(self):
+        class MyClass(object):
+            myattr = 'Bar'
+        data = {'mine': MyClass(), 'key': 'myattr'}
+        self.assertEqual('Bar', Expression('mine.myattr').evaluate(data))
+        self.assertEqual('Bar', Expression('mine["myattr"]').evaluate(data))
+        self.assertEqual('Bar', Expression('mine[key]').evaluate(data))
+
+    def test_function_in_item_access(self):
+        data = dict(values={'foo': 'bar'})
+        self.assertEqual('bar', Expression('values[str("foo")]').evaluate(data))
+
 
 class SuiteTestCase(unittest.TestCase):
 

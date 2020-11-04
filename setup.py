@@ -71,7 +71,7 @@ if Feature:
     # - CPython >= 3.3 (the new Unicode C API is not supported yet)
     speedups = Feature(
         "optional C speed-enhancements",
-        standard = not is_pypy and sys.version_info < (3, 3),
+        standard = not is_pypy,
         ext_modules = [
             Extension('genshi._speedups', ['genshi/_speedups.c']),
         ],

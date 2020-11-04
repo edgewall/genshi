@@ -56,6 +56,8 @@ PyDoc_STRVAR(Markup__doc__,
 "Marks a string as being safe for inclusion in HTML/XML output without\n\
 needing to be escaped.");
 
+#if PY_VERSION_HEX < 0x03030000
+
 static PyObject *
 escape(PyObject *text, int quotes)
 {
@@ -168,6 +170,132 @@ escape(PyObject *text, int quotes)
     Py_DECREF(args);
     return ret;
 }
+
+#else /* if PY_VERSION_HEX < 0x03030000 */
+
+static PyObject *
+escape(PyObject *text, int quotes)
+{
+    PyObject *args, *ret;
+
+    if (PyObject_TypeCheck(text, &MarkupType)) {
+        Py_INCREF(text);
+        return text;
+    }
+    if (PyObject_HasAttrString(text, "__html__")) {
+        ret = PyObject_CallMethod(text, "__html__", NULL);
+        args = PyTuple_New(1);
+        if (args == NULL) {
+            Py_DECREF(ret);
+            return NULL;
+        }
+        PyTuple_SET_ITEM(args, 0, ret);
+        ret = MarkupType.tp_new(&MarkupType, args, NULL);
+        Py_DECREF(args);
+        return ret;
+    }
+
+    PyObject *in = PyObject_Str(text);
+    if (in == NULL) {
+        return NULL;
+    }
+    Py_ssize_t utf8_len;
+    const char *utf8 = PyUnicode_AsUTF8AndSize(in, &utf8_len);
+    if (utf8 == NULL) {
+        Py_DECREF(in);
+        return NULL;
+    }
+
+    /* First we need to figure out how long the escaped string will be */
+    Py_ssize_t len = 0, inn = 0;
+    for (Py_ssize_t i = 0; i < utf8_len; i++) {
+        switch (utf8[i]) {
+            case '&': len += 5; inn++;                                 break;
+            case '"': len += quotes ? 5 : 1; inn += quotes ? 1 : 0;    break;
+            case '<':
+            case '>': len += 4; inn++;                                 break;
+            default:  len++;
+        }
+    }
+
+    /* Do we need to escape anything at all? */
+    if (!inn) {
+        args = PyTuple_New(1);
+        if (args == NULL) {
+            Py_DECREF((PyObject *) in);
+            return NULL;
+        }
+        PyTuple_SET_ITEM(args, 0, in);
+        ret = MarkupType.tp_new(&MarkupType, args, NULL);
+        Py_DECREF(args);
+        return ret;
+    }
+
+    char *buffer = (char*)PyMem_Malloc(len);
+    if (buffer == NULL) {
+        Py_DECREF(in);
+        return NULL;
+    }
+
+    Py_ssize_t outn = 0;
+    const char *inp = utf8;
+    char *outp = buffer;
+    while (utf8_len > inp - utf8) {
+        if (outn == inn) {
+            /* copy rest of string if we have already replaced everything */
+            memcpy(outp, inp, utf8_len - (inp - utf8));
+            break;
+        }
+        switch (*inp) {
+            case '&':
+                memcpy(outp, "&amp;", 5);
+                outp += 5;
+                outn++;
+                break;
+            case '"':
+                if (quotes) {
+                    memcpy(outp, "&#34;", 5);
+                    outp += 5;
+                    outn++;
+                } else {
+                    *outp++ = *inp;
+                }
+                break;
+            case '<':
+                memcpy(outp, "&lt;", 4);
+                outp += 4;
+                outn++;
+                break;
+            case '>':
+                memcpy(outp, "&gt;", 4);
+                outp += 4;
+                outn++;
+                break;
+            default:
+                *outp++ = *inp;
+        }
+        inp++;
+    }
+
+    Py_DECREF(in);
+
+    PyObject *out = PyUnicode_FromStringAndSize(buffer, len);
+    PyMem_Free(buffer);
+    if (out == NULL) {
+        return NULL;
+    }
+    args = PyTuple_New(1);
+    if (args == NULL) {
+        Py_DECREF(out);
+        return NULL;
+    }
+    PyTuple_SET_ITEM(args, 0, out);
+    ret = MarkupType.tp_new(&MarkupType, args, NULL);
+    Py_DECREF(args);
+    return ret;
+}
+
+#endif /* if PY_VERSION_HEX < 0x03030000 */
 
 PyDoc_STRVAR(escape__doc__,
 "Create a Markup instance from a string and escape special characters\n\

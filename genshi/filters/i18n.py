@@ -346,7 +346,7 @@ class ChooseDirective(ExtractableI18NDirective):
     def attach(cls, template, stream, value, namespaces, pos):
         if type(value) is dict:
             numeral = value.get('numeral', '').strip()
-            assert numeral is not '', "at least pass the numeral param"
+            assert numeral != '', "at least pass the numeral param"
             params = [v.strip() for v in value.get('params', '').split(',')]
             value = '%s; ' % numeral + ', '.join(params)
         return super(ChooseDirective, cls).attach(template, stream, value,

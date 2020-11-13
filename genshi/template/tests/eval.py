@@ -360,6 +360,31 @@ class ExpressionTestCase(unittest.TestCase):
         res = expr.evaluate({'numbers': list(range(5))})
         self.assertEqual([0, 1, 2, 3], res)
 
+    def test_slice_constant(self):
+        expr = Expression("numbers[1]")
+        res = expr.evaluate({"numbers": list(range(5))})
+        self.assertEqual(res, 1)
+
+    def test_slice_call(self):
+        def f():
+            return 2
+        expr = Expression("numbers[f()]")
+        res = expr.evaluate({"numbers": list(range(5)), "f": f})
+        self.assertEqual(res, 2)
+
+    def test_slice_name(self):
+        expr = Expression("numbers[v]")
+        res = expr.evaluate({"numbers": list(range(5)), "v": 2})
+        self.assertEqual(res, 2)
+
+    def test_slice_attribute(self):
+        class ValueHolder:
+            def __init__(self):
+                self.value = 3
+        expr = Expression("numbers[obj.value]")
+        res = expr.evaluate({"numbers": list(range(5)), "obj": ValueHolder()})
+        self.assertEqual(res, 3)
+
     def test_access_undefined(self):
         expr = Expression("nothing", filename='index.html', lineno=50,
                           lookup='lenient')

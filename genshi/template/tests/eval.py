@@ -360,6 +360,31 @@ class ExpressionTestCase(unittest.TestCase):
         res = expr.evaluate({'numbers': list(range(5))})
         self.assertEqual([0, 1, 2, 3], res)
 
+    def test_slice_constant(self):
+        expr = Expression("numbers[1]")
+        res = expr.evaluate({"numbers": list(range(5))})
+        self.assertEqual(res, 1)
+
+    def test_slice_call(self):
+        def f():
+            return 2
+        expr = Expression("numbers[f()]")
+        res = expr.evaluate({"numbers": list(range(5)), "f": f})
+        self.assertEqual(res, 2)
+
+    def test_slice_name(self):
+        expr = Expression("numbers[v]")
+        res = expr.evaluate({"numbers": list(range(5)), "v": 2})
+        self.assertEqual(res, 2)
+
+    def test_slice_attribute(self):
+        class ValueHolder:
+            def __init__(self):
+                self.value = 3
+        expr = Expression("numbers[obj.value]")
+        res = expr.evaluate({"numbers": list(range(5)), "obj": ValueHolder()})
+        self.assertEqual(res, 3)
+
     def test_access_undefined(self):
         expr = Expression("nothing", filename='index.html', lineno=50,
                           lookup='lenient')
@@ -940,6 +965,71 @@ with open(path) as file1, open(path) as file2:
                 self.assertEqual(['foo\n', 'foo\n'], d['lines'])
             finally:
                 os.remove(path)
+
+    def test_slice(self):
+        suite = Suite("x = numbers[0:2]")
+        data = {"numbers": [0, 1, 2, 3]}
+        suite.execute(data)
+        self.assertEqual([0, 1], data["x"])
+
+    def test_slice_with_vars(self):
+        suite = Suite("x = numbers[start:end]")
+        data = {"numbers": [0, 1, 2, 3], "start": 0, "end": 2}
+        suite.execute(data)
+        self.assertEqual([0, 1], data["x"])
+
+    def test_slice_copy(self):
+        suite = Suite("x = numbers[:]")
+        data = {"numbers": [0, 1, 2, 3]}
+        suite.execute(data)
+        self.assertEqual([0, 1, 2, 3], data["x"])
+
+    def test_slice_stride(self):
+        suite = Suite("x = numbers[::stride]")
+        data = {"numbers": [0, 1, 2, 3, 4], "stride": 2}
+        suite.execute(data)
+        self.assertEqual([0, 2, 4], data["x"])
+
+    def test_slice_negative_start(self):
+        suite = Suite("x = numbers[-1:]")
+        data = {"numbers": [0, 1, 2, 3, 4], "stride": 2}
+        suite.execute(data)
+        self.assertEqual([4], data["x"])
+
+    def test_slice_negative_end(self):
+        suite = Suite("x = numbers[:-1]")
+        data = {"numbers": [0, 1, 2, 3, 4], "stride": 2}
+        suite.execute(data)
+        self.assertEqual([0, 1, 2, 3], data["x"])
+
+    def test_slice_constant(self):
+        suite = Suite("x = numbers[1]")
+        data = {"numbers": [0, 1, 2, 3, 4]}
+        suite.execute(data)
+        self.assertEqual(1, data["x"])
+
+    def test_slice_call(self):
+        def f():
+            return 2
+        suite = Suite("x = numbers[f()]")
+        data = {"numbers": [0, 1, 2, 3, 4], "f": f}
+        suite.execute(data)
+        self.assertEqual(2, data["x"])
+
+    def test_slice_name(self):
+        suite = Suite("x = numbers[v]")
+        data = {"numbers": [0, 1, 2, 3, 4], "v": 2}
+        suite.execute(data)
+        self.assertEqual(2, data["x"])
+
+    def test_slice_attribute(self):
+        class ValueHolder:
+            def __init__(self):
+                self.value = 3
+        suite = Suite("x = numbers[obj.value]")
+        data = {"numbers": [0, 1, 2, 3, 4], "obj": ValueHolder()}
+        suite.execute(data)
+        self.assertEqual(3, data["x"])
 
 
 def suite():

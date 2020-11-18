@@ -1,3 +1,18 @@
+Version 0.7.5
+https://github.com/edgewall/genshi/releases/tag/0.7.5
+(Nov 18 2020, from branches/stable/0.7.x)
+
+ * Fix handling of slices containing function call, variable name and attribute
+   lookup AST nodes in Python 3.9 in template scripts (template expressions
+   already correctly handled these cases). Thank you to Roger Leigh for
+   finding this issue and contributing the fix for it.
+ * C speedup module now available for Python >= 3.3. Support was added for
+   PEP 393 (flexible string representation). Thank you to Inada Naoki for
+   contributing this major enhancement.
+ * Remove the custom 2to3 fixers (no longer used since the removal of 2to3
+   in 0.7.4).
+
+
 Version 0.7.4
 https://github.com/edgewall/genshi/releases/tag/0.7.4
 (Nov 3 2020, from branches/stable/0.7.x)

@@ -734,17 +734,13 @@ class ASTCodeGenerator(object):
                     self.visit(node.step)
             elif isinstance(node, _ast.Index):
                 self.visit(node.value)
-            elif isinstance(node, _ast_Constant):
-                self.visit_Constant(node)
-            elif isinstance(node, _ast.UnaryOp):
-                self.visit_UnaryOp(node)
             elif isinstance(node, _ast.ExtSlice):
                 self.visit(node.dims[0])
                 for dim in node.dims[1:]:
                     self._write(', ')
                     self.visit(dim)
             else:
-                raise NotImplementedError('Slice type not implemented')
+                self.visit(node)
         _process_slice(node.slice)
         self._write(']')
 

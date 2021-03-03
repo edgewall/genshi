@@ -19,11 +19,10 @@ import doctest
 from glob import glob
 import os
 try:
-    from setuptools import setup, Extension, Feature
+    from setuptools import setup, Extension
     from setuptools.command.bdist_egg import bdist_egg
 except ImportError:
     from distutils.core import setup, Extension
-    Feature = None
     bdist_egg = None
 import sys
 
@@ -64,20 +63,20 @@ available.""")
         print(exc)
 
 
-if Feature:
-    # Optional C extension module for speeding up Genshi:
-    # Not activated by default on:
-    # - PyPy (where it harms performance)
-    # - CPython >= 3.3 (the new Unicode C API is not supported yet)
-    speedups = Feature(
-        "optional C speed-enhancements",
-        standard = not is_pypy,
-        ext_modules = [
-            Extension('genshi._speedups', ['genshi/_speedups.c']),
-        ],
-    )
-else:
-    speedups = None
+# Optional C extension module for speeding up Genshi
+# Not activated by default on:
+# - PyPy (where it harms performance)
+_speedup_enable_default = 0 if is_pypy else 1
+try:
+    _speedup_enabled = int(os.getenv('GENSHI_BUILD_SPEEDUP', _speedup_enable_default))
+except ValueError:
+    import warnings
+    warnings.warn('GENSHI_BUILD_SPEEDUP was defined to something other than 0 or 1; defaulting to not build...')
+    _speedup_enabled = False
+
+ext_modules = []
+if _speedup_enabled:
+    ext_modules.append(Extension('genshi._speedups', ['genshi/_speedups.c']))
 
 
 # Setuptools need some help figuring out if the egg is "zip_safe" or not
@@ -149,14 +148,14 @@ feature is a template language, which is heavily inspired by Kid.""",
     entry_points = """
     [babel.extractors]
     genshi = genshi.filters.i18n:extract[i18n]
-    
+
     [python.templating.engines]
     genshi = genshi.template.plugin:MarkupTemplateEnginePlugin[plugin]
     genshi-markup = genshi.template.plugin:MarkupTemplateEnginePlugin[plugin]
     genshi-text = genshi.template.plugin:TextTemplateEnginePlugin[plugin]
     """,
 
-    features = {'speedups': speedups},
+    ext_modules = ext_modules,
     cmdclass = cmdclass,
 
     **extra

@@ -16,11 +16,14 @@ import doctest
 from gettext import NullTranslations
 import unittest
 
+import six
+
 from genshi.core import Attrs
 from genshi.template import MarkupTemplate, Context
 from genshi.filters.i18n import Translator, extract
 from genshi.input import HTML
 from genshi.compat import IS_PYTHON2, StringIO
+from genshi.tests.test_utils import doctest_suite
 
 
 class DummyTranslations(NullTranslations):
@@ -46,7 +49,7 @@ class DummyTranslations(NullTranslations):
             if tmsg is missing:
                 if self._fallback:
                     return self._fallback.ugettext(message)
-                return unicode(message)
+                return six.text_type(message)
             return tmsg
     else:
         def gettext(self, message):
@@ -55,7 +58,7 @@ class DummyTranslations(NullTranslations):
             if tmsg is missing:
                 if self._fallback:
                     return self._fallback.gettext(message)
-                return unicode(message)
+                return six.text_type(message)
             return tmsg
 
     if IS_PYTHON2:
@@ -144,6 +147,24 @@ class TranslatorTestCase(unittest.TestCase):
         stream = list(html.filter(translator))
         kind, data, pos = stream[2]
         assert isinstance(data[1], Attrs)
+
+    def test_extract_included_empty_attribute_text(self):
+        tmpl = MarkupTemplate(u"""<html>
+          <span title="">...</span>
+        </html>""")
+        translator = Translator()
+        messages = list(translator.extract(tmpl.stream))
+        self.assertEqual([], messages)
+
+    def test_translate_included_empty_attribute_text(self):
+        tmpl = MarkupTemplate(u"""<html>
+          <span title="">...</span>
+        </html>""")
+        translator = Translator(DummyTranslations({'': 'Project-Id-Version'}))
+        translator.setup(tmpl)
+        self.assertEqual("""<html>
+          <span title="">...</span>
+        </html>""", tmpl.generate().render())
 
     def test_extract_without_text(self):
         tmpl = MarkupTemplate("""<html xmlns:py="http://genshi.edgewall.org/">
@@ -255,6 +276,25 @@ class TranslatorTestCase(unittest.TestCase):
         translator.setup(tmpl)
         self.assertEqual("""<html>
           <p>Voh</p>
+        </html>""", tmpl.generate().render())
+
+    def test_extract_included_attribute_text_with_spaces(self):
+        tmpl = MarkupTemplate("""<html xmlns:py="http://genshi.edgewall.org/">
+          <span title=" Foo ">...</span>
+        </html>""")
+        translator = Translator()
+        messages = list(translator.extract(tmpl.stream))
+        self.assertEqual(1, len(messages))
+        self.assertEqual((2, None, 'Foo', []), messages[0])
+
+    def test_translate_included_attribute_text_with_spaces(self):
+        tmpl = MarkupTemplate("""<html xmlns:py="http://genshi.edgewall.org/">
+          <span title=" Foo ">...</span>
+        </html>""")
+        translator = Translator(DummyTranslations({'Foo': 'Voh'}))
+        translator.setup(tmpl)
+        self.assertEqual("""<html>
+          <span title="Voh">...</span>
         </html>""", tmpl.generate().render())
 
 
@@ -2145,7 +2185,7 @@ class ContextDirectiveTestCase(unittest.TestCase):
 
 def suite():
     suite = unittest.TestSuite()
-    suite.addTest(doctest.DocTestSuite(Translator.__module__))
+    suite.addTest(doctest_suite(Translator.__module__))
     suite.addTest(unittest.makeSuite(TranslatorTestCase, 'test'))
     suite.addTest(unittest.makeSuite(MsgDirectiveTestCase, 'test'))
     suite.addTest(unittest.makeSuite(ChooseDirectiveTestCase, 'test'))

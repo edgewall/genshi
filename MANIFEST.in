@@ -1,12 +1,10 @@
 include ChangeLog
+# implied by setup.cfg -> license_files, repeated for clarity
 include COPYING
 recursive-include genshi *.py *.c *.txt *.html
-recursive-include scripts *.py
-recursive-include fixes *.py
 recursive-include examples *
 recursive-include doc *.html *.css *.txt *.png *.gif *.py *.ini COPYING
 recursive-exclude doc/logo.lineform *
 exclude doc/2000ft.graffle
 global-exclude *.pyc
-include fixes/*.*
 recursive-include genshi/template/tests/templates *.html *.txt

@@ -13,12 +13,20 @@
 
 """Various Python version compatibility classes and functions."""
 
+try:
+    # in Python 3.9 the "_ast" module does not provide "Index" anymore but
+    # "ast" does.
+    import ast
+except ImportError:
+    import _ast as ast
 import sys
 from types import CodeType
 
+import six
 
 IS_PYTHON2 = (sys.version_info[0] == 2)
 
+numeric_types = (float, ) + six.integer_types
 
 # This function should only be called in Python 2, and will fail in Python 3
 
@@ -37,12 +45,8 @@ else:
 
 # We need to test if an object is an instance of a string type in places
 
-if IS_PYTHON2:
-    def isstring(obj):
-        return isinstance(obj, basestring)
-else:
-    def isstring(obj):
-        return isinstance(obj, str)
+def isstring(obj):
+    return isinstance(obj, six.string_types)
 
 # We need to differentiate between StringIO and BytesIO in places
 
@@ -84,40 +88,44 @@ if IS_PYTHON2:
                         lineno, code.co_lnotab, (), ())
 else:
     def get_code_params(code):
-        return (code.co_nlocals, code.co_kwonlyargcount, code.co_stacksize,
-                code.co_flags, code.co_code, code.co_consts, code.co_names,
-                code.co_varnames, code.co_filename, code.co_name,
-                code.co_firstlineno, code.co_lnotab, (), ())
+        params = [code.co_nlocals, code.co_kwonlyargcount, code.co_stacksize,
+                  code.co_flags, code.co_code, code.co_consts, code.co_names,
+                  code.co_varnames, code.co_filename, code.co_name,
+                  code.co_firstlineno, code.co_lnotab, (), ()]
+        if hasattr(code, "co_posonlyargcount"):
+            # PEP 570 added "positional only arguments"
+            params.insert(1, code.co_posonlyargcount)
+        return tuple(params)
+
 
     def build_code_chunk(code, filename, name, lineno):
-        return CodeType(0, code.co_nlocals, code.co_kwonlyargcount,
-                        code.co_stacksize, code.co_flags | 0x0040,
-                        code.co_code, code.co_consts, code.co_names,
-                        code.co_varnames, filename, name, lineno,
-                        code.co_lnotab, (), ())
+        params =  [0, code.co_nlocals, code.co_kwonlyargcount,
+                  code.co_stacksize, code.co_flags | 0x0040,
+                  code.co_code, code.co_consts, code.co_names,
+                  code.co_varnames, filename, name, lineno,
+                  code.co_lnotab, (), ()]
+        if hasattr(code, "co_posonlyargcount"):
+            # PEP 570 added "positional only arguments"
+            params.insert(2, code.co_posonlyargcount)
+        return CodeType(*params)
 
-# Compatibility fallback implementations for Python < 2.6
 
-try:
-    next = next
-except NameError:
-    def next(iterator):
-        return iterator.next()
-
-# Compatibility fallback implementations for Python < 2.5
+# In Python 3.8, Str and Ellipsis was replaced by Constant
 
 try:
-    all = all
-    any = any
-except NameError:
-    def any(S):
-        for x in S:
-            if x:
-                return True
-        return False
+    _ast_Ellipsis = ast.Ellipsis
+    _ast_Str = ast.Str
+    _ast_Str_value = lambda obj: obj.s
+except AttributeError:
+    _ast_Ellipsis = _ast_Str = ast.Constant
+    _ast_Str_value = lambda obj: obj.value
 
-    def all(S):
-        for x in S:
-            if not x:
-                return False
-        return True
+class _DummyASTItem(object):
+    pass
+try:
+    _ast_Constant = ast.Constant
+except AttributeError:
+    # Python 2
+    _ast_Constant = _DummyASTItem
+
+

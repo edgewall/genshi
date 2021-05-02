@@ -18,6 +18,7 @@ from genshi.core import Attrs, QName
 from genshi.input import XML
 from genshi.path import Path, PathParser, PathSyntaxError, GenericStrategy, \
                         SingleStepStrategy, SimplePathStrategy
+from genshi.tests.test_utils import doctest_suite
 
 
 class FakePath(Path):
@@ -708,7 +709,7 @@ class PathTestCase(unittest.TestCase):
 
 def suite():
     suite = unittest.TestSuite()
-    suite.addTest(doctest.DocTestSuite(Path.__module__))
+    suite.addTest(doctest_suite(Path.__module__))
     suite.addTest(unittest.makeSuite(PathTestCase, 'test'))
     return suite
 

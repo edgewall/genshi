@@ -13,46 +13,24 @@
 
 """Support for "safe" evaluation of Python expressions."""
 
-import __builtin__
-
 from textwrap import dedent
 from types import CodeType
 
+import six
+from six.moves import builtins
+
 from genshi.core import Markup
-from genshi.template.astutil import ASTTransformer, ASTCodeGenerator, \
-                                    _ast, parse
+from genshi.template.astutil import ASTTransformer, ASTCodeGenerator, parse
 from genshi.template.base import TemplateRuntimeError
 from genshi.util import flatten
 
-from genshi.compat import get_code_params, build_code_chunk, isstring, \
-                          IS_PYTHON2
+from genshi.compat import ast as _ast, _ast_Constant, get_code_params, \
+                          build_code_chunk, isstring, IS_PYTHON2, _ast_Str
 
 __all__ = ['Code', 'Expression', 'Suite', 'LenientLookup', 'StrictLookup',
            'Undefined', 'UndefinedError']
 __docformat__ = 'restructuredtext en'
 
-
-# Check for a Python 2.4 bug in the eval loop
-has_star_import_bug = False
-try:
-    class _FakeMapping(object):
-        __getitem__ = __setitem__ = lambda *a: None
-    exec 'from sys import *' in {}, _FakeMapping()
-except SystemError:
-    has_star_import_bug = True
-del _FakeMapping
-
-
-def _star_import_patch(mapping, modname):
-    """This function is used as helper if a Python version with a broken
-    star-import opcode is in use.
-    """
-    module = __import__(modname, None, None, ['__all__'])
-    if hasattr(module, '__all__'):
-        members = module.__all__
-    else:
-        members = [x for x in module.__dict__ if not x.startswith('_')]
-    mapping.update([(name, getattr(module, name)) for name in members])
 
 
 class Code(object):
@@ -75,7 +53,7 @@ class Code(object):
                       if `None`, the appropriate transformation is chosen
                       depending on the mode
         """
-        if isinstance(source, basestring):
+        if isinstance(source, six.string_types):
             self.source = source
             node = _parse(source, mode=self.mode)
         else:
@@ -94,13 +72,17 @@ class Code(object):
                              filename=filename, lineno=lineno, xform=xform)
         if lookup is None:
             lookup = LenientLookup
-        elif isinstance(lookup, basestring):
+        elif isinstance(lookup, six.string_types):
             lookup = {'lenient': LenientLookup, 'strict': StrictLookup}[lookup]
         self._globals = lookup.globals
 
     def __getstate__(self):
-        state = {'source': self.source, 'ast': self.ast,
-                 'lookup': self._globals.im_self}
+        if hasattr(self._globals, '__self__'):
+            # Python 3
+            lookup_fn = self._globals.__self__
+        else:
+            lookup_fn = self._globals.im_self
+        state = {'source': self.source, 'ast': self.ast, 'lookup': lookup_fn}
         state['code'] = get_code_params(self.code)
         return state
 
@@ -196,7 +178,7 @@ class Suite(Code):
         """
         __traceback_hide__ = 'before_and_this'
         _globals = self._globals(data)
-        exec self.code in _globals, data
+        six.exec_(self.code, _globals, data)
 
 
 UNDEFINED = object()
@@ -238,14 +220,14 @@ class Undefined(object):
     
     >>> try:
     ...     foo('bar')
-    ... except UndefinedError, e:
-    ...     print e.msg
+    ... except UndefinedError as e:
+    ...     print(e.msg)
     "foo" not defined
 
     >>> try:
     ...     foo.bar
-    ... except UndefinedError, e:
-    ...     print e.msg
+    ... except UndefinedError as e:
+    ...     print(e.msg)
     "foo" not defined
     
     :see: `LenientLookup`
@@ -264,8 +246,10 @@ class Undefined(object):
     def __iter__(self):
         return iter([])
 
-    def __nonzero__(self):
+    def __bool__(self):
         return False
+    # Python 2
+    __nonzero__ = __bool__
 
     def __repr__(self):
         return '<%s %r>' % (type(self).__name__, self._name)
@@ -297,7 +281,6 @@ class LookupBase(object):
             '_lookup_name': cls.lookup_name,
             '_lookup_attr': cls.lookup_attr,
             '_lookup_item': cls.lookup_item,
-            '_star_import_patch': _star_import_patch,
             'UndefinedError': UndefinedError,
         }
 
@@ -333,8 +316,8 @@ class LookupBase(object):
             key = key[0]
         try:
             return obj[key]
-        except (AttributeError, KeyError, IndexError, TypeError), e:
-            if isinstance(key, basestring):
+        except (AttributeError, KeyError, IndexError, TypeError) as e:
+            if isinstance(key, six.string_types):
                 val = getattr(obj, key, UNDEFINED)
                 if val is UNDEFINED:
                     val = cls.undefined(key, owner=obj)
@@ -392,8 +375,8 @@ class StrictLookup(LookupBase):
     >>> expr = Expression('nothing', lookup='strict')
     >>> try:
     ...     expr.evaluate({})
-    ... except UndefinedError, e:
-    ...     print e.msg
+    ... except UndefinedError as e:
+    ...     print(e.msg)
     "nothing" not defined
     
     The same happens when a non-existing attribute or item is accessed on an
@@ -402,8 +385,8 @@ class StrictLookup(LookupBase):
     >>> expr = Expression('something.nil', lookup='strict')
     >>> try:
     ...     expr.evaluate({'something': dict()})
-    ... except UndefinedError, e:
-    ...     print e.msg
+    ... except UndefinedError as e:
+    ...     print(e.msg)
     {} has no member named "nil"
     """
 
@@ -424,7 +407,7 @@ def _parse(source, mode='eval'):
             if first.rstrip().endswith(':') and not rest[0].isspace():
                 rest = '\n'.join(['    %s' % line for line in rest.splitlines()])
             source = '\n'.join([first, rest])
-    if isinstance(source, unicode):
+    if isinstance(source, six.text_type):
         source = (u'\ufeff' + source).encode('utf-8')
     return parse(source, mode)
 
@@ -435,11 +418,11 @@ def _compile(node, source=None, mode='eval', filename=None, lineno=-1,
         filename = '<string>'
     if IS_PYTHON2:
         # Python 2 requires non-unicode filenames
-        if isinstance(filename, unicode):
+        if isinstance(filename, six.text_type):
             filename = filename.encode('utf-8', 'replace')
     else:
         # Python 3 requires unicode filenames
-        if not isinstance(filename, unicode):
+        if not isinstance(filename, six.text_type):
             filename = filename.decode('utf-8', 'replace')
     if lineno <= 0:
         lineno = 1
@@ -483,7 +466,7 @@ def _new(class_, *args, **kwargs):
     return ret
 
 
-BUILTINS = __builtin__.__dict__.copy()
+BUILTINS = builtins.__dict__.copy()
 BUILTINS.update({'Markup': Markup, 'Undefined': Undefined})
 CONSTANTS = frozenset(['False', 'True', 'None', 'NotImplemented', 'Ellipsis'])
 
@@ -527,11 +510,11 @@ class TemplateASTTransformer(ASTTransformer):
         return names
 
     def visit_Str(self, node):
-        if not isinstance(node.s, unicode):
+        if not isinstance(node.s, six.text_type):
             try: # If the string is ASCII, return a `str` object
                 node.s.decode('ascii')
             except ValueError: # Otherwise return a `unicode` object
-                return _new(_ast.Str, node.s.decode('utf-8'))
+                return _new(_ast_Str, node.s.decode('utf-8'))
         return node
 
     def visit_ClassDef(self, node):
@@ -550,14 +533,6 @@ class TemplateASTTransformer(ASTTransformer):
 
     def visit_ImportFrom(self, node):
         if [a.name for a in node.names] == ['*']:
-            if has_star_import_bug:
-                # This is a Python 2.4 bug. Only if we have a broken Python
-                # version do we need to apply this hack
-                node = _new(_ast.Expr, _new(_ast.Call,
-                    _new(_ast.Name, '_star_import_patch'), [
-                        _new(_ast.Name, '__data__'),
-                        _new(_ast.Str, node.module)
-                    ], (), ()))
             return node
         if len(self.locals) > 1:
             self.locals[-1].update(self._extract_names(node))
@@ -613,7 +588,7 @@ class TemplateASTTransformer(ASTTransformer):
             # Otherwise, translate the name ref into a context lookup
             name = _new(_ast.Name, '_lookup_name', _ast.Load())
             namearg = _new(_ast.Name, '__data__', _ast.Load())
-            strarg = _new(_ast.Str, node.id)
+            strarg = _new(_ast_Str, node.id)
             node = _new(_ast.Call, name, [namearg, strarg], [])
         elif isinstance(node.ctx, _ast.Store):
             if len(self.locals) > 1:
@@ -632,17 +607,25 @@ class ExpressionASTTransformer(TemplateASTTransformer):
             return ASTTransformer.visit_Attribute(self, node)
 
         func = _new(_ast.Name, '_lookup_attr', _ast.Load())
-        args = [self.visit(node.value), _new(_ast.Str, node.attr)]
+        args = [self.visit(node.value), _new(_ast_Str, node.attr)]
         return _new(_ast.Call, func, args, [])
 
     def visit_Subscript(self, node):
         if not isinstance(node.ctx, _ast.Load) or \
-                not isinstance(node.slice, _ast.Index):
+                not isinstance(node.slice, (_ast.Index, _ast_Constant, _ast.Name, _ast.Call)):
             return ASTTransformer.visit_Subscript(self, node)
+
+        # Before Python 3.9 "foo[key]" wrapped the load of "key" in
+        # "ast.Index(ast.Name(...))"
+        if isinstance(node.slice, (_ast.Name, _ast.Call)):
+            slice_value = node.slice
+        else:
+            slice_value = node.slice.value
+
 
         func = _new(_ast.Name, '_lookup_item', _ast.Load())
         args = [
             self.visit(node.value),
-            _new(_ast.Tuple, (self.visit(node.slice.value),), _ast.Load())
+            _new(_ast.Tuple, (self.visit(slice_value),), _ast.Load())
         ]
         return _new(_ast.Call, func, args, [])

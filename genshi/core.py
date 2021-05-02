@@ -13,13 +13,12 @@
 
 """Core classes for markup processing."""
 
-try:
-    reduce # builtin in Python < 3
-except NameError:
-    from functools import reduce
+from functools import reduce
 import sys
 from itertools import chain
 import operator
+
+import six
 
 from genshi.util import plaintext, stripentities, striptags, stringrepr
 
@@ -271,7 +270,7 @@ def _ensure(stream):
     """Ensure that every item on the stream is actually a markup event."""
     stream = iter(stream)
     try:
-        event = stream.next()
+        event = next(stream)
     except StopIteration:
         return
 
@@ -282,7 +281,7 @@ def _ensure(stream):
             if hasattr(event, 'totuple'):
                 event = event.totuple()
             else:
-                event = TEXT, unicode(event), (None, -1, -1)
+                event = TEXT, six.text_type(event), (None, -1, -1)
             yield event
         return
 
@@ -411,7 +410,7 @@ class Attrs(tuple):
         :return: a new instance with the attribute removed
         :rtype: `Attrs`
         """
-        if isinstance(names, basestring):
+        if isinstance(names, six.string_types):
             names = (names,)
         return Attrs([(name, val) for name, val in self if name not in names])
 
@@ -445,17 +444,17 @@ class Attrs(tuple):
         return TEXT, ''.join([x[1] for x in self]), (None, -1, -1)
 
 
-class Markup(unicode):
+class Markup(six.text_type):
     """Marks a string as being safe for inclusion in HTML/XML output without
     needing to be escaped.
     """
     __slots__ = []
 
     def __add__(self, other):
-        return Markup(unicode.__add__(self, escape(other)))
+        return Markup(six.text_type.__add__(self, escape(other)))
 
     def __radd__(self, other):
-        return Markup(unicode.__add__(escape(other), self))
+        return Markup(six.text_type.__add__(escape(other), self))
 
     def __mod__(self, args):
         if isinstance(args, dict):
@@ -464,14 +463,14 @@ class Markup(unicode):
             args = tuple(map(escape, args))
         else:
             args = escape(args)
-        return Markup(unicode.__mod__(self, args))
+        return Markup(six.text_type.__mod__(self, args))
 
     def __mul__(self, num):
-        return Markup(unicode.__mul__(self, num))
+        return Markup(six.text_type.__mul__(self, num))
     __rmul__ = __mul__
 
     def __repr__(self):
-        return "<%s %s>" % (type(self).__name__, unicode.__repr__(self))
+        return "<%s %s>" % (type(self).__name__, six.text_type.__repr__(self))
 
     def join(self, seq, escape_quotes=True):
         """Return a `Markup` object which is the concatenation of the strings
@@ -488,8 +487,8 @@ class Markup(unicode):
         :rtype: `Markup`
         :see: `escape`
         """
-        return Markup(unicode.join(self, [escape(item, quotes=escape_quotes)
-                                          for item in seq]))
+        escaped_items = [escape(item, quotes=escape_quotes) for item in seq]
+        return Markup(six.text_type.join(self, escaped_items))
 
     @classmethod
     def escape(cls, text, quotes=True):
@@ -497,14 +496,14 @@ class Markup(unicode):
         it may contain (<, >, & and \").
         
         >>> escape('"1 < 2"')
-        <Markup u'&#34;1 &lt; 2&#34;'>
+        <Markup '&#34;1 &lt; 2&#34;'>
         
         If the `quotes` parameter is set to `False`, the \" character is left
         as is. Escaping quotes is generally only required for strings that are
         to be used in attribute values.
         
         >>> escape('"1 < 2"', quotes=False)
-        <Markup u'"1 &lt; 2"'>
+        <Markup '"1 &lt; 2"'>
         
         :param text: the text to escape
         :param quotes: if ``True``, double quote characters are escaped in
@@ -530,7 +529,7 @@ class Markup(unicode):
         """Reverse-escapes &, <, >, and \" and returns a `unicode` object.
         
         >>> Markup('1 &lt; 2').unescape()
-        u'1 < 2'
+        '1 < 2'
         
         :return: the unescaped string
         :rtype: `unicode`
@@ -538,10 +537,10 @@ class Markup(unicode):
         """
         if not self:
             return ''
-        return unicode(self).replace('&#34;', '"') \
-                            .replace('&gt;', '>') \
-                            .replace('&lt;', '<') \
-                            .replace('&amp;', '&')
+        return six.text_type(self).replace('&#34;', '"') \
+                                  .replace('&gt;', '>') \
+                                  .replace('&lt;', '<') \
+                                  .replace('&amp;', '&')
 
     def stripentities(self, keepxmlentities=False):
         """Return a copy of the text with any character or numeric entities
@@ -580,7 +579,7 @@ def unescape(text):
     """Reverse-escapes &, <, >, and \" and returns a `unicode` object.
     
     >>> unescape(Markup('1 &lt; 2'))
-    u'1 < 2'
+    '1 < 2'
     
     If the provided `text` object is not a `Markup` instance, it is returned
     unchanged.
@@ -610,7 +609,7 @@ class Namespace(object):
     >>> html
     Namespace('http://www.w3.org/1999/xhtml')
     >>> html.uri
-    u'http://www.w3.org/1999/xhtml'
+    'http://www.w3.org/1999/xhtml'
     
     The `Namespace` object can than be used to generate `QName` objects with
     that namespace:
@@ -618,9 +617,9 @@ class Namespace(object):
     >>> html.body
     QName('http://www.w3.org/1999/xhtml}body')
     >>> html.body.localname
-    u'body'
+    'body'
     >>> html.body.namespace
-    u'http://www.w3.org/1999/xhtml'
+    'http://www.w3.org/1999/xhtml'
     
     The same works using item access notation, which is useful for element or
     attribute names that are not valid Python identifiers:
@@ -652,7 +651,7 @@ class Namespace(object):
         self.uri = uri
 
     def __init__(self, uri):
-        self.uri = unicode(uri)
+        self.uri = six.text_type(uri)
 
     def __contains__(self, qname):
         return qname.namespace == self.uri
@@ -691,7 +690,7 @@ class Namespace(object):
 XML_NAMESPACE = Namespace('http://www.w3.org/XML/1998/namespace')
 
 
-class QName(unicode):
+class QName(six.text_type):
     """A qualified element or attribute name.
     
     The unicode value of instances of this class contains the qualified name of
@@ -703,16 +702,16 @@ class QName(unicode):
     >>> qname
     QName('foo')
     >>> qname.localname
-    u'foo'
+    'foo'
     >>> qname.namespace
     
     >>> qname = QName('http://www.w3.org/1999/xhtml}body')
     >>> qname
     QName('http://www.w3.org/1999/xhtml}body')
     >>> qname.localname
-    u'body'
+    'body'
     >>> qname.namespace
-    u'http://www.w3.org/1999/xhtml'
+    'http://www.w3.org/1999/xhtml'
     """
     __slots__ = ['namespace', 'localname']
 
@@ -729,11 +728,11 @@ class QName(unicode):
         qname = qname.lstrip('{')
         parts = qname.split('}', 1)
         if len(parts) > 1:
-            self = unicode.__new__(cls, '{%s' % qname)
-            self.namespace, self.localname = map(unicode, parts)
+            self = six.text_type.__new__(cls, '{%s' % qname)
+            self.namespace, self.localname = map(six.text_type, parts)
         else:
-            self = unicode.__new__(cls, qname)
-            self.namespace, self.localname = None, unicode(qname)
+            self = six.text_type.__new__(cls, qname)
+            self.namespace, self.localname = None, six.text_type(qname)
         return self
 
     def __getnewargs__(self):

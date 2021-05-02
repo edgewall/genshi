@@ -93,7 +93,7 @@ class MarkupTemplate(Template):
                 try:
                     suite = Suite(data[1], self.filepath, pos[1],
                                   lookup=self.lookup)
-                except SyntaxError, err:
+                except SyntaxError as err:
                     raise TemplateSyntaxError(err, self.filepath,
                                               pos[1] + (err.lineno or 1) - 1,
                                               pos[2] + (err.offset or 0))
@@ -311,9 +311,8 @@ class MarkupTemplate(Template):
 
         def _strip(stream, append):
             depth = 1
-            next = stream.next
             while 1:
-                event = next()
+                event = next(stream)
                 if event[0] is START:
                     depth += 1
                 elif event[0] is END:

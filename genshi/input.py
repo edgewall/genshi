@@ -17,9 +17,12 @@ sources.
 
 from itertools import chain
 import codecs
-import htmlentitydefs as entities
-import HTMLParser as html
 from xml.parsers import expat
+
+import six
+from six.moves import html_entities as entities, html_parser as html
+
+import six
 
 from genshi.core import Attrs, QName, Stream, stripentities
 from genshi.core import START, END, XML_DECL, DOCTYPE, TEXT, START_NS, \
@@ -83,7 +86,7 @@ class XMLParser(object):
     >>> parser = XMLParser(StringIO('<root id="2"><child>Foo</child></root>'))
     >>> for kind, data, pos in parser:
     ...     print('%s %s' % (kind, data))
-    START (QName('root'), Attrs([(QName('id'), u'2')]))
+    START (QName('root'), Attrs([(QName('id'), '2')]))
     START (QName('child'), Attrs())
     TEXT Foo
     END child
@@ -156,7 +159,7 @@ class XMLParser(object):
                                 del self.expat # get rid of circular references
                             done = True
                         else:
-                            if isinstance(data, unicode):
+                            if isinstance(data, six.text_type):
                                 data = data.encode('utf-8')
                             self.expat.Parse(data, False)
                     for event in self._queue:
@@ -164,7 +167,7 @@ class XMLParser(object):
                     self._queue = []
                     if done:
                         break
-            except expat.ExpatError, e:
+            except expat.ExpatError as e:
                 msg = str(e)
                 raise ParseError(msg, self.filename, e.lineno, e.offset)
         return Stream(_generate()).filter(_coalesce)
@@ -242,7 +245,7 @@ class XMLParser(object):
         if text.startswith('&'):
             # deal with undefined entities
             try:
-                text = unichr(entities.name2codepoint[text[1:-1]])
+                text = six.unichr(entities.name2codepoint[text[1:-1]])
                 self._enqueue(TEXT, text)
             except KeyError:
                 filename, lineno, offset = self._getpos()
@@ -286,7 +289,7 @@ class HTMLParser(html.HTMLParser, object):
     >>> parser = HTMLParser(BytesIO(u'<UL compact><LI>Foo</UL>'.encode('utf-8')), encoding='utf-8')
     >>> for kind, data, pos in parser:
     ...     print('%s %s' % (kind, data))
-    START (QName('ul'), Attrs([(QName('compact'), u'compact')]))
+    START (QName('ul'), Attrs([(QName('compact'), 'compact')]))
     START (QName('li'), Attrs())
     TEXT Foo
     END li
@@ -333,7 +336,7 @@ class HTMLParser(html.HTMLParser, object):
                             self.close()
                             done = True
                         else:
-                            if not isinstance(data, unicode):
+                            if not isinstance(data, six.text_type):
                                 raise UnicodeError("source returned bytes, but no encoding specified")
                             self.feed(data)
                     for kind, data, pos in self._queue:
@@ -345,7 +348,7 @@ class HTMLParser(html.HTMLParser, object):
                         for tag in open_tags:
                             yield END, QName(tag), pos
                         break
-            except html.HTMLParseError, e:
+            except html.HTMLParseError as e:
                 msg = '%s: line %d, column %d' % (e.msg, e.lineno, e.offset)
                 raise ParseError(msg, self.filename, e.lineno, e.offset)
         return Stream(_generate()).filter(_coalesce)
@@ -388,14 +391,14 @@ class HTMLParser(html.HTMLParser, object):
 
     def handle_charref(self, name):
         if name.lower().startswith('x'):
-            text = unichr(int(name[1:], 16))
+            text = six.unichr(int(name[1:], 16))
         else:
-            text = unichr(int(name))
+            text = six.unichr(int(name))
         self._enqueue(TEXT, text)
 
     def handle_entityref(self, name):
         try:
-            text = unichr(entities.name2codepoint[name])
+            text = six.unichr(entities.name2codepoint[name])
         except KeyError:
             text = '&%s;' % name
         self._enqueue(TEXT, text)
@@ -434,7 +437,7 @@ def HTML(text, encoding=None):
     :raises ParseError: if the HTML text is not well-formed, and error recovery
                         fails
     """
-    if isinstance(text, unicode):
+    if isinstance(text, six.text_type):
         # If it's unicode text the encoding should be set to None.
         # The option to pass in an incorrect encoding is for ease
         # of writing doctests that work in both Python 2.x and 3.x.

@@ -18,6 +18,7 @@ import unittest
 from genshi.core import Attrs, Stream
 from genshi.input import XMLParser, HTMLParser, ParseError
 from genshi.compat import StringIO, BytesIO
+from genshi.tests.test_utils import doctest_suite
 
 
 class XMLParserTestCase(unittest.TestCase):
@@ -282,7 +283,7 @@ bar</elem>'''
 
 def suite():
     suite = unittest.TestSuite()
-    suite.addTest(doctest.DocTestSuite(XMLParser.__module__))
+    suite.addTest(doctest_suite(XMLParser.__module__))
     suite.addTest(unittest.makeSuite(XMLParserTestCase, 'test'))
     suite.addTest(unittest.makeSuite(HTMLParserTestCase, 'test'))
     return suite

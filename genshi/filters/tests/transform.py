@@ -15,12 +15,16 @@ import doctest
 from pprint import pprint
 import unittest
 
+import six
+
 from genshi import HTML
 from genshi.builder import Element
+from genshi.compat import IS_PYTHON2
 from genshi.core import START, END, TEXT, QName, Attrs
 from genshi.filters.transform import Transformer, StreamBuffer, ENTER, EXIT, \
                                      OUTSIDE, INSIDE, ATTR, BREAK
 import genshi.filters.transform
+from genshi.tests.test_utils import doctest_suite
 
 
 FOO = '<root>ROOT<foo name="foo">FOO</foo></root>'
@@ -33,24 +37,22 @@ def _simplify(stream, with_attrs=False):
         for mark, (kind, data, pos) in stream:
             if kind is START:
                 if with_attrs:
-                    data = (unicode(data[0]), dict((unicode(k), v)
-                                                   for k, v in data[1]))
+                    kv_attrs = dict((six.text_type(k), v) for k, v in data[1])
+                    data = (six.text_type(data[0]), kv_attrs)
                 else:
-                    data = unicode(data[0])
+                    data = six.text_type(data[0])
             elif kind is END:
-                data = unicode(data)
+                data = six.text_type(data)
             elif kind is ATTR:
                 kind = ATTR
-                data = dict((unicode(k), v) for k, v in data[1])
+                data = dict((six.text_type(k), v) for k, v in data[1])
             yield mark, kind, data
     return list(_generate())
 
 
 def _transform(html, transformer, with_attrs=False):
     """Apply transformation returning simplified marked stream."""
-    if isinstance(html, basestring) and not isinstance(html, unicode):
-        html = HTML(html, encoding='utf-8')
-    elif isinstance(html, unicode):
+    if isinstance(html, six.string_types):
         html = HTML(html, encoding='utf-8')
     stream = transformer(html, keep_marks=True)
     return _simplify(stream, with_attrs)
@@ -60,7 +62,7 @@ class SelectTest(unittest.TestCase):
     """Test .select()"""
     def _select(self, select):
         html = HTML(FOOBAR, encoding='utf-8')
-        if isinstance(select, basestring):
+        if isinstance(select, six.string_types):
             select = [select]
         transformer = Transformer(select[0])
         for sel in select[1:]:
@@ -660,13 +662,14 @@ class ContentTestMixin(object):
                 self.count += 1
                 return iter(HTML(u'CONTENT %i' % self.count))
 
-        if isinstance(html, basestring) and not isinstance(html, unicode):
+        is_py2_str = isinstance(html, str) and IS_PYTHON2
+        if is_py2_str:
             html = HTML(html, encoding='utf-8')
         else:
             html = HTML(html)
         if content is None:
             content = Injector()
-        elif isinstance(content, basestring):
+        elif isinstance(content, six.string_types):
             content = HTML(content)
         return _transform(html, getattr(Transformer(select), self.operation)
                                 (content))
@@ -1491,7 +1494,7 @@ def suite():
                  MapTest, SubstituteTest, RenameTest, ReplaceTest, BeforeTest,
                  AfterTest, PrependTest, AppendTest, AttrTest, CopyTest, CutTest):
         suite.addTest(unittest.makeSuite(test, 'test'))
-    suite.addTest(doctest.DocTestSuite(
+    suite.addTest(doctest_suite(
         genshi.filters.transform, optionflags=doctest.NORMALIZE_WHITESPACE,
         extraglobs={'HTML': HTML, 'tag': tag, 'Markup': Markup}))
     return suite

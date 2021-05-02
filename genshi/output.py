@@ -18,6 +18,8 @@ streams.
 from itertools import chain
 import re
 
+import six
+
 from genshi.core import escape, Attrs, Markup, Namespace, QName, StreamEventKind
 from genshi.core import START, END, TEXT, XML_DECL, DOCTYPE, START_NS, END_NS, \
                         START_CDATA, END_CDATA, PI, COMMENT, XML_NAMESPACE
@@ -71,7 +73,7 @@ def get_serializer(method='xml', **kwargs):
     :see: `XMLSerializer`, `XHTMLSerializer`, `HTMLSerializer`, `TextSerializer`
     :since: version 0.4.1
     """
-    if isinstance(method, basestring):
+    if isinstance(method, six.string_types):
         method = {'xml':   XMLSerializer,
                   'xhtml': XHTMLSerializer,
                   'html':  HTMLSerializer,
@@ -581,7 +583,7 @@ class TextSerializer(object):
                 data = event[1]
                 if strip_markup and type(data) is Markup:
                     data = data.striptags().stripentities()
-                yield unicode(data)
+                yield six.text_type(data)
 
 
 class EmptyTagFilter(object):
@@ -621,12 +623,12 @@ class NamespaceFlattener(object):
     ... </doc>''')
     >>> for kind, data, pos in NamespaceFlattener()(xml):
     ...     print('%s %r' % (kind, data))
-    START (u'doc', Attrs([('xmlns', u'NS1'), (u'xmlns:two', u'NS2')]))
-    TEXT u'\n  '
-    START (u'two:item', Attrs())
-    END u'two:item'
-    TEXT u'\n'
-    END u'doc'
+    START ('doc', Attrs([('xmlns', 'NS1'), ('xmlns:two', 'NS2')]))
+    TEXT '\n  '
+    START ('two:item', Attrs())
+    END 'two:item'
+    TEXT '\n'
+    END 'doc'
     """
 
     def __init__(self, prefixes=None, cache=True):
@@ -666,7 +668,8 @@ class NamespaceFlattener(object):
             while 1:
                 val += 1
                 yield 'ns%d' % val
-        _gen_prefix = _gen_prefix().next
+        _prefix_generator = _gen_prefix()
+        _gen_prefix = lambda: next(_prefix_generator)
 
         for kind, data, pos in stream:
             if kind is TEXT and isinstance(data, Markup):
@@ -822,7 +825,7 @@ class DocTypeInserter(object):
 
         :param doctype: DOCTYPE as a string or DocType object.
         """
-        if isinstance(doctype, basestring):
+        if isinstance(doctype, six.string_types):
             doctype = DocType.get(doctype)
         self.doctype_event = (DOCTYPE, doctype, (None, -1, -1))
 

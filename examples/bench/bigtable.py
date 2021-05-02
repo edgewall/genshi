@@ -5,6 +5,8 @@
 #
 # Author: Jonas Borgström <jonas@edgewall.com>
 
+from __future__ import print_function
+
 import cgi
 import sys
 import timeit
@@ -230,7 +232,7 @@ def run(which=None, number=10):
             result = '   (not installed?)'
         else:
             result = '%16.2f ms' % (1000 * time)
-        print '%-35s %s' % (getattr(sys.modules[__name__], test).__doc__, result)
+        print('%-35s %s' % (getattr(sys.modules[__name__], test).__doc__, result))
 
 
 if __name__ == '__main__':

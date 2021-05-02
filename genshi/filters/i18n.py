@@ -521,7 +521,7 @@ class ChooseDirective(ExtractableI18NDirective):
 
         yield contextify(self.lineno, 'ngettext', \
             (singular_msgbuf.format(), plural_msgbuf.format()), \
-                         comment_stack[-1:], context_stack[-1:])
+            comment_stack[-1:], context_stack[-1:])
 
     def _is_plural(self, numeral, ngettext):
         # XXX: should we test which form was chosen like this!?!?!?

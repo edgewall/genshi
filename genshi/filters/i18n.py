@@ -76,7 +76,7 @@ def contextify(line, func, msg, comment, context):
         context = context[0]
         func = contexted.get(func)
         if func is None:
-            raise Exception("failure, bogus extraction method")
+            raise ValueError("failure, bogus extraction method")
         if isinstance(msg, tuple):
             msg = (context, tuple[0], tuple[1])
         else:

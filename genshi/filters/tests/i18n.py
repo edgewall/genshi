@@ -105,6 +105,24 @@ class TranslatorTestCase(unittest.TestCase):
         kind, data, pos = stream[2]
         assert isinstance(data[1], Attrs)
 
+    def test_extract_included_empty_attribute_text(self):
+        tmpl = MarkupTemplate(u"""<html>
+          <span title="">...</span>
+        </html>""")
+        translator = Translator()
+        messages = list(translator.extract(tmpl.stream))
+        self.assertEqual([], messages)
+
+    def test_translate_included_empty_attribute_text(self):
+        tmpl = MarkupTemplate(u"""<html>
+          <span title="">...</span>
+        </html>""")
+        translator = Translator(DummyTranslations({'': 'Project-Id-Version'}))
+        translator.setup(tmpl)
+        self.assertEqual("""<html>
+          <span title="">...</span>
+        </html>""", tmpl.generate().render())
+
     def test_extract_without_text(self):
         tmpl = MarkupTemplate("""<html xmlns:py="http://genshi.edgewall.org/">
           <p title="Bar">Foo</p>
@@ -215,6 +233,25 @@ class TranslatorTestCase(unittest.TestCase):
         translator.setup(tmpl)
         self.assertEqual("""<html>
           <p>Voh</p>
+        </html>""", tmpl.generate().render())
+
+    def test_extract_included_attribute_text_with_spaces(self):
+        tmpl = MarkupTemplate("""<html xmlns:py="http://genshi.edgewall.org/">
+          <span title=" Foo ">...</span>
+        </html>""")
+        translator = Translator()
+        messages = list(translator.extract(tmpl.stream))
+        self.assertEqual(1, len(messages))
+        self.assertEqual((2, None, 'Foo', []), messages[0])
+
+    def test_translate_included_attribute_text_with_spaces(self):
+        tmpl = MarkupTemplate("""<html xmlns:py="http://genshi.edgewall.org/">
+          <span title=" Foo ">...</span>
+        </html>""")
+        translator = Translator(DummyTranslations({'Foo': 'Voh'}))
+        translator.setup(tmpl)
+        self.assertEqual("""<html>
+          <span title="Voh">...</span>
         </html>""", tmpl.generate().render())
 
 

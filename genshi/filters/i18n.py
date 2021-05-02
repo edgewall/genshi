@@ -711,8 +711,9 @@ class Translator(DirectiveFactory):
                 for name, value in attrs:
                     newval = value
                     if isinstance(value, six.string_types):
-                        if translate_attrs and name in include_attrs:
-                            newval = gettext(value)
+                        text = value.strip()
+                        if translate_attrs and name in include_attrs and text:
+                            newval = gettext(text)
                     else:
                         newval = list(
                             self(_ensure(value), ctxt, translate_text=False)

@@ -21,6 +21,7 @@ templates.
 from gettext import NullTranslations
 import os
 import re
+from functools import partial
 from types import FunctionType
 
 import six

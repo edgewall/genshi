@@ -92,17 +92,22 @@ class DummyTranslations(NullTranslations):
             return self._domain_call(
                 'ngettext', domain, singular, plural, numeral)
 
-    def upgettext(self, context, message):
-        try:
-            return self._catalog[(context, message)]
-        except KeyError:
-            if self._fallback:
-                return self._fallback.upgettext(context, message)
-            return unicode(message)
-
-    if not IS_PYTHON2:
-        pgettext = upgettext
-        del upgettext
+    if IS_PYTHON2:
+        def upgettext(self, context, message):
+            try:
+                return self._catalog[(context, message)]
+            except KeyError:
+                if self._fallback:
+                    return self._fallback.upgettext(context, message)
+                return unicode(message)
+    else:
+        def pgettext(self, context, message):
+            try:
+                return self._catalog[(context, message)]
+            except KeyError:
+                if self._fallback:
+                    return self._fallback.upgettext(context, message)
+                return message
 
     if IS_PYTHON2:
         def dupgettext(self, domain, context, message):

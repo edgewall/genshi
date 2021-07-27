@@ -489,7 +489,8 @@ class Template(DirectiveFactory):
             if kind is SUB:
                 directives = []
                 substream = data[1]
-                for _, cls, value, namespaces, pos in sorted(data[0]):
+                for _, cls, value, namespaces, pos in sorted(
+                        data[0], key=lambda x: x[0:1] + x[4:]):
                     directive, substream = cls.attach(self, substream, value,
                                                       namespaces, pos)
                     if directive:

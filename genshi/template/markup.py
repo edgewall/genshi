@@ -148,7 +148,7 @@ class MarkupTemplate(Template):
                 new_attrs = Attrs(new_attrs)
 
                 if directives:
-                    directives.sort()
+                    directives.sort(key=lambda x: x[0])
                     dirmap[(depth, tag)] = (directives, len(new_stream),
                                             strip)
 

@@ -372,6 +372,7 @@ Markup_join(PyObject *self, PyObject *args, PyObject *kwds)
     static char *kwlist[] = {"seq", "escape_quotes", 0};
     PyObject *seq = NULL, *seq2, *it, *tmp, *tmp2;
     char quotes = 1;
+    int ret;
 
     if (!PyArg_ParseTupleAndKeywords(args, kwds, "O|b", kwlist, &seq, &quotes)) {
         return NULL;
@@ -386,13 +387,19 @@ Markup_join(PyObject *self, PyObject *args, PyObject *kwds)
     }
     while ((tmp = PyIter_Next(it))) {
         tmp2 = escape(tmp, quotes);
+        Py_DECREF(tmp);
         if (tmp2 == NULL) {
             Py_DECREF(seq2);
             Py_DECREF(it);
             return NULL;
         }
-        PyList_Append(seq2, tmp2);
-        Py_DECREF(tmp);
+        ret = PyList_Append(seq2, tmp2);
+        Py_DECREF(tmp2);
+        if (ret != 0) {
+            Py_DECREF(seq2);
+            Py_DECREF(it);
+            return NULL;
+        }
     }
     Py_DECREF(it);
     if (PyErr_Occurred()) {

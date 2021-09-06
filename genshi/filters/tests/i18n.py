@@ -301,6 +301,19 @@ class TranslatorTestCase(unittest.TestCase):
           <span title="Voh">...</span>
         </html>""", tmpl.generate().render())
 
+    def test_translate_nested_directives(self):
+        html = """<html xmlns:py="http://genshi.edgewall.org/">
+            <py:with vars="x = 'test'"><py:if test="x">
+            </py:if></py:with>
+        </html>"""
+        tmpl = MarkupTemplate(html)
+        stream = list(tmpl.stream)
+        tmpl = MarkupTemplate(html)
+        translator = Translator(DummyTranslations())
+        translator.setup(tmpl)
+        stream_translator = list(tmpl.stream)
+        self.assertEqual(stream, stream_translator)
+
 
 class MsgDirectiveTestCase(unittest.TestCase):
 

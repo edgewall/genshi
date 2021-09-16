@@ -119,7 +119,6 @@ class LRUCache(dict):
 
     def _manage_size(self):
         while len(self._dict) > self.capacity:
-            olditem = self._dict[self.tail.key]
             del self._dict[self.tail.key]
             if self.tail != self.head:
                 self.tail = self.tail.prv

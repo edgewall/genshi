@@ -12,11 +12,8 @@
 # individuals. For the exact contribution history, see the revision
 # history and logs, available at http://genshi.edgewall.org/log/.
 
-from distutils.cmd import Command
 from distutils.command.build_ext import build_ext
 from distutils.errors import CCompilerError, DistutilsPlatformError
-import doctest
-from glob import glob
 import os
 try:
     from setuptools import setup, Extension

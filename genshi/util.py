@@ -19,8 +19,6 @@ from six.moves import html_entities as entities
 
 import six
 
-from .compat import stringrepr
-
 __docformat__ = 'restructuredtext en'
 
 

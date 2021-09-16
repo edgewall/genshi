@@ -15,7 +15,6 @@
 
 from collections import deque
 import os
-import sys
 
 import six
 

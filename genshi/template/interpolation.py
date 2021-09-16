@@ -16,7 +16,6 @@ parts that are literal strings, and others that are Python expressions.
 """
 
 from itertools import chain
-import os
 import re
 from tokenize import PseudoToken
 

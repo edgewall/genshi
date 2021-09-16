@@ -12,7 +12,6 @@
 # history and logs, available at http://genshi.edgewall.org/log/.
 
 from datetime import datetime
-import doctest
 from gettext import NullTranslations
 import unittest
 

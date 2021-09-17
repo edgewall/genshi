@@ -20,7 +20,7 @@ import re
 
 import six
 
-from genshi.core import escape, Attrs, Markup, Namespace, QName, StreamEventKind
+from genshi.core import escape, Attrs, Markup, QName, StreamEventKind
 from genshi.core import START, END, TEXT, XML_DECL, DOCTYPE, START_NS, END_NS, \
                         START_CDATA, END_CDATA, PI, COMMENT, XML_NAMESPACE
 

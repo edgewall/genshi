@@ -19,8 +19,7 @@ from genshi.core import QName, Stream
 from genshi.path import Path
 from genshi.template.base import TemplateRuntimeError, TemplateSyntaxError, \
                                  EXPR, _apply_directives, _eval_expr
-from genshi.template.eval import Expression, ExpressionASTTransformer, \
-                                 _ast, _parse
+from genshi.template.eval import Expression, _ast, _parse
 
 __all__ = ['AttrsDirective', 'ChooseDirective', 'ContentDirective',
            'DefDirective', 'ForDirective', 'IfDirective', 'MatchDirective',

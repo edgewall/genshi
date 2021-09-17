@@ -20,7 +20,8 @@ import operator
 
 import six
 
-from genshi.util import plaintext, stripentities, striptags, stringrepr
+from genshi.compat import stringrepr
+from genshi.util import stripentities, striptags
 
 __all__ = ['Stream', 'Markup', 'escape', 'unescape', 'Attrs', 'Namespace',
            'QName']

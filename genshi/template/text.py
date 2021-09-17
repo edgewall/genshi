@@ -35,7 +35,6 @@ from genshi.template.base import BadDirectiveError, Template, \
                                  TemplateSyntaxError, EXEC, INCLUDE, SUB
 from genshi.template.eval import Suite
 from genshi.template.directives import *
-from genshi.template.directives import Directive
 from genshi.template.interpolation import interpolate
 
 __all__ = ['NewTextTemplate', 'OldTextTemplate', 'TextTemplate']

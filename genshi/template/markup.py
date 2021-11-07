@@ -172,11 +172,13 @@ class MarkupTemplate(Template):
                     ]
 
             elif kind is SUB:
-                directives, substream = data
-                substream = self._extract_directives(substream, namespace,
+                directives, prev_substream = data
+                substream = self._extract_directives(prev_substream, namespace,
                                                      factory)
 
-                if len(substream) == 1 and substream[0][0] is SUB:
+                if (len(substream) == 1 and substream[0][0] is SUB
+                        and (prev_substream[0][0] is not SUB
+                            or prev_substream[0][1][0] != substream[0][1][0])):
                     added_directives, substream = substream[0][1]
                     directives += added_directives
 

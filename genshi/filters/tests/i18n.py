@@ -307,12 +307,12 @@ class TranslatorTestCase(unittest.TestCase):
             </py:if></py:with>
         </html>"""
         tmpl = MarkupTemplate(html)
-        stream = list(tmpl.stream)
+        raw = tmpl.generate().render()
         tmpl = MarkupTemplate(html)
         translator = Translator(DummyTranslations())
         translator.setup(tmpl)
-        stream_translator = list(tmpl.stream)
-        self.assertEqual(stream, stream_translator)
+        translated = tmpl.generate().render()
+        self.assertEqual(raw, translated)
 
 
 class MsgDirectiveTestCase(unittest.TestCase):

@@ -896,12 +896,12 @@ assert f() == 42
                 self.attr = 'foo'
         obj = Something()
         Suite("del obj.attr").execute({'obj': obj})
-        self.failIf(hasattr(obj, 'attr'))
+        self.assertFalse(hasattr(obj, 'attr'))
 
     def test_delitem(self):
         d = {'k': 'foo'}
         Suite("del d['k']").execute({'d': d})
-        self.failIf('k' in d, repr(d))
+        self.assertFalse('k' in d, repr(d))
 
     def test_with_statement(self):
         fd, path = mkstemp()

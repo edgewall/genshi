@@ -901,7 +901,7 @@ assert f() == 42
     def test_delitem(self):
         d = {'k': 'foo'}
         Suite("del d['k']").execute({'d': d})
-        self.assertFalse('k' in d, repr(d))
+        self.assertNotIn('k', d)
 
     def test_with_statement(self):
         fd, path = mkstemp()

@@ -177,6 +177,7 @@ class MarkupTemplate(Template):
                                                      factory)
 
                 if (len(substream) == 1 and substream[0][0] is SUB
+                        # merge only if the direct substream has changed
                         and (prev_substream[0][0] is not SUB
                             or prev_substream[0][1][0] != substream[0][1][0])):
                     added_directives, substream = substream[0][1]

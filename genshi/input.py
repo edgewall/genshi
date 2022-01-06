@@ -45,7 +45,7 @@ def ET(element):
     yield START, (tag_name, attrs), (None, -1, -1)
     if element.text:
         yield TEXT, element.text, (None, -1, -1)
-    for child in element.getchildren():
+    for child in element:
         for item in ET(child):
             yield item
     yield END, tag_name, (None, -1, -1)

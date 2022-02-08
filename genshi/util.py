@@ -19,8 +19,6 @@ from six.moves import html_entities as entities
 
 import six
 
-from .compat import stringrepr
-
 __docformat__ = 'restructuredtext en'
 
 
@@ -119,7 +117,6 @@ class LRUCache(dict):
 
     def _manage_size(self):
         while len(self._dict) > self.capacity:
-            olditem = self._dict[self.tail.key]
             del self._dict[self.tail.key]
             if self.tail != self.head:
                 self.tail = self.tail.prv

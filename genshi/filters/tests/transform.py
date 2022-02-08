@@ -12,7 +12,6 @@
 # history and logs, available at http://genshi.edgewall.org/log/.
 
 import doctest
-from pprint import pprint
 import unittest
 
 import six

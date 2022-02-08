@@ -12,7 +12,6 @@
 # history and logs, available at http://genshi.edgewall.org/log/.
 
 from datetime import datetime
-import doctest
 from gettext import NullTranslations
 import unittest
 
@@ -85,10 +84,58 @@ class DummyTranslations(NullTranslations):
 
     if IS_PYTHON2:
         def dungettext(self, domain, singular, plural, numeral):
-            return self._domain_call('ungettext', domain, singular, plural, numeral)
+            return self._domain_call(
+                'ungettext', domain, singular, plural, numeral)
     else:
         def dngettext(self, domain, singular, plural, numeral):
-            return self._domain_call('ngettext', domain, singular, plural, numeral)
+            return self._domain_call(
+                'ngettext', domain, singular, plural, numeral)
+
+    if IS_PYTHON2:
+        def upgettext(self, context, message):
+            try:
+                return self._catalog[(context, message)]
+            except KeyError:
+                if self._fallback:
+                    return self._fallback.upgettext(context, message)
+                return unicode(message)
+    else:
+        def pgettext(self, context, message):
+            try:
+                return self._catalog[(context, message)]
+            except KeyError:
+                if self._fallback:
+                    return self._fallback.upgettext(context, message)
+                return message
+
+    if IS_PYTHON2:
+        def dupgettext(self, domain, context, message):
+            return self._domain_call('upgettext', domain, context, message)
+    else:
+        def dpgettext(self, domain, context, message):
+            return self._domain_call('pgettext', domain, context, message)
+
+    def unpgettext(self, context, msgid1, msgid2, n):
+        try:
+            return self._catalog[(context, msgid1, self.plural(n))]
+        except KeyError:
+            if self._fallback:
+                return self._fallback.unpgettext(context, msgid1, msgid2, n)
+            if n == 1:
+                return msgid1
+            else:
+                return msgid2
+
+    if not IS_PYTHON2:
+        npgettext = unpgettext
+        del unpgettext
+
+    if IS_PYTHON2:
+        def dunpgettext(self, domain, context, msgid1, msgid2, n):
+            return self._domain_call('unpgettext', context, msgid1, msgid2, n)
+    else:
+        def dnpgettext(self, domain, context, msgid1, msgid2, n):
+            return self._domain_call('npgettext', context, msgid1, msgid2, n)
 
 
 class TranslatorTestCase(unittest.TestCase):
@@ -104,6 +151,24 @@ class TranslatorTestCase(unittest.TestCase):
         stream = list(html.filter(translator))
         kind, data, pos = stream[2]
         assert isinstance(data[1], Attrs)
+
+    def test_extract_included_empty_attribute_text(self):
+        tmpl = MarkupTemplate(u"""<html>
+          <span title="">...</span>
+        </html>""")
+        translator = Translator()
+        messages = list(translator.extract(tmpl.stream))
+        self.assertEqual([], messages)
+
+    def test_translate_included_empty_attribute_text(self):
+        tmpl = MarkupTemplate(u"""<html>
+          <span title="">...</span>
+        </html>""")
+        translator = Translator(DummyTranslations({'': 'Project-Id-Version'}))
+        translator.setup(tmpl)
+        self.assertEqual("""<html>
+          <span title="">...</span>
+        </html>""", tmpl.generate().render())
 
     def test_extract_without_text(self):
         tmpl = MarkupTemplate("""<html xmlns:py="http://genshi.edgewall.org/">
@@ -215,6 +280,25 @@ class TranslatorTestCase(unittest.TestCase):
         translator.setup(tmpl)
         self.assertEqual("""<html>
           <p>Voh</p>
+        </html>""", tmpl.generate().render())
+
+    def test_extract_included_attribute_text_with_spaces(self):
+        tmpl = MarkupTemplate("""<html xmlns:py="http://genshi.edgewall.org/">
+          <span title=" Foo ">...</span>
+        </html>""")
+        translator = Translator()
+        messages = list(translator.extract(tmpl.stream))
+        self.assertEqual(1, len(messages))
+        self.assertEqual((2, None, 'Foo', []), messages[0])
+
+    def test_translate_included_attribute_text_with_spaces(self):
+        tmpl = MarkupTemplate("""<html xmlns:py="http://genshi.edgewall.org/">
+          <span title=" Foo ">...</span>
+        </html>""")
+        translator = Translator(DummyTranslations({'Foo': 'Voh'}))
+        translator.setup(tmpl)
+        self.assertEqual("""<html>
+          <span title="Voh">...</span>
         </html>""", tmpl.generate().render())
 
 
@@ -1454,7 +1538,7 @@ class ChooseDirectiveTestCase(unittest.TestCase):
             <p>Vohs John Doe</p>
           </div>
         </html>""", tmpl.generate(two=2, fname='John', lname='Doe').render())
-        
+
     def test_translate_i18n_choose_and_singular_with_py_strip(self):
         tmpl = MarkupTemplate("""<html xmlns:py="http://genshi.edgewall.org/"
             xmlns:i18n="http://genshi.edgewall.org/i18n">
@@ -1484,7 +1568,7 @@ class ChooseDirectiveTestCase(unittest.TestCase):
           </div>
         </html>""", tmpl.generate(
             one=1, two=2, fname='John',lname='Doe').render())
-        
+
     def test_translate_i18n_choose_and_plural_with_py_strip(self):
         tmpl = MarkupTemplate("""<html xmlns:py="http://genshi.edgewall.org/"
             xmlns:i18n="http://genshi.edgewall.org/i18n">
@@ -2007,6 +2091,102 @@ class ExtractTestCase(unittest.TestCase):
             (34, '_', 'Update', [])], messages)
 
 
+class ContextDirectiveTestCase(unittest.TestCase):
+    def test_extract_msgcontext(self):
+        buf = StringIO("""<html xmlns:py="http://genshi.edgewall.org/"
+                                xmlns:i18n="http://genshi.edgewall.org/i18n">
+          <p i18n:ctxt="foo">Foo, bar.</p>
+          <p>Foo, bar.</p>
+        </html>""")
+        results = list(extract(buf, ['_'], [], {}))
+        self.assertEqual((3, 'pgettext', ('foo', 'Foo, bar.'), []), results[0])
+        self.assertEqual((4, None, 'Foo, bar.', []), results[1])
+
+    def test_translate_msgcontext(self):
+        tmpl = MarkupTemplate("""<html xmlns:py="http://genshi.edgewall.org/"
+            xmlns:i18n="http://genshi.edgewall.org/i18n">
+          <p i18n:ctxt="foo">Foo, bar.</p>
+          <p>Foo, bar.</p>
+        </html>""")
+        translations = {
+            ('foo', 'Foo, bar.'): 'Fooo! Barrr!',
+            'Foo, bar.': 'Foo --- bar.'
+        }
+        translator = Translator(DummyTranslations(translations))
+        translator.setup(tmpl)
+        self.assertEqual("""<html>
+          <p>Fooo! Barrr!</p>
+          <p>Foo --- bar.</p>
+        </html>""", tmpl.generate().render())
+
+    def test_translate_msgcontext_with_domain(self):
+        tmpl = MarkupTemplate("""<html xmlns:py="http://genshi.edgewall.org/"
+            xmlns:i18n="http://genshi.edgewall.org/i18n">
+          <p i18n:domain="bar" i18n:ctxt="foo">Foo, bar. <span>foo</span></p>
+          <p>Foo, bar.</p>
+        </html>""")
+        translations = DummyTranslations({
+            ('foo', 'Foo, bar.'): 'Fooo! Barrr!',
+            'Foo, bar.': 'Foo --- bar.'
+        })
+        translations.add_domain('bar', {
+            ('foo', 'foo'): 'BARRR',
+            ('foo', 'Foo, bar.'): 'Bar, bar.'
+        })
+
+        translator = Translator(translations)
+        translator.setup(tmpl)
+        self.assertEqual("""<html>
+          <p>Bar, bar. <span>BARRR</span></p>
+          <p>Foo --- bar.</p>
+        </html>""", tmpl.generate().render())
+
+    def test_translate_msgcontext_with_plurals(self):
+        tmpl = MarkupTemplate("""<html xmlns:py="http://genshi.edgewall.org/"
+            xmlns:i18n="http://genshi.edgewall.org/i18n">
+        <i18n:ctxt name="foo">
+          <p i18n:choose="num; num">
+            <span i18n:singular="">There is ${num} bar</span>
+            <span i18n:plural="">There are ${num} bars</span>
+          </p>
+        </i18n:ctxt>
+        </html>""")
+        translations = DummyTranslations({
+            ('foo', 'There is %(num)s bar', 0): 'Hay %(num)s barre',
+            ('foo', 'There is %(num)s bar', 1): 'Hay %(num)s barres'
+        })
+
+        translator = Translator(translations)
+        translator.setup(tmpl)
+        self.assertEqual("""<html>
+          <p>
+            <span>Hay 1 barre</span>
+          </p>
+        </html>""", tmpl.generate(num=1).render())
+        self.assertEqual("""<html>
+          <p>
+            <span>Hay 2 barres</span>
+          </p>
+        </html>""", tmpl.generate(num=2).render())
+
+    def test_translate_context_with_msg(self):
+        tmpl = MarkupTemplate("""<html xmlns:py="http://genshi.edgewall.org/"
+            xmlns:i18n="http://genshi.edgewall.org/i18n">
+        <p i18n:ctxt="foo" i18n:msg="num">
+          Foo <span>There is ${num} bar</span> Bar
+        </p>
+        </html>""")
+        translations = DummyTranslations({
+            ('foo', 'Foo [1:There is %(num)s bar] Bar'):
+            'Voh [1:Hay %(num)s barre] Barre'
+        })
+        translator = Translator(translations)
+        translator.setup(tmpl)
+        self.assertEqual("""<html>
+        <p>Voh <span>Hay 1 barre</span> Barre</p>
+        </html>""", tmpl.generate(num=1).render())
+
+
 def suite():
     suite = unittest.TestSuite()
     suite.addTest(doctest_suite(Translator.__module__))
@@ -2015,6 +2195,7 @@ def suite():
     suite.addTest(unittest.makeSuite(ChooseDirectiveTestCase, 'test'))
     suite.addTest(unittest.makeSuite(DomainDirectiveTestCase, 'test'))
     suite.addTest(unittest.makeSuite(ExtractTestCase, 'test'))
+    suite.addTest(unittest.makeSuite(ContextDirectiveTestCase, 'test'))
     return suite
 
 if __name__ == '__main__':

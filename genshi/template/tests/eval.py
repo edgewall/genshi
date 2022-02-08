@@ -44,6 +44,7 @@ class ExpressionTestCase(unittest.TestCase):
         buf.seek(0)
         unpickled = pickle.load(buf)
         assert unpickled.evaluate({}) is True
+        assert unpickled.code == expr.code
 
     def test_name_lookup(self):
         self.assertEqual('bar', Expression('foo').evaluate({'foo': 'bar'}))
@@ -552,6 +553,7 @@ class SuiteTestCase(unittest.TestCase):
         data = {}
         unpickled.execute(data)
         self.assertEqual(42, data['foo'])
+        assert unpickled.code == suite.code
 
     def test_internal_shadowing(self):
         # The context itself is stored in the global execution scope of a suite
@@ -896,12 +898,12 @@ assert f() == 42
                 self.attr = 'foo'
         obj = Something()
         Suite("del obj.attr").execute({'obj': obj})
-        self.failIf(hasattr(obj, 'attr'))
+        self.assertFalse(hasattr(obj, 'attr'))
 
     def test_delitem(self):
         d = {'k': 'foo'}
         Suite("del d['k']").execute({'d': d})
-        self.failIf('k' in d, repr(d))
+        self.assertNotIn('k', d)
 
     def test_with_statement(self):
         fd, path = mkstemp()

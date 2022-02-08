@@ -15,7 +15,6 @@
 
 from collections import deque
 import os
-import sys
 
 import six
 
@@ -489,7 +488,8 @@ class Template(DirectiveFactory):
             if kind is SUB:
                 directives = []
                 substream = data[1]
-                for _, cls, value, namespaces, pos in sorted(data[0]):
+                for _, cls, value, namespaces, pos in sorted(
+                        data[0], key=lambda x: x[0]):
                     directive, substream = cls.attach(self, substream, value,
                                                       namespaces, pos)
                     if directive:

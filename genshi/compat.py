@@ -88,26 +88,51 @@ if IS_PYTHON2:
                         lineno, code.co_lnotab, (), ())
 else:
     def get_code_params(code):
-        params = [code.co_nlocals, code.co_kwonlyargcount, code.co_stacksize,
-                  code.co_flags, code.co_code, code.co_consts, code.co_names,
-                  code.co_varnames, code.co_filename, code.co_name,
-                  code.co_firstlineno, code.co_lnotab, (), ()]
+        params = []
         if hasattr(code, "co_posonlyargcount"):
-            # PEP 570 added "positional only arguments"
-            params.insert(1, code.co_posonlyargcount)
+            # PEP 570 -- Python Positional-Only Parameters
+            params.append(code.co_posonlyargcount)
+        params.extend([code.co_kwonlyargcount, code.co_nlocals,
+                       code.co_stacksize, code.co_flags, code.co_code,
+                       code.co_consts, code.co_names, code.co_varnames,
+                       code.co_filename, code.co_name])
+        if hasattr(code, "co_qualname"):
+            # https://bugs.python.org/issue13672
+            params.append(code.co_qualname)
+        params.append(code.co_firstlineno)
+        if hasattr(code, "co_linetable"):
+            # PEP 626 -- Precise line numbers for debugging and other tools.
+            params.append(code.co_linetable)
+        else:
+            params.append(code.co_lnotab)
+        if hasattr(code, "co_endlinetable"):
+            # PEP 657 -- Include Fine Grained Error Locations in Tracebacks
+            params.append(code.co_endlinetable)
+        if hasattr(code, "co_columntable"):
+            # PEP 657 -- Include Fine Grained Error Locations in Tracebacks
+            params.append(code.co_columntable)
+        if hasattr(code, "co_exceptiontable"):
+            # https://bugs.python.org/issue40222
+            params.append(code.co_exceptiontable)
+        params.extend([(), ()])
         return tuple(params)
 
 
     def build_code_chunk(code, filename, name, lineno):
-        params =  [0, code.co_nlocals, code.co_kwonlyargcount,
-                  code.co_stacksize, code.co_flags | 0x0040,
-                  code.co_code, code.co_consts, code.co_names,
-                  code.co_varnames, filename, name, lineno,
-                  code.co_lnotab, (), ()]
-        if hasattr(code, "co_posonlyargcount"):
-            # PEP 570 added "positional only arguments"
-            params.insert(2, code.co_posonlyargcount)
-        return CodeType(*params)
+        if hasattr(code, 'replace'):
+            # Python 3.8+
+            return code.replace(
+                co_filename=filename,
+                co_name=name,
+                co_firstlineno=lineno,
+            )
+        # XXX: This isn't equivalent to the above "replace" code (we overwrite
+        # co_argcount, co_flags, co_freevars, and co_cellvars). Should one of
+        # them be changed?
+        return CodeType(0, code.co_kwonlyargcount, code.co_nlocals,
+                        code.co_stacksize, code.co_flags | 0x0040, code.co_code,
+                        code.co_consts, code.co_names, code.co_varnames,
+                        filename, name, lineno, code.co_lnotab, (), ())
 
 
 # In Python 3.8, Str and Ellipsis was replaced by Constant

@@ -11,7 +11,6 @@
 # individuals. For the exact contribution history, see the revision
 # history and logs, available at http://genshi.edgewall.org/log/.
 
-import doctest
 import unittest
 
 import six
@@ -27,7 +26,7 @@ class HTMLFormFillerTestCase(unittest.TestCase):
         html = HTML(u"""<form><p>
           <input type="text" name="foo" />
         </p></form>""") | HTMLFormFiller()
-        self.assertEquals("""<form><p>
+        self.assertEqual("""<form><p>
           <input type="text" name="foo"/>
         </p></form>""", html.render())
 
@@ -35,7 +34,7 @@ class HTMLFormFillerTestCase(unittest.TestCase):
         html = HTML(u"""<form><p>
           <input type="text" name="foo" />
         </p></form>""") | HTMLFormFiller(data={'foo': 'bar'})
-        self.assertEquals("""<form><p>
+        self.assertEqual("""<form><p>
           <input type="text" name="foo" value="bar"/>
         </p></form>""", html.render())
 
@@ -43,7 +42,7 @@ class HTMLFormFillerTestCase(unittest.TestCase):
         html = HTML(u"""<form><p>
           <input type="text" name="foo" />
         </p></form>""") | HTMLFormFiller(data={'foo': ['bar']})
-        self.assertEquals("""<form><p>
+        self.assertEqual("""<form><p>
           <input type="text" name="foo" value="bar"/>
         </p></form>""", html.render())
 
@@ -51,7 +50,7 @@ class HTMLFormFillerTestCase(unittest.TestCase):
         html = HTML(u"""<form><p>
           <input type="hidden" name="foo" />
         </p></form>""") | HTMLFormFiller()
-        self.assertEquals("""<form><p>
+        self.assertEqual("""<form><p>
           <input type="hidden" name="foo"/>
         </p></form>""", html.render())
 
@@ -59,7 +58,7 @@ class HTMLFormFillerTestCase(unittest.TestCase):
         html = HTML(u"""<form><p>
           <input type="hidden" name="foo" />
         </p></form>""") | HTMLFormFiller(data={'foo': 'bar'})
-        self.assertEquals("""<form><p>
+        self.assertEqual("""<form><p>
           <input type="hidden" name="foo" value="bar"/>
         </p></form>""", html.render())
 
@@ -67,7 +66,7 @@ class HTMLFormFillerTestCase(unittest.TestCase):
         html = HTML(u"""<form><p>
           <input type="hidden" name="foo" />
         </p></form>""") | HTMLFormFiller(data={'foo': ['bar']})
-        self.assertEquals("""<form><p>
+        self.assertEqual("""<form><p>
           <input type="hidden" name="foo" value="bar"/>
         </p></form>""", html.render())
 
@@ -75,7 +74,7 @@ class HTMLFormFillerTestCase(unittest.TestCase):
         html = HTML(u"""<form><p>
           <textarea name="foo"></textarea>
         </p></form>""") | HTMLFormFiller()
-        self.assertEquals("""<form><p>
+        self.assertEqual("""<form><p>
           <textarea name="foo"/>
         </p></form>""", html.render())
 
@@ -83,7 +82,7 @@ class HTMLFormFillerTestCase(unittest.TestCase):
         html = HTML(u"""<form><p>
           <textarea name="foo"></textarea>
         </p></form>""") | HTMLFormFiller(data={'foo': 'bar'})
-        self.assertEquals("""<form><p>
+        self.assertEqual("""<form><p>
           <textarea name="foo">bar</textarea>
         </p></form>""", html.render())
 
@@ -91,7 +90,7 @@ class HTMLFormFillerTestCase(unittest.TestCase):
         html = HTML(u"""<form><p>
           <textarea name="foo"></textarea>
         </p></form>""") | HTMLFormFiller(data={'foo': ['bar']})
-        self.assertEquals("""<form><p>
+        self.assertEqual("""<form><p>
           <textarea name="foo">bar</textarea>
         </p></form>""", html.render())
 
@@ -102,7 +101,7 @@ class HTMLFormFillerTestCase(unittest.TestCase):
           <textarea name="foo"></textarea>
           <textarea name="bar"></textarea>
         </p></form>""") | HTMLFormFiller(data={'foo': 'Some text'})
-        self.assertEquals("""<form><p>
+        self.assertEqual("""<form><p>
           <textarea name="foo">Some text</textarea>
           <textarea name="bar"/>
         </p></form>""", html.render())
@@ -112,7 +111,7 @@ class HTMLFormFillerTestCase(unittest.TestCase):
           <textarea name="foo"></textarea>
           <textarea name="bar">Original value</textarea>
         </p></form>""") | HTMLFormFiller(data={'foo': 'Some text'})
-        self.assertEquals("""<form><p>
+        self.assertEqual("""<form><p>
           <textarea name="foo">Some text</textarea>
           <textarea name="bar">Original value</textarea>
         </p></form>""", html.render())
@@ -121,7 +120,7 @@ class HTMLFormFillerTestCase(unittest.TestCase):
         html = HTML(u"""<form><p>
           <input type="checkbox" name="foo" />
         </p></form>""") | HTMLFormFiller()
-        self.assertEquals("""<form><p>
+        self.assertEqual("""<form><p>
           <input type="checkbox" name="foo"/>
         </p></form>""", html.render())
 
@@ -129,10 +128,10 @@ class HTMLFormFillerTestCase(unittest.TestCase):
         html = HTML(u"""<form><p>
           <input type="checkbox" name="foo" />
         </p></form>""")
-        self.assertEquals("""<form><p>
+        self.assertEqual("""<form><p>
           <input type="checkbox" name="foo"/>
         </p></form>""", (html | HTMLFormFiller(data={'foo': ''})).render())
-        self.assertEquals("""<form><p>
+        self.assertEqual("""<form><p>
           <input type="checkbox" name="foo" checked="checked"/>
         </p></form>""", (html | HTMLFormFiller(data={'foo': 'on'})).render())
 
@@ -140,10 +139,10 @@ class HTMLFormFillerTestCase(unittest.TestCase):
         html = HTML("""<form><p>
           <input type="checkbox" name="foo" value="1" />
         </p></form>""", encoding='ascii')
-        self.assertEquals("""<form><p>
+        self.assertEqual("""<form><p>
           <input type="checkbox" name="foo" value="1" checked="checked"/>
         </p></form>""", (html | HTMLFormFiller(data={'foo': '1'})).render())
-        self.assertEquals("""<form><p>
+        self.assertEqual("""<form><p>
           <input type="checkbox" name="foo" value="1"/>
         </p></form>""", (html | HTMLFormFiller(data={'foo': '2'})).render())
 
@@ -151,10 +150,10 @@ class HTMLFormFillerTestCase(unittest.TestCase):
         html = HTML("""<form><p>
           <input type="checkbox" name="foo" />
         </p></form>""", encoding='ascii')
-        self.assertEquals("""<form><p>
+        self.assertEqual("""<form><p>
           <input type="checkbox" name="foo"/>
         </p></form>""", (html | HTMLFormFiller(data={'foo': []})).render())
-        self.assertEquals("""<form><p>
+        self.assertEqual("""<form><p>
           <input type="checkbox" name="foo" checked="checked"/>
         </p></form>""", (html | HTMLFormFiller(data={'foo': ['on']})).render())
 
@@ -162,10 +161,10 @@ class HTMLFormFillerTestCase(unittest.TestCase):
         html = HTML(u"""<form><p>
           <input type="checkbox" name="foo" value="1" />
         </p></form>""")
-        self.assertEquals("""<form><p>
+        self.assertEqual("""<form><p>
           <input type="checkbox" name="foo" value="1" checked="checked"/>
         </p></form>""", (html | HTMLFormFiller(data={'foo': ['1']})).render())
-        self.assertEquals("""<form><p>
+        self.assertEqual("""<form><p>
           <input type="checkbox" name="foo" value="1"/>
         </p></form>""", (html | HTMLFormFiller(data={'foo': ['2']})).render())
 
@@ -173,7 +172,7 @@ class HTMLFormFillerTestCase(unittest.TestCase):
         html = HTML(u"""<form><p>
           <input type="radio" name="foo" />
         </p></form>""") | HTMLFormFiller()
-        self.assertEquals("""<form><p>
+        self.assertEqual("""<form><p>
           <input type="radio" name="foo"/>
         </p></form>""", html.render())
 
@@ -181,10 +180,10 @@ class HTMLFormFillerTestCase(unittest.TestCase):
         html = HTML(u"""<form><p>
           <input type="radio" name="foo" value="1" />
         </p></form>""")
-        self.assertEquals("""<form><p>
+        self.assertEqual("""<form><p>
           <input type="radio" name="foo" value="1" checked="checked"/>
         </p></form>""", (html | HTMLFormFiller(data={'foo': '1'})).render())
-        self.assertEquals("""<form><p>
+        self.assertEqual("""<form><p>
           <input type="radio" name="foo" value="1"/>
         </p></form>""", (html | HTMLFormFiller(data={'foo': '2'})).render())
 
@@ -192,10 +191,10 @@ class HTMLFormFillerTestCase(unittest.TestCase):
         html = HTML(u"""<form><p>
           <input type="radio" name="foo" value="1" />
         </p></form>""")
-        self.assertEquals("""<form><p>
+        self.assertEqual("""<form><p>
           <input type="radio" name="foo" value="1" checked="checked"/>
         </p></form>""", (html | HTMLFormFiller(data={'foo': ['1']})).render())
-        self.assertEquals("""<form><p>
+        self.assertEqual("""<form><p>
           <input type="radio" name="foo" value="1"/>
         </p></form>""", (html | HTMLFormFiller(data={'foo': ['2']})).render())
 
@@ -203,7 +202,7 @@ class HTMLFormFillerTestCase(unittest.TestCase):
         html = HTML(u"""<form><p>
           <input type="radio" name="foo" value="" />
         </p></form>""")
-        self.assertEquals("""<form><p>
+        self.assertEqual("""<form><p>
           <input type="radio" name="foo" value="" checked="checked"/>
         </p></form>""", (html | HTMLFormFiller(data={'foo': ''})).render())
 
@@ -211,7 +210,7 @@ class HTMLFormFillerTestCase(unittest.TestCase):
         html = HTML(u"""<form><p>
           <input type="radio" name="foo" value="" />
         </p></form>""")
-        self.assertEquals("""<form><p>
+        self.assertEqual("""<form><p>
           <input type="radio" name="foo" value="" checked="checked"/>
         </p></form>""", (html | HTMLFormFiller(data={'foo': ['']})).render())
 
@@ -223,7 +222,7 @@ class HTMLFormFillerTestCase(unittest.TestCase):
             <option>3</option>
           </select>
         </p></form>""") | HTMLFormFiller()
-        self.assertEquals("""<form><p>
+        self.assertEqual("""<form><p>
           <select name="foo">
             <option>1</option>
             <option>2</option>
@@ -239,7 +238,7 @@ class HTMLFormFillerTestCase(unittest.TestCase):
             <option value="3">3</option>
           </select>
         </p></form>""") | HTMLFormFiller()
-        self.assertEquals("""<form><p>
+        self.assertEqual("""<form><p>
           <select name="foo">
             <option value="1">1</option>
             <option value="2">2</option>
@@ -255,7 +254,7 @@ class HTMLFormFillerTestCase(unittest.TestCase):
             <option>3</option>
           </select>
         </p></form>""") | HTMLFormFiller(data={'foo': '1'})
-        self.assertEquals("""<form><p>
+        self.assertEqual("""<form><p>
           <select name="foo">
             <option selected="selected">1</option>
             <option>2</option>
@@ -271,7 +270,7 @@ class HTMLFormFillerTestCase(unittest.TestCase):
             <option value="3">3</option>
           </select>
         </p></form>""") | HTMLFormFiller(data={'foo': '1'})
-        self.assertEquals("""<form><p>
+        self.assertEqual("""<form><p>
           <select name="foo">
             <option value="1" selected="selected">1</option>
             <option value="2">2</option>
@@ -287,7 +286,7 @@ class HTMLFormFillerTestCase(unittest.TestCase):
             <option>3</option>
           </select>
         </p></form>""") | HTMLFormFiller(data={'foo': ['1', '3']})
-        self.assertEquals("""<form><p>
+        self.assertEqual("""<form><p>
           <select name="foo" multiple="multiple">
             <option selected="selected">1</option>
             <option>2</option>
@@ -303,7 +302,7 @@ class HTMLFormFillerTestCase(unittest.TestCase):
             <option value="3">3</option>
           </select>
         </p></form>""") | HTMLFormFiller(data={'foo': ['1', '3']})
-        self.assertEquals("""<form><p>
+        self.assertEqual("""<form><p>
           <select name="foo" multiple="multiple">
             <option value="1" selected="selected">1</option>
             <option value="2">2</option>
@@ -317,7 +316,7 @@ class HTMLFormFillerTestCase(unittest.TestCase):
             <option value="1">foo $x</option>
           </select>
         </form>""").generate(x=1) | HTMLFormFiller(data={'foo': '1'})
-        self.assertEquals(u"""<form>
+        self.assertEqual(u"""<form>
           <select name="foo">
             <option value="1" selected="selected">foo 1</option>
           </select>
@@ -329,7 +328,7 @@ class HTMLFormFillerTestCase(unittest.TestCase):
             <option>foo $x bar</option>
           </select>
         </form>""").generate(x=1) | HTMLFormFiller(data={'foo': 'foo 1 bar'})
-        self.assertEquals("""<form>
+        self.assertEqual("""<form>
           <select name="foo">
             <option selected="selected">foo 1 bar</option>
           </select>
@@ -341,7 +340,7 @@ class HTMLFormFillerTestCase(unittest.TestCase):
             <option value="&ouml;">foo</option>
           </select>
         </form>""") | HTMLFormFiller(data={'foo': u'ö'})
-        self.assertEquals(u"""<form>
+        self.assertEqual(u"""<form>
           <select name="foo">
             <option value="ö" selected="selected">foo</option>
           </select>
@@ -351,7 +350,7 @@ class HTMLFormFillerTestCase(unittest.TestCase):
         html = HTML(u"""<form><p>
           <input type="password" name="pass" />
         </p></form>""") | HTMLFormFiller(data={'pass': 'bar'})
-        self.assertEquals("""<form><p>
+        self.assertEqual("""<form><p>
           <input type="password" name="pass"/>
         </p></form>""", html.render())
 
@@ -359,7 +358,7 @@ class HTMLFormFillerTestCase(unittest.TestCase):
         html = HTML(u"""<form><p>
           <input type="password" name="pass" />
         </p></form>""") | HTMLFormFiller(data={'pass': '1234'}, passwords=True)
-        self.assertEquals("""<form><p>
+        self.assertEqual("""<form><p>
           <input type="password" name="pass" value="1234"/>
         </p></form>""", html.render())
 
@@ -380,48 +379,48 @@ class HTMLSanitizerTestCase(unittest.TestCase):
         sanitized_html = (html | HTMLSanitizer()).render()
         if not sanitized_html and allow_strip:
             return
-        self.assertEquals(expected, sanitized_html)
+        self.assertEqual(expected, sanitized_html)
 
     def test_sanitize_unchanged(self):
         html = HTML(u'<a href="#">fo<br />o</a>')
-        self.assertEquals('<a href="#">fo<br/>o</a>',
+        self.assertEqual('<a href="#">fo<br/>o</a>',
                           (html | HTMLSanitizer()).render())
         html = HTML(u'<a href="#with:colon">foo</a>')
-        self.assertEquals('<a href="#with:colon">foo</a>',
+        self.assertEqual('<a href="#with:colon">foo</a>',
                           (html | HTMLSanitizer()).render())
 
     def test_sanitize_escape_text(self):
         html = HTML(u'<a href="#">fo&amp;</a>')
-        self.assertEquals('<a href="#">fo&amp;</a>',
+        self.assertEqual('<a href="#">fo&amp;</a>',
                           (html | HTMLSanitizer()).render())
         html = HTML(u'<a href="#">&lt;foo&gt;</a>')
-        self.assertEquals('<a href="#">&lt;foo&gt;</a>',
+        self.assertEqual('<a href="#">&lt;foo&gt;</a>',
                           (html | HTMLSanitizer()).render())
 
     def test_sanitize_entityref_text(self):
         html = HTML(u'<a href="#">fo&ouml;</a>')
-        self.assertEquals(u'<a href="#">foö</a>',
+        self.assertEqual(u'<a href="#">foö</a>',
                           (html | HTMLSanitizer()).render(encoding=None))
 
     def test_sanitize_escape_attr(self):
         html = HTML(u'<div title="&lt;foo&gt;"></div>')
-        self.assertEquals('<div title="&lt;foo&gt;"/>',
+        self.assertEqual('<div title="&lt;foo&gt;"/>',
                           (html | HTMLSanitizer()).render())
 
     def test_sanitize_close_empty_tag(self):
         html = HTML(u'<a href="#">fo<br>o</a>')
-        self.assertEquals('<a href="#">fo<br/>o</a>',
+        self.assertEqual('<a href="#">fo<br/>o</a>',
                           (html | HTMLSanitizer()).render())
 
     def test_sanitize_invalid_entity(self):
         html = HTML(u'&junk;')
-        self.assertEquals('&amp;junk;', (html | HTMLSanitizer()).render())
+        self.assertEqual('&amp;junk;', (html | HTMLSanitizer()).render())
 
     def test_sanitize_remove_script_elem(self):
         html = HTML(u'<script>alert("Foo")</script>')
-        self.assertEquals('', (html | HTMLSanitizer()).render())
+        self.assertEqual('', (html | HTMLSanitizer()).render())
         html = HTML(u'<SCRIPT SRC="http://example.com/"></SCRIPT>')
-        self.assertEquals('', (html | HTMLSanitizer()).render())
+        self.assertEqual('', (html | HTMLSanitizer()).render())
         src = u'<SCR\0IPT>alert("foo")</SCR\0IPT>'
         self.assert_parse_error_or_equal('&lt;SCR\x00IPT&gt;alert("foo")', src,
                                          allow_strip=True)
@@ -432,96 +431,96 @@ class HTMLSanitizerTestCase(unittest.TestCase):
 
     def test_sanitize_remove_onclick_attr(self):
         html = HTML(u'<div onclick=\'alert("foo")\' />')
-        self.assertEquals('<div/>', (html | HTMLSanitizer()).render())
+        self.assertEqual('<div/>', (html | HTMLSanitizer()).render())
 
     def test_sanitize_remove_input_password(self):
         html = HTML(u'<form><input type="password" /></form>')
-        self.assertEquals('<form/>', (html | HTMLSanitizer()).render())
+        self.assertEqual('<form/>', (html | HTMLSanitizer()).render())
 
     def test_sanitize_remove_comments(self):
         html = HTML(u'''<div><!-- conditional comment crap --></div>''')
-        self.assertEquals('<div/>', (html | HTMLSanitizer()).render())
+        self.assertEqual('<div/>', (html | HTMLSanitizer()).render())
 
     def test_sanitize_remove_style_scripts(self):
         sanitizer = StyleSanitizer()
         # Inline style with url() using javascript: scheme
         html = HTML(u'<DIV STYLE=\'background: url(javascript:alert("foo"))\'>')
-        self.assertEquals('<div/>', (html | sanitizer).render())
+        self.assertEqual('<div/>', (html | sanitizer).render())
         # Inline style with url() using javascript: scheme, using control char
         html = HTML(u'<DIV STYLE=\'background: url(&#1;javascript:alert("foo"))\'>')
-        self.assertEquals('<div/>', (html | sanitizer).render())
+        self.assertEqual('<div/>', (html | sanitizer).render())
         # Inline style with url() using javascript: scheme, in quotes
         html = HTML(u'<DIV STYLE=\'background: url("javascript:alert(foo)")\'>')
-        self.assertEquals('<div/>', (html | sanitizer).render())
+        self.assertEqual('<div/>', (html | sanitizer).render())
         # IE expressions in CSS not allowed
         html = HTML(u'<DIV STYLE=\'width: expression(alert("foo"));\'>')
-        self.assertEquals('<div/>', (html | sanitizer).render())
+        self.assertEqual('<div/>', (html | sanitizer).render())
         html = HTML(u'<DIV STYLE=\'width: e/**/xpression(alert("foo"));\'>')
-        self.assertEquals('<div/>', (html | sanitizer).render())
+        self.assertEqual('<div/>', (html | sanitizer).render())
         html = HTML(u'<DIV STYLE=\'background: url(javascript:alert("foo"));'
                                  'color: #fff\'>')
-        self.assertEquals('<div style="color: #fff"/>',
+        self.assertEqual('<div style="color: #fff"/>',
                           (html | sanitizer).render())
         # Inline style with url() using javascript: scheme, using unicode
         # escapes
         html = HTML(u'<DIV STYLE=\'background: \\75rl(javascript:alert("foo"))\'>')
-        self.assertEquals('<div/>', (html | sanitizer).render())
+        self.assertEqual('<div/>', (html | sanitizer).render())
         html = HTML(u'<DIV STYLE=\'background: \\000075rl(javascript:alert("foo"))\'>')
-        self.assertEquals('<div/>', (html | sanitizer).render())
+        self.assertEqual('<div/>', (html | sanitizer).render())
         html = HTML(u'<DIV STYLE=\'background: \\75 rl(javascript:alert("foo"))\'>')
-        self.assertEquals('<div/>', (html | sanitizer).render())
+        self.assertEqual('<div/>', (html | sanitizer).render())
         html = HTML(u'<DIV STYLE=\'background: \\000075 rl(javascript:alert("foo"))\'>')
-        self.assertEquals('<div/>', (html | sanitizer).render())
+        self.assertEqual('<div/>', (html | sanitizer).render())
         html = HTML(u'<DIV STYLE=\'background: \\000075\r\nrl(javascript:alert("foo"))\'>')
-        self.assertEquals('<div/>', (html | sanitizer).render())
+        self.assertEqual('<div/>', (html | sanitizer).render())
 
     def test_sanitize_remove_style_phishing(self):
         sanitizer = StyleSanitizer()
         # The position property is not allowed
         html = HTML(u'<div style="position:absolute;top:0"></div>')
-        self.assertEquals('<div style="top:0"/>', (html | sanitizer).render())
+        self.assertEqual('<div style="top:0"/>', (html | sanitizer).render())
         # Normal margins get passed through
         html = HTML(u'<div style="margin:10px 20px"></div>')
-        self.assertEquals('<div style="margin:10px 20px"/>',
+        self.assertEqual('<div style="margin:10px 20px"/>',
                           (html | sanitizer).render())
         # But not negative margins
         html = HTML(u'<div style="margin:-1000px 0 0"></div>')
-        self.assertEquals('<div/>', (html | sanitizer).render())
+        self.assertEqual('<div/>', (html | sanitizer).render())
         html = HTML(u'<div style="margin-left:-2000px 0 0"></div>')
-        self.assertEquals('<div/>', (html | sanitizer).render())
+        self.assertEqual('<div/>', (html | sanitizer).render())
         html = HTML(u'<div style="margin-left:1em 1em 1em -4000px"></div>')
-        self.assertEquals('<div/>', (html | sanitizer).render())
+        self.assertEqual('<div/>', (html | sanitizer).render())
 
     def test_sanitize_remove_src_javascript(self):
         html = HTML(u'<img src=\'javascript:alert("foo")\'>')
-        self.assertEquals('<img/>', (html | HTMLSanitizer()).render())
+        self.assertEqual('<img/>', (html | HTMLSanitizer()).render())
         # Case-insensitive protocol matching
         html = HTML(u'<IMG SRC=\'JaVaScRiPt:alert("foo")\'>')
-        self.assertEquals('<img/>', (html | HTMLSanitizer()).render())
+        self.assertEqual('<img/>', (html | HTMLSanitizer()).render())
         # Grave accents (not parsed)
         src = u'<IMG SRC=`javascript:alert("RSnake says, \'foo\'")`>'
         self.assert_parse_error_or_equal('<img/>', src)
         # Protocol encoded using UTF-8 numeric entities
         html = HTML(u'<IMG SRC=\'&#106;&#97;&#118;&#97;&#115;&#99;&#114;&#105;'
                     '&#112;&#116;&#58;alert("foo")\'>')
-        self.assertEquals('<img/>', (html | HTMLSanitizer()).render())
+        self.assertEqual('<img/>', (html | HTMLSanitizer()).render())
         # Protocol encoded using UTF-8 numeric entities without a semicolon
         # (which is allowed because the max number of digits is used)
         html = HTML(u'<IMG SRC=\'&#0000106&#0000097&#0000118&#0000097'
                     '&#0000115&#0000099&#0000114&#0000105&#0000112&#0000116'
                     '&#0000058alert("foo")\'>')
-        self.assertEquals('<img/>', (html | HTMLSanitizer()).render())
+        self.assertEqual('<img/>', (html | HTMLSanitizer()).render())
         # Protocol encoded using UTF-8 numeric hex entities without a semicolon
         # (which is allowed because the max number of digits is used)
         html = HTML(u'<IMG SRC=\'&#x6A&#x61&#x76&#x61&#x73&#x63&#x72&#x69'
                     '&#x70&#x74&#x3A;alert("foo")\'>')
-        self.assertEquals('<img/>', (html | HTMLSanitizer()).render())
+        self.assertEqual('<img/>', (html | HTMLSanitizer()).render())
         # Embedded tab character in protocol
         html = HTML(u'<IMG SRC=\'jav\tascript:alert("foo");\'>')
-        self.assertEquals('<img/>', (html | HTMLSanitizer()).render())
+        self.assertEqual('<img/>', (html | HTMLSanitizer()).render())
         # Embedded tab character in protocol, but encoded this time
         html = HTML(u'<IMG SRC=\'jav&#x09;ascript:alert("foo");\'>')
-        self.assertEquals('<img/>', (html | HTMLSanitizer()).render())
+        self.assertEqual('<img/>', (html | HTMLSanitizer()).render())
 
     def test_sanitize_expression(self):
         html = HTML(u'<div style="top:expression(alert())">XSS</div>')

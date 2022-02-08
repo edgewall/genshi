@@ -11,9 +11,7 @@
 # individuals. For the exact contribution history, see the revision
 # history and logs, available at http://genshi.edgewall.org/log/.
 
-import doctest
 import unittest
-import sys
 
 from genshi.core import Attrs, Markup, QName, Stream
 from genshi.input import HTML, XML

@@ -11,15 +11,13 @@
 # individuals. For the exact contribution history, see the revision
 # history and logs, available at http://genshi.edgewall.org/log/.
 
-import doctest
-import sys
 import unittest
 
-from genshi.core import Attrs, Stream
-from genshi.input import XMLParser, HTMLParser, ParseError
+from genshi.core import Attrs, QName, Stream
+from genshi.input import XMLParser, HTMLParser, ParseError, ET
 from genshi.compat import StringIO, BytesIO
 from genshi.tests.test_utils import doctest_suite
-
+from xml.etree import ElementTree
 
 class XMLParserTestCase(unittest.TestCase):
 
@@ -280,6 +278,21 @@ bar</elem>'''
         self.assertEqual(1, len(events))
         self.assertEqual((Stream.TEXT, text), events[0][:2])
 
+    def test_convert_ElementTree_to_markup_stream(self):
+        tree = ElementTree.fromstring(
+            u'<div class="test_div">text<span>some more text</span></div>'
+        )
+        events = list(ET(tree))
+        self.assertEqual(6, len(events))
+        self.assertEqual(
+            (Stream.START, (QName("div"), Attrs([(QName("class"), "test_div")]))),
+            events[0][:2],
+        )
+        self.assertEqual((Stream.TEXT, "text"), events[1][:2])
+        self.assertEqual((Stream.START, (QName("span"), Attrs())), events[2][:2])
+        self.assertEqual((Stream.TEXT, "some more text"), events[3][:2])
+        self.assertEqual((Stream.END, QName("span")), events[4][:2])
+        self.assertEqual((Stream.END, QName("div")), events[5][:2])
 
 def suite():
     suite = unittest.TestSuite()

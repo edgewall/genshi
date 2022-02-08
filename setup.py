@@ -12,18 +12,14 @@
 # individuals. For the exact contribution history, see the revision
 # history and logs, available at http://genshi.edgewall.org/log/.
 
-from distutils.cmd import Command
 from distutils.command.build_ext import build_ext
 from distutils.errors import CCompilerError, DistutilsPlatformError
-import doctest
-from glob import glob
 import os
 try:
-    from setuptools import setup, Extension, Feature
+    from setuptools import setup, Extension
     from setuptools.command.bdist_egg import bdist_egg
 except ImportError:
     from distutils.core import setup, Extension
-    Feature = None
     bdist_egg = None
 import sys
 
@@ -64,20 +60,20 @@ available.""")
         print(exc)
 
 
-if Feature:
-    # Optional C extension module for speeding up Genshi:
-    # Not activated by default on:
-    # - PyPy (where it harms performance)
-    # - CPython >= 3.3 (the new Unicode C API is not supported yet)
-    speedups = Feature(
-        "optional C speed-enhancements",
-        standard = not is_pypy,
-        ext_modules = [
-            Extension('genshi._speedups', ['genshi/_speedups.c']),
-        ],
-    )
-else:
-    speedups = None
+# Optional C extension module for speeding up Genshi
+# Not activated by default on:
+# - PyPy (where it harms performance)
+_speedup_enable_default = 0 if is_pypy else 1
+try:
+    _speedup_enabled = int(os.getenv('GENSHI_BUILD_SPEEDUP', _speedup_enable_default))
+except ValueError:
+    import warnings
+    warnings.warn('GENSHI_BUILD_SPEEDUP was defined to something other than 0 or 1; defaulting to not build...')
+    _speedup_enabled = False
+
+ext_modules = []
+if _speedup_enabled:
+    ext_modules.append(Extension('genshi._speedups', ['genshi/_speedups.c']))
 
 
 # Setuptools need some help figuring out if the egg is "zip_safe" or not
@@ -99,65 +95,9 @@ if sys.version_info >= (3,):
     extra['include_package_data'] = True
 
 
-# include tests for python3 setup.py test (needed when creating
-# source distributions on python2 too so that they work on python3)
-packages = [
-    'genshi', 'genshi.filters', 'genshi.template',
-    'genshi.tests', 'genshi.filters.tests',
-    'genshi.template.tests',
-    'genshi.template.tests.templates',
-]
-
-
 setup(
-    name = 'Genshi',
-    version = '0.7.5',
-    description = 'A toolkit for generation of output for the web',
-    long_description = \
-"""Genshi is a Python library that provides an integrated set of
-components for parsing, generating, and processing HTML, XML or
-other textual content for output generation on the web. The major
-feature is a template language, which is heavily inspired by Kid.""",
-    author = 'Edgewall Software',
-    author_email = 'info@edgewall.org',
-    license = 'BSD',
-    url = 'https://github.com/edgewall/genshi',
-
-    classifiers = [
-        'Development Status :: 4 - Beta',
-        'Environment :: Web Environment',
-        'Intended Audience :: Developers',
-        'License :: OSI Approved :: BSD License',
-        'Operating System :: OS Independent',
-        'Programming Language :: Python',
-        'Programming Language :: Python :: 2',
-        'Programming Language :: Python :: 3',
-        'Topic :: Internet :: WWW/HTTP :: Dynamic Content',
-        'Topic :: Software Development :: Libraries :: Python Modules',
-        'Topic :: Text Processing :: Markup :: HTML',
-        'Topic :: Text Processing :: Markup :: XML'
-    ],
-    keywords = ['python.templating.engines'],
-    packages = packages,
     test_suite = 'genshi.tests.suite',
-
-    install_requires = ['six'],
-    extras_require = {
-        'i18n': ['Babel>=0.8'],
-        'plugin': ['setuptools>=0.6a2']
-    },
-    entry_points = """
-    [babel.extractors]
-    genshi = genshi.filters.i18n:extract[i18n]
-
-    [python.templating.engines]
-    genshi = genshi.template.plugin:MarkupTemplateEnginePlugin[plugin]
-    genshi-markup = genshi.template.plugin:MarkupTemplateEnginePlugin[plugin]
-    genshi-text = genshi.template.plugin:TextTemplateEnginePlugin[plugin]
-    """,
-
-    features = {'speedups': speedups},
+    ext_modules = ext_modules,
     cmdclass = cmdclass,
-
     **extra
 )

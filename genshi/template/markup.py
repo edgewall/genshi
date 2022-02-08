@@ -15,7 +15,7 @@
 
 from itertools import chain
 
-from genshi.core import Attrs, Markup, Namespace, Stream, StreamEventKind
+from genshi.core import Attrs, Markup, Namespace, Stream
 from genshi.core import START, END, START_NS, END_NS, TEXT, PI, COMMENT
 from genshi.input import XMLParser
 from genshi.template.base import BadDirectiveError, Template, \
@@ -148,7 +148,7 @@ class MarkupTemplate(Template):
                 new_attrs = Attrs(new_attrs)
 
                 if directives:
-                    directives.sort()
+                    directives.sort(key=lambda x: x[0])
                     dirmap[(depth, tag)] = (directives, len(new_stream),
                                             strip)
 

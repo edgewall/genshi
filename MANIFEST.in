@@ -1,4 +1,5 @@
 include ChangeLog
+# implied by setup.cfg -> license_files, repeated for clarity
 include COPYING
 recursive-include genshi *.py *.c *.txt *.html
 recursive-include examples *

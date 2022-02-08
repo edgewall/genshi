@@ -11,7 +11,6 @@
 # individuals. For the exact contribution history, see the revision
 # history and logs, available at http://genshi.edgewall.org/log/.
 
-import doctest
 import unittest
 
 from genshi.core import Attrs, QName
@@ -656,21 +655,21 @@ class PathTestCase(unittest.TestCase):
         return strategy_class.supports(path)
 
     def test_simple_strategy_support(self):
-        self.assert_(self._test_support(SimplePathStrategy, 'a/b'))
-        self.assert_(self._test_support(SimplePathStrategy, 'self::a/b'))
-        self.assert_(self._test_support(SimplePathStrategy, 'descendant::a/b'))
-        self.assert_(self._test_support(SimplePathStrategy,
+        self.assertTrue(self._test_support(SimplePathStrategy, 'a/b'))
+        self.assertTrue(self._test_support(SimplePathStrategy, 'self::a/b'))
+        self.assertTrue(self._test_support(SimplePathStrategy, 'descendant::a/b'))
+        self.assertTrue(self._test_support(SimplePathStrategy,
                          'descendant-or-self::a/b'))
-        self.assert_(self._test_support(SimplePathStrategy, '//a/b'))
-        self.assert_(self._test_support(SimplePathStrategy, 'a/@b'))
-        self.assert_(self._test_support(SimplePathStrategy, 'a/text()'))
+        self.assertTrue(self._test_support(SimplePathStrategy, '//a/b'))
+        self.assertTrue(self._test_support(SimplePathStrategy, 'a/@b'))
+        self.assertTrue(self._test_support(SimplePathStrategy, 'a/text()'))
 
         # a//b is a/descendant-or-self::node()/b
-        self.assert_(not self._test_support(SimplePathStrategy, 'a//b'))
-        self.assert_(not self._test_support(SimplePathStrategy, 'node()/@a'))
-        self.assert_(not self._test_support(SimplePathStrategy, '@a'))
-        self.assert_(not self._test_support(SimplePathStrategy, 'foo:bar'))
-        self.assert_(not self._test_support(SimplePathStrategy, 'a/@foo:bar'))
+        self.assertTrue(not self._test_support(SimplePathStrategy, 'a//b'))
+        self.assertTrue(not self._test_support(SimplePathStrategy, 'node()/@a'))
+        self.assertTrue(not self._test_support(SimplePathStrategy, '@a'))
+        self.assertTrue(not self._test_support(SimplePathStrategy, 'foo:bar'))
+        self.assertTrue(not self._test_support(SimplePathStrategy, 'a/@foo:bar'))
 
     def _test_strategies(self, input, path, output,
                          namespaces=None, variables=None):

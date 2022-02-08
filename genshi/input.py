@@ -22,8 +22,6 @@ from xml.parsers import expat
 import six
 from six.moves import html_entities as entities, html_parser as html
 
-import six
-
 from genshi.core import Attrs, QName, Stream, stripentities
 from genshi.core import START, END, XML_DECL, DOCTYPE, TEXT, START_NS, \
                         END_NS, START_CDATA, END_CDATA, PI, COMMENT
@@ -47,7 +45,7 @@ def ET(element):
     yield START, (tag_name, attrs), (None, -1, -1)
     if element.text:
         yield TEXT, element.text, (None, -1, -1)
-    for child in element.getchildren():
+    for child in element:
         for item in ET(child):
             yield item
     yield END, tag_name, (None, -1, -1)

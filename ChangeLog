@@ -1,3 +1,33 @@
+Version 0.7.6
+https://github.com/edgewall/genshi/releases/tag/0.7.6
+(Feb 9 2022, from branches/stable/0.7.x)
+
+ * Added support for Python 3.10 and 3.11 (#54, #56, #58 by Brandt Bucher,
+   Felix Schwarz & Simon Cross)
+ * Replaced assertEquals with assertEqual. assertEquals was deprecated in
+   Python 3.2. (#42 by Simon Cross)
+ * Removed used of element.getchildren() which has been removed from the Python
+   standard library elementtree in Python 3.9. (#57 by Jan Vollmer)
+ * Added support for Python 3.10 by using CodeType.replace in
+   `build_code_chunk` to make code object updates more robust against changes
+   in CodeType. (#49 by Felix Schwarz)
+ * Moved tests and releases workflows to GitHub Actions (#61, #51 by Felix
+   Schwarz and Simon Cross)
+ * Fixed reference leak in Markup.join C implementation. (#47 by Simon Cross)
+ * Sort directives only by directive index. Previously they were sorted by the
+   class, namespace and arguments of the directives. This was acceptable in
+   Python 2, but is a bug in Python 3 since some the arguments may not be
+   comparable. (#44 by Cédric Krier)
+ * Add support for msgctxt to i18n. (#13 by Eric O'Connell)
+ * Implemented skipping of empty attributes during translation to match the
+   behaviour during translation extraction (i.e. don't try to translate empty
+   strings that are not extracted). (#38 by Jun Omae)
+ * Ported setuptools options to declarative config in setup.cfg. (#40 by Eli
+   Schwartz)
+ * Removed used of deprecated setuptools Feature in setup.py. (#39 by Eli
+   Schwartz)
+
+
 Version 0.7.5
 https://github.com/edgewall/genshi/releases/tag/0.7.5
 (Nov 18 2020, from branches/stable/0.7.x)

@@ -30,7 +30,7 @@ NAMESTART = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_'
 NAMECHARS = NAMESTART + '.0123456789'
 PREFIX = '$'
 
-token_re = re.compile('%s|%s(?s)' % (
+token_re = re.compile('(?s)%s|%s' % (
     r'[uU]?[rR]?("""|\'\'\')((?<!\\)\\\1|.)*?\1',
     PseudoToken
 ))

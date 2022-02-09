@@ -1116,7 +1116,7 @@ class MessageBuffer(object):
             if '[' in data or ']' in data:
                 # Quote [ and ] if it ain't us adding it, ie, if the user is
                 # using those chars in their templates, escape them
-                data = data.replace('[', '\[').replace(']', '\]')
+                data = data.replace('[', r'\[').replace(']', r'\]')
             self.string.append(data)
             self._add_event(self.stack[-1], (kind, data, pos))
         elif kind is EXPR:
@@ -1171,7 +1171,7 @@ class MessageBuffer(object):
                     yield self.values[part]
                 elif part:
                     yield (TEXT,
-                           part.replace('\[', '[').replace('\]', ']'),
+                           part.replace(r'\[', '[').replace(r'\]', ']'),
                            (None, -1, -1)
                     )
 

@@ -660,7 +660,7 @@ class PathParser(object):
     _QUOTES = (("'", "'"), ('"', '"'))
     _TOKENS = ('::', ':', '..', '.', '//', '/', '[', ']', '()', '(', ')', '@',
                '=', '!=', '!', '|', ',', '>=', '>', '<=', '<', '$')
-    _tokenize = re.compile('("[^"]*")|(\'[^\']*\')|((?:\d+)?\.\d+)|(%s)|([^%s\s]+)|\s+' % (
+    _tokenize = re.compile(r'("[^"]*")|(\'[^\']*\')|((?:\d+)?\.\d+)|(%s)|([^%s\s]+)|\s+' % (
                            '|'.join([re.escape(t) for t in _TOKENS]),
                            ''.join([re.escape(t[0]) for t in _TOKENS]))).findall
 

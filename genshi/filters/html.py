@@ -354,7 +354,7 @@ class HTMLSanitizer(object):
     # IE6 <http://openmya.hacker.jp/hasegawa/security/expression.txt>
     #     7) Particular bit of Unicode characters
     _URL_FINDITER = re.compile(
-        u'[Uu][Rr\u0280][Ll\u029F]\s*\(([^)]+)').finditer
+        u'[Uu][Rr\u0280][Ll\u029F]%s*\(([^)]+)' % (r'\s')).finditer
 
     def __call__(self, stream):
         """Apply the filter to the given stream.

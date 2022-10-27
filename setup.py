@@ -12,8 +12,6 @@
 # individuals. For the exact contribution history, see the revision
 # history and logs, available at http://genshi.edgewall.org/log/.
 
-from distutils.command.build_ext import build_ext
-from distutils.errors import CCompilerError, DistutilsPlatformError
 import os
 try:
     from setuptools import setup, Extension
@@ -21,6 +19,8 @@ try:
 except ImportError:
     from distutils.core import setup, Extension
     bdist_egg = None
+from distutils.command.build_ext import build_ext
+from distutils.errors import CCompilerError, DistutilsPlatformError
 import sys
 
 sys.path.append(os.path.join('doc', 'common'))

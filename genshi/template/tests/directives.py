@@ -1102,6 +1102,35 @@ class StripDirectiveTestCase(unittest.TestCase):
           <b>foo</b>
         </div>""", tmpl.generate().render(encoding=None))
 
+    def test_strip_with_iterator_next_that_raises_stop_iteration(self):
+        """
+        Verify for applied to an iterator that raises StopIteration.
+        """
+        class Items:
+            def __init__(self):
+                self._x = 0
+
+            def __iter__(self):
+                return self
+
+            def __next__(self):
+                if self._x < 2:
+                    self._x += 1
+                    return self._x
+                raise StopIteration("Items raised StopIteration")
+
+        tmpl = MarkupTemplate("""<doc xmlns:py="http://genshi.edgewall.org/">
+          <div py:for="item in items" py:strip="">
+            <p>$item</p>
+          </div>
+        </doc>""", filename='test.html')
+        items = Items()
+        self.assertEqual("""<doc>
+            <p>1</p>
+            <p>2</p>
+        </doc>""", tmpl.generate(items=items).render(encoding=None))
+
+
 
 class WithDirectiveTestCase(unittest.TestCase):
     """Tests for the `py:with` template directive."""

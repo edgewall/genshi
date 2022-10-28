@@ -538,8 +538,11 @@ class StripDirective(Directive):
     def __call__(self, stream, directives, ctxt, **vars):
         def _generate():
             if not self.expr or _eval_expr(self.expr, ctxt, vars):
-                next(stream) # skip start tag
-                previous = next(stream)
+                try:
+                    next(stream) # skip start tag
+                    previous = next(stream)
+                except StopIteration:
+                    return
                 for event in stream:
                     yield previous
                     previous = event

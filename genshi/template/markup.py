@@ -47,11 +47,11 @@ class MarkupTemplate(Template):
 
     directives = [('def', DefDirective),
                   ('match', MatchDirective),
+                  ('choose', ChooseDirective),
                   ('when', WhenDirective),
                   ('otherwise', OtherwiseDirective),
                   ('for', ForDirective),
                   ('if', IfDirective),
-                  ('choose', ChooseDirective),
                   ('with', WithDirective),
                   ('replace', ReplaceDirective),
                   ('content', ContentDirective),

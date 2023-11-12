@@ -7,14 +7,33 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: [2.7, 3.6, 3.7, 3.8, 3.9, "3.10", "3.11-dev", pypy2, pypy3]
+        python-version:
+          - deadsnakes: true
+            version: "2.7"
+          - deadsnakes: true
+            version: "3.6"
+          - "3.7"
+          - "3.8"
+          - "3.9"
+          - "3.10"
+          - "3.11"
+          - "pypy2"
+          - "pypy3"
 
     steps:
       - uses: actions/checkout@v2
+
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v2
+        if: "!matrix.python-version.deadsnakes"
         with:
           python-version: ${{ matrix.python-version }}
+
+      - name: Set up Deadsnakes Python ${{ matrix.python-version.version }}
+        uses: deadsnakes/action@v3.0.1
+        if: "matrix.python-version.deadsnakes"
+        with:
+          python-version: ${{ matrix.python-version.version }}
 
       - name: Run test suite
         run: |

@@ -20,8 +20,8 @@ jobs:
     steps:
       - uses: actions/checkout@v2
 
-      - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v2
+      - name: Set up Python ${{ matrix.python-version.version }} using Deadsnakes
+        uses: deadsnakes/action@v3.0.1
         with:
           python-version: ${{ matrix.python-version }}
 

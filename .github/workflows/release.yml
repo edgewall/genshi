@@ -10,7 +10,7 @@ on:
 jobs:
   build_sdist:
     name: Build sdist
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
     steps:
       - uses: actions/checkout@v2
 
@@ -37,7 +37,7 @@ jobs:
 
   build_generic_wheel:
     name: Build generic wheel (without speedups)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
     env:
       # Build a wheel without speedups that can run on pure Python
       GENSHI_BUILD_SPEEDUP: 0

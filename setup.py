@@ -13,21 +13,10 @@
 # history and logs, available at http://genshi.edgewall.org/log/.
 
 import os
-try:
-    from setuptools import setup, Extension
-    from setuptools.command.bdist_egg import bdist_egg
-except ImportError:
-    from distutils.core import setup, Extension
-    bdist_egg = None
+from setuptools import setup, Extension
 from distutils.command.build_ext import build_ext
 from distutils.errors import CCompilerError, DistutilsPlatformError
 import sys
-
-sys.path.append(os.path.join('doc', 'common'))
-try:
-    from doctools import build_doc, test_doc
-except ImportError:
-    build_doc = test_doc = None
 
 _speedup_available = False
 
@@ -75,19 +64,7 @@ ext_modules = []
 if _speedup_enabled:
     ext_modules.append(Extension('genshi._speedups', ['genshi/_speedups.c']))
 
-
-# Setuptools need some help figuring out if the egg is "zip_safe" or not
-if bdist_egg:
-    class my_bdist_egg(bdist_egg):
-        def zip_safe(self):
-            return not _speedup_available and bdist_egg.zip_safe(self)
-
-
-cmdclass = {'build_doc': build_doc, 'test_doc': test_doc,
-            'build_ext': optional_build_ext}
-if bdist_egg:
-    cmdclass['bdist_egg'] = my_bdist_egg
-
+cmdclass = {'build_ext': optional_build_ext}
 
 extra = {}
 if sys.version_info >= (3,):

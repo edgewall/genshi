@@ -1,3 +1,17 @@
+Version 0.7.8
+https://github.com/edgewall/genshi/releases/tag/0.7.8
+(Jun 24 2024, from branches/stable/0.7.x)
+
+* Do not merge sub directives if they have not been changed.
+  (#53 by Cédric Krier)
+* Silence deprecation warnings from attempting to import Ellipsis and
+  Str (which are needed to support older Pythons). (#73 by Cédric Krier)
+* Remove fallback to distutils, patching of bdist_egg and use of doctools.
+  (#74 by Simon Cross)
+* Clarify the escaping in _URL_FINDER. (#76 by Simon Cross)
+* Fix installation with setuptools >= 60. (#68 by Graham Inggs)
+
+
 Version 0.7.7
 https://github.com/edgewall/genshi/releases/tag/0.7.7
 (Apr 21 2022, from branches/stable/0.7.x)

@@ -16,6 +16,10 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
 
+      - name: Install setuptools
+        run: |
+          pip install setuptools
+
       - name: Run test suite
         run: |
           python setup.py test

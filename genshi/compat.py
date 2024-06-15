@@ -142,7 +142,7 @@ with warnings.catch_warnings():
     warnings.filterwarnings('error', category=DeprecationWarning)
     try:
         _ast_Ellipsis = ast.Ellipsis
-        _ast_Ellipsis_value = lambda obj: ...
+        _ast_Ellipsis_value = lambda obj: Ellipsis
         _ast_Str = ast.Str
         _ast_Str_value = lambda obj: obj.s
     except (AttributeError, DeprecationWarning):

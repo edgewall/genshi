@@ -1,7 +1,7 @@
 About Genshi
 ============
 
-[![ReadTheDocs badge](https://readthedocs.org/projects/genshi/badge/?version=latest&style=flat)](https://genshi.readthedocs.org/)
+[![ReadTheDocs badge](https://readthedocs.org/projects/genshi/badge/?version=latest&style=for-the-badge)](https://genshi.readthedocs.org/)
 [![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/edgewall/genshi/tests.yml?branch=master&style=for-the-badge)](https://github.com/edgewall/genshi/actions/workflows/tests.yml)
 [![PyPI - Version](https://img.shields.io/pypi/v/genshi?style=for-the-badge)](https://pypi.org/project/genshi/)
 

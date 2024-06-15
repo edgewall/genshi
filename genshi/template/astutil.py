@@ -14,7 +14,7 @@
 """Support classes for generating code from abstract syntax trees."""
 
 from genshi.compat import ast as _ast, _ast_Constant, IS_PYTHON2, isstring, \
-                          _ast_Ellipsis
+                          _ast_Ellipsis, _ast_Ellipsis_value
 
 __docformat__ = 'restructuredtext en'
 
@@ -721,7 +721,10 @@ class ASTCodeGenerator(object):
         self.visit(node.value)
         self._write('[')
         def _process_slice(node):
-            if isinstance(node, _ast_Ellipsis):
+            if (
+                isinstance(node, _ast_Ellipsis)
+                and _ast_Ellipsis_value(node) == ...
+            ):
                 self._write('...')
             elif isinstance(node, _ast.Slice):
                 if getattr(node, 'lower', 'None'):

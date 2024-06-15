@@ -35,7 +35,7 @@ class ContextTestCase(unittest.TestCase):
 def suite():
     suite = unittest.TestSuite()
     suite.addTest(doctest.DocTestSuite(Template.__module__))
-    suite.addTest(unittest.makeSuite(ContextTestCase, 'test'))
+    suite.addTest(unittest.defaultTestLoader.loadTestsFromTestCase(ContextTestCase))
     return suite
 
 if __name__ == '__main__':

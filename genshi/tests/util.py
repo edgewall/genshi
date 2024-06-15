@@ -87,7 +87,7 @@ class LRUCacheTestCase(unittest.TestCase):
 def suite():
     suite = unittest.TestSuite()
     suite.addTest(doctest_suite(util))
-    suite.addTest(unittest.makeSuite(LRUCacheTestCase, 'test'))
+    suite.addTest(unittest.defaultTestLoader.loadTestsFromTestCase(LRUCacheTestCase))
     return suite
 
 if __name__ == '__main__':

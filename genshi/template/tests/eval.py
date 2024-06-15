@@ -1037,8 +1037,8 @@ with open(path) as file1, open(path) as file2:
 def suite():
     suite = unittest.TestSuite()
     suite.addTest(doctest.DocTestSuite(Expression.__module__))
-    suite.addTest(unittest.makeSuite(ExpressionTestCase, 'test'))
-    suite.addTest(unittest.makeSuite(SuiteTestCase, 'test'))
+    suite.addTest(unittest.defaultTestLoader.loadTestsFromTestCase(ExpressionTestCase))
+    suite.addTest(unittest.defaultTestLoader.loadTestsFromTestCase(SuiteTestCase))
     return suite
 
 if __name__ == '__main__':

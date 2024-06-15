@@ -522,7 +522,7 @@ class TemplateLoaderTestCase(unittest.TestCase):
 def suite():
     suite = unittest.TestSuite()
     suite.addTest(doctest.DocTestSuite(TemplateLoader.__module__))
-    suite.addTest(unittest.makeSuite(TemplateLoaderTestCase, 'test'))
+    suite.addTest(unittest.defaultTestLoader.loadTestsFromTestCase(TemplateLoaderTestCase))
     return suite
 
 if __name__ == '__main__':

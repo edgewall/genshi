@@ -256,8 +256,8 @@ bar
 
 def suite():
     suite = unittest.TestSuite()
-    suite.addTest(unittest.makeSuite(MarkupTemplateEnginePluginTestCase, 'test'))
-    suite.addTest(unittest.makeSuite(TextTemplateEnginePluginTestCase, 'test'))
+    suite.addTest(unittest.defaultTestLoader.loadTestsFromTestCase(MarkupTemplateEnginePluginTestCase))
+    suite.addTest(unittest.defaultTestLoader.loadTestsFromTestCase(TextTemplateEnginePluginTestCase))
     return suite
 
 if __name__ == '__main__':

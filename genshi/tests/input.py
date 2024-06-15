@@ -297,8 +297,8 @@ bar</elem>'''
 def suite():
     suite = unittest.TestSuite()
     suite.addTest(doctest_suite(XMLParser.__module__))
-    suite.addTest(unittest.makeSuite(XMLParserTestCase, 'test'))
-    suite.addTest(unittest.makeSuite(HTMLParserTestCase, 'test'))
+    suite.addTest(unittest.defaultTestLoader.loadTestsFromTestCase(XMLParserTestCase))
+    suite.addTest(unittest.defaultTestLoader.loadTestsFromTestCase(HTMLParserTestCase))
     return suite
 
 if __name__ == '__main__':

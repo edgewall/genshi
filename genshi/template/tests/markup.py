@@ -802,7 +802,7 @@ class MarkupTemplateTestCase(unittest.TestCase):
 def suite():
     suite = unittest.TestSuite()
     suite.addTest(doctest.DocTestSuite(MarkupTemplate.__module__))
-    suite.addTest(unittest.makeSuite(MarkupTemplateTestCase, 'test'))
+    suite.addTest(unittest.defaultTestLoader.loadTestsFromTestCase(MarkupTemplateTestCase))
     return suite
 
 if __name__ == '__main__':

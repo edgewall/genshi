@@ -1492,7 +1492,7 @@ def suite():
                  EmptyTest, RemoveTest, UnwrapText, WrapTest, FilterTest,
                  MapTest, SubstituteTest, RenameTest, ReplaceTest, BeforeTest,
                  AfterTest, PrependTest, AppendTest, AttrTest, CopyTest, CutTest):
-        suite.addTest(unittest.makeSuite(test, 'test'))
+        suite.addTest(unittest.defaultTestLoader.loadTestsFromTestCase(test))
     suite.addTest(doctest_suite(
         genshi.filters.transform, optionflags=doctest.NORMALIZE_WHITESPACE,
         extraglobs={'HTML': HTML, 'tag': tag, 'Markup': Markup}))

@@ -469,10 +469,10 @@ class EmptyTagFilterTestCase(unittest.TestCase):
 
 def suite():
     suite = unittest.TestSuite()
-    suite.addTest(unittest.makeSuite(XMLSerializerTestCase, 'test'))
-    suite.addTest(unittest.makeSuite(XHTMLSerializerTestCase, 'test'))
-    suite.addTest(unittest.makeSuite(HTMLSerializerTestCase, 'test'))
-    suite.addTest(unittest.makeSuite(EmptyTagFilterTestCase, 'test'))
+    suite.addTest(unittest.defaultTestLoader.loadTestsFromTestCase(XMLSerializerTestCase))
+    suite.addTest(unittest.defaultTestLoader.loadTestsFromTestCase(XHTMLSerializerTestCase))
+    suite.addTest(unittest.defaultTestLoader.loadTestsFromTestCase(HTMLSerializerTestCase))
+    suite.addTest(unittest.defaultTestLoader.loadTestsFromTestCase(EmptyTagFilterTestCase))
     suite.addTest(doctest_suite(XMLSerializer.__module__))
     return suite
 

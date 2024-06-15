@@ -709,7 +709,7 @@ class PathTestCase(unittest.TestCase):
 def suite():
     suite = unittest.TestSuite()
     suite.addTest(doctest_suite(Path.__module__))
-    suite.addTest(unittest.makeSuite(PathTestCase, 'test'))
+    suite.addTest(unittest.defaultTestLoader.loadTestsFromTestCase(PathTestCase))
     return suite
 
 

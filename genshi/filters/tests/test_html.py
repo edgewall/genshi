@@ -614,8 +614,8 @@ class HTMLSanitizerTestCase(unittest.TestCase):
 def suite():
     suite = unittest.TestSuite()
     suite.addTest(doctest_suite(HTMLFormFiller.__module__))
-    suite.addTest(unittest.makeSuite(HTMLFormFillerTestCase, 'test'))
-    suite.addTest(unittest.makeSuite(HTMLSanitizerTestCase, 'test'))
+    suite.addTest(unittest.defaultTestLoader.loadTestsFromTestCase(HTMLFormFillerTestCase))
+    suite.addTest(unittest.defaultTestLoader.loadTestsFromTestCase(HTMLSanitizerTestCase))
     return suite
 
 

@@ -1217,16 +1217,16 @@ class WithDirectiveTestCase(unittest.TestCase):
 def suite():
     suite = unittest.TestSuite()
     suite.addTest(doctest.DocTestSuite(directives))
-    suite.addTest(unittest.makeSuite(AttrsDirectiveTestCase, 'test'))
-    suite.addTest(unittest.makeSuite(ChooseDirectiveTestCase, 'test'))
-    suite.addTest(unittest.makeSuite(DefDirectiveTestCase, 'test'))
-    suite.addTest(unittest.makeSuite(ForDirectiveTestCase, 'test'))
-    suite.addTest(unittest.makeSuite(IfDirectiveTestCase, 'test'))
-    suite.addTest(unittest.makeSuite(MatchDirectiveTestCase, 'test'))
-    suite.addTest(unittest.makeSuite(ContentDirectiveTestCase, 'test'))
-    suite.addTest(unittest.makeSuite(ReplaceDirectiveTestCase, 'test'))
-    suite.addTest(unittest.makeSuite(StripDirectiveTestCase, 'test'))
-    suite.addTest(unittest.makeSuite(WithDirectiveTestCase, 'test'))
+    suite.addTest(unittest.defaultTestLoader.loadTestsFromTestCase(AttrsDirectiveTestCase))
+    suite.addTest(unittest.defaultTestLoader.loadTestsFromTestCase(ChooseDirectiveTestCase))
+    suite.addTest(unittest.defaultTestLoader.loadTestsFromTestCase(DefDirectiveTestCase))
+    suite.addTest(unittest.defaultTestLoader.loadTestsFromTestCase(ForDirectiveTestCase))
+    suite.addTest(unittest.defaultTestLoader.loadTestsFromTestCase(IfDirectiveTestCase))
+    suite.addTest(unittest.defaultTestLoader.loadTestsFromTestCase(MatchDirectiveTestCase))
+    suite.addTest(unittest.defaultTestLoader.loadTestsFromTestCase(ContentDirectiveTestCase))
+    suite.addTest(unittest.defaultTestLoader.loadTestsFromTestCase(ReplaceDirectiveTestCase))
+    suite.addTest(unittest.defaultTestLoader.loadTestsFromTestCase(StripDirectiveTestCase))
+    suite.addTest(unittest.defaultTestLoader.loadTestsFromTestCase(WithDirectiveTestCase))
     return suite
 
 if __name__ == '__main__':

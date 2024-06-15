@@ -295,8 +295,8 @@ Included
 def suite():
     suite = unittest.TestSuite()
     suite.addTest(doctest.DocTestSuite(NewTextTemplate.__module__))
-    suite.addTest(unittest.makeSuite(OldTextTemplateTestCase, 'test'))
-    suite.addTest(unittest.makeSuite(NewTextTemplateTestCase, 'test'))
+    suite.addTest(unittest.defaultTestLoader.loadTestsFromTestCase(OldTextTemplateTestCase))
+    suite.addTest(unittest.defaultTestLoader.loadTestsFromTestCase(NewTextTemplateTestCase))
     return suite
 
 if __name__ == '__main__':

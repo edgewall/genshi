@@ -2,7 +2,8 @@ About Genshi
 ============
 
 [![ReadTheDocs badge](https://readthedocs.org/projects/genshi/badge/?version=latest&style=flat)](https://genshi.readthedocs.org/)
-[![GitHub Actions tests](https://github.com/edgewall/genshi/actions/workflows/tests.yml/badge.svg?branch=master)](https://github.com/edgewall/genshi/actions/workflows/tests.yml)
+[![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/edgewall/genshi/tests.yml?branch=master&style=for-the-badge)](https://github.com/edgewall/genshi/actions/workflows/tests.yml)
+[![PyPI - Version](https://img.shields.io/pypi/v/genshi?style=for-the-badge)](https://pypi.org/project/genshi/)
 
 Genshi is a Python library that provides an integrated set of
 components for parsing, generating, and processing HTML, XML or other

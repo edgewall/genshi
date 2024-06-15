@@ -10,7 +10,7 @@ a template language, which is heavily inspired by Kid.
 
 For more information please see:
 
-- [ReadTheDocs](http://genshi.edgewall.org/)
-- [http://genshi.edgewall.org/](http://genshi.edgewall.org/)
+- [ReadTheDocs](https://genshi.readthedocs.org/)
+- [https://genshi.edgewall.org/](https://genshi.edgewall.org/)
 - the documentation in the `doc` directory.
 

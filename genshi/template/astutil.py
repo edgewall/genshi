@@ -723,7 +723,7 @@ class ASTCodeGenerator(object):
         def _process_slice(node):
             if (
                 isinstance(node, _ast_Ellipsis)
-                and _ast_Ellipsis_value(node) == ...
+                and _ast_Ellipsis_value(node) == Ellipsis
             ):
                 self._write('...')
             elif isinstance(node, _ast.Slice):

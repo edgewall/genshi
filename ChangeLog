@@ -5,9 +5,18 @@ http://svn.edgewall.org/repos/genshi/tags/0.8.0/
  * ???
 
 
+Version 0.7.9
+https://github.com/edgewall/genshi/releases/tag/0.7.9
+(Jun 16 2024, from branches/stable/0.7.x)
+
+* Add Python 3.12 to CI matrix and fix Python 3.12 support. (#77 by Simon Cross)
+* Add Python 3.13 beta to CI. (#81 by Simon Cross)
+* Add badges to the README. (#82 by Simon Cross)
+
+
 Version 0.7.8
 https://github.com/edgewall/genshi/releases/tag/0.7.8
-(Jun 24 2024, from branches/stable/0.7.x)
+(Jun 14 2024, from branches/stable/0.7.x)
 
 * Do not merge sub directives if they have not been changed.
   (#53 by Cédric Krier)

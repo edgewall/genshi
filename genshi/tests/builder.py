@@ -67,7 +67,7 @@ class ElementFactoryTestCase(unittest.TestCase):
 def suite():
     suite = unittest.TestSuite()
     suite.addTest(doctest.DocTestSuite(Element.__module__))
-    suite.addTest(unittest.makeSuite(ElementFactoryTestCase, 'test'))
+    suite.addTest(unittest.defaultTestLoader.loadTestsFromTestCase(ElementFactoryTestCase))
     return suite
 
 

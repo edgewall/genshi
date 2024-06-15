@@ -195,7 +195,7 @@ class InterpolateTestCase(unittest.TestCase):
 def suite():
     suite = unittest.TestSuite()
     suite.addTest(doctest.DocTestSuite(interpolate.__module__))
-    suite.addTest(unittest.makeSuite(InterpolateTestCase, 'test'))
+    suite.addTest(unittest.defaultTestLoader.loadTestsFromTestCase(InterpolateTestCase))
     return suite
 
 if __name__ == '__main__':

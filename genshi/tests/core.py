@@ -256,11 +256,11 @@ class QNameTestCase(unittest.TestCase):
 
 def suite():
     suite = unittest.TestSuite()
-    suite.addTest(unittest.makeSuite(StreamTestCase, 'test'))
-    suite.addTest(unittest.makeSuite(MarkupTestCase, 'test'))
-    suite.addTest(unittest.makeSuite(NamespaceTestCase, 'test'))
-    suite.addTest(unittest.makeSuite(AttrsTestCase, 'test'))
-    suite.addTest(unittest.makeSuite(QNameTestCase, 'test'))
+    suite.addTest(unittest.defaultTestLoader.loadTestsFromTestCase(StreamTestCase))
+    suite.addTest(unittest.defaultTestLoader.loadTestsFromTestCase(MarkupTestCase))
+    suite.addTest(unittest.defaultTestLoader.loadTestsFromTestCase(NamespaceTestCase))
+    suite.addTest(unittest.defaultTestLoader.loadTestsFromTestCase(AttrsTestCase))
+    suite.addTest(unittest.defaultTestLoader.loadTestsFromTestCase(QNameTestCase))
     suite.addTest(doctest_suite(core))
     return suite
 

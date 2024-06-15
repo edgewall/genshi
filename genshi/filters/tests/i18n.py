@@ -2203,12 +2203,12 @@ class ContextDirectiveTestCase(unittest.TestCase):
 def suite():
     suite = unittest.TestSuite()
     suite.addTest(doctest_suite(Translator.__module__))
-    suite.addTest(unittest.makeSuite(TranslatorTestCase, 'test'))
-    suite.addTest(unittest.makeSuite(MsgDirectiveTestCase, 'test'))
-    suite.addTest(unittest.makeSuite(ChooseDirectiveTestCase, 'test'))
-    suite.addTest(unittest.makeSuite(DomainDirectiveTestCase, 'test'))
-    suite.addTest(unittest.makeSuite(ExtractTestCase, 'test'))
-    suite.addTest(unittest.makeSuite(ContextDirectiveTestCase, 'test'))
+    suite.addTest(unittest.defaultTestLoader.loadTestsFromTestCase(TranslatorTestCase))
+    suite.addTest(unittest.defaultTestLoader.loadTestsFromTestCase(MsgDirectiveTestCase))
+    suite.addTest(unittest.defaultTestLoader.loadTestsFromTestCase(ChooseDirectiveTestCase))
+    suite.addTest(unittest.defaultTestLoader.loadTestsFromTestCase(DomainDirectiveTestCase))
+    suite.addTest(unittest.defaultTestLoader.loadTestsFromTestCase(ExtractTestCase))
+    suite.addTest(unittest.defaultTestLoader.loadTestsFromTestCase(ContextDirectiveTestCase))
     return suite
 
 if __name__ == '__main__':

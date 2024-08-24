@@ -4,11 +4,17 @@ on: [push, pull_request]
 
 jobs:
   tests:
+    name: python${{ matrix.python-version }}
     runs-on: ubuntu-20.04
+
     strategy:
       matrix:
         python-version: [3.6, 3.7, 3.8, 3.9, "3.10", "3.11", "3.12", "3.13.0-beta.2", pypy2, pypy3]
-        pytest-extra-options: ["-W \"ignore:pkg_resources is deprecated\""]
+        pytest-extra-options: ["--strict-config -W \"ignore:pkg_resources is deprecated\""]
+        include:
+          - python-version: pypy2
+            pytest-extra-options: []
+      fail-fast: false
 
     steps:
       - uses: actions/checkout@v2
@@ -27,7 +33,7 @@ jobs:
 
       - name: Run test suite
         run: |
-          pytest -Werror --strict-config --strict-markers --verbosity=1 --color=yes ${{ matrix.pytest-extra-options }} genshi
+          pytest -Werror --strict-markers --verbosity=1 --color=yes ${{ matrix.pytest-extra-options }} genshi
           # Above flags are:
           #  -Werror
           #     treat warnings as errors

@@ -18,8 +18,8 @@ jobs:
 
       - name: Install setuptools
         run: |
-          pip install setuptools
+          pip install setuptools pytest
 
       - name: Run test suite
         run: |
-          python setup.py test
+          pytest genshi -v

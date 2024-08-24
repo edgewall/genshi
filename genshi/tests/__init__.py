@@ -15,7 +15,7 @@ import unittest
 
 def suite():
     import genshi
-    from genshi.tests import test_builder, test_core, test_input, test_output, test_path, test_util_x
+    from genshi.tests import test_builder, test_core, test_input, test_output, test_path, test_util
     from genshi.filters import tests as filters
     from genshi.template import tests as template
 
@@ -27,7 +27,7 @@ def suite():
     suite.addTest(test_output.suite())
     suite.addTest(test_path.suite())
     suite.addTest(template.suite())
-    suite.addTest(test_util_x.suite())
+    suite.addTest(test_util.suite())
     return suite
 
 if __name__ == '__main__':

@@ -178,18 +178,18 @@ class ExpressionTestCase(unittest.TestCase):
                                                                   'y': (1, 2, 3)}))
 
     def test_binop_is(self):
-        self.assertEqual(True, Expression("1 is 1").evaluate({}))
-        self.assertEqual(True, Expression("x is y").evaluate({'x': 1, 'y': 1}))
-        self.assertEqual(False, Expression("1 is 2").evaluate({}))
-        self.assertEqual(False, Expression("x is y").evaluate({'x': 1, 'y': 2}))
+        self.assertEqual(True, Expression("True is True").evaluate({}))
+        self.assertEqual(True, Expression("x is y").evaluate({'x': True, 'y': True}))
+        self.assertEqual(False, Expression("True is False").evaluate({}))
+        self.assertEqual(False, Expression("x is y").evaluate({'x': True, 'y': False}))
 
     def test_binop_is_not(self):
-        self.assertEqual(True, Expression("1 is not 2").evaluate({}))
-        self.assertEqual(True, Expression("x is not y").evaluate({'x': 1,
-                                                                  'y': 2}))
-        self.assertEqual(False, Expression("1 is not 1").evaluate({}))
-        self.assertEqual(False, Expression("x is not y").evaluate({'x': 1,
-                                                                   'y': 1}))
+        self.assertEqual(True, Expression("True is not False").evaluate({}))
+        self.assertEqual(True, Expression("x is not y").evaluate({'x': True,
+                                                                  'y': False}))
+        self.assertEqual(False, Expression("True is not True").evaluate({}))
+        self.assertEqual(False, Expression("x is not y").evaluate({'x': True,
+                                                                   'y': True}))
 
     def test_boolop_and(self):
         self.assertEqual(False, Expression("True and False").evaluate({}))

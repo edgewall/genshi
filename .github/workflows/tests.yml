@@ -15,7 +15,7 @@ jobs:
           - python-version: pypy2
             pytest-extra-options: ""
           - python-version: "3.13.0-beta.2"
-            pytest-extra-options: "--strict-config -W \"ignore:pkg_resources is deprecated\" -W \"ignore:Expression.__init__ missing 1 required positional argument\""
+            pytest-extra-options: "--strict-config -W \"ignore:pkg_resources is deprecated\" -W ignore:::genshi.template.astutil"
       fail-fast: false
 
     steps:

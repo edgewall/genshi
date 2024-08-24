@@ -536,7 +536,7 @@ class DomainDirective(I18NDirective):
     """Implementation of the ``i18n:domain`` directive which allows choosing
     another i18n domain(catalog) to translate from.
 
-    >>> from genshi.filters.tests.i18n import DummyTranslations
+    >>> from genshi.filters.tests.test_i18n import DummyTranslations
     >>> tmpl = MarkupTemplate('''<html xmlns:i18n="http://genshi.edgewall.org/i18n">
     ...   <p i18n:msg="">Bar</p>
     ...   <div i18n:domain="foo">

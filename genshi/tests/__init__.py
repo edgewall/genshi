@@ -15,19 +15,19 @@ import unittest
 
 def suite():
     import genshi
-    from genshi.tests import builder, core, input, output, path, util
+    from genshi.tests import test_builder, test_core, test_input, test_output, test_path, test_util_x
     from genshi.filters import tests as filters
     from genshi.template import tests as template
 
     suite = unittest.TestSuite()
-    suite.addTest(builder.suite())
-    suite.addTest(core.suite())
+    suite.addTest(test_builder.suite())
+    suite.addTest(test_core.suite())
     suite.addTest(filters.suite())
-    suite.addTest(input.suite())
-    suite.addTest(output.suite())
-    suite.addTest(path.suite())
+    suite.addTest(test_input.suite())
+    suite.addTest(test_output.suite())
+    suite.addTest(test_path.suite())
     suite.addTest(template.suite())
-    suite.addTest(util.suite())
+    suite.addTest(test_util_x.suite())
     return suite
 
 if __name__ == '__main__':

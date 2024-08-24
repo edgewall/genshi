@@ -15,17 +15,17 @@ import doctest
 import unittest
 
 def suite():
-    from genshi.template.tests import base, directives, eval, interpolation, \
-                                      loader, markup, plugin, text
+    from genshi.template.tests import test_base, test_directives, test_eval, test_interpolation, \
+                                      test_loader, test_markup, test_plugin, test_text
     suite = unittest.TestSuite()
-    suite.addTest(base.suite())
-    suite.addTest(directives.suite())
-    suite.addTest(eval.suite())
-    suite.addTest(interpolation.suite())
-    suite.addTest(loader.suite())
-    suite.addTest(markup.suite())
-    suite.addTest(plugin.suite())
-    suite.addTest(text.suite())
+    suite.addTest(test_base.suite())
+    suite.addTest(test_directives.suite())
+    suite.addTest(test_eval.suite())
+    suite.addTest(test_interpolation.suite())
+    suite.addTest(test_loader.suite())
+    suite.addTest(test_markup.suite())
+    suite.addTest(test_plugin.suite())
+    suite.addTest(test_text.suite())
     return suite
 
 if __name__ == '__main__':

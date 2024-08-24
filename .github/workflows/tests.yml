@@ -8,6 +8,7 @@ jobs:
     strategy:
       matrix:
         python-version: [3.6, 3.7, 3.8, 3.9, "3.10", "3.11", "3.12", "3.13.0-beta.2", pypy2, pypy3]
+        pytest-extra-options: "-W \"ignore:pkg_resources is deprecated\""
 
     steps:
       - uses: actions/checkout@v2
@@ -22,4 +23,17 @@ jobs:
 
       - name: Run test suite
         run: |
-          pytest genshi -v
+          pytest -Werror --strict-config --strict-markers --verbosity=1 --color=yes ${{ matrix.pytest-extra-options }} genshi
+          # Above flags are:
+          #  -Werror
+          #     treat warnings as errors
+          #  --strict-config
+          #     error out if the configuration file is not parseable
+          #  --strict-markers
+          #     error out if a marker is used but not defined in the
+          #     configuration file
+          #  --verbosity=1
+          #     turn the verbosity up so pytest prints the names of the tests
+          #     it's currently working on
+          #  --color=yes
+          #     force coloured output in the terminal

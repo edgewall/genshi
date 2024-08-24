@@ -16,7 +16,7 @@ import unittest
 from genshi.core import Attrs, QName, Stream
 from genshi.input import XMLParser, HTMLParser, ParseError, ET
 from genshi.compat import StringIO, BytesIO
-from genshi.tests.test_utils import doctest_suite
+from genshi.tests.utils import doctest_suite
 from xml.etree import ElementTree
 
 class XMLParserTestCase(unittest.TestCase):

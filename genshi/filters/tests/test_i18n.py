@@ -22,7 +22,7 @@ from genshi.template import MarkupTemplate, Context
 from genshi.filters.i18n import Translator, extract
 from genshi.input import HTML
 from genshi.compat import IS_PYTHON2, StringIO
-from genshi.tests.test_utils import doctest_suite
+from genshi.tests.utils import doctest_suite
 
 
 class DummyTranslations(NullTranslations):

@@ -14,7 +14,7 @@
 import unittest
 
 from genshi import util
-from genshi.tests.test_utils import doctest_suite
+from genshi.tests.utils import doctest_suite
 from genshi.util import LRUCache
 
 

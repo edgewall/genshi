@@ -17,7 +17,7 @@ from genshi.core import Attrs, QName
 from genshi.input import XML
 from genshi.path import Path, PathParser, PathSyntaxError, GenericStrategy, \
                         SingleStepStrategy, SimplePathStrategy
-from genshi.tests.test_utils import doctest_suite
+from genshi.tests.utils import doctest_suite
 
 
 class FakePath(Path):

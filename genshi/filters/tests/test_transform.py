@@ -23,7 +23,7 @@ from genshi.core import START, END, TEXT, QName, Attrs
 from genshi.filters.transform import Transformer, StreamBuffer, ENTER, EXIT, \
                                      OUTSIDE, INSIDE, ATTR, BREAK
 import genshi.filters.transform
-from genshi.tests.test_utils import doctest_suite
+from genshi.tests.utils import doctest_suite
 
 
 FOO = '<root>ROOT<foo name="foo">FOO</foo></root>'

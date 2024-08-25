@@ -346,9 +346,13 @@ class HTMLParser(html.HTMLParser, object):
                         for tag in open_tags:
                             yield END, QName(tag), pos
                         break
-            except html.HTMLParseError as e:
-                msg = '%s: line %d, column %d' % (e.msg, e.lineno, e.offset)
-                raise ParseError(msg, self.filename, e.lineno, e.offset)
+            except Exception as e:
+                # Python simple HTMLParser does not raise detailed
+                # errors except in strict mode which was deprecated
+                # in Python 3.3 and removed in Python 3.5 and which in
+                # any case is not used is this code.
+                msg = str(e)
+                raise ParseError(msg, self.filename)
         return Stream(_generate()).filter(_coalesce)
 
     def __iter__(self):

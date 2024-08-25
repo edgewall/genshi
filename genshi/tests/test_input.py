@@ -294,6 +294,17 @@ bar</elem>'''
         self.assertEqual((Stream.END, QName("span")), events[4][:2])
         self.assertEqual((Stream.END, QName("div")), events[5][:2])
 
+    def test_parsing_error(self):
+        text = u'<div></div>'.encode('utf-8')
+        events = HTMLParser(BytesIO(text))
+        self.assertRaisesRegex(
+            ParseError,
+            r"source returned bytes, but no encoding specified",
+            list,
+            events,
+        )
+
+
 def suite():
     suite = unittest.TestSuite()
     suite.addTest(doctest_suite(XMLParser.__module__))

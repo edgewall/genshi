@@ -17,7 +17,8 @@ jobs:
       - uses: actions/setup-python@v5
         name: Install Python
         with:
-          python-version: "3.6"
+          # Python 3.8 is the oldest version supported by build
+          python-version: "3.8"
 
       - name: Install pip build
         run: |
@@ -47,7 +48,8 @@ jobs:
       - uses: actions/setup-python@v5
         name: Install Python
         with:
-          python-version: "3.6"
+          # Python 3.8 is the oldest version supported by build
+          python-version: "3.8"
 
       - name: Install pip build
         run: |

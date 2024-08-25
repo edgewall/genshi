@@ -9,10 +9,10 @@ jobs:
 
     strategy:
       matrix:
-        python-version: [3.6, 3.7, 3.8, 3.9, "3.10", "3.11", "3.12", pypy3]
+        python-version: [3.6, 3.7, 3.8, 3.9, "3.10", "3.11", "3.12", "pypy3.9"]
         pytest-extra-options: ["--strict-config -W \"ignore:pkg_resources is deprecated\""]
         include:
-          - python-version: pypy2
+          - python-version: "pypy2.7"
             pytest-extra-options: ""
           - python-version: "3.13.0-beta.2"
             pytest-extra-options: "--strict-config -W \"ignore:pkg_resources is deprecated\" -W ignore::DeprecationWarning"

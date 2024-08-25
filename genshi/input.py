@@ -347,7 +347,7 @@ class HTMLParser(html.HTMLParser, object):
                             yield END, QName(tag), pos
                         break
             except Exception as e:
-                # Python simple HTMLParser does not raise detailed
+                # Python's simple HTMLParser does not raise detailed
                 # errors except in strict mode which was deprecated
                 # in Python 3.3 and removed in Python 3.5 and which in
                 # any case is not used is this code.

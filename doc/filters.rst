@@ -9,7 +9,7 @@ markup streams. This page describes the features of the various filters that
 come with Genshi itself.
 
 
-.. _`HTMLFormFiller`:
+.. _HTMLFormFiller:
 
 HTML Form Filler
 ================

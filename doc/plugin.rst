@@ -11,13 +11,6 @@ flexibility of Genshi templates (for example, there's no good way to use filters
 such as Genshi's `HTMLFormFiller`_ when the plugin
 API is sitting between your code and Genshi).
 
-.. _`HTMLFormFiller`: filters.html>#html-form-filler
-
-
-.. contents:: Contents
-   :depth: 2
-.. sectnum::
-
 
 Introduction
 ============

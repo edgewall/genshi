@@ -4,16 +4,12 @@
 Stream Filters
 ==============
 
-`Markup Streams`_ showed how to write filters and how they are applied to
+:doc:`streams` showed how to write filters and how they are applied to
 markup streams. This page describes the features of the various filters that
 come with Genshi itself.
 
-.. _`Markup Streams`: streams.html
 
-.. contents:: Contents
-   :depth: 1
-.. sectnum::
-
+.. _`HTMLFormFiller`:
 
 HTML Form Filler
 ================

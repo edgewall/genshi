@@ -23,23 +23,32 @@ which is heavily inspired by Kid.
 Installation
 ------------
 
-* `Installing Genshi <install.html>`_
-* `Upgrading from Previous Versions <upgrade.html>`_
+.. toctree::
+  :titlesonly:
+
+  install
+  upgrade
 
 Usage
 -----
 
-* `Markup Streams <streams.html>`_
-* `Templating Basics <templates.html>`_
-* `XML Template Language <xml-templates.html>`_
-* `Text Template Language <text-templates.html>`_
-* `Loading Templates <loader.html>`_
-* `Using Stream Filters <filters.html>`_
-* `Using XPath <xpath.html>`_
-* `Internationalization and Localization <i18n.html>`_
-* `Using the Templating Plugin <plugin.html>`_
+.. toctree::
+  :titlesonly:
+
+  streams
+  templates
+  xml-templates
+  text-templates
+  loader
+  filters
+  xpath
+  i18n
+  plugin
 
 API Documentation
 -----------------
 
-* `Generated API Documentation <api/index.html>`_
+.. toctree::
+  :glob:
+
+  api/*

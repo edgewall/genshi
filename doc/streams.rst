@@ -7,11 +7,6 @@ Markup Streams
 A stream is the common representation of markup as a *stream of events*.
 
 
-.. contents:: Contents
-   :depth: 2
-.. sectnum::
-
-
 Basics
 ======
 

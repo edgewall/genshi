@@ -25,10 +25,6 @@ embedding Python code in templates.
 
 .. _django: http://www.djangoproject.com/
 
-.. contents:: Contents
-   :depth: 3
-.. sectnum::
-
 
 .. _`directives`:
 
@@ -60,7 +56,7 @@ Conditional Sections
 
 The content is only rendered if the expression evaluates to a truth value:
 
-.. code-block:: genshitext
+.. code-block:: jinja
 
   {% if foo %}
     ${bar}
@@ -87,7 +83,7 @@ no ``when`` branch matches, the ``otherwise`` branch is be rendered.
 If the ``choose`` directive has no argument the nested ``when`` directives will
 be tested for truth:
 
-.. code-block:: genshitext
+.. code-block:: jinja
 
   The answer is:
   {% choose %}
@@ -104,7 +100,7 @@ This would produce the following output::
 If the ``choose`` does have an argument, the nested ``when`` directives will
 be tested for equality to the parent ``choose`` value:
 
-.. code-block:: genshitext
+.. code-block:: jinja
 
   The answer is:
   {% choose 1 %}\
@@ -129,7 +125,7 @@ Looping
 
 The content is repeated for every item in an iterable:
 
-.. code-block:: genshitext
+.. code-block:: jinja
 
   Your items:
   {% for item in items %}\
@@ -157,7 +153,7 @@ The ``def`` directive can be used to create macros, i.e. snippets of template
 text that have a name and optionally some parameters, and that can be inserted
 in other places:
 
-.. code-block:: genshitext
+.. code-block:: jinja
 
   {% def greeting(name) %}
     Hello, ${name}!
@@ -173,7 +169,7 @@ The above would be rendered to::
 If a macro doesn't require parameters, it can be defined without the
 parenthesis. For example:
 
-.. code-block:: genshitext
+.. code-block:: jinja
 
   {% def greeting %}
     Hello, world!
@@ -194,7 +190,7 @@ The above would be rendered to::
 To reuse common parts of template text across template files, you can include
 other files using the ``include`` directive:
 
-.. code-block:: genshitext
+.. code-block:: jinja
 
   {% include base.txt %}
 
@@ -213,7 +209,7 @@ Just like other directives, the argument to the ``include`` directive accepts
 any Python expression, so the path to the included template can be determined
 dynamically:
 
-.. code-block:: genshitext
+.. code-block:: jinja
 
   {% include ${'%s.txt' % filename} %}
 
@@ -239,7 +235,7 @@ to a variable using this directive would probably help.
 
 For example:
 
-.. code-block:: genshitext
+.. code-block:: jinja
 
   Magic numbers!
   {% with y=7; z=x+10 %}
@@ -266,7 +262,7 @@ White-space and Line Breaks
 Note that space or line breaks around directives is never automatically removed.
 Consider the following example:
 
-.. code-block:: genshitext
+.. code-block:: jinja
 
   {% for item in items %}
     {% if item.visible %}
@@ -278,7 +274,7 @@ This will result in two empty lines above and beneath every item, plus the
 spaces used for indentation. If you want to supress a line break, simply end
 the line with a backslash:
 
-.. code-block:: genshitext
+.. code-block:: jinja
 
   {% for item in items %}\
     {% if item.visible %}\
@@ -303,7 +299,7 @@ Comments
 Parts in templates can be commented out using the delimiters ``{# ... #}``.
 Any content in comments are removed from the output.
 
-.. code-block:: genshitext
+.. code-block:: jinja
 
   {# This won't end up in the output #}
   This will.
@@ -311,7 +307,7 @@ Any content in comments are removed from the output.
 Just like directive delimiters, these can be escaped by prefixing with a
 backslash.
 
-.. code-block:: genshitext
+.. code-block:: jinja
 
   \{# This *will* end up in the output, including delimiters #}
   This too.
@@ -332,7 +328,7 @@ starting with dollar signs, similar to e.g. Cheetah_ or Velocity_.
 
 A simple template using the old syntax looked like this:
 
-.. code-block:: genshitext
+.. code-block:: jinja
 
   Dear $name,
   

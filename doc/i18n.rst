@@ -19,11 +19,6 @@ a plugin.
 .. _`babel`: http://babel.edgewall.org/
 
 
-.. contents:: Contents
-   :depth: 2
-.. sectnum::
-
-
 Basics
 ======
 

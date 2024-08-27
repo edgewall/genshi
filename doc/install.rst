@@ -2,11 +2,6 @@ Installing Genshi
 =================
 
 
-.. contents:: Contents
-   :depth: 2
-.. sectnum::
-
-
 Prerequisites
 -------------
 

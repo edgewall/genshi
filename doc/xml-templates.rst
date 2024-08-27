@@ -25,11 +25,6 @@ See `Genshi Templating Basics <templates.html>`_ for general information on
 embedding Python code in templates.
 
 
-.. contents:: Contents
-   :depth: 3
-.. sectnum::
-
-
 .. _`directives`:
 
 -------------------
@@ -44,7 +39,7 @@ conditionals and looping, among others.
 To use directives in a template, the namespace must be declared, which is
 usually done on the root element:
 
-.. code-block:: genshi
+.. code-block:: html+genshi
 
   <html xmlns="http://www.w3.org/1999/xhtml"
         xmlns:py="http://genshi.edgewall.org/"
@@ -59,7 +54,7 @@ All directives can be applied as attributes, and some can also be used as
 elements. The ``if`` directives for conditionals, for example, can be used in
 both ways:
 
-.. code-block:: genshi
+.. code-block:: html+genshi
 
   <html xmlns="http://www.w3.org/1999/xhtml"
         xmlns:py="http://genshi.edgewall.org/"
@@ -73,7 +68,7 @@ both ways:
 
 This is basically equivalent to the following:
 
-.. code-block:: genshi
+.. code-block:: html+genshi
 
   <html xmlns="http://www.w3.org/1999/xhtml"
         xmlns:py="http://genshi.edgewall.org/"
@@ -104,7 +99,7 @@ Conditional Sections
 The element and its content is only rendered if the expression evaluates to a
 truth value:
 
-.. code-block:: genshi
+.. code-block:: html+genshi
 
   <div>
     <b py:if="foo">${bar}</b>
@@ -128,7 +123,7 @@ But setting ``foo=False`` would result in the following output:
 
 This directive can also be used as an element:
 
-.. code-block:: genshi
+.. code-block:: html+genshi
 
   <div>
     <py:if test="foo">
@@ -151,7 +146,7 @@ if no ``py:when`` branch matches, the ``py:otherwise`` branch is rendered.
 If the ``py:choose`` directive is empty the nested ``py:when`` directives will
 be tested for truth:
 
-.. code-block:: genshi
+.. code-block:: html+genshi
 
   <div py:choose="">
     <span py:when="0 == 1">0</span>
@@ -170,7 +165,7 @@ This would produce the following output:
 If the ``py:choose`` directive contains an expression the nested ``py:when``
 directives will be tested for equality to the parent ``py:choose`` value:
 
-.. code-block:: genshi
+.. code-block:: html+genshi
 
   <div py:choose="1">
     <span py:when="0">0</span>
@@ -188,7 +183,7 @@ This would produce the following output:
 
 These directives can also be used as elements:
 
-.. code-block:: genshi
+.. code-block:: html+genshi
 
   <py:choose test="1">
     <py:when test="0">0</py:when>
@@ -206,7 +201,7 @@ Looping
 
 The element is repeated for every item in an iterable:
 
-.. code-block:: genshi
+.. code-block:: html+genshi
 
   <ul>
     <li py:for="item in items">${item}</li>
@@ -222,7 +217,7 @@ Given ``items=[1, 2, 3]`` in the context data, this would produce:
 
 This directive can also be used as an element:
 
-.. code-block:: genshi
+.. code-block:: html+genshi
 
   <ul>
     <py:for each="item in items">
@@ -244,7 +239,7 @@ The ``py:def`` directive can be used to create macros, i.e. snippets of
 template code that have a name and optionally some parameters, and that can be
 inserted in other places:
 
-.. code-block:: genshi
+.. code-block:: html+genshi
 
   <div>
     <p py:def="greeting(name)" class="greeting">
@@ -270,7 +265,7 @@ The above would be rendered to:
 If a macro doesn't require parameters, it can be defined without the 
 parenthesis. For example:
 
-.. code-block:: genshi
+.. code-block:: html+genshi
 
   <div>
     <p py:def="greeting" class="greeting">
@@ -291,7 +286,7 @@ The above would be rendered to:
 
 This directive can also be used as an element:
 
-.. code-block:: genshi
+.. code-block:: html+genshi
 
   <div>
     <py:def function="greeting(name)">
@@ -313,7 +308,7 @@ content.
 For example, the match template defined in the following template matches any
 element with the tag name “greeting”:
 
-.. code-block:: genshi
+.. code-block:: html+genshi
 
   <div>
     <span py:match="greeting">
@@ -347,7 +342,7 @@ template. The match templates basically form a pipeline.
 
 This directive can also be used as an element:
 
-.. code-block:: genshi
+.. code-block:: html+genshi
 
   <div>
     <py:match path="greeting">
@@ -360,7 +355,7 @@ When used this way, the ``py:match`` directive can also be annotated with a
 couple of optimization hints. For example, the following informs the matching
 engine that the match should only be applied once:
 
-.. code-block:: genshi
+.. code-block:: html+genshi
 
   <py:match path="body" once="true">
     <body py:attrs="select('@*')">
@@ -421,7 +416,7 @@ to a variable using this directive would probably help.
 
 For example:
 
-.. code-block:: genshi
+.. code-block:: html+genshi
 
   <div>
     <span py:with="y=7; z=x+10">$x $y $z</span>
@@ -437,7 +432,7 @@ Given ``x=42`` in the context data, this would produce:
 
 This directive can also be used as an element:
 
-.. code-block:: genshi
+.. code-block:: html+genshi
 
   <div>
     <py:with vars="y=7; z=x+10">$x $y $z</py:with>
@@ -459,7 +454,7 @@ Structure Manipulation
 
 This directive adds, modifies or removes attributes from the element:
 
-.. code-block:: genshi
+.. code-block:: html+genshi
 
   <ul>
     <li py:attrs="foo">Bar</li>
@@ -494,7 +489,7 @@ This directive can only be used as an attribute.
 This directive replaces any nested content with the result of evaluating the
 expression:
 
-.. code-block:: genshi
+.. code-block:: html+genshi
 
   <ul>
     <li py:content="bar">Hello</li>
@@ -519,7 +514,7 @@ This directive can only be used as an attribute.
 This directive replaces the element itself with the result of evaluating the
 expression:
 
-.. code-block:: genshi
+.. code-block:: html+genshi
 
   <div>
     <span py:replace="bar">Hello</span>
@@ -535,7 +530,7 @@ Given ``bar='Bye'`` in the context data, this would produce:
 
 This directive can also be used as an element (since version 0.5):
 
-.. code-block:: genshi
+.. code-block:: html+genshi
 
   <div>
     <py:replace value="title">Placeholder</py:replace>
@@ -552,7 +547,7 @@ This directive conditionally strips the top-level element from the output. When
 the value of the ``py:strip`` attribute evaluates to ``True``, the element is
 stripped from the output:
 
-.. code-block:: genshi
+.. code-block:: html+genshi
 
   <div>
     <div py:strip="True"><b>foo</b></div>
@@ -608,7 +603,7 @@ For this, you need to declare the XInclude namespace (commonly bound to the
 prefix “xi”) and use the ``<xi:include>`` element where you want the external
 file to be pulled in:
 
-.. code-block:: genshi
+.. code-block:: html+genshi
 
   <html xmlns="http://www.w3.org/1999/xhtml"
         xmlns:py="http://genshi.edgewall.org/"
@@ -633,7 +628,7 @@ not what you want, you can specify fallback content that should be used if the
 include fails. For example, to to make the include above fail silently, you'd
 write:
 
-.. code-block:: genshi
+.. code-block:: html+genshi
 
   <xi:include href="base.html"><xi:fallback /></xi:include>
 
@@ -651,7 +646,7 @@ attribute accepts expressions, and directives_ can be used on the
 ``<xi:include />`` element just as on any other element, meaning you can do
 things like conditional includes:
 
-.. code-block:: genshi
+.. code-block:: html+genshi
 
   <xi:include href="${name}.html" py:if="not in_popup"
               py:for="name in ('foo', 'bar', 'baz')" />
@@ -664,7 +659,7 @@ The ``parse`` attribute of the ``<xi:include>`` element can be used to specify
 whether the included template is an XML template or a text template (using the
 new syntax added in Genshi 0.5):
 
-.. code-block:: genshi
+.. code-block:: html+genshi
 
   <xi:include href="myscript.js" parse="text" />
 
@@ -682,7 +677,7 @@ Comments
 
 Normal XML/HTML comment syntax can be used in templates:
 
-.. code-block:: genshi
+.. code-block:: html+genshi
 
   <!-- this is a comment -->
 
@@ -690,13 +685,13 @@ However, such comments get passed through the processing pipeline and are by
 default included in the final output. If that's not desired, prefix the comment
 text with an exclamation mark:
 
-.. code-block:: genshi
+.. code-block:: html+genshi
 
   <!-- !this is a comment too, but one that will be stripped from the output -->
 
 Note that it does not matter whether there's whitespace before or after the
 exclamation mark, so the above could also be written as follows:
 
-.. code-block:: genshi
+.. code-block:: html+genshi
 
   <!--! this is a comment too, but one that will be stripped from the output -->

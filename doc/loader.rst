@@ -10,10 +10,6 @@ templates so they do not need to be reparsed when used, support for multiple
 template directories that together form a virtual search path, as well as
 support for different template loading strategies.
 
-.. contents:: Contents
-   :depth: 3
-.. sectnum::
-
 
 -----
 Usage

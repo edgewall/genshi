@@ -3,10 +3,6 @@ Upgrading Genshi
 ================
 
 
-.. contents:: Contents
-   :depth: 2
-.. sectnum::
-
 -------------------------------------------
 Upgrading from Genshi 0.6.x to Genshi 0.7.x
 -------------------------------------------

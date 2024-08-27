@@ -23,10 +23,18 @@ templates_path = ["_templates"]
 exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
 
 modindex_common_prefix = ["genshi."]
-autodoc_default_flags = ["members"]
+autodoc_default_options = {
+    "members": True,
+}
+autodoc_preserve_defaults = True
 
 # -- Options for HTML output -------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
 
-html_theme = "alabaster"
+html_theme = "sphinx_rtd_theme"
 html_static_path = ["_static"]
+html_theme_options = {
+    "collapse_navigation": True,
+    "sticky_navigation": True,
+    "navigation_depth": 4,
+}

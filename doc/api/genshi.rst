@@ -1,0 +1,4 @@
+genshi
+======
+
+.. automodule:: genshi

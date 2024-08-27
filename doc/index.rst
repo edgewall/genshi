@@ -20,20 +20,15 @@ for parsing, generating, and processing HTML, XML or other textual content
 for output generation on the web. The major feature is a template language,
 which is heavily inspired by Kid.
 
-Installation
-------------
-
 .. toctree::
-  :titlesonly:
+  :caption: Installation
 
   install
   upgrade
 
-Usage
------
 
 .. toctree::
-  :titlesonly:
+  :caption: Usage
 
   streams
   templates
@@ -45,10 +40,9 @@ Usage
   i18n
   plugin
 
-API Documentation
------------------
 
 .. toctree::
+  :caption: API Documentation
   :glob:
 
   api/*

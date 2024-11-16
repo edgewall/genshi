@@ -7,14 +7,22 @@
 
 from __future__ import print_function
 
-import cgi
 import sys
 import timeit
-from StringIO import StringIO
 from genshi.builder import tag
 from genshi.filters.i18n import Translator
 from genshi.filters.tests.i18n import DummyTranslations
 from genshi.template import MarkupTemplate, NewTextTemplate
+
+try:
+    from html import escape
+except ImportError:
+    from cgi import escape
+
+try:
+    from io import StringIO
+except ImportError:
+    from StringIO import StringIO
 
 try:
     from elementtree import ElementTree as et
@@ -202,7 +210,7 @@ if neo_cgi:
         hdf = neo_util.HDF()
         for i, row in enumerate(table):
             for j, c in enumerate(row.values()):
-                hdf.setValue("rows.%d.cell.%d" % (i, j), cgi.escape(str(c)))
+                hdf.setValue("rows.%d.cell.%d" % (i, j), escape(str(c)))
 
         cs = neo_cs.CS(hdf)
         cs.parseStr("""

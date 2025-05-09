@@ -14,7 +14,6 @@
 import doctest
 import unittest
 
-import six
 
 from genshi import HTML
 from genshi.builder import Element
@@ -36,22 +35,22 @@ def _simplify(stream, with_attrs=False):
         for mark, (kind, data, pos) in stream:
             if kind is START:
                 if with_attrs:
-                    kv_attrs = dict((six.text_type(k), v) for k, v in data[1])
-                    data = (six.text_type(data[0]), kv_attrs)
+                    kv_attrs = dict((str(k), v) for k, v in data[1])
+                    data = (str(data[0]), kv_attrs)
                 else:
-                    data = six.text_type(data[0])
+                    data = str(data[0])
             elif kind is END:
-                data = six.text_type(data)
+                data = str(data)
             elif kind is ATTR:
                 kind = ATTR
-                data = dict((six.text_type(k), v) for k, v in data[1])
+                data = dict((str(k), v) for k, v in data[1])
             yield mark, kind, data
     return list(_generate())
 
 
 def _transform(html, transformer, with_attrs=False):
     """Apply transformation returning simplified marked stream."""
-    if isinstance(html, six.string_types):
+    if isinstance(html, str):
         html = HTML(html, encoding='utf-8')
     stream = transformer(html, keep_marks=True)
     return _simplify(stream, with_attrs)
@@ -61,7 +60,7 @@ class SelectTest(unittest.TestCase):
     """Test .select()"""
     def _select(self, select):
         html = HTML(FOOBAR, encoding='utf-8')
-        if isinstance(select, six.string_types):
+        if isinstance(select, str):
             select = [select]
         transformer = Transformer(select[0])
         for sel in select[1:]:
@@ -668,7 +667,7 @@ class ContentTestMixin(object):
             html = HTML(html)
         if content is None:
             content = Injector()
-        elif isinstance(content, six.string_types):
+        elif isinstance(content, str):
             content = HTML(content)
         return _transform(html, getattr(Transformer(select), self.operation)
                                 (content))

@@ -23,11 +23,10 @@ import sys
 import warnings
 from types import CodeType
 
-import six
 
 IS_PYTHON2 = (sys.version_info[0] == 2)
 
-numeric_types = (float, ) + six.integer_types
+numeric_types = (float, int)
 
 # This function should only be called in Python 2, and will fail in Python 3
 
@@ -47,7 +46,7 @@ else:
 # We need to test if an object is an instance of a string type in places
 
 def isstring(obj):
-    return isinstance(obj, six.string_types)
+    return isinstance(obj, str)
 
 # We need to differentiate between StringIO and BytesIO in places
 

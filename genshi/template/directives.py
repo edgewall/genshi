@@ -13,7 +13,6 @@
 
 """Implementation of the various template directives."""
 
-import six
 
 from genshi.core import QName, Stream
 from genshi.path import Path
@@ -36,8 +35,7 @@ class DirectiveMeta(type):
         return type.__new__(cls, name, bases, d)
 
 
-@six.add_metaclass(DirectiveMeta)
-class Directive(object):
+class Directive(metaclass=DirectiveMeta):
     """Abstract base class for template directives.
     
     A directive is basically a callable that takes three positional arguments:
@@ -177,7 +175,7 @@ class AttrsDirective(Directive):
                 elif not isinstance(attrs, list): # assume it's a dict
                     attrs = attrs.items()
                 attrib |= [
-                    (QName(n), v is not None and six.text_type(v).strip() or None)
+                    (QName(n), v is not None and str(v).strip() or None)
                     for n, v in attrs
                 ]
             yield kind, (tag, attrib), pos

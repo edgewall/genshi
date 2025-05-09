@@ -15,7 +15,6 @@ from datetime import datetime
 from gettext import NullTranslations
 import unittest
 
-import six
 
 from genshi.core import Attrs
 from genshi.template import MarkupTemplate, Context
@@ -48,7 +47,7 @@ class DummyTranslations(NullTranslations):
             if tmsg is missing:
                 if self._fallback:
                     return self._fallback.ugettext(message)
-                return six.text_type(message)
+                return str(message)
             return tmsg
     else:
         def gettext(self, message):
@@ -57,7 +56,7 @@ class DummyTranslations(NullTranslations):
             if tmsg is missing:
                 if self._fallback:
                     return self._fallback.gettext(message)
-                return six.text_type(message)
+                return str(message)
             return tmsg
 
     if IS_PYTHON2:

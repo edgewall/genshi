@@ -45,7 +45,6 @@ import operator
 import re
 from itertools import chain
 
-import six
 
 from genshi.compat import IS_PYTHON2
 from genshi.core import Stream, Attrs, Namespace, QName
@@ -939,7 +938,7 @@ def as_string(value):
     value = as_scalar(value)
     if value is False:
         return ''
-    return six.text_type(value)
+    return str(value)
 
 def as_bool(value):
     return bool(as_scalar(value))

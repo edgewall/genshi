@@ -18,7 +18,6 @@ import sys
 from itertools import chain
 import operator
 
-import six
 
 from genshi.compat import stringrepr
 from genshi.util import stripentities, striptags
@@ -282,7 +281,7 @@ def _ensure(stream):
             if hasattr(event, 'totuple'):
                 event = event.totuple()
             else:
-                event = TEXT, six.text_type(event), (None, -1, -1)
+                event = TEXT, str(event), (None, -1, -1)
             yield event
         return
 
@@ -411,7 +410,7 @@ class Attrs(tuple):
         :return: a new instance with the attribute removed
         :rtype: `Attrs`
         """
-        if isinstance(names, six.string_types):
+        if isinstance(names, str):
             names = (names,)
         return Attrs([(name, val) for name, val in self if name not in names])
 
@@ -445,17 +444,17 @@ class Attrs(tuple):
         return TEXT, ''.join([x[1] for x in self]), (None, -1, -1)
 
 
-class Markup(six.text_type):
+class Markup(str):
     """Marks a string as being safe for inclusion in HTML/XML output without
     needing to be escaped.
     """
     __slots__ = []
 
     def __add__(self, other):
-        return Markup(six.text_type.__add__(self, escape(other)))
+        return Markup(str.__add__(self, escape(other)))
 
     def __radd__(self, other):
-        return Markup(six.text_type.__add__(escape(other), self))
+        return Markup(str.__add__(escape(other), self))
 
     def __mod__(self, args):
         if isinstance(args, dict):
@@ -464,14 +463,14 @@ class Markup(six.text_type):
             args = tuple(map(escape, args))
         else:
             args = escape(args)
-        return Markup(six.text_type.__mod__(self, args))
+        return Markup(str.__mod__(self, args))
 
     def __mul__(self, num):
-        return Markup(six.text_type.__mul__(self, num))
+        return Markup(str.__mul__(self, num))
     __rmul__ = __mul__
 
     def __repr__(self):
-        return "<%s %s>" % (type(self).__name__, six.text_type.__repr__(self))
+        return "<%s %s>" % (type(self).__name__, str.__repr__(self))
 
     def join(self, seq, escape_quotes=True):
         """Return a `Markup` object which is the concatenation of the strings
@@ -489,7 +488,7 @@ class Markup(six.text_type):
         :see: `escape`
         """
         escaped_items = [escape(item, quotes=escape_quotes) for item in seq]
-        return Markup(six.text_type.join(self, escaped_items))
+        return Markup(str.join(self, escaped_items))
 
     @classmethod
     def escape(cls, text, quotes=True):
@@ -538,7 +537,7 @@ class Markup(six.text_type):
         """
         if not self:
             return ''
-        return six.text_type(self).replace('&#34;', '"') \
+        return str(self).replace('&#34;', '"') \
                                   .replace('&gt;', '>') \
                                   .replace('&lt;', '<') \
                                   .replace('&amp;', '&')
@@ -652,7 +651,7 @@ class Namespace(object):
         self.uri = uri
 
     def __init__(self, uri):
-        self.uri = six.text_type(uri)
+        self.uri = str(uri)
 
     def __contains__(self, qname):
         return qname.namespace == self.uri
@@ -691,7 +690,7 @@ class Namespace(object):
 XML_NAMESPACE = Namespace('http://www.w3.org/XML/1998/namespace')
 
 
-class QName(six.text_type):
+class QName(str):
     """A qualified element or attribute name.
     
     The unicode value of instances of this class contains the qualified name of
@@ -729,11 +728,11 @@ class QName(six.text_type):
         qname = qname.lstrip('{')
         parts = qname.split('}', 1)
         if len(parts) > 1:
-            self = six.text_type.__new__(cls, '{%s' % qname)
-            self.namespace, self.localname = map(six.text_type, parts)
+            self = str.__new__(cls, '{%s' % qname)
+            self.namespace, self.localname = map(str, parts)
         else:
-            self = six.text_type.__new__(cls, qname)
-            self.namespace, self.localname = None, six.text_type(qname)
+            self = str.__new__(cls, qname)
+            self.namespace, self.localname = None, str(qname)
         return self
 
     def __getnewargs__(self):

@@ -802,7 +802,7 @@ class ASTTransformer(object):
         return visitor(node)
 
     def _clone(self, node):
-        clone = node.__class__()
+        clone = construct_ast_class(node.__class__)
         for name in getattr(clone, '_attributes', ()):
             try:
                 setattr(clone, name, getattr(node, name))
@@ -887,3 +887,18 @@ class ASTTransformer(object):
     visit_Index = _clone
 
     del _clone
+
+
+def construct_ast_class(cls):
+    kwargs = {}
+    if hasattr(cls, '__annotations__'):
+        for name, typ in cls.__annotations__.items():
+            if typ is str:
+                kwargs[name] = 'foo'
+            elif typ is int:
+                kwargs[name] = 42
+            elif typ is object:
+                kwargs[name] = b'foo'
+            elif isinstance(typ, type) and issubclass(typ, _ast.AST):
+                kwargs[name] = construct_ast_class(typ)
+    return cls(**kwargs)

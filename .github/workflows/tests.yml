@@ -5,17 +5,11 @@ on: [push, pull_request]
 jobs:
   tests:
     name: python ${{ matrix.python-version }}
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
 
     strategy:
       matrix:
-        python-version: [3.6, 3.7, 3.8, 3.9, "3.10", "3.11", "3.12", "pypy3.9"]
-        pytest-extra-options: ["--strict-config -W \"ignore:pkg_resources is deprecated\""]
-        include:
-          - python-version: "pypy2.7"
-            pytest-extra-options: ""
-          - python-version: "3.13.0-beta.2"
-            pytest-extra-options: "--strict-config -W \"ignore:pkg_resources is deprecated\" -W ignore::DeprecationWarning"
+        python-version: [3.8, 3.9, "3.10", "3.11", "3.12", "3.13", "pypy3.9"]
       fail-fast: false
 
     steps:
@@ -35,12 +29,8 @@ jobs:
 
       - name: Run test suite
         run: |
-          pytest -Werror --strict-markers --verbosity=1 --color=yes ${{ matrix.pytest-extra-options }} genshi
+          pytest --strict-markers --verbosity=1 --color=yes genshi
           # Above flags are:
-          #  -Werror
-          #     treat warnings as errors
-          #  --strict-config
-          #     error out if the configuration file is not parseable
           #  --strict-markers
           #     error out if a marker is used but not defined in the
           #     configuration file

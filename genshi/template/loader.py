@@ -19,8 +19,7 @@ try:
 except ImportError:
     import dummy_threading as threading
 
-import six
-
+import genshi._six as six
 from genshi.template.base import TemplateError
 from genshi.util import LRUCache
 

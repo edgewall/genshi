@@ -24,8 +24,7 @@ import re
 from functools import partial
 from types import FunctionType
 
-import six
-
+import genshi._six as six
 from genshi.core import Attrs, Namespace, QName, START, END, TEXT, \
                         XML_NAMESPACE, _ensure, StreamEventKind
 from genshi.template.base import DirectiveFactory, EXPR, SUB, _apply_directives

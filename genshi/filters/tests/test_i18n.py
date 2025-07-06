@@ -15,8 +15,7 @@ from datetime import datetime
 from gettext import NullTranslations
 import unittest
 
-import six
-
+import genshi._six as six
 from genshi.core import Attrs
 from genshi.template import MarkupTemplate, Context
 from genshi.filters.i18n import Translator, extract

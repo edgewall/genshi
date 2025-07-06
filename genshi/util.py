@@ -15,9 +15,8 @@
 
 import re
 
-from six.moves import html_entities as entities
-
-import six
+import genshi._six as six
+from genshi._six.moves import html_entities as entities
 
 __docformat__ = 'restructuredtext en'
 
@@ -247,4 +246,3 @@ def striptags(text):
     :return: the text with tags removed
     """
     return _STRIPTAGS_RE.sub('', text)
-

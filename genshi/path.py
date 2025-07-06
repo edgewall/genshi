@@ -45,8 +45,7 @@ import operator
 import re
 from itertools import chain
 
-import six
-
+import genshi._six as six
 from genshi.compat import IS_PYTHON2
 from genshi.core import Stream, Attrs, Namespace, QName
 from genshi.core import START, END, TEXT, START_NS, END_NS, COMMENT, PI, \

@@ -14,8 +14,7 @@
 import doctest
 import unittest
 
-import six
-
+import genshi._six as six
 from genshi import HTML
 from genshi.builder import Element
 from genshi.compat import IS_PYTHON2

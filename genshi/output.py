@@ -18,8 +18,7 @@ streams.
 from itertools import chain
 import re
 
-import six
-
+import genshi._six as six
 from genshi.core import escape, Attrs, Markup, QName, StreamEventKind
 from genshi.core import START, END, TEXT, XML_DECL, DOCTYPE, START_NS, END_NS, \
                         START_CDATA, END_CDATA, PI, COMMENT, XML_NAMESPACE

@@ -28,8 +28,7 @@ new syntax to remain compatible with future Genshi releases.
 
 import re
 
-import six
-
+import genshi._six as six
 from genshi.core import TEXT
 from genshi.template.base import BadDirectiveError, Template, \
                                  TemplateSyntaxError, EXEC, INCLUDE, SUB

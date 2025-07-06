@@ -16,9 +16,8 @@
 from textwrap import dedent
 from types import CodeType
 
-import six
-from six.moves import builtins
-
+import genshi._six as six
+from genshi._six.moves import builtins
 from genshi.core import Markup
 from genshi.template.astutil import ASTTransformer, ASTCodeGenerator, parse
 from genshi.template.base import TemplateRuntimeError

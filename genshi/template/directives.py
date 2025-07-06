@@ -13,8 +13,7 @@
 
 """Implementation of the various template directives."""
 
-import six
-
+import genshi._six as six
 from genshi.core import QName, Stream
 from genshi.path import Path
 from genshi.template.base import TemplateRuntimeError, TemplateSyntaxError, \

@@ -16,8 +16,7 @@
 from collections import deque
 import os
 
-import six
-
+import genshi._six as six
 from genshi.compat import numeric_types, StringIO, BytesIO
 from genshi.core import Attrs, Stream, StreamEventKind, START, TEXT, _ensure
 from genshi.input import ParseError

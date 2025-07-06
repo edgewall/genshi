@@ -18,8 +18,7 @@ import sys
 from itertools import chain
 import operator
 
-import six
-
+import genshi._six as six
 from genshi.compat import stringrepr
 from genshi.util import stripentities, striptags
 

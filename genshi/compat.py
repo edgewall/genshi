@@ -23,7 +23,7 @@ import sys
 import warnings
 from types import CodeType
 
-import six
+import genshi._six as six
 
 IS_PYTHON2 = (sys.version_info[0] == 2)
 
@@ -158,5 +158,3 @@ try:
 except AttributeError:
     # Python 2
     _ast_Constant = _DummyASTItem
-
-

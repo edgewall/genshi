@@ -68,8 +68,7 @@ returns an object of type `Fragment`:
 Hello, <em>world</em>!
 """
 
-import six
-
+import genshi._six as six
 from genshi.compat import numeric_types
 from genshi.core import Attrs, Markup, Namespace, QName, Stream, \
                         START, END, TEXT

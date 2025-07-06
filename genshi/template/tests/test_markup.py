@@ -19,8 +19,7 @@ import sys
 import tempfile
 import unittest
 
-import six
-
+import genshi._six as six
 from genshi.compat import BytesIO, StringIO
 from genshi.core import Markup
 from genshi.filters.i18n import Translator

@@ -15,8 +15,7 @@
 
 import re
 
-import six
-
+import genshi._six as six
 from genshi.core import Attrs, QName, stripentities
 from genshi.core import END, START, TEXT, COMMENT
 

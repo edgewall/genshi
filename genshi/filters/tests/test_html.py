@@ -13,8 +13,7 @@
 
 import unittest
 
-import six
-
+import genshi._six as six
 from genshi.input import HTML, ParseError
 from genshi.filters.html import HTMLFormFiller, HTMLSanitizer
 from genshi.template import MarkupTemplate

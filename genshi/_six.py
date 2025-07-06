@@ -53,11 +53,6 @@ else:
     spec_from_loader = None
 
 
-def _add_doc(func, doc):
-    """Add documentation to a function."""
-    func.__doc__ = doc
-
-
 def _import_module(name):
     """Import module, returning the module after the last dot."""
     __import__(name)
@@ -115,31 +110,6 @@ class _LazyModule(types.ModuleType):
 
     # Subclasses should override this
     _moved_attributes = []
-
-
-class MovedAttribute(_LazyDescr):
-
-    def __init__(self, name, old_mod, new_mod, old_attr=None, new_attr=None):
-        super(MovedAttribute, self).__init__(name)
-        if PY3:
-            if new_mod is None:
-                new_mod = name
-            self.mod = new_mod
-            if new_attr is None:
-                if old_attr is None:
-                    new_attr = name
-                else:
-                    new_attr = old_attr
-            self.attr = new_attr
-        else:
-            self.mod = old_mod
-            if old_attr is None:
-                old_attr = name
-            self.attr = old_attr
-
-    def _resolve(self):
-        module = _import_module(self.mod)
-        return getattr(module, self.attr)
 
 
 class _SixMetaPathImporter(object):
@@ -243,28 +213,9 @@ _importer._add_module(moves, "moves")
 
 
 if PY3:
-    def b(s):
-        return s.encode("latin-1")
-
-    def u(s):
-        return s
     unichr = chr
-    import io
-    StringIO = io.StringIO
-    BytesIO = io.BytesIO
-    del io
 else:
-    def b(s):
-        return s
-    # Workaround for standalone backslash
-
-    def u(s):
-        return unicode(s.replace(r'\\', r'\\\\'), "unicode_escape")
     unichr = unichr
-    import StringIO
-    StringIO = BytesIO = StringIO.StringIO
-_add_doc(b, """Byte literal""")
-_add_doc(u, """Text literal""")
 
 
 if PY3:

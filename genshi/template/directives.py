@@ -13,8 +13,7 @@
 
 """Implementation of the various template directives."""
 
-import genshi._six as six
-from genshi.compat import text_type
+from genshi.compat import add_metaclass, text_type
 from genshi.core import QName, Stream
 from genshi.path import Path
 from genshi.template.base import TemplateRuntimeError, TemplateSyntaxError, \
@@ -36,7 +35,7 @@ class DirectiveMeta(type):
         return type.__new__(cls, name, bases, d)
 
 
-@six.add_metaclass(DirectiveMeta)
+@add_metaclass(DirectiveMeta)
 class Directive(object):
     """Abstract base class for template directives.
     

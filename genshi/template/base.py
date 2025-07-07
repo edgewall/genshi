@@ -16,8 +16,7 @@
 from collections import deque
 import os
 
-import genshi._six as six
-from genshi.compat import numeric_types, string_types, text_type, StringIO, BytesIO
+from genshi.compat import add_metaclass, numeric_types, string_types, text_type, StringIO, BytesIO
 from genshi.core import Attrs, Stream, StreamEventKind, START, TEXT, _ensure
 from genshi.input import ParseError
 
@@ -321,7 +320,7 @@ class DirectiveFactoryMeta(type):
         return type.__new__(cls, name, bases, d)
 
 
-@six.add_metaclass(DirectiveFactoryMeta)
+@add_metaclass(DirectiveFactoryMeta)
 class DirectiveFactory(object):
     """Base for classes that provide a set of template directives.
     

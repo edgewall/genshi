@@ -15,13 +15,11 @@ from datetime import datetime
 from gettext import NullTranslations
 import unittest
 
-import six
-
+from genshi.compat import text_type, IS_PYTHON2, StringIO
 from genshi.core import Attrs
 from genshi.template import MarkupTemplate, Context
 from genshi.filters.i18n import Translator, extract
 from genshi.input import HTML
-from genshi.compat import IS_PYTHON2, StringIO
 from genshi.tests.utils import doctest_suite
 
 
@@ -48,7 +46,7 @@ class DummyTranslations(NullTranslations):
             if tmsg is missing:
                 if self._fallback:
                     return self._fallback.ugettext(message)
-                return six.text_type(message)
+                return text_type(message)
             return tmsg
     else:
         def gettext(self, message):
@@ -57,7 +55,7 @@ class DummyTranslations(NullTranslations):
             if tmsg is missing:
                 if self._fallback:
                     return self._fallback.gettext(message)
-                return six.text_type(message)
+                return text_type(message)
             return tmsg
 
     if IS_PYTHON2:

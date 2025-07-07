@@ -13,8 +13,7 @@
 
 import unittest
 
-import six
-
+from genshi.compat import text_type
 from genshi.input import HTML, ParseError
 from genshi.filters.html import HTMLFormFiller, HTMLSanitizer
 from genshi.template import MarkupTemplate
@@ -524,91 +523,91 @@ class HTMLSanitizerTestCase(unittest.TestCase):
 
     def test_sanitize_expression(self):
         html = HTML(u'<div style="top:expression(alert())">XSS</div>')
-        self.assertEqual('<div>XSS</div>', six.text_type(html | StyleSanitizer()))
+        self.assertEqual('<div>XSS</div>', text_type(html | StyleSanitizer()))
 
     def test_capital_expression(self):
         html = HTML(u'<div style="top:EXPRESSION(alert())">XSS</div>')
-        self.assertEqual('<div>XSS</div>', six.text_type(html | StyleSanitizer()))
+        self.assertEqual('<div>XSS</div>', text_type(html | StyleSanitizer()))
 
     def test_sanitize_url_with_javascript(self):
         html = HTML(u'<div style="background-image:url(javascript:alert())">'
                     u'XSS</div>')
-        self.assertEqual('<div>XSS</div>', six.text_type(html | StyleSanitizer()))
+        self.assertEqual('<div>XSS</div>', text_type(html | StyleSanitizer()))
 
     def test_sanitize_capital_url_with_javascript(self):
         html = HTML(u'<div style="background-image:URL(javascript:alert())">'
                     u'XSS</div>')
-        self.assertEqual('<div>XSS</div>', six.text_type(html | StyleSanitizer()))
+        self.assertEqual('<div>XSS</div>', text_type(html | StyleSanitizer()))
 
     def test_sanitize_unicode_escapes(self):
         html = HTML(u'<div style="top:exp\\72 ess\\000069 on(alert())">'
                     u'XSS</div>')
-        self.assertEqual('<div>XSS</div>', six.text_type(html | StyleSanitizer()))
+        self.assertEqual('<div>XSS</div>', text_type(html | StyleSanitizer()))
 
     def test_sanitize_backslash_without_hex(self):
         html = HTML(u'<div style="top:e\\xp\\ression(alert())">XSS</div>')
-        self.assertEqual('<div>XSS</div>', six.text_type(html | StyleSanitizer()))
+        self.assertEqual('<div>XSS</div>', text_type(html | StyleSanitizer()))
         input_str = u'<div style="top:e\\\\xp\\\\ression(alert())">XSS</div>'
         html = HTML(input_str)
-        self.assertEqual(input_str, six.text_type(html | StyleSanitizer()))
+        self.assertEqual(input_str, text_type(html | StyleSanitizer()))
 
     def test_sanitize_unsafe_props(self):
         html = HTML(u'<div style="POSITION:RELATIVE">XSS</div>')
-        self.assertEqual('<div>XSS</div>', six.text_type(html | StyleSanitizer()))
+        self.assertEqual('<div>XSS</div>', text_type(html | StyleSanitizer()))
 
         html = HTML(u'<div style="behavior:url(test.htc)">XSS</div>')
-        self.assertEqual('<div>XSS</div>', six.text_type(html | StyleSanitizer()))
+        self.assertEqual('<div>XSS</div>', text_type(html | StyleSanitizer()))
 
         html = HTML(u'<div style="-ms-behavior:url(test.htc) url(#obj)">'
                     u'XSS</div>')
-        self.assertEqual('<div>XSS</div>', six.text_type(html | StyleSanitizer()))
+        self.assertEqual('<div>XSS</div>', text_type(html | StyleSanitizer()))
 
         html = HTML(u"""<div style="-o-link:'javascript:alert(1)';"""
                     u"""-o-link-source:current">XSS</div>""")
-        self.assertEqual('<div>XSS</div>', six.text_type(html | StyleSanitizer()))
+        self.assertEqual('<div>XSS</div>', text_type(html | StyleSanitizer()))
 
         html = HTML(u"""<div style="-moz-binding:url(xss.xbl)">XSS</div>""")
-        self.assertEqual('<div>XSS</div>', six.text_type(html | StyleSanitizer()))
+        self.assertEqual('<div>XSS</div>', text_type(html | StyleSanitizer()))
 
     def test_sanitize_negative_margin(self):
         html = HTML(u'<div style="margin-top:-9999px">XSS</div>')
-        self.assertEqual('<div>XSS</div>', six.text_type(html | StyleSanitizer()))
+        self.assertEqual('<div>XSS</div>', text_type(html | StyleSanitizer()))
         html = HTML(u'<div style="margin:0 -9999px">XSS</div>')
-        self.assertEqual('<div>XSS</div>', six.text_type(html | StyleSanitizer()))
+        self.assertEqual('<div>XSS</div>', text_type(html | StyleSanitizer()))
 
     def test_sanitize_css_hack(self):
         html = HTML(u'<div style="*position:static">XSS</div>')
-        self.assertEqual('<div>XSS</div>', six.text_type(html | StyleSanitizer()))
+        self.assertEqual('<div>XSS</div>', text_type(html | StyleSanitizer()))
 
         html = HTML(u'<div style="_margin:-10px">XSS</div>')
-        self.assertEqual('<div>XSS</div>', six.text_type(html | StyleSanitizer()))
+        self.assertEqual('<div>XSS</div>', text_type(html | StyleSanitizer()))
 
     def test_sanitize_property_name(self):
         html = HTML(u'<div style="display:none;border-left-color:red;'
                     u'user_defined:1;-moz-user-selct:-moz-all">prop</div>')
         self.assertEqual('<div style="display:none; border-left-color:red'
                          '">prop</div>',
-                         six.text_type(html | StyleSanitizer()))
+                         text_type(html | StyleSanitizer()))
 
     def test_sanitize_unicode_expression(self):
         # Fullwidth small letters
         html = HTML(u'<div style="top:ｅｘｐｒｅｓｓｉｏｎ(alert())">'
                     u'XSS</div>')
-        self.assertEqual('<div>XSS</div>', six.text_type(html | StyleSanitizer()))
+        self.assertEqual('<div>XSS</div>', text_type(html | StyleSanitizer()))
         # Fullwidth capital letters
         html = HTML(u'<div style="top:ＥＸＰＲＥＳＳＩＯＮ(alert())">'
                     u'XSS</div>')
-        self.assertEqual('<div>XSS</div>', six.text_type(html | StyleSanitizer()))
+        self.assertEqual('<div>XSS</div>', text_type(html | StyleSanitizer()))
         # IPA extensions
         html = HTML(u'<div style="top:expʀessɪoɴ(alert())">'
                     u'XSS</div>')
-        self.assertEqual('<div>XSS</div>', six.text_type(html | StyleSanitizer()))
+        self.assertEqual('<div>XSS</div>', text_type(html | StyleSanitizer()))
 
     def test_sanitize_unicode_url(self):
         # IPA extensions
         html = HTML(u'<div style="background-image:uʀʟ(javascript:alert())">'
                     u'XSS</div>')
-        self.assertEqual('<div>XSS</div>', six.text_type(html | StyleSanitizer()))
+        self.assertEqual('<div>XSS</div>', text_type(html | StyleSanitizer()))
 
 
 def suite():

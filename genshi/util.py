@@ -15,8 +15,7 @@
 
 import re
 
-from genshi._six.moves import html_entities as entities
-from genshi.compat import unichr
+from genshi.compat import html_entities, unichr
 
 __docformat__ = 'restructuredtext en'
 
@@ -217,7 +216,7 @@ def stripentities(text, keepxmlentities=False):
             if keepxmlentities and ref in ('amp', 'apos', 'gt', 'lt', 'quot'):
                 return '&%s;' % ref
             try:
-                return unichr(entities.name2codepoint[ref])
+                return unichr(html_entities.name2codepoint[ref])
             except KeyError:
                 if keepxmlentities:
                     return '&amp;%s;' % ref

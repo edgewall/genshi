@@ -19,8 +19,8 @@ from itertools import chain
 import codecs
 from xml.parsers import expat
 
-from genshi._six.moves import html_entities as entities, html_parser as html
-from genshi.compat import text_type, unichr, StringIO, BytesIO
+from genshi.compat import html_entities, html_parser, text_type, unichr, \
+                          StringIO, BytesIO
 from genshi.core import Attrs, QName, Stream, stripentities
 from genshi.core import START, END, XML_DECL, DOCTYPE, TEXT, START_NS, \
                         END_NS, START_CDATA, END_CDATA, PI, COMMENT
@@ -90,7 +90,7 @@ class XMLParser(object):
     """
 
     _entitydefs = ['<!ENTITY %s "&#%d;">' % (name, value) for name, value in
-                   entities.name2codepoint.items()]
+                   html_entities.name2codepoint.items()]
     _external_dtd = u'\n'.join(_entitydefs).encode('utf-8')
 
     def __init__(self, source, filename=None, encoding=None):
@@ -241,7 +241,7 @@ class XMLParser(object):
         if text.startswith('&'):
             # deal with undefined entities
             try:
-                text = unichr(entities.name2codepoint[text[1:-1]])
+                text = unichr(html_entities.name2codepoint[text[1:-1]])
                 self._enqueue(TEXT, text)
             except KeyError:
                 filename, lineno, offset = self._getpos()
@@ -274,7 +274,7 @@ def XML(text):
     return Stream(list(XMLParser(StringIO(text))))
 
 
-class HTMLParser(html.HTMLParser, object):
+class HTMLParser(html_parser.HTMLParser, object):
     """Parser for HTML input based on the Python `HTMLParser` module.
     
     This class provides the same interface for generating stream events as
@@ -303,7 +303,7 @@ class HTMLParser(html.HTMLParser, object):
         :param filename: the name of the file, if known
         :param filename: encoding of the file; ignored if the input is unicode
         """
-        html.HTMLParser.__init__(self)
+        html_parser.HTMLParser.__init__(self)
         self.source = source
         self.filename = filename
         self.encoding = encoding
@@ -398,7 +398,7 @@ class HTMLParser(html.HTMLParser, object):
 
     def handle_entityref(self, name):
         try:
-            text = unichr(entities.name2codepoint[name])
+            text = unichr(html_entities.name2codepoint[name])
         except KeyError:
             text = '&%s;' % name
         self._enqueue(TEXT, text)

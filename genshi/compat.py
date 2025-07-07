@@ -25,12 +25,18 @@ from types import CodeType
 
 IS_PYTHON2 = (sys.version_info[0] == 2)
 
-# Import builtins
+
+# Import moved modules
 
 if IS_PYTHON2:
     import __builtin__ as builtins
+    import htmlentitydefs as html_entities
+    import HTMLParser as html_parser
 else:
     import builtins
+    import html.entities as html_entities
+    import html.parser as html_parser
+
 
 # String types for Python 2 and 3.
 

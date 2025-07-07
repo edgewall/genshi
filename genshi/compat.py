@@ -25,6 +25,13 @@ from types import CodeType
 
 IS_PYTHON2 = (sys.version_info[0] == 2)
 
+# Import builtins
+
+if IS_PYTHON2:
+    import __builtin__ as builtins
+else:
+    import builtins
+
 # String types for Python 2 and 3.
 
 if IS_PYTHON2:
@@ -83,6 +90,24 @@ else:
         assert bstr.startswith('b')
         return bstr
 
+
+# Define a common exec function
+
+if IS_PYTHON2:
+    def exec_(_code_, _globs_=None, _locs_=None):
+        """Execute code in a namespace."""
+        if _globs_ is None:
+            frame = sys._getframe(1)
+            _globs_ = frame.f_globals
+            if _locs_ is None:
+                _locs_ = frame.f_locals
+            del frame
+        elif _locs_ is None:
+            _locs_ = _globs_
+        exec("""exec _code_ in _globs_, _locs_""")
+
+else:
+    exec_ = getattr(builtins, "exec")
 
 # We do some scary stuff with CodeType() in template/eval.py
 

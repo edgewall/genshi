@@ -186,7 +186,6 @@ class _MovedItems(_LazyModule):
 
 
 _moved_attributes = [
-    MovedModule("builtins", "__builtin__"),
     MovedModule("html_entities", "htmlentitydefs", "html.entities"),
     MovedModule("html_parser", "HTMLParser", "html.parser"),
 ]
@@ -201,23 +200,6 @@ _MovedItems._moved_attributes = _moved_attributes
 
 moves = _MovedItems(__name__ + ".moves")
 _importer._add_module(moves, "moves")
-
-
-if PY3:
-    exec_ = getattr(moves.builtins, "exec")
-
-else:
-    def exec_(_code_, _globs_=None, _locs_=None):
-        """Execute code in a namespace."""
-        if _globs_ is None:
-            frame = sys._getframe(1)
-            _globs_ = frame.f_globals
-            if _locs_ is None:
-                _locs_ = frame.f_locals
-            del frame
-        elif _locs_ is None:
-            _locs_ = _globs_
-        exec("""exec _code_ in _globs_, _locs_""")
 
 
 def add_metaclass(metaclass):

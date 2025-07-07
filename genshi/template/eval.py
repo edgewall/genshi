@@ -16,9 +16,7 @@
 from textwrap import dedent
 from types import CodeType
 
-import genshi._six as six
-from genshi._six.moves import builtins
-from genshi.compat import string_types, text_type
+from genshi.compat import builtins, exec_, string_types, text_type
 from genshi.core import Markup
 from genshi.template.astutil import ASTTransformer, ASTCodeGenerator, parse
 from genshi.template.base import TemplateRuntimeError
@@ -178,7 +176,7 @@ class Suite(Code):
         """
         __traceback_hide__ = 'before_and_this'
         _globals = self._globals(data)
-        six.exec_(self.code, _globals, data)
+        exec_(self.code, _globals, data)
 
 
 UNDEFINED = object()

@@ -52,7 +52,6 @@ box, but custom transformations can be added easily.
 import re
 import sys
 
-import genshi._six as six
 from genshi.builder import Element
 from genshi.compat import string_types, text_type
 from genshi.core import Stream, Attrs, QName, TEXT, START, END, _ensure, Markup
@@ -647,7 +646,7 @@ class Transformer(object):
         """Applies a function to the ``data`` element of events of ``kind`` in
         the selection.
 
-        >>> import genshi._six as six
+        >>> from genshi.compat import text_type
         >>> from genshi.input import HTML
         >>> html = HTML('<html><head><title>Some Title</title></head>'
         ...               '<body>Some <em>body</em> text.</body></html>',

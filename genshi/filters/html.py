@@ -16,6 +16,7 @@
 import re
 
 import genshi._six as six
+from genshi.core import text_type
 from genshi.core import Attrs, QName, stripentities
 from genshi.core import END, START, TEXT, COMMENT
 
@@ -98,13 +99,13 @@ class HTMLFormFiller(object):
                                 checked = False
                                 if isinstance(value, (list, tuple)):
                                     if declval is not None:
-                                        u_vals = [six.text_type(v) for v in value]
+                                        u_vals = [text_type(v) for v in value]
                                         checked = declval in u_vals
                                     else:
                                         checked = any(value)
                                 else:
                                     if declval is not None:
-                                        checked = declval == six.text_type(value)
+                                        checked = declval == text_type(value)
                                     elif type == 'checkbox':
                                         checked = bool(value)
                                 if checked:
@@ -120,7 +121,7 @@ class HTMLFormFiller(object):
                                     value = value[0]
                                 if value is not None:
                                     attrs |= [
-                                        (QName('value'), six.text_type(value))
+                                        (QName('value'), text_type(value))
                                     ]
                     elif tagname == 'select':
                         name = attrs.get('name')
@@ -163,10 +164,10 @@ class HTMLFormFiller(object):
                     select_value = None
                 elif in_select and tagname == 'option':
                     if isinstance(select_value, (tuple, list)):
-                        selected = option_value in [six.text_type(v) for v
+                        selected = option_value in [text_type(v) for v
                                                     in select_value]
                     else:
-                        selected = option_value == six.text_type(select_value)
+                        selected = option_value == text_type(select_value)
                     okind, (tag, attrs), opos = option_start
                     if selected:
                         attrs |= [(QName('selected'), 'selected')]
@@ -182,7 +183,7 @@ class HTMLFormFiller(object):
                     option_text = []
                 elif in_textarea and tagname == 'textarea':
                     if textarea_value:
-                        yield TEXT, six.text_type(textarea_value), pos
+                        yield TEXT, text_type(textarea_value), pos
                         textarea_value = None
                     in_textarea = False
                 yield kind, data, pos

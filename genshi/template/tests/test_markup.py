@@ -15,12 +15,10 @@ import doctest
 import os
 import pickle
 import shutil
-import sys
 import tempfile
 import unittest
 
-import genshi._six as six
-from genshi.compat import BytesIO, StringIO
+from genshi.compat import text_type, BytesIO, StringIO
 from genshi.core import Markup
 from genshi.filters.i18n import Translator
 from genshi.input import XML
@@ -198,7 +196,7 @@ class MarkupTemplateTestCase(unittest.TestCase):
         </div>""".encode('iso-8859-1'), encoding='iso-8859-1')
         self.assertEqual(u"""<?xml version="1.0" encoding="iso-8859-1"?>\n<div>
           \xf6
-        </div>""", six.text_type(tmpl.generate()))
+        </div>""", text_type(tmpl.generate()))
 
     def test_latin1_encoded_explicit_encoding(self):
         tmpl = MarkupTemplate(u"""<div xmlns:py="http://genshi.edgewall.org/">
@@ -206,7 +204,7 @@ class MarkupTemplateTestCase(unittest.TestCase):
         </div>""".encode('iso-8859-1'), encoding='iso-8859-1')
         self.assertEqual(u"""<div>
           \xf6
-        </div>""", six.text_type(tmpl.generate()))
+        </div>""", text_type(tmpl.generate()))
 
     def test_exec_with_trailing_space(self):
         """

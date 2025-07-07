@@ -21,7 +21,7 @@ from xml.parsers import expat
 
 import genshi._six as six
 from genshi._six.moves import html_entities as entities, html_parser as html
-from genshi.compat import StringIO, BytesIO
+from genshi.compat import text_type, StringIO, BytesIO
 from genshi.core import Attrs, QName, Stream, stripentities
 from genshi.core import START, END, XML_DECL, DOCTYPE, TEXT, START_NS, \
                         END_NS, START_CDATA, END_CDATA, PI, COMMENT
@@ -156,7 +156,7 @@ class XMLParser(object):
                                 del self.expat # get rid of circular references
                             done = True
                         else:
-                            if isinstance(data, six.text_type):
+                            if isinstance(data, text_type):
                                 data = data.encode('utf-8')
                             self.expat.Parse(data, False)
                     for event in self._queue:
@@ -333,7 +333,7 @@ class HTMLParser(html.HTMLParser, object):
                             self.close()
                             done = True
                         else:
-                            if not isinstance(data, six.text_type):
+                            if not isinstance(data, text_type):
                                 raise UnicodeError("source returned bytes, but no encoding specified")
                             self.feed(data)
                     for kind, data, pos in self._queue:
@@ -438,7 +438,7 @@ def HTML(text, encoding=None):
     :raises ParseError: if the HTML text is not well-formed, and error recovery
                         fails
     """
-    if isinstance(text, six.text_type):
+    if isinstance(text, text_type):
         # If it's unicode text the encoding should be set to None.
         # The option to pass in an incorrect encoding is for ease
         # of writing doctests that work in both Python 2.x and 3.x.

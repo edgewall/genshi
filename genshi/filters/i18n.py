@@ -24,13 +24,13 @@ import re
 from functools import partial
 from types import FunctionType
 
-import genshi._six as six
+from genshi.compat import ast, string_types, text_type, IS_PYTHON2, \
+                          _ast_Str, _ast_Str_value
 from genshi.core import Attrs, Namespace, QName, START, END, TEXT, \
                         XML_NAMESPACE, _ensure, StreamEventKind
 from genshi.template.base import DirectiveFactory, EXPR, SUB, _apply_directives
 from genshi.template.directives import Directive, StripDirective
 from genshi.template.markup import MarkupTemplate, EXEC
-from genshi.compat import ast, IS_PYTHON2, _ast_Str, _ast_Str_value
 
 __all__ = ['Translator', 'extract']
 __docformat__ = 'restructuredtext en'
@@ -800,7 +800,7 @@ class Translator(DirectiveFactory):
             if kind is START:
                 tag, attrs = data
                 if tag in self.ignore_tags or \
-                        isinstance(attrs.get(xml_lang), six.string_types):
+                        isinstance(attrs.get(xml_lang), string_types):
                     skip += 1
                     yield kind, data, pos
                     continue
@@ -810,7 +810,7 @@ class Translator(DirectiveFactory):
 
                 for name, value in attrs:
                     newval = value
-                    if isinstance(value, six.string_types):
+                    if isinstance(value, string_types):
                         text = value.strip()
                         if translate_attrs and name in include_attrs and text:
                             newval = gettext(text)
@@ -830,7 +830,7 @@ class Translator(DirectiveFactory):
             elif translate_text and kind is TEXT:
                 text = data.strip()
                 if text:
-                    data = data.replace(text, six.text_type(gettext(text)))
+                    data = data.replace(text, text_type(gettext(text)))
                 yield kind, data, pos
 
             elif kind is SUB:
@@ -943,7 +943,7 @@ class Translator(DirectiveFactory):
             if kind is START and not skip:
                 tag, attrs = data
                 if tag in self.ignore_tags or \
-                        isinstance(attrs.get(xml_lang), six.string_types):
+                        isinstance(attrs.get(xml_lang), string_types):
                     skip += 1
                     continue
 
@@ -1049,7 +1049,7 @@ class Translator(DirectiveFactory):
 
     def _extract_attrs(self, event, gettext_functions, search_text):
         for name, value in event[1][1]:
-            if search_text and isinstance(value, six.string_types):
+            if search_text and isinstance(value, string_types):
                 if name in self.include_attrs:
                     text = value.strip()
                     if text:
@@ -1320,10 +1320,10 @@ def extract_from_code(code, gettext_functions):
             strings = []
             def _add(arg):
                 if isinstance(arg, _ast_Str) \
-                        and isinstance(_ast_Str_value(arg), six.text_type):
+                        and isinstance(_ast_Str_value(arg), text_type):
                     strings.append(_ast_Str_value(arg))
                 elif isinstance(arg, _ast_Str):
-                    strings.append(six.text_type(_ast_Str_value(arg), 'utf-8'))
+                    strings.append(text_type(_ast_Str_value(arg), 'utf-8'))
                 elif arg:
                     strings.append(None)
             [_add(arg) for arg in node.args]
@@ -1364,22 +1364,22 @@ def extract(fileobj, keywords, comment_tags, options):
     :rtype: ``iterator``
     """
     template_class = options.get('template_class', MarkupTemplate)
-    if isinstance(template_class, six.string_types):
+    if isinstance(template_class, string_types):
         module, clsname = template_class.split(':', 1)
         template_class = getattr(__import__(module, {}, {}, [clsname]), clsname)
     encoding = options.get('encoding', None)
 
     extract_text = options.get('extract_text', True)
-    if isinstance(extract_text, six.string_types):
+    if isinstance(extract_text, string_types):
         extract_text = extract_text.lower() in ('1', 'on', 'yes', 'true')
 
     ignore_tags = options.get('ignore_tags', Translator.IGNORE_TAGS)
-    if isinstance(ignore_tags, six.string_types):
+    if isinstance(ignore_tags, string_types):
         ignore_tags = ignore_tags.split()
     ignore_tags = [QName(tag) for tag in ignore_tags]
 
     include_attrs = options.get('include_attrs', Translator.INCLUDE_ATTRS)
-    if isinstance(include_attrs, six.string_types):
+    if isinstance(include_attrs, string_types):
         include_attrs = include_attrs.split()
     include_attrs = [QName(attr) for attr in include_attrs]
 

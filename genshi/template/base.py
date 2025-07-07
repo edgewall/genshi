@@ -17,7 +17,7 @@ from collections import deque
 import os
 
 import genshi._six as six
-from genshi.compat import numeric_types, StringIO, BytesIO
+from genshi.compat import numeric_types, string_types, text_type, StringIO, BytesIO
 from genshi.core import Attrs, Stream, StreamEventKind, START, TEXT, _ensure
 from genshi.input import ParseError
 
@@ -379,7 +379,7 @@ class Template(DirectiveFactory):
     """
 
     serializer = None
-    _number_conv = six.text_type # function used to convert numbers to event data
+    _number_conv = text_type # function used to convert numbers to event data
 
     def __init__(self, source, filepath=None, filename=None, loader=None,
                  encoding=None, lookup='strict', allow_exec=True):
@@ -411,7 +411,7 @@ class Template(DirectiveFactory):
         self._prepared = False
 
         if not isinstance(source, Stream) and not hasattr(source, 'read'):
-            if isinstance(source, six.text_type):
+            if isinstance(source, text_type):
                 source = StringIO(source)
             else:
                 source = BytesIO(source)
@@ -503,7 +503,7 @@ class Template(DirectiveFactory):
                 if kind is INCLUDE:
                     href, cls, fallback = data
                     tmpl_inlined = False
-                    if (isinstance(href, six.string_types) and
+                    if (isinstance(href, string_types) and
                             not getattr(self.loader, 'auto_reload', True)):
                         # If the path to the included template is static, and
                         # auto-reloading is disabled on the template loader,
@@ -602,7 +602,7 @@ class Template(DirectiveFactory):
                         # First check for a string, otherwise the iterable test
                         # below succeeds, and the string will be chopped up into
                         # individual characters
-                        if isinstance(result, six.string_types):
+                        if isinstance(result, string_types):
                             yield TEXT, result, pos
                         elif isinstance(result, numeric_types):
                             yield TEXT, number_conv(result), pos
@@ -611,7 +611,7 @@ class Template(DirectiveFactory):
                             stream = _ensure(result)
                             break
                         else:
-                            yield TEXT, six.text_type(result), pos
+                            yield TEXT, text_type(result), pos
 
                 elif kind is SUB:
                     # This event is a list of directives and a list of nested
@@ -640,7 +640,7 @@ class Template(DirectiveFactory):
         for event in stream:
             if event[0] is INCLUDE:
                 href, cls, fallback = event[1]
-                if not isinstance(href, six.string_types):
+                if not isinstance(href, string_types):
                     parts = []
                     for subkind, subdata, subpos in self._flatten(href, ctxt,
                                                                   **vars):

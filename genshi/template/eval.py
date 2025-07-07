@@ -18,6 +18,7 @@ from types import CodeType
 
 import genshi._six as six
 from genshi._six.moves import builtins
+from genshi.compat import string_types, text_type
 from genshi.core import Markup
 from genshi.template.astutil import ASTTransformer, ASTCodeGenerator, parse
 from genshi.template.base import TemplateRuntimeError
@@ -52,7 +53,7 @@ class Code(object):
                       if `None`, the appropriate transformation is chosen
                       depending on the mode
         """
-        if isinstance(source, six.string_types):
+        if isinstance(source, string_types):
             self.source = source
             node = _parse(source, mode=self.mode)
         else:
@@ -71,7 +72,7 @@ class Code(object):
                              filename=filename, lineno=lineno, xform=xform)
         if lookup is None:
             lookup = LenientLookup
-        elif isinstance(lookup, six.string_types):
+        elif isinstance(lookup, string_types):
             lookup = {'lenient': LenientLookup, 'strict': StrictLookup}[lookup]
         self._globals = lookup.globals
 
@@ -316,7 +317,7 @@ class LookupBase(object):
         try:
             return obj[key]
         except (AttributeError, KeyError, IndexError, TypeError) as e:
-            if isinstance(key, six.string_types):
+            if isinstance(key, string_types):
                 val = getattr(obj, key, UNDEFINED)
                 if val is UNDEFINED:
                     val = cls.undefined(key, owner=obj)
@@ -406,7 +407,7 @@ def _parse(source, mode='eval'):
             if first.rstrip().endswith(':') and not rest[0].isspace():
                 rest = '\n'.join(['    %s' % line for line in rest.splitlines()])
             source = '\n'.join([first, rest])
-    if isinstance(source, six.text_type):
+    if isinstance(source, text_type):
         source = (u'\ufeff' + source).encode('utf-8')
     return parse(source, mode)
 
@@ -417,11 +418,11 @@ def _compile(node, source=None, mode='eval', filename=None, lineno=-1,
         filename = '<string>'
     if IS_PYTHON2:
         # Python 2 requires non-unicode filenames
-        if isinstance(filename, six.text_type):
+        if isinstance(filename, text_type):
             filename = filename.encode('utf-8', 'replace')
     else:
         # Python 3 requires unicode filenames
-        if not isinstance(filename, six.text_type):
+        if not isinstance(filename, text_type):
             filename = filename.decode('utf-8', 'replace')
     if lineno <= 0:
         lineno = 1
@@ -509,7 +510,7 @@ class TemplateASTTransformer(ASTTransformer):
         return names
 
     def visit_Str(self, node):
-        if not isinstance(node.s, six.text_type):
+        if not isinstance(node.s, text_type):
             try: # If the string is ASCII, return a `str` object
                 node.s.decode('ascii')
             except ValueError: # Otherwise return a `unicode` object

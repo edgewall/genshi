@@ -19,7 +19,7 @@ try:
 except ImportError:
     import dummy_threading as threading
 
-import genshi._six as six
+from genshi.compat import string_types
 from genshi.template.base import TemplateError
 from genshi.util import LRUCache
 
@@ -218,7 +218,7 @@ class TemplateLoader(object):
                 raise TemplateError('Search path for templates not configured')
 
             for loadfunc in search_path:
-                if isinstance(loadfunc, six.string_types):
+                if isinstance(loadfunc, string_types):
                     loadfunc = directory(loadfunc)
                 try:
                     filepath, filename, fileobj, uptodate = loadfunc(filename)
@@ -330,7 +330,7 @@ class TemplateLoader(object):
         def _dispatch_by_prefix(filename):
             for prefix, delegate in delegates.items():
                 if filename.startswith(prefix):
-                    if isinstance(delegate, six.string_types):
+                    if isinstance(delegate, string_types):
                         delegate = directory(delegate)
                     filepath, _, fileobj, uptodate = delegate(
                         filename[len(prefix):].lstrip('/\\')

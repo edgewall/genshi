@@ -14,6 +14,7 @@
 """Implementation of the various template directives."""
 
 import genshi._six as six
+from genshi.compat import text_type
 from genshi.core import QName, Stream
 from genshi.path import Path
 from genshi.template.base import TemplateRuntimeError, TemplateSyntaxError, \
@@ -176,7 +177,7 @@ class AttrsDirective(Directive):
                 elif not isinstance(attrs, list): # assume it's a dict
                     attrs = attrs.items()
                 attrib |= [
-                    (QName(n), v is not None and six.text_type(v).strip() or None)
+                    (QName(n), v is not None and text_type(v).strip() or None)
                     for n, v in attrs
                 ]
             yield kind, (tag, attrib), pos

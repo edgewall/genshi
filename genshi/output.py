@@ -18,7 +18,7 @@ streams.
 from itertools import chain
 import re
 
-import genshi._six as six
+from genshi.compat import string_types, text_type
 from genshi.core import escape, Attrs, Markup, QName, StreamEventKind
 from genshi.core import START, END, TEXT, XML_DECL, DOCTYPE, START_NS, END_NS, \
                         START_CDATA, END_CDATA, PI, COMMENT, XML_NAMESPACE
@@ -72,7 +72,7 @@ def get_serializer(method='xml', **kwargs):
     :see: `XMLSerializer`, `XHTMLSerializer`, `HTMLSerializer`, `TextSerializer`
     :since: version 0.4.1
     """
-    if isinstance(method, six.string_types):
+    if isinstance(method, string_types):
         method = {'xml':   XMLSerializer,
                   'xhtml': XHTMLSerializer,
                   'html':  HTMLSerializer,
@@ -582,7 +582,7 @@ class TextSerializer(object):
                 data = event[1]
                 if strip_markup and type(data) is Markup:
                     data = data.striptags().stripentities()
-                yield six.text_type(data)
+                yield text_type(data)
 
 
 class EmptyTagFilter(object):
@@ -824,7 +824,7 @@ class DocTypeInserter(object):
 
         :param doctype: DOCTYPE as a string or DocType object.
         """
-        if isinstance(doctype, six.string_types):
+        if isinstance(doctype, string_types):
             doctype = DocType.get(doctype)
         self.doctype_event = (DOCTYPE, doctype, (None, -1, -1))
 

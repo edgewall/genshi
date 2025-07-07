@@ -140,7 +140,7 @@ else:
     exec_ = getattr(builtins, "exec")
 
 
-# Class decorator for adding a metaclass (from six 1.17.0)
+# Class decorator for adding a metaclass
 
 def add_metaclass(metaclass):
     """Class decorator for creating a class with a metaclass."""

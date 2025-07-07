@@ -15,8 +15,8 @@
 
 import re
 
-import genshi._six as six
 from genshi._six.moves import html_entities as entities
+from genshi.compat import unichr
 
 __docformat__ = 'restructuredtext en'
 
@@ -211,13 +211,13 @@ def stripentities(text, keepxmlentities=False):
                 ref = int(ref[1:], 16)
             else:
                 ref = int(ref, 10)
-            return six.unichr(ref)
+            return unichr(ref)
         else: # character entity
             ref = match.group(2)
             if keepxmlentities and ref in ('amp', 'apos', 'gt', 'lt', 'quot'):
                 return '&%s;' % ref
             try:
-                return six.unichr(entities.name2codepoint[ref])
+                return unichr(entities.name2codepoint[ref])
             except KeyError:
                 if keepxmlentities:
                     return '&amp;%s;' % ref

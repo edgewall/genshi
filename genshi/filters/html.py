@@ -15,8 +15,7 @@
 
 import re
 
-import genshi._six as six
-from genshi.core import text_type
+from genshi.compat import text_type, unichr
 from genshi.core import Attrs, QName, stripentities
 from genshi.core import END, START, TEXT, COMMENT
 
@@ -526,7 +525,7 @@ class HTMLSanitizer(object):
         def _repl(match):
             t = match.group(1)
             if t:
-                return six.unichr(int(t, 16))
+                return unichr(int(t, 16))
             t = match.group(2)
             if t == '\\':
                 return r'\\'

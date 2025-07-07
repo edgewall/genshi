@@ -19,9 +19,8 @@ from itertools import chain
 import codecs
 from xml.parsers import expat
 
-import genshi._six as six
 from genshi._six.moves import html_entities as entities, html_parser as html
-from genshi.compat import text_type, StringIO, BytesIO
+from genshi.compat import text_type, unichr, StringIO, BytesIO
 from genshi.core import Attrs, QName, Stream, stripentities
 from genshi.core import START, END, XML_DECL, DOCTYPE, TEXT, START_NS, \
                         END_NS, START_CDATA, END_CDATA, PI, COMMENT
@@ -242,7 +241,7 @@ class XMLParser(object):
         if text.startswith('&'):
             # deal with undefined entities
             try:
-                text = six.unichr(entities.name2codepoint[text[1:-1]])
+                text = unichr(entities.name2codepoint[text[1:-1]])
                 self._enqueue(TEXT, text)
             except KeyError:
                 filename, lineno, offset = self._getpos()
@@ -392,14 +391,14 @@ class HTMLParser(html.HTMLParser, object):
 
     def handle_charref(self, name):
         if name.lower().startswith('x'):
-            text = six.unichr(int(name[1:], 16))
+            text = unichr(int(name[1:], 16))
         else:
-            text = six.unichr(int(name))
+            text = unichr(int(name))
         self._enqueue(TEXT, text)
 
     def handle_entityref(self, name):
         try:
-            text = six.unichr(entities.name2codepoint[name])
+            text = unichr(entities.name2codepoint[name])
         except KeyError:
             text = '&%s;' % name
         self._enqueue(TEXT, text)

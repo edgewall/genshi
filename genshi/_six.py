@@ -204,12 +204,6 @@ _importer._add_module(moves, "moves")
 
 
 if PY3:
-    unichr = chr
-else:
-    unichr = unichr
-
-
-if PY3:
     exec_ = getattr(moves.builtins, "exec")
 
 else:

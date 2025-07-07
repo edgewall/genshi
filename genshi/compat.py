@@ -25,14 +25,18 @@ from types import CodeType
 
 IS_PYTHON2 = (sys.version_info[0] == 2)
 
+# String types for Python 2 and 3.
+
 if IS_PYTHON2:
     string_types = basestring,
     integer_types = (int, long)
     text_type = unicode
+    unichr = unichr
 else:
     string_types = str,
     integer_types = int,
     text_type = str
+    unichr = chr
 
 numeric_types = (float, ) + integer_types
 

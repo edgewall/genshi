@@ -5,6 +5,18 @@ http://svn.edgewall.org/repos/genshi/tags/0.8.0/
  * ???
 
 
+Version 0.7.10
+https://github.com/edgewall/genshi/releases/tag/0.7.10
+(Nov 30 2025, from branches/stable/0.7.x)
+
+* Remove dependency on six. (#94 by Simon Cross)
+* Update the benchmarks to support Python 3.13 (the "cgi" module was removed in 3.13) (#90 by Alexandre Detiste)
+* Migrate documentation to Sphinx. (#89 by Simon Cross)
+* Update GitHub Action versions. (#88 by Simon Cross)
+* Fix HTMLParser error handling. (#87 by Simon Cross)
+* Switch tests to pytest. (#86 by Simon Cross)
+
+
 Version 0.7.9
 https://github.com/edgewall/genshi/releases/tag/0.7.9
 (Jun 16 2024, from branches/stable/0.7.x)

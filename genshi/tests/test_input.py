@@ -15,8 +15,8 @@ import unittest
 
 from genshi.core import Attrs, QName, Stream
 from genshi.input import XMLParser, HTMLParser, ParseError, ET
-from genshi.compat import StringIO, BytesIO
-from genshi.tests.test_utils import doctest_suite
+from genshi.compat import IS_PYTHON2, StringIO, BytesIO
+from genshi.tests.utils import doctest_suite
 from xml.etree import ElementTree
 
 class XMLParserTestCase(unittest.TestCase):
@@ -293,6 +293,20 @@ bar</elem>'''
         self.assertEqual((Stream.TEXT, "some more text"), events[3][:2])
         self.assertEqual((Stream.END, QName("span")), events[4][:2])
         self.assertEqual((Stream.END, QName("div")), events[5][:2])
+
+    def test_parsing_error(self):
+        text = u'<div></div>'.encode('utf-8')
+        events = HTMLParser(BytesIO(text))
+        if IS_PYTHON2:
+            self.assertRaises(ParseError, list, events)
+        else:
+            self.assertRaisesRegex(
+                ParseError,
+                r"source returned bytes, but no encoding specified",
+                list,
+                events,
+            )
+
 
 def suite():
     suite = unittest.TestSuite()

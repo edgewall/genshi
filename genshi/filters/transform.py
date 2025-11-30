@@ -26,20 +26,21 @@ For example, the following transformation removes the ``<title>`` element from
 the ``<head>`` of the input document:
 
 >>> from genshi.builder import tag
+>>> from genshi.input import HTML
 >>> html = HTML('''<html>
-...  <head><title>Some Title</title></head>
-...  <body>
-...    Some <em>body</em> text.
-...  </body>
+... <head><title>Some Title</title></head>
+... <body>
+...   Some <em>body</em> text.
+... </body>
 ... </html>''',
 ... encoding='utf-8')
->>> print(html | Transformer('body/em').map(six.text_type.upper, TEXT)
+>>> print(html | Transformer('body/em').map(text_type.upper, TEXT)
 ...                                    .unwrap().wrap(tag.u))
 <html>
-  <head><title>Some Title</title></head>
-  <body>
-    Some <u>BODY</u> text.
-  </body>
+<head><title>Some Title</title></head>
+<body>
+  Some <u>BODY</u> text.
+</body>
 </html>
 
 The ``Transformer`` support a large number of useful transformations out of the
@@ -51,9 +52,8 @@ box, but custom transformations can be added easily.
 import re
 import sys
 
-import six
-
 from genshi.builder import Element
+from genshi.compat import string_types, text_type
 from genshi.core import Stream, Attrs, QName, TEXT, START, END, _ensure, Markup
 from genshi.path import Path
 
@@ -138,6 +138,7 @@ class Transformer(object):
     outside a `START`/`END` container (e.g. ``text()``) will yield an `OUTSIDE`
     mark.
 
+    >>> from genshi.input import HTML
     >>> html = HTML('<html><head><title>Some Title</title></head>'
     ...             '<body>Some <em>body</em> text.</body></html>',
     ...             encoding='utf-8')
@@ -213,6 +214,7 @@ class Transformer(object):
 
         As an example, here is a simple `TEXT` event upper-casing transform:
 
+        >>> from genshi.input import HTML
         >>> def upper(stream):
         ...     for mark, (kind, data, pos) in stream:
         ...         if mark and kind is TEXT:
@@ -238,6 +240,7 @@ class Transformer(object):
         """Mark events matching the given XPath expression, within the current
         selection.
 
+        >>> from genshi.input import HTML
         >>> html = HTML('<body>Some <em>test</em> text</body>', encoding='utf-8')
         >>> print(html | Transformer().select('.//em').trace())
         (None, ('START', (QName('body'), Attrs()), (None, 1, 0)))
@@ -262,6 +265,7 @@ class Transformer(object):
         Specificaly, all marks are converted to null marks, and all null marks
         are converted to OUTSIDE marks.
 
+        >>> from genshi.input import HTML
         >>> html = HTML('<body>Some <em>test</em> text</body>', encoding='utf-8')
         >>> print(html | Transformer('//em').invert().trace())
         ('OUTSIDE', ('START', (QName('body'), Attrs()), (None, 1, 0)))
@@ -282,6 +286,7 @@ class Transformer(object):
 
         Example:
 
+        >>> from genshi.input import HTML
         >>> html = HTML('<body>Some <em>test</em> text</body>', encoding='utf-8')
         >>> print(html | Transformer('//em').end().trace())
         ('OUTSIDE', ('START', (QName('body'), Attrs()), (None, 1, 0)))
@@ -305,6 +310,7 @@ class Transformer(object):
 
         Example:
 
+        >>> from genshi.input import HTML
         >>> html = HTML('<html><head><title>Some Title</title></head>'
         ...             '<body>Some <em>body</em> text.</body></html>',
         ...             encoding='utf-8')
@@ -321,6 +327,7 @@ class Transformer(object):
 
         Example:
 
+        >>> from genshi.input import HTML
         >>> html = HTML('<html><head><title>Some Title</title></head>'
         ...             '<body>Some <em>body</em> text.</body></html>',
         ...             encoding='utf-8')
@@ -339,6 +346,7 @@ class Transformer(object):
 
         Example:
 
+        >>> from genshi.input import HTML
         >>> html = HTML('<html><head><title>Some Title</title></head>'
         ...             '<body>Some <em>body</em> text.</body></html>',
         ...             encoding='utf-8')
@@ -353,6 +361,7 @@ class Transformer(object):
     def wrap(self, element):
         """Wrap selection in an element.
 
+        >>> from genshi.input import HTML
         >>> html = HTML('<html><head><title>Some Title</title></head>'
         ...             '<body>Some <em>body</em> text.</body></html>',
         ...             encoding='utf-8')
@@ -370,6 +379,7 @@ class Transformer(object):
     def replace(self, content):
         """Replace selection with content.
 
+        >>> from genshi.input import HTML
         >>> html = HTML('<html><head><title>Some Title</title></head>'
         ...             '<body>Some <em>body</em> text.</body></html>',
         ...             encoding='utf-8')
@@ -389,6 +399,7 @@ class Transformer(object):
         In this example we insert the word 'emphasised' before the <em> opening
         tag:
 
+        >>> from genshi.input import HTML
         >>> html = HTML('<html><head><title>Some Title</title></head>'
         ...             '<body>Some <em>body</em> text.</body></html>',
         ...             encoding='utf-8')
@@ -407,6 +418,7 @@ class Transformer(object):
 
         Here, we insert some text after the </em> closing tag:
 
+        >>> from genshi.input import HTML
         >>> html = HTML('<html><head><title>Some Title</title></head>'
         ...             '<body>Some <em>body</em> text.</body></html>',
         ...             encoding='utf-8')
@@ -425,6 +437,7 @@ class Transformer(object):
 
         Inserting some new text at the start of the <body>:
 
+        >>> from genshi.input import HTML
         >>> html = HTML('<html><head><title>Some Title</title></head>'
         ...             '<body>Some <em>body</em> text.</body></html>',
         ...             encoding='utf-8')
@@ -441,6 +454,7 @@ class Transformer(object):
     def append(self, content):
         """Insert content before the END event of the selection.
 
+        >>> from genshi.input import HTML
         >>> html = HTML('<html><head><title>Some Title</title></head>'
         ...             '<body>Some <em>body</em> text.</body></html>',
         ...             encoding='utf-8')
@@ -462,6 +476,7 @@ class Transformer(object):
         If `value` evaulates to `None` the attribute will be deleted from the
         element:
 
+        >>> from genshi.input import HTML
         >>> html = HTML('<html><head><title>Some Title</title></head>'
         ...             '<body>Some <em class="before">body</em> <em>text</em>.</body>'
         ...             '</html>', encoding='utf-8')
@@ -505,6 +520,7 @@ class Transformer(object):
         be appended to the buffer rather than replacing it.
 
         >>> from genshi.builder import tag
+        >>> from genshi.input import HTML
         >>> buffer = StreamBuffer()
         >>> html = HTML('<html><head><title>Some Title</title></head>'
         ...             '<body>Some <em>body</em> text.</body></html>',
@@ -560,6 +576,7 @@ class Transformer(object):
         """Copy selection into buffer and remove the selection from the stream.
 
         >>> from genshi.builder import tag
+        >>> from genshi.input import HTML
         >>> buffer = StreamBuffer()
         >>> html = HTML('<html><head><title>Some Title</title></head>'
         ...             '<body>Some <em>body</em> text.</body></html>',
@@ -593,6 +610,7 @@ class Transformer(object):
         For example, to move all <note> elements inside a <notes> tag at the
         top of the document:
 
+        >>> from genshi.input import HTML
         >>> doc = HTML('<doc><notes></notes><body>Some <note>one</note> '
         ...            'text <note>two</note>.</body></doc>',
         ...             encoding='utf-8')
@@ -612,6 +630,7 @@ class Transformer(object):
         once for each contiguous block of marked events.
 
         >>> from genshi.filters.html import HTMLSanitizer
+        >>> from genshi.input import HTML
         >>> html = HTML('<html><body>Some text<script>alert(document.cookie)'
         ...             '</script> and some more text</body></html>',
         ...             encoding='utf-8')
@@ -627,11 +646,12 @@ class Transformer(object):
         """Applies a function to the ``data`` element of events of ``kind`` in
         the selection.
 
-        >>> import six
+        >>> from genshi.compat import text_type
+        >>> from genshi.input import HTML
         >>> html = HTML('<html><head><title>Some Title</title></head>'
         ...               '<body>Some <em>body</em> text.</body></html>',
         ...             encoding='utf-8')
-        >>> print(html | Transformer('head/title').map(six.text_type.upper, TEXT))
+        >>> print(html | Transformer('head/title').map(text_type.upper, TEXT))
         <html><head><title>SOME TITLE</title></head><body>Some <em>body</em>
         text.</body></html>
 
@@ -646,6 +666,7 @@ class Transformer(object):
 
         Refer to the documentation for ``re.sub()`` for details.
 
+        >>> from genshi.input import HTML
         >>> html = HTML('<html><body>Some text, some more text and '
         ...             '<b>some bold text</b>\\n'
         ...             '<i>some italicised text</i></body></html>',
@@ -653,12 +674,6 @@ class Transformer(object):
         >>> print(html | Transformer('body/b').substitute('(?i)some', 'SOME'))
         <html><body>Some text, some more text and <b>SOME bold text</b>
         <i>some italicised text</i></body></html>
-        >>> tags = tag.html(tag.body('Some text, some more text and\\n',
-        ...      Markup('<b>some bold text</b>')))
-        >>> print(tags.generate() | Transformer('body').substitute(
-        ...     '(?i)some', 'SOME'))
-        <html><body>SOME text, some more text and
-        <b>SOME bold text</b></body></html>
 
         :param pattern: A regular expression object or string.
         :param replace: Replacement pattern.
@@ -670,6 +685,7 @@ class Transformer(object):
     def rename(self, name):
         """Rename matching elements.
 
+        >>> from genshi.input import HTML
         >>> html = HTML('<html><body>Some text, some more text and '
         ...             '<b>some bold text</b></body></html>',
         ...             encoding='utf-8')
@@ -681,6 +697,7 @@ class Transformer(object):
     def trace(self, prefix='', fileobj=None):
         """Print events as they pass through the transform.
 
+        >>> from genshi.input import HTML
         >>> html = HTML('<body>Some <em>test</em> text</body>', encoding='utf-8')
         >>> print(html | Transformer('em').trace())
         (None, ('START', (QName('body'), Attrs()), (None, 1, 0)))
@@ -767,7 +784,7 @@ class SelectTransformation(object):
                 yield OUTSIDE, result
             elif result:
                 # XXX Assume everything else is "text"?
-                yield None, (TEXT, six.text_type(result), (None, -1, -1))
+                yield None, (TEXT, text_type(result), (None, -1, -1))
             else:
                 yield None, event
 
@@ -993,7 +1010,7 @@ class SubstituteTransformation(object):
         :param replace: Replacement pattern.
         :param count: Number of replacements to make in each text fragment.
         """
-        if isinstance(pattern, six.string_types):
+        if isinstance(pattern, string_types):
             self.pattern = re.compile(pattern)
         else:
             self.pattern = pattern
@@ -1047,6 +1064,7 @@ class InjectorTransformation(object):
     ...             yield event
     ...         for event in stream:
     ...             yield event
+    >>> from genshi.input import HTML
     >>> html = HTML('<body>Some <em>test</em> text</body>', encoding='utf-8')
     >>> print(html | Transformer('.//em').apply(Top('Prefix ')))
     Prefix <body>Some <em>test</em> text</body>

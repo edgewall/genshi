@@ -17,7 +17,7 @@ from genshi.core import Attrs, Markup, QName, Stream
 from genshi.input import HTML, XML
 from genshi.output import DocType, XMLSerializer, XHTMLSerializer, \
                           HTMLSerializer, EmptyTagFilter
-from genshi.tests.test_utils import doctest_suite
+from genshi.tests.utils import doctest_suite
 
 
 class XMLSerializerTestCase(unittest.TestCase):

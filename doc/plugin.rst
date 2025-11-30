@@ -8,15 +8,8 @@ While you can easily use Genshi templating through the APIs provided directly
 by Genshi, in some situations you may want to use Genshi through the template
 engine plugin API. Note though that this considerably limits the power and
 flexibility of Genshi templates (for example, there's no good way to use filters
-such as Genshi's `HTMLFormFiller`_ when the plugin
+such as Genshi's :ref:`HTMLFormFiller` when the plugin
 API is sitting between your code and Genshi).
-
-.. _`HTMLFormFiller`: filters.html>#html-form-filler
-
-
-.. contents:: Contents
-   :depth: 2
-.. sectnum::
 
 
 Introduction

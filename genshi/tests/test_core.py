@@ -18,7 +18,7 @@ from genshi import core
 from genshi.core import Markup, Attrs, Namespace, QName, escape, unescape
 from genshi.input import XML
 from genshi.compat import StringIO, BytesIO, IS_PYTHON2
-from genshi.tests.test_utils import doctest_suite
+from genshi.tests.utils import doctest_suite
 
 
 class StreamTestCase(unittest.TestCase):

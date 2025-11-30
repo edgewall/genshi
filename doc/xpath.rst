@@ -9,11 +9,6 @@ Genshi provides basic XPath_ support for matching and querying event streams.
 .. _xpath: http://www.w3.org/TR/xpath
 
 
-.. contents:: Contents
-   :depth: 2
-.. sectnum::
-
-
 -----------
 Limitations
 -----------

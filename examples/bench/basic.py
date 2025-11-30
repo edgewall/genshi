@@ -5,11 +5,19 @@
 
 from __future__ import print_function
 
-from cgi import escape
 import os
-from StringIO import StringIO
 import sys
 import timeit
+
+try:
+    from html import escape
+except ImportError:
+    from cgi import escape
+
+try:
+    from io import StringIO
+except ImportError:
+    from StringIO import StringIO
 
 __all__ = ['clearsilver', 'mako', 'django', 'kid', 'genshi', 'genshi_text',
            'simpletal']

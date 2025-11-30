@@ -19,10 +19,6 @@ template is rendered, and template expressions_ that are dynamically substituted
 by variable data.
 
 
-.. contents:: Contents
-   :depth: 3
-.. sectnum::
-
 --------
 Synopsis
 --------

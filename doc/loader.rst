@@ -154,8 +154,8 @@ That is the same as:
 ``package(name, path)``
 -----------------------
 
-Uses the ``pkg_resources`` API to locate files in Python package data (which
-may be inside a ZIP archive).
+Uses the ``importlib.resources`` API to locate files in Python package data
+(which may be inside a ZIP archive).
 
 .. code-block:: python
 

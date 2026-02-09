@@ -16,6 +16,17 @@
 CherryPy/Buffet.
 """
 
+try:
+    from importlib.resources import (
+        as_file as resources_as_file,
+        files as resources_files,
+    )
+except ImportError:
+    from importlib_resources import (
+        as_file as resources_as_file,
+        files as resources_files,
+    )
+
 from genshi.compat import string_types
 from genshi.input import ET, HTML, XML
 from genshi.output import DocType
@@ -91,10 +102,11 @@ class AbstractTemplateEnginePlugin(object):
         if self.use_package_naming:
             divider = templatename.rfind('.')
             if divider >= 0:
-                from pkg_resources import resource_filename
                 package = templatename[:divider]
                 basename = templatename[divider + 1:] + self.extension
-                templatename = resource_filename(package, basename)
+                resource = resources_files(package) / basename
+                with resources_as_file(resource) as path:
+                    return self.loader.load(str(path))
 
         return self.loader.load(templatename)
 

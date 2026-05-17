@@ -13,6 +13,10 @@
 
 """Template loading and caching."""
 
+try:
+    from importlib.resources import open_binary as resources_open_binary
+except ImportError:
+    from importlib_resources import open_binary as resources_open_binary
 import os
 try:
     import threading
@@ -300,10 +304,14 @@ class TemplateLoader(object):
         :return: the loader function to load templates from the given package
         :rtype: ``function``
         """
-        from pkg_resources import resource_stream
         def _load_from_package(filename):
             filepath = os.path.join(path, filename)
-            return filepath, filename, resource_stream(name, filepath), None
+            return (
+                filepath,
+                filename,
+                resources_open_binary(name, filepath),
+                None,
+            )
         return _load_from_package
 
     @staticmethod

@@ -18,7 +18,8 @@ from types import CodeType
 
 from genshi.compat import builtins, exec_, string_types, text_type
 from genshi.core import Markup
-from genshi.template.astutil import ASTTransformer, ASTCodeGenerator, parse
+from genshi.template.astutil import (
+    ASTTransformer, ASTCodeGenerator, parse, construct_ast_class)
 from genshi.template.base import TemplateRuntimeError
 from genshi.util import flatten
 
@@ -59,11 +60,9 @@ class Code(object):
                 'Expected string or AST node, but got %r' % source
             self.source = '?'
             if self.mode == 'eval':
-                node = _ast.Expression()
-                node.body = source
+                node = _ast.Expression(body=source)
             else:
-                node = _ast.Module()
-                node.body = [source]
+                node = _ast.Module(body=[source])
 
         self.ast = node
         self.code = _compile(node, self.source, mode=self.mode,
@@ -454,7 +453,7 @@ def _compile(node, source=None, mode='eval', filename=None, lineno=-1,
 
 
 def _new(class_, *args, **kwargs):
-    ret = class_()
+    ret = construct_ast_class(class_)
     for attr, value in zip(ret._fields, args):
         if attr in kwargs:
             raise ValueError('Field set both in args and kwargs')

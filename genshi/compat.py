@@ -222,6 +222,15 @@ else:
                         filename, name, lineno, code.co_lnotab, (), ())
 
 
+# PyPy 2.7 checks the number of arguments to ast.Call
+
+if IS_PYTHON2:
+    # PyPy2.7 requires the args and kwargs arguments
+    required_ast_call_args = ((), {})
+else:
+    required_ast_call_args = ()
+
+
 # In Python 3.8, Str and Ellipsis was replaced by Constant
 
 with warnings.catch_warnings():

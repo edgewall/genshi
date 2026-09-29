@@ -23,11 +23,13 @@ from genshi.template.base import TemplateRuntimeError
 from genshi.util import flatten
 
 from genshi.compat import ast as _ast, _ast_Constant, get_code_params, \
-                          build_code_chunk, isstring, IS_PYTHON2, _ast_Str
+                          build_code_chunk, isstring, IS_PYTHON2, \
+                          required_ast_call_args, _ast_Str
 
 __all__ = ['Code', 'Expression', 'Suite', 'LenientLookup', 'StrictLookup',
            'Undefined', 'UndefinedError']
 __docformat__ = 'restructuredtext en'
+
 
 
 
@@ -585,7 +587,7 @@ class TemplateASTTransformer(ASTTransformer):
             name = _new(_ast.Name, '_lookup_name', _ast.Load())
             namearg = _new(_ast.Name, '__data__', _ast.Load())
             strarg = _new(_ast_Str, node.id)
-            node = _new(_ast.Call, name, [namearg, strarg], [])
+            node = _new(_ast.Call, name, [namearg, strarg], [], *required_ast_call_args)
         elif isinstance(node.ctx, _ast.Store):
             if len(self.locals) > 1:
                 self.locals[-1].add(node.id)
@@ -604,7 +606,7 @@ class ExpressionASTTransformer(TemplateASTTransformer):
 
         func = _new(_ast.Name, '_lookup_attr', _ast.Load())
         args = [self.visit(node.value), _new(_ast_Str, node.attr)]
-        return _new(_ast.Call, func, args, [])
+        return _new(_ast.Call, func, args, [], *required_ast_call_args)
 
     def visit_Subscript(self, node):
         if not isinstance(node.ctx, _ast.Load) or \
@@ -624,4 +626,4 @@ class ExpressionASTTransformer(TemplateASTTransformer):
             self.visit(node.value),
             _new(_ast.Tuple, (self.visit(slice_value),), _ast.Load())
         ]
-        return _new(_ast.Call, func, args, [])
+        return _new(_ast.Call, func, args, [], *required_ast_call_args)

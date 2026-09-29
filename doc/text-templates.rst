@@ -10,9 +10,9 @@ The language is similar to the Django_ template language.
 
 This document describes the template language and will be most useful as
 reference to those developing Genshi text templates. Templates are text files of
-some kind that include processing directives_ that affect how the template is
-rendered, and template expressions that are dynamically substituted by
-variable data.
+some kind that include processing `directives <tt-directives>`_ that affect
+how the template is rendered, and template expressions that are dynamically
+substituted by variable data.
 
 See `Genshi Templating Basics <templates.html>`_ for general information on
 embedding Python code in templates.
@@ -26,7 +26,7 @@ embedding Python code in templates.
 .. _django: http://www.djangoproject.com/
 
 
-.. _`directives`:
+.. _`tt-directives`:
 
 -------------------
 Template Directives
@@ -144,7 +144,7 @@ Snippet Reuse
 =============
 
 .. _`def`:
-.. _`macros`:
+.. _`tt-macros`:
 
 ``{% def %}``
 -------------
@@ -181,7 +181,7 @@ The above would be rendered to::
     Hello, world!
 
 
-.. _includes:
+.. _tt-includes:
 .. _`include`:
 
 ``{% include %}``
@@ -196,8 +196,8 @@ other files using the ``include`` directive:
 
 Any content included this way is inserted into the generated output. The
 included template sees the context data as it exists at the point of the
-include. `Macros`_ in the included template are also available to the including
-template after the point it was included.
+include. `Macros <tt-macros>`_ in the included template are also available to
+the including template after the point it was included.
 
 Include paths are relative to the filename of the template currently being
 processed. So if the example above was in the file "``myapp/mail.txt``"
@@ -222,7 +222,7 @@ be found.
 Variable Binding
 ================
 
-.. _`with`:
+.. _`tt-with`:
 
 ``{% with %}``
 --------------
@@ -290,7 +290,7 @@ moving the indentation into the delimiters, or moving the end delimiter on the
 next line, and so on.
 
 
-.. _comments:
+.. _tt-comments:
 
 --------
 Comments

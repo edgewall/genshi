@@ -16,16 +16,16 @@ XSLT_, TAL_, and PHP_.
 
 This document describes the template language and will be most useful as
 reference to those developing Genshi XML templates. Templates are XML files of
-some kind (such as XHTML) that include processing directives_ (elements or
-attributes identified by a separate namespace) that affect how the template is
-rendered, and template expressions that are dynamically substituted by
-variable data.
+some kind (such as XHTML) that include processing `directives <xt-directives>`_
+(elements or attributes identified by a separate namespace) that affect how the
+template is rendered, and template expressions that are dynamically substituted
+by variable data.
 
 See `Genshi Templating Basics <templates.html>`_ for general information on
 embedding Python code in templates.
 
 
-.. _`directives`:
+.. _`xt-directives`:
 
 -------------------
 Template Directives
@@ -642,8 +642,8 @@ Dynamic Includes
 ================
 
 Incudes in Genshi are fully dynamic: Just like normal attributes, the `href`
-attribute accepts expressions, and directives_ can be used on the
-``<xi:include />`` element just as on any other element, meaning you can do
+attribute accepts expressions, and `directives <xt-directives>`_ can be used on
+the ``<xi:include />`` element just as on any other element, meaning you can do
 things like conditional includes:
 
 .. code-block:: html+genshi

@@ -202,7 +202,6 @@ else:
         if hasattr(code, "co_exceptiontable"):
             # https://bugs.python.org/issue40222
             params.append(code.co_exceptiontable)
-        params.extend([(), ()])
         return tuple(params)
 
 

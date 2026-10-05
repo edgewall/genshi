@@ -201,6 +201,13 @@ class XMLSerializerTestCase(unittest.TestCase):
         output = XML(text).render(XMLSerializer, encoding=None)
         self.assertEqual(text, output)
 
+    def test_cache_cdata(self):
+        text = '<foo><![CDATA[1 < 2]]><bar>1 &lt; 2</bar>' \
+               '<bar>3 &gt; 2</bar><![CDATA[3 > 2]]></foo>'
+        output = XML(text).render(XMLSerializer, encoding=None,
+                                  strip_whitespace=False)
+        self.assertEqual(text, output)
+
 
 class XHTMLSerializerTestCase(unittest.TestCase):
 
@@ -377,6 +384,13 @@ class XHTMLSerializerTestCase(unittest.TestCase):
                                strip_whitespace=False)
         self.assertEqual('<foo>&amp;hellip;</foo><bar>&hellip;</bar>', output)
 
+    def test_cache_cdata(self):
+        text = '<div><![CDATA[1 < 2]]><p>1 &lt; 2</p>' \
+               '<p>3 &gt; 2</p><![CDATA[3 > 2]]></div>'
+        output = XML(text).render(XHTMLSerializer, encoding=None,
+                                  strip_whitespace=False)
+        self.assertEqual(text, output)
+
 
 class HTMLSerializerTestCase(unittest.TestCase):
 
@@ -441,6 +455,15 @@ class HTMLSerializerTestCase(unittest.TestCase):
         self.assertEqual("""<style>
             html > body { display: none; }
         </style>""", output)
+
+    def test_cache_script(self):
+        text = '<div><script>1 &lt; 2</script><p>1 &lt; 2</p>' \
+               '<p>3 &gt; 2</p><script>3 &gt; 2</script></div>'
+        output = XML(text).render(HTMLSerializer, encoding=None,
+                                  strip_whitespace=False)
+        self.assertEqual('<div><script>1 < 2</script><p>1 &lt; 2</p>'
+                         '<p>3 &gt; 2</p><script>3 > 2</script></div>',
+                         output)
 
     def test_html5_doctype(self):
         stream = HTML(u'<html></html>')

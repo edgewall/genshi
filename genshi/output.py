@@ -240,7 +240,7 @@ class XMLSerializer(object):
         for filter_ in self.filters:
             stream = filter_(stream)
         for kind, data, pos in stream:
-            if kind is TEXT and isinstance(data, Markup):
+            if kind is TEXT and (in_cdata or isinstance(data, Markup)):
                 yield data
                 continue
             cached = _get((kind, data))
@@ -258,10 +258,7 @@ class XMLSerializer(object):
                 yield _emit(kind, data, Markup('</%s>' % data))
 
             elif kind is TEXT:
-                if in_cdata:
-                    yield _emit(kind, data, data)
-                else:
-                    yield _emit(kind, data, escape(data, quotes=False))
+                yield _emit(kind, data, escape(data, quotes=False))
 
             elif kind is COMMENT:
                 yield _emit(kind, data, Markup('<!--%s-->' % data))
@@ -351,7 +348,7 @@ class XHTMLSerializer(XMLSerializer):
         for filter_ in self.filters:
             stream = filter_(stream)
         for kind, data, pos in stream:
-            if kind is TEXT and isinstance(data, Markup):
+            if kind is TEXT and (in_cdata or isinstance(data, Markup)):
                 yield data
                 continue
             cached = _get((kind, data))
@@ -382,10 +379,7 @@ class XHTMLSerializer(XMLSerializer):
                 yield _emit(kind, data, Markup('</%s>' % data))
 
             elif kind is TEXT:
-                if in_cdata:
-                    yield _emit(kind, data, data)
-                else:
-                    yield _emit(kind, data, escape(data, quotes=False))
+                yield _emit(kind, data, escape(data, quotes=False))
 
             elif kind is COMMENT:
                 yield _emit(kind, data, Markup('<!--%s-->' % data))
@@ -476,7 +470,7 @@ class HTMLSerializer(XHTMLSerializer):
         for filter_ in self.filters:
             stream = filter_(stream)
         for kind, data, _ in stream:
-            if kind is TEXT and isinstance(data, Markup):
+            if kind is TEXT and (noescape or isinstance(data, Markup)):
                 yield data
                 continue
             output = _get((kind, data))
@@ -513,10 +507,7 @@ class HTMLSerializer(XHTMLSerializer):
                 noescape = False
 
             elif kind is TEXT:
-                if noescape:
-                    yield _emit(kind, data, data)
-                else:
-                    yield _emit(kind, data, escape(data, quotes=False))
+                yield _emit(kind, data, escape(data, quotes=False))
 
             elif kind is COMMENT:
                 yield _emit(kind, data, Markup('<!--%s-->' % data))

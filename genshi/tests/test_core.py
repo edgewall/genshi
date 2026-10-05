@@ -12,6 +12,7 @@
 # history and logs, available at http://genshi.edgewall.org/log/.
 
 import pickle
+import sys
 import unittest
 
 from genshi import core
@@ -124,6 +125,14 @@ class MarkupTestCase(unittest.TestCase):
         markup = Markup('<b>%(amp)s</b>') % {'amp': Markup('&amp;')}
         assert type(markup) is Markup
         self.assertEqual('<b>&amp;</b>', markup)
+
+    @unittest.skipUnless(hasattr(sys, 'getrefcount'), 'requires sys.getrefcount')
+    def test_mod_mapping_refcount(self):
+        value = Markup('&amp;')
+        refcount = sys.getrefcount(value)
+        for _ in range(10):
+            Markup('<b>%(amp)s</b>') % {'amp': value}
+        self.assertEqual(refcount, sys.getrefcount(value))
 
     def test_mul(self):
         markup = Markup('<b>foo</b>') * 2

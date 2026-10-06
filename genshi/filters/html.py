@@ -399,9 +399,11 @@ class HTMLSanitizer(object):
                 else:
                     yield kind, data, pos
 
-            # Comments, processing instructions and CDATA sections are
-            # dropped: the serializers write these out verbatim, so any
-            # markup inside them would end up unescaped in the output
+            # Drop comments, processing instructions and CDATA sections.
+            # In HTML, comments and CDATA sections should not be rendered and so can
+            # be removed for safety. Processing instructions likely shouldn't be rendered either
+            # and might potentially be interpreted by later unwary processors of the HTML,
+            # so they are dropped for safety too.
             elif kind not in (COMMENT, PI, START_CDATA, END_CDATA):
                 if not waiting_for:
                     yield kind, data, pos

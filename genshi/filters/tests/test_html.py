@@ -14,7 +14,7 @@
 import unittest
 
 from genshi.compat import text_type
-from genshi.input import HTML, ParseError
+from genshi.input import HTML, XML, ParseError
 from genshi.filters.html import HTMLFormFiller, HTMLSanitizer
 from genshi.template import MarkupTemplate
 from genshi.tests.utils import doctest_suite
@@ -439,6 +439,16 @@ class HTMLSanitizerTestCase(unittest.TestCase):
     def test_sanitize_remove_comments(self):
         html = HTML(u'''<div><!-- conditional comment crap --></div>''')
         self.assertEqual('<div/>', (html | HTMLSanitizer()).render())
+
+    def test_sanitize_remove_processing_instruction(self):
+        xml = XML(u'<div><?x ><img src="x" onerror="alert(1)"?></div>')
+        self.assertEqual('<div/>', (xml | HTMLSanitizer()).render())
+
+    def test_sanitize_remove_cdata_section(self):
+        xml = XML(u'<div><![CDATA[<script>alert("Foo")</script>]]></div>')
+        escaped = '<div>&lt;script&gt;alert("Foo")&lt;/script&gt;</div>'
+        self.assertEqual(escaped, (xml | HTMLSanitizer()).render())
+        self.assertEqual(escaped, (xml | HTMLSanitizer()).render('html'))
 
     def test_sanitize_remove_style_scripts(self):
         sanitizer = StyleSanitizer()

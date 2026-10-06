@@ -17,7 +17,8 @@ import re
 
 from genshi.compat import text_type, unichr
 from genshi.core import Attrs, QName, stripentities
-from genshi.core import END, START, TEXT, COMMENT
+from genshi.core import END, START, TEXT, COMMENT, PI, START_CDATA, \
+                        END_CDATA
 
 __all__ = ['HTMLFormFiller', 'HTMLSanitizer']
 __docformat__ = 'restructuredtext en'
@@ -398,7 +399,12 @@ class HTMLSanitizer(object):
                 else:
                     yield kind, data, pos
 
-            elif kind is not COMMENT:
+            # Drop comments, processing instructions and CDATA sections.
+            # In HTML, comments and CDATA sections should not be rendered and so can
+            # be removed for safety. Processing instructions likely shouldn't be rendered either
+            # and might potentially be interpreted by later unwary processors of the HTML,
+            # so they are dropped for safety too.
+            elif kind not in (COMMENT, PI, START_CDATA, END_CDATA):
                 if not waiting_for:
                     yield kind, data, pos
 

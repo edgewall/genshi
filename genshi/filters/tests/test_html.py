@@ -450,6 +450,14 @@ class HTMLSanitizerTestCase(unittest.TestCase):
         self.assertEqual(escaped, (xml | HTMLSanitizer()).render())
         self.assertEqual(escaped, (xml | HTMLSanitizer()).render('html'))
 
+    def test_sanitize_remove_nested_unsafe_elem(self):
+        html = HTML(u'<div><noscript><noscript></noscript></noscript></div>')
+        self.assertEqual('<div/>', (html | HTMLSanitizer()).render())
+        html = HTML(u'<noscript><noscript></noscript><b>foo</b></noscript>')
+        self.assertEqual('', (html | HTMLSanitizer()).render())
+        xml = XML(u'<div><script><script></script></script>foo</div>')
+        self.assertEqual('<div>foo</div>', (xml | HTMLSanitizer()).render())
+
     def test_sanitize_remove_style_scripts(self):
         sanitizer = StyleSanitizer()
         # Inline style with url() using javascript: scheme

@@ -362,14 +362,18 @@ class HTMLSanitizer(object):
         :param stream: the markup event stream to filter
         """
         waiting_for = None
+        waiting_depth = 0
 
         for kind, data, pos in stream:
             if kind is START:
                 if waiting_for:
+                    if data[0] == waiting_for:
+                        waiting_depth += 1
                     continue
                 tag, attrs = data
                 if not self.is_safe_elem(tag, attrs):
                     waiting_for = tag
+                    waiting_depth = 1
                     continue
 
                 new_attrs = []
@@ -395,7 +399,9 @@ class HTMLSanitizer(object):
                 tag = data
                 if waiting_for:
                     if waiting_for == tag:
-                        waiting_for = None
+                        waiting_depth -= 1
+                        if not waiting_depth:
+                            waiting_for = None
                 else:
                     yield kind, data, pos
 

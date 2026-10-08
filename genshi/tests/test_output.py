@@ -94,6 +94,18 @@ class XMLSerializerTestCase(unittest.TestCase):
         output = stream.render(XMLSerializer, encoding=None)
         self.assertEqual('<?python x = 2?>', output)
 
+    def test_attribute_name_with_special_chars_dropped(self):
+        stream = Stream([
+            (Stream.START, (QName('a'), Attrs([
+                (QName('href'), 'ok'),
+                (QName('x" onmouseover="alert(1)'), 'y'),
+            ])), (None, -1, -1)),
+            (Stream.TEXT, 'x', (None, -1, -1)),
+            (Stream.END, QName('a'), (None, -1, -1)),
+        ])
+        output = stream.render(XMLSerializer, encoding=None)
+        self.assertEqual('<a href="ok">x</a>', output)
+
     def test_nested_default_namespaces(self):
         stream = Stream([
             (Stream.START_NS, ('', 'http://example.org/'), (None, -1, -1)),
@@ -272,6 +284,18 @@ class XHTMLSerializerTestCase(unittest.TestCase):
         output = XML(text).render(XHTMLSerializer, encoding=None)
         self.assertEqual(text, output)
 
+    def test_attribute_name_with_special_chars_dropped(self):
+        stream = Stream([
+            (Stream.START, (QName('a'), Attrs([
+                (QName('href'), 'ok'),
+                (QName('x" onmouseover="alert(1)'), 'y'),
+            ])), (None, -1, -1)),
+            (Stream.TEXT, 'x', (None, -1, -1)),
+            (Stream.END, QName('a'), (None, -1, -1)),
+        ])
+        output = stream.render(XHTMLSerializer, encoding=None)
+        self.assertEqual('<a href="ok">x</a>', output)
+
     def test_style_escaping(self):
         text = """<style>/*<![CDATA[*/
             html > body { display: none; }
@@ -426,6 +450,18 @@ class HTMLSerializerTestCase(unittest.TestCase):
         self.assertEqual("""<script>
             if (1 < 2) { alert("Doh"); }
         </script>""", output)
+
+    def test_attribute_name_with_special_chars_dropped(self):
+        stream = Stream([
+            (Stream.START, (QName('a'), Attrs([
+                (QName('href'), 'ok'),
+                (QName('x" onmouseover="alert(1)'), 'y'),
+            ])), (None, -1, -1)),
+            (Stream.TEXT, 'x', (None, -1, -1)),
+            (Stream.END, QName('a'), (None, -1, -1)),
+        ])
+        output = stream.render(HTMLSerializer, encoding=None)
+        self.assertEqual('<a href="ok">x</a>', output)
 
     def test_style_escaping(self):
         text = '<style>html &gt; body { display: none; }</style>'

@@ -531,6 +531,26 @@ class HTMLSanitizerTestCase(unittest.TestCase):
         html = HTML(u'<IMG SRC=\'jav&#x09;ascript:alert("foo");\'>')
         self.assertEqual('<img/>', (html | HTMLSanitizer()).render())
 
+    def test_sanitize_remove_cite_javascript(self):
+        html = HTML(u'<blockquote cite="javascript:alert(1)">x</blockquote>')
+        self.assertEqual('<blockquote>x</blockquote>',
+                         (html | HTMLSanitizer()).render())
+        html = HTML(u'<q cite="javascript:alert(1)">x</q>')
+        self.assertEqual('<q>x</q>', (html | HTMLSanitizer()).render())
+        # A safe URI in a cite attribute is preserved
+        html = HTML(u'<blockquote cite="http://example.org/">x</blockquote>')
+        self.assertEqual('<blockquote cite="http://example.org/">x</blockquote>',
+                         (html | HTMLSanitizer()).render())
+
+    def test_sanitize_remove_longdesc_javascript(self):
+        html = HTML(u'<img longdesc="javascript:alert(1)" src="foo.png">')
+        self.assertEqual('<img src="foo.png"/>',
+                         (html | HTMLSanitizer()).render())
+        # A safe URI in a longdesc attribute is preserved
+        html = HTML(u'<img longdesc="desc.html" src="foo.png">')
+        self.assertEqual('<img longdesc="desc.html" src="foo.png"/>',
+                         (html | HTMLSanitizer()).render())
+
     def test_sanitize_expression(self):
         html = HTML(u'<div style="top:expression(alert())">XSS</div>')
         self.assertEqual('<div>XSS</div>', text_type(html | StyleSanitizer()))

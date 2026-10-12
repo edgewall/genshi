@@ -17,6 +17,8 @@ jobs:
             pytest-extra-options: ""
           - python-version: "pypy3.11"
             pytest-extra-options: ""
+          - python-version: "pypy3.12"
+            pytest-extra-options: ""
       fail-fast: false
 
     steps:

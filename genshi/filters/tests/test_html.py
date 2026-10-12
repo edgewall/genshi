@@ -428,6 +428,16 @@ class HTMLSanitizerTestCase(unittest.TestCase):
                                          'SRC="http://example.com/"&gt;', src,
                                          allow_strip=True)
 
+    def test_sanitize_remove_nested_unsafe_elem(self):
+        html = HTML(u'<div><object><object></object>'
+                    u'<p>phish</p></object></div>')
+        self.assertEqual('<div/>', (html | HTMLSanitizer()).render())
+        xml = XML(u'<div><object><object/>phish</object></div>')
+        self.assertEqual('<div/>', (xml | HTMLSanitizer()).render())
+        xml = XML(u'<div><object><embed><object/></embed>'
+                  u'phish</object>safe</div>')
+        self.assertEqual('<div>safe</div>', (xml | HTMLSanitizer()).render())
+
     def test_sanitize_remove_onclick_attr(self):
         html = HTML(u'<div onclick=\'alert("foo")\' />')
         self.assertEqual('<div/>', (html | HTMLSanitizer()).render())

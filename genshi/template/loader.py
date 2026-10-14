@@ -286,8 +286,17 @@ class TemplateLoader(object):
         :return: the loader function to load templates from the given directory
         :rtype: ``function``
         """
+        dirpath = os.path.realpath(path)
         def _load_from_directory(filename):
             filepath = os.path.join(path, filename)
+            # Keep the resolved path inside the configured directory so a
+            # filename such as "../../etc/passwd" cannot escape it; relative
+            # includes that stay within the directory are still allowed.
+            # realpath also resolves symlinks, so a link inside the directory
+            # cannot be used to read a file outside of it.
+            if not (os.path.realpath(filepath) + os.sep).startswith(
+                    dirpath + os.sep):
+                raise IOError(2, 'No such file or directory', filepath)
             fileobj = open(filepath, 'rb')
             mtime = os.path.getmtime(filepath)
             def _uptodate():

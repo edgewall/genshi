@@ -412,6 +412,20 @@ class HTMLSerializerTestCase(unittest.TestCase):
         output = XML(text).render(HTMLSerializer, encoding=None)
         self.assertEqual('<script src="foo.js"></script>', output)
 
+    def test_text_escaping_after_empty_script(self):
+        text = '<div><script src="foo.js" />&lt;p&gt;one&lt;/p&gt;</div>'
+        output = XML(text).render(HTMLSerializer, encoding=None,
+                                  strip_whitespace=False)
+        self.assertEqual('<div><script src="foo.js"></script>'
+                         '&lt;p&gt;one&lt;/p&gt;</div>', output)
+
+    def test_text_escaping_after_empty_style(self):
+        text = '<div><style/>&lt;p&gt;two&lt;/p&gt;</div>'
+        output = XML(text).render(HTMLSerializer, encoding=None,
+                                  strip_whitespace=False)
+        self.assertEqual('<div><style></style>&lt;p&gt;two&lt;/p&gt;</div>',
+                         output)
+
     def test_script_escaping(self):
         text = '<script>if (1 &lt; 2) { alert("Doh"); }</script>'
         output = XML(text).render(HTMLSerializer, encoding=None)

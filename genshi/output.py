@@ -482,8 +482,7 @@ class HTMLSerializer(XHTMLSerializer):
             output = _get((kind, data))
             if output is not None:
                 yield output
-                if (kind is START or kind is EMPTY) \
-                        and data[0] in noescape_elems:
+                if kind is START and data[0] in noescape_elems:
                     noescape = True
                 elif kind is END:
                     noescape = False
@@ -505,7 +504,7 @@ class HTMLSerializer(XHTMLSerializer):
                     if tag not in empty_elems:
                         buf.append('</%s>' % tag)
                 yield _emit(kind, data, Markup(''.join(buf)))
-                if tag in noescape_elems:
+                if kind is START and tag in noescape_elems:
                     noescape = True
 
             elif kind is END:

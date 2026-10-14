@@ -115,6 +115,23 @@ class TemplateLoaderTestCase(unittest.TestCase):
         finally:
             shutil.rmtree(secret)
 
+    def test_load_through_symlink_outside_denied(self):
+        if not hasattr(os, 'symlink'):
+            return
+        secret = tempfile.mkdtemp()
+        try:
+            with open(os.path.join(secret, 'passwd'), 'w') as f:
+                f.write('secret')
+            link = os.path.join(self.dirname, 'link')
+            try:
+                os.symlink(secret, link)
+            except (OSError, NotImplementedError):
+                return
+            loader = TemplateLoader([self.dirname])
+            self.assertRaises(TemplateNotFound, loader.load, 'link/passwd')
+        finally:
+            shutil.rmtree(secret)
+
     def test_relative_include_samesubdir(self):
         file1 = open(os.path.join(self.dirname, 'tmpl1.html'), 'w')
         try:

@@ -201,6 +201,13 @@ class XMLSerializerTestCase(unittest.TestCase):
         output = XML(text).render(XMLSerializer, encoding=None)
         self.assertEqual(text, output)
 
+    def test_cache_cdata(self):
+        text = '<doc><a><![CDATA[<b>]]></a><c>&lt;b&gt;</c></doc>'
+        output = XML(text).render(XMLSerializer, encoding=None,
+                                  strip_whitespace=False)
+        self.assertEqual('<doc><a><![CDATA[<b>]]></a><c>&lt;b&gt;</c></doc>',
+                         output)
+
 
 class XHTMLSerializerTestCase(unittest.TestCase):
 
@@ -377,6 +384,13 @@ class XHTMLSerializerTestCase(unittest.TestCase):
                                strip_whitespace=False)
         self.assertEqual('<foo>&amp;hellip;</foo><bar>&hellip;</bar>', output)
 
+    def test_cache_cdata(self):
+        text = '<doc><a><![CDATA[<b>]]></a><c>&lt;b&gt;</c></doc>'
+        output = XML(text).render(XHTMLSerializer, encoding=None,
+                                  strip_whitespace=False)
+        self.assertEqual('<doc><a><![CDATA[<b>]]></a><c>&lt;b&gt;</c></doc>',
+                         output)
+
 
 class HTMLSerializerTestCase(unittest.TestCase):
 
@@ -412,6 +426,13 @@ class HTMLSerializerTestCase(unittest.TestCase):
         output = XML(text).render(HTMLSerializer, encoding=None)
         self.assertEqual('<script src="foo.js"></script>', output)
 
+    def test_empty_script_escaping(self):
+        text = '<div><script src="foo.js" /><p>a &lt; b</p></div>'
+        output = XML(text).render(HTMLSerializer, encoding=None,
+                                  strip_whitespace=False)
+        self.assertEqual('<div><script src="foo.js"></script>'
+                         '<p>a &lt; b</p></div>', output)
+
     def test_script_escaping(self):
         text = '<script>if (1 &lt; 2) { alert("Doh"); }</script>'
         output = XML(text).render(HTMLSerializer, encoding=None)
@@ -441,6 +462,13 @@ class HTMLSerializerTestCase(unittest.TestCase):
         self.assertEqual("""<style>
             html > body { display: none; }
         </style>""", output)
+
+    def test_cache_noescape(self):
+        text = '<div><script>if (a &lt; b);</script><p>if (a &lt; b);</p></div>'
+        output = XML(text).render(HTMLSerializer, encoding=None,
+                                  strip_whitespace=False)
+        self.assertEqual('<div><script>if (a < b);</script>'
+                         '<p>if (a &lt; b);</p></div>', output)
 
     def test_html5_doctype(self):
         stream = HTML(u'<html></html>')

@@ -629,6 +629,20 @@ class HTMLSanitizerTestCase(unittest.TestCase):
                     u'XSS</div>')
         self.assertEqual('<div>XSS</div>', text_type(html | StyleSanitizer()))
 
+    def test_sanitize_css_escape_out_of_range(self):
+        # A CSS unicode escape whose code point is outside the Unicode range
+        # must not abort sanitization
+        html = HTML(u'<div style="color:\\ffffff">XSS</div>')
+        self.assertEqual('<div style="color:\ufffd">XSS</div>',
+                         text_type(html | StyleSanitizer()))
+
+    def test_sanitize_uppercase_hex_entity_attr(self):
+        # An uppercase hex character reference in an attribute value must be
+        # decoded like its lowercase form, not abort sanitization
+        html = HTML(u'<a title="&amp;#X2026;">foo</a>')
+        self.assertEqual(u'<a title="\u2026">foo</a>',
+                         (html | HTMLSanitizer()).render(encoding=None))
+
 
 def suite():
     suite = unittest.TestSuite()

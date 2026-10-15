@@ -17,6 +17,7 @@ import re
 
 from genshi.compat import text_type, unichr
 from genshi.core import Attrs, QName, stripentities
+from genshi.util import _codepoint_to_unichr
 from genshi.core import END, START, TEXT, COMMENT, PI, START_CDATA, \
                         END_CDATA
 
@@ -537,7 +538,7 @@ class HTMLSanitizer(object):
         def _repl(match):
             t = match.group(1)
             if t:
-                return unichr(int(t, 16))
+                return _codepoint_to_unichr(int(t, 16))
             t = match.group(2)
             if t == '\\':
                 return r'\\'

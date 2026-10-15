@@ -15,7 +15,7 @@ import unittest
 
 from genshi import util
 from genshi.tests.utils import doctest_suite
-from genshi.util import LRUCache
+from genshi.util import LRUCache, stripentities
 
 
 class LRUCacheTestCase(unittest.TestCase):
@@ -84,10 +84,26 @@ class LRUCacheTestCase(unittest.TestCase):
         self.assertEqual(None, item_b.nxt)
 
 
+class StripEntitiesTestCase(unittest.TestCase):
+
+    def test_uppercase_hex_reference(self):
+        # An uppercase "X" hex reference decodes like its lowercase form
+        self.assertEqual(u'\u2026', stripentities(u'&#X2026;'))
+        self.assertEqual(stripentities(u'&#x2026;'), stripentities(u'&#X2026;'))
+
+    def test_out_of_range_reference(self):
+        # Code points outside the Unicode range yield the replacement
+        # character rather than raising
+        self.assertEqual(u'\uFFFD', stripentities(u'&#9999999999;'))
+        self.assertEqual(u'\uFFFD', stripentities(u'&#xffffffff;'))
+
+
 def suite():
     suite = unittest.TestSuite()
     suite.addTest(doctest_suite(util))
     suite.addTest(unittest.defaultTestLoader.loadTestsFromTestCase(LRUCacheTestCase))
+    suite.addTest(unittest.defaultTestLoader.loadTestsFromTestCase(
+        StripEntitiesTestCase))
     return suite
 
 if __name__ == '__main__':

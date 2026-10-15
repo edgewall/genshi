@@ -183,6 +183,17 @@ def plaintext(text, keeplinebreaks=True):
     return text
 
 
+def _codepoint_to_unichr(codepoint):
+    """Return the character for a numeric character reference code point.
+
+    Code points outside the Unicode range are replaced by U+FFFD, as browsers
+    and the HTML and CSS specifications require, rather than raising.
+    """
+    if codepoint > 0x10FFFF:
+        return u'\uFFFD'
+    return unichr(codepoint)
+
+
 _STRIPENTITIES_RE = re.compile(r'&(?:#((?:\d+)|(?:[xX][0-9a-fA-F]+));?|(\w+);)')
 def stripentities(text, keepxmlentities=False):
     """Return a copy of the given text with any character or numeric entities
@@ -206,11 +217,11 @@ def stripentities(text, keepxmlentities=False):
     def _replace_entity(match):
         if match.group(1): # numeric entity
             ref = match.group(1)
-            if ref.startswith('x'):
+            if ref.lower().startswith('x'):
                 ref = int(ref[1:], 16)
             else:
                 ref = int(ref, 10)
-            return unichr(ref)
+            return _codepoint_to_unichr(ref)
         else: # character entity
             ref = match.group(2)
             if keepxmlentities and ref in ('amp', 'apos', 'gt', 'lt', 'quot'):

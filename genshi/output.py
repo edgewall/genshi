@@ -28,6 +28,14 @@ __all__ = ['encode', 'get_serializer', 'DocType', 'XMLSerializer',
 __docformat__ = 'restructuredtext en'
 
 
+# Characters that must never appear in an attribute name: emitting a name that
+# contains one of them would close the quoting or the start tag and allow
+# arbitrary markup/attributes to be injected. Attribute values are escaped, but
+# names are written verbatim, so names coming from untrusted data (e.g. the keys
+# of a ``py:attrs`` mapping) are checked here.
+_INVALID_ATTR_NAME = re.compile(u'[\\s"\'<>/=]').search
+
+
 def encode(iterator, method='xml', encoding=None, out=None):
     """Encode serializer output into a string.
     
@@ -250,6 +258,8 @@ class XMLSerializer(object):
                 tag, attrib = data
                 buf = ['<', tag]
                 for attr, value in attrib:
+                    if _INVALID_ATTR_NAME(attr):
+                        continue
                     buf += [' ', attr, '="', escape(value), '"']
                 buf.append(kind is EMPTY and '/>' or '>')
                 yield _emit(kind, data, Markup(''.join(buf)))
@@ -362,6 +372,8 @@ class XHTMLSerializer(XMLSerializer):
                 tag, attrib = data
                 buf = ['<', tag]
                 for attr, value in attrib:
+                    if _INVALID_ATTR_NAME(attr):
+                        continue
                     if attr in boolean_attrs:
                         value = attr
                     elif attr == 'xml:lang' and 'lang' not in attrib:
@@ -492,6 +504,8 @@ class HTMLSerializer(XHTMLSerializer):
                 tag, attrib = data
                 buf = ['<', tag]
                 for attr, value in attrib:
+                    if _INVALID_ATTR_NAME(attr):
+                        continue
                     if attr in boolean_attrs:
                         if value:
                             buf += [' ', attr]

@@ -5,6 +5,19 @@ http://svn.edgewall.org/repos/genshi/tags/0.8.0/
  * ???
 
 
+Version 0.7.12
+https://github.com/edgewall/genshi/releases/tag/0.7.12
+(October 26 2026, from branches/stable/0.7.x)
+
+ * Add support for Python 3.15 and PyPy 3.12 (#103 and #102 by Simon Cross)
+ * Fix reference leak in Markup.__mod__ for mapping arguments (#106 by Nishat Shabbir)
+ * Drop processing instructions (PI) and CDATA sections in HTMLSanitizer (#104 by Keshava Kesh)
+ * Track nesting depth when removing unsafe elements in HTMLSanitizer (#111 by Nishat Shabbir)
+ * Update CI test matrix to add Python 3.15 release and PyPy 3.12 (#112 by Simon Cross)
+ * Several RTD build fixes (#99 by Dave Jones)
+ * Update versions of GitHub actions. (#98 by Simon Cross)
+
+
 Version 0.7.11
 https://github.com/edgewall/genshi/releases/tag/0.7.11
 (May 17 2026, from branches/stable/0.7.x)

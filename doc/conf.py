@@ -9,7 +9,8 @@
 project = "Genshi"
 copyright = "2024, Edgewall Software"
 author = "Edgewall Software"
-release = "0.8"
+version = "0.8"
+release = version
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
@@ -32,7 +33,7 @@ autodoc_preserve_defaults = True
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
 
 html_theme = "sphinx_rtd_theme"
-html_static_path = ["_static"]
+html_static_path = []
 html_theme_options = {
     "collapse_navigation": True,
     "sticky_navigation": True,

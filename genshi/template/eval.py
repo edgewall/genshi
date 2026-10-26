@@ -23,11 +23,13 @@ from genshi.template.base import TemplateRuntimeError
 from genshi.util import flatten
 
 from genshi.compat import ast as _ast, _ast_Constant, get_code_params, \
-                          build_code_chunk, isstring, IS_PYTHON2, _ast_Str
+                          build_code_chunk, isstring, IS_PYTHON2, \
+                          required_ast_call_args, _ast_Str
 
 __all__ = ['Code', 'Expression', 'Suite', 'LenientLookup', 'StrictLookup',
            'Undefined', 'UndefinedError']
 __docformat__ = 'restructuredtext en'
+
 
 
 
@@ -38,7 +40,7 @@ class Code(object):
     def __init__(self, source, filename=None, lineno=-1, lookup='strict',
                  xform=None):
         """Create the code object, either from a string, or from an AST node.
-        
+
         :param source: either a string containing the source code, or an AST
                        node
         :param filename: the (preferably absolute) name of the file containing
@@ -59,11 +61,9 @@ class Code(object):
                 'Expected string or AST node, but got %r' % source
             self.source = '?'
             if self.mode == 'eval':
-                node = _ast.Expression()
-                node.body = source
+                node = _ast.Expression(body=source)
             else:
-                node = _ast.Module()
-                node.body = [source]
+                node = _ast.Module(body=[source])
 
         self.ast = node
         self.code = _compile(node, self.source, mode=self.mode,
@@ -116,16 +116,16 @@ class Expression(Code):
     3
     >>> Expression('dict["some"]').evaluate(data)
     'thing'
-    
+
     Similar to e.g. Javascript, expressions in templates can use the dot
     notation for attribute access to access items in mappings:
-    
+
     >>> Expression('dict.some').evaluate(data)
     'thing'
-    
+
     This also works the other way around: item access can be used to access
     any object attribute:
-    
+
     >>> class MyClass(object):
     ...     myattr = 'Bar'
     >>> data = dict(mine=MyClass(), key='myattr')
@@ -135,11 +135,11 @@ class Expression(Code):
     'Bar'
     >>> Expression('mine[key]').evaluate(data)
     'Bar'
-    
+
     All of the standard Python operators are available to template expressions.
     Built-in functions such as ``len()`` are also available in template
     expressions:
-    
+
     >>> data = dict(items=[1, 2, 3])
     >>> Expression('len(items)').evaluate(data)
     3
@@ -149,7 +149,7 @@ class Expression(Code):
 
     def evaluate(self, data):
         """Evaluate the expression against the given data dictionary.
-        
+
         :param data: a mapping containing the data to evaluate against
         :return: the result of the evaluation
         """
@@ -171,7 +171,7 @@ class Suite(Code):
 
     def execute(self, data):
         """Execute the suite in the given data dictionary.
-        
+
         :param data: a mapping containing the data to execute in
         """
         __traceback_hide__ = 'before_and_this'
@@ -185,7 +185,7 @@ UNDEFINED = object()
 class UndefinedError(TemplateRuntimeError):
     """Exception thrown when a template expression attempts to access a variable
     not defined in the context.
-    
+
     :see: `LenientLookup`, `StrictLookup`
     """
     def __init__(self, name, owner=UNDEFINED):
@@ -198,12 +198,12 @@ class UndefinedError(TemplateRuntimeError):
 
 class Undefined(object):
     """Represents a reference to an undefined variable.
-    
+
     Unlike the Python runtime, template expressions can refer to an undefined
     variable without causing a `NameError` to be raised. The result will be an
     instance of the `Undefined` class, which is treated the same as ``False`` in
     conditions, but raise an exception on any other operation:
-    
+
     >>> foo = Undefined('foo')
     >>> bool(foo)
     False
@@ -211,11 +211,11 @@ class Undefined(object):
     []
     >>> print(foo)
     undefined
-    
+
     However, calling an undefined variable, or trying to access an attribute
     of that variable, will raise an exception that includes the name used to
     reference that undefined variable.
-    
+
     >>> try:
     ...     foo('bar')
     ... except UndefinedError as e:
@@ -227,14 +227,14 @@ class Undefined(object):
     ... except UndefinedError as e:
     ...     print(e.msg)
     "foo" not defined
-    
+
     :see: `LenientLookup`
     """
     __slots__ = ['_name', '_owner']
 
     def __init__(self, name, owner=UNDEFINED):
         """Initialize the object.
-        
+
         :param name: the name of the reference
         :param owner: the owning object, if the variable is accessed as a member
         """
@@ -326,7 +326,7 @@ class LookupBase(object):
     def undefined(cls, key, owner=UNDEFINED):
         """Can be overridden by subclasses to specify behavior when undefined
         variables are accessed.
-        
+
         :param key: the name of the variable
         :param owner: the owning object, if the variable is accessed as a member
         """
@@ -335,25 +335,25 @@ class LookupBase(object):
 
 class LenientLookup(LookupBase):
     """Default variable lookup mechanism for expressions.
-    
+
     When an undefined variable is referenced using this lookup style, the
     reference evaluates to an instance of the `Undefined` class:
-    
+
     >>> expr = Expression('nothing', lookup='lenient')
     >>> undef = expr.evaluate({})
     >>> undef
     <Undefined 'nothing'>
-    
+
     The same will happen when a non-existing attribute or item is accessed on
     an existing object:
-    
+
     >>> expr = Expression('something.nil', lookup='lenient')
     >>> expr.evaluate({'something': dict()})
     <Undefined 'nil'>
-    
+
     See the documentation of the `Undefined` class for details on the behavior
     of such objects.
-    
+
     :see: `StrictLookup`
     """
 
@@ -366,20 +366,20 @@ class LenientLookup(LookupBase):
 
 class StrictLookup(LookupBase):
     """Strict variable lookup mechanism for expressions.
-    
+
     Referencing an undefined variable using this lookup style will immediately
     raise an ``UndefinedError``:
-    
+
     >>> expr = Expression('nothing', lookup='strict')
     >>> try:
     ...     expr.evaluate({})
     ... except UndefinedError as e:
     ...     print(e.msg)
     "nothing" not defined
-    
+
     The same happens when a non-existing attribute or item is accessed on an
     existing object:
-    
+
     >>> expr = Expression('something.nil', lookup='strict')
     >>> try:
     ...     expr.evaluate({'something': dict()})
@@ -453,15 +453,11 @@ def _compile(node, source=None, mode='eval', filename=None, lineno=-1,
         return code
 
 
-def _new(class_, *args, **kwargs):
-    ret = class_()
-    for attr, value in zip(ret._fields, args):
+def _new(cls, *args, **kwargs):
+    for attr, value in zip(cls._fields, args):
         if attr in kwargs:
             raise ValueError('Field set both in args and kwargs')
-        setattr(ret, attr, value)
-    for attr, value in kwargs:
-        setattr(ret, attr, value)
-    return ret
+    return cls(*args, **kwargs)
 
 
 BUILTINS = builtins.__dict__.copy()
@@ -552,9 +548,13 @@ class TemplateASTTransformer(ASTTransformer):
         for generator in node.generators:
             # comprehension = (expr target, expr iter, expr* ifs)
             self.locals.append(set())
+            gen_kw = {}
+            if "is_async" in _ast.comprehension._fields:
+                gen_kw["is_async"] = False
             gen = _new(_ast.comprehension, self.visit(generator.target),
                        self.visit(generator.iter),
-                       [self.visit(if_) for if_ in generator.ifs])
+                       [self.visit(if_) for if_ in generator.ifs],
+                       **gen_kw)
             gens.append(gen)
 
         # use node.__class__ to make it reusable as ListComp
@@ -587,7 +587,7 @@ class TemplateASTTransformer(ASTTransformer):
             name = _new(_ast.Name, '_lookup_name', _ast.Load())
             namearg = _new(_ast.Name, '__data__', _ast.Load())
             strarg = _new(_ast_Str, node.id)
-            node = _new(_ast.Call, name, [namearg, strarg], [])
+            node = _new(_ast.Call, name, [namearg, strarg], [], *required_ast_call_args)
         elif isinstance(node.ctx, _ast.Store):
             if len(self.locals) > 1:
                 self.locals[-1].add(node.id)
@@ -606,7 +606,7 @@ class ExpressionASTTransformer(TemplateASTTransformer):
 
         func = _new(_ast.Name, '_lookup_attr', _ast.Load())
         args = [self.visit(node.value), _new(_ast_Str, node.attr)]
-        return _new(_ast.Call, func, args, [])
+        return _new(_ast.Call, func, args, [], *required_ast_call_args)
 
     def visit_Subscript(self, node):
         if not isinstance(node.ctx, _ast.Load) or \
@@ -626,4 +626,4 @@ class ExpressionASTTransformer(TemplateASTTransformer):
             self.visit(node.value),
             _new(_ast.Tuple, (self.visit(slice_value),), _ast.Load())
         ]
-        return _new(_ast.Call, func, args, [])
+        return _new(_ast.Call, func, args, [], *required_ast_call_args)

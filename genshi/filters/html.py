@@ -17,7 +17,8 @@ import re
 
 from genshi.compat import text_type, unichr
 from genshi.core import Attrs, QName, stripentities
-from genshi.core import END, START, TEXT, COMMENT
+from genshi.core import END, START, TEXT, COMMENT, PI, START_CDATA, \
+                        END_CDATA
 
 __all__ = ['HTMLFormFiller', 'HTMLSanitizer']
 __docformat__ = 'restructuredtext en'
@@ -361,10 +362,13 @@ class HTMLSanitizer(object):
         :param stream: the markup event stream to filter
         """
         waiting_for = None
+        skip_depth = 0
 
         for kind, data, pos in stream:
             if kind is START:
                 if waiting_for:
+                    if data[0] == waiting_for:
+                        skip_depth += 1
                     continue
                 tag, attrs = data
                 if not self.is_safe_elem(tag, attrs):
@@ -394,11 +398,19 @@ class HTMLSanitizer(object):
                 tag = data
                 if waiting_for:
                     if waiting_for == tag:
-                        waiting_for = None
+                        if skip_depth:
+                            skip_depth -= 1
+                        else:
+                            waiting_for = None
                 else:
                     yield kind, data, pos
 
-            elif kind is not COMMENT:
+            # Drop comments, processing instructions and CDATA sections.
+            # In HTML, comments and CDATA sections should not be rendered and so can
+            # be removed for safety. Processing instructions likely shouldn't be rendered either
+            # and might potentially be interpreted by later unwary processors of the HTML,
+            # so they are dropped for safety too.
+            elif kind not in (COMMENT, PI, START_CDATA, END_CDATA):
                 if not waiting_for:
                     yield kind, data, pos
 

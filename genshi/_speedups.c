@@ -480,6 +480,7 @@ Markup_mod(PyObject *self, PyObject *args)
                 Py_DECREF(kwcopy);
                 return NULL;
             }
+            Py_DECREF(tmp);
         }
         tmp = PyUnicode_Format(self, kwcopy);
         Py_DECREF(kwcopy);

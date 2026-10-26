@@ -20,7 +20,7 @@ independently of where or how they are produced.
 """
 
 __docformat__ = 'restructuredtext en'
-__version__ = '0.7.11'
+__version__ = '0.7.12'
 
 from genshi.core import *
 from genshi.input import ParseError, XML, HTML

@@ -282,8 +282,8 @@ class HTMLSanitizer(object):
 
     SAFE_SCHEMES = frozenset(['file', 'ftp', 'http', 'https', 'mailto', None])
 
-    URI_ATTRS = frozenset(['action', 'background', 'dynsrc', 'href', 'lowsrc',
-        'src'])
+    URI_ATTRS = frozenset(['action', 'background', 'cite', 'dynsrc', 'href',
+        'longdesc', 'lowsrc', 'src'])
 
     def __init__(self, safe_tags=SAFE_TAGS, safe_attrs=SAFE_ATTRS,
                  safe_schemes=SAFE_SCHEMES, uri_attrs=URI_ATTRS,

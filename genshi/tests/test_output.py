@@ -442,6 +442,31 @@ class HTMLSerializerTestCase(unittest.TestCase):
             html > body { display: none; }
         </style>""", output)
 
+    def test_script_end_tag_in_text(self):
+        text = '<script>var s = "&lt;/SCRIPT>&lt;img>";</script>'
+        output = XML(text).render(HTMLSerializer, encoding=None)
+        self.assertEqual('<script>var s = "<\\/SCRIPT><img>";</script>',
+                         output)
+
+    def test_style_end_tag_in_text(self):
+        text = '<style>p::after { content: "&lt;/style>"; }</style>'
+        output = XML(text).render(HTMLSerializer, encoding=None)
+        self.assertEqual('<style>p::after { content: "<\\/style>"; }</style>',
+                         output)
+
+    def test_script_end_tag_split_across_events(self):
+        stream = Stream([
+            (Stream.START, (QName('script'), Attrs()), (None, -1, -1)),
+            (Stream.TEXT, 'var s = "<', (None, -1, -1)),
+            (Stream.TEXT, '/script>";', (None, -1, -1)),
+            (Stream.END, QName('script'), (None, -1, -1)),
+        ])
+        for strip_whitespace in (True, False):
+            output = stream.render(HTMLSerializer, encoding=None,
+                                   strip_whitespace=strip_whitespace)
+            self.assertEqual('<script>var s = "<\\/script>";</script>',
+                             output)
+
     def test_html5_doctype(self):
         stream = HTML(u'<html></html>')
         output = stream.render(HTMLSerializer, doctype=DocType.HTML5,

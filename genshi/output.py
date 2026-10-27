@@ -441,6 +441,10 @@ class HTMLSerializer(XHTMLSerializer):
         QName('style'), QName('http://www.w3.org/1999/xhtml}style')
     ])
 
+    # The content of <script> and <style> is not escaped, so an end tag in it
+    # would close the element early
+    _RAWTEXT_END = re.compile(r'</(?=script|style)', re.IGNORECASE).sub
+
     def __init__(self, doctype=None, strip_whitespace=True, cache=True):
         """Initialize the HTML serializer.
         
@@ -471,11 +475,19 @@ class HTMLSerializer(XHTMLSerializer):
         noescape_elems = self._NOESCAPE_ELEMS
         have_doctype = False
         noescape = False
+        rawtext = []
         _emit, _get = self._prepare_cache()
 
         for filter_ in self.filters:
             stream = filter_(stream)
         for kind, data, _ in stream:
+            if noescape:
+                if kind is TEXT:
+                    rawtext.append(data)
+                    continue
+                if rawtext:
+                    yield Markup(self._RAWTEXT_END(r'<\\/', ''.join(rawtext)))
+                    del rawtext[:]
             if kind is TEXT and isinstance(data, Markup):
                 yield data
                 continue
@@ -513,10 +525,7 @@ class HTMLSerializer(XHTMLSerializer):
                 noescape = False
 
             elif kind is TEXT:
-                if noescape:
-                    yield _emit(kind, data, data)
-                else:
-                    yield _emit(kind, data, escape(data, quotes=False))
+                yield _emit(kind, data, escape(data, quotes=False))
 
             elif kind is COMMENT:
                 yield _emit(kind, data, Markup('<!--%s-->' % data))
@@ -536,6 +545,9 @@ class HTMLSerializer(XHTMLSerializer):
 
             elif kind is PI:
                 yield _emit(kind, data, Markup('<?%s %s?>' % data))
+
+        if rawtext:
+            yield Markup(self._RAWTEXT_END(r'<\\/', ''.join(rawtext)))
 
 
 class TextSerializer(object):
